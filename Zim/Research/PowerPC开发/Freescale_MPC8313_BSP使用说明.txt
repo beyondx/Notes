@@ -1,0 +1,113 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-30T21:53:30+08:00
+
+====== Freescale MPC8313 BSP使用说明 ======
+Created Wednesday 30 November 2011
+http://blog.csdn.net/aero_boy/article/details/5914527
+
+这段时间在做MPC8313的开发, 在这里做一下笔记吧, 很多虽然是比较简单的东西,还是记录一下吧,免得已后忘了,以可以查查,以给后以第一次使用的人一个参考吧.
+
+Freescale MPC8313 BSP使用说明
+      MPC8313的BSP使用的是LTIB为基础的配置工具. 安装盘ISO:
+
+===== 1.LTIB安装 =====
+      a. mount ISO:
+              mount -o loop MPC8313E_RDB_K26_20070831-LTIB.iso /mnt/cdrom
+      b.以非root用户运行, 该用户需要有sudo权限:
+              /mnt/cdrom/install
+              然后根据提示输入安装路径.
+
+      注: a.提示找不到rpm-build
+                     我是在ubuntu 10.04上安装, 系统带的rpm是 4.7的,需要卸裁后安装4.4版的rpm,
+                     rpm_4.4.2.3-2ubuntu1_i386.deb,librpm4.4_4.4.2.3-2ubuntu1_i386.deb他们又依赖于libbeecrypt6_4.1.2-7_i386.deb
+
+           b.提示没有sudo root的权限
+                 ltib安装是普通用户权限，但是部分操作需要root用户权限。按照提示进行如下操作，
+                  #/usr/sbin/visudo
+                  然后在文件最后添加如下内容：
+                   USERNAME ALL = NOPASSWD:/bin/rpm, /opt/freescale/ltib/usr/bin/rpm
+                  注：visudo实际就是编辑文件/etc/sudoers文件
+  
+           c.提示bison错误
+                      bison -y -d ./parse.y
+                      make: *** [parse.c] Segmentation fault
+                 解决：在运行./ltib之前，修改”dist/lfs-5.1/bison/bison.spec”文件，
+                 在%Build段修改make为make CFLAGS=-O0。然后再运行./ltib。
+
+           d.提示util错误
+                     make -C util
+                     make: Entering directory `/opt/freescale/ltib/usr/src/rpm/BUILD/mtd/util'
+                     gcc -I../include -O2 -Wall -g -c -o ftl_format.o ftl_format.c -g -Wp,-MD,.ftl_format.c.dep
+                     In file included from /usr/include/endian.h:61,
+                     from /usr/include/sys/types.h:217,
+                     from ftl_format.c:38:
+                 解决：修改“/opt/freescale/pkgs/mtd-utils-20060302-cf-byteswap_h-1.patch”文件
+                           注掉 lines 46, 47 and 48 :
+                           +#if !defined _BYTESWAP_H && !defined _NETINET_IN_H
+                           +# error "Never use <bits/byteswap.h> directly; include <byteswap.h> instead."
+                           +#endif
+
+                       by
+                           +//#if !defined _BYTESWAP_H && !defined _NETINET_IN_H
+                           +//# error "Never use <bits/byteswap.h> directly; include <byteswap.h> instead."
+                           +//#endif
+                      然后删除“/opt/freescale/ltib/usr/src/rpm/BUILD/mtd”这个目录，最后再运行.__/ltib__
+
+
+=== ltib的目录构成: ===
+                 安装完成后会生成如下二个目录/opt/freescale/, <install_path>/ltib-<version>,
+                 其中/opt/freescale/ltib下是ltib工具的相关工具集, /opt/freescale/pkgs源代码包，相当多的开源软件包，当然你也可以添加新的进去.
+                 /opt/freescale/usr里面是powerpc-linux编译器
+
+===  编译目录: ===
+                 编译时使用的内核在<install_path>/ltib-<version>/rpm/BUILD/linux 下.
+
+===== 2.卸载 =====
+      只需要手动删除下列目录:
+           /opt/freescale/pkgs,
+           /opt/freescale/ltib,
+           <install_path>/ltib-<version>
+
+===== 3.运行LTIB =====
+       cd <install_path>/ltib
+       ./ltib
+
+===== 4.配置 =====
+       ./ltib -c
+
+===== 5.编译结果 =====
+       <install_path>/ltib-<version>__/rootfs/ __目录下是编译完成的目标板的根文件系统.
+
+
+
+===== 6.LTIB编译脚本配置 =====
+
+注:以下的文件路径均以ltib的**安装路径**开始,如/ltib/config/ 表示安装路径的 ltib-<version> 下的config目录.
+
+
+++ /ltib/config 目录下保存有ltib在配置时使用的__各种参数表__
+      packages.lkc配置对应配置界面主下菜单"Package List"下的可以选择的各种包的相关信息,可以配置包的依赖关系等.
+      network.lkc 配置对应菜单"Target System Configuration,Options->start  networking->Network setup"
+
+
+++ 配置完成后,__配置信息会保存__到/ltib/config/platform/<平台名称>/ 这个目录下.
+      这个目录下还保存了busybox和kernal的配置信息.
+      要自定义新的平台时,只需要复制以有的平台目录为一个新目录,然后修改目录下__的main.lkc__中的平台相关信息.
+
+++ **RPM spec**文件:
+   RPM 的spec文件存入在/ltib/dist/lfs-<version>/<包名称> 目录下.
+
+
+===== 7.ltib命令使用 =====
+    将指定的包解压出来,并使用__所有在.spec文件中设置的patch__:
+        ./ltib -m prep -p <package>
+
+    编译一个包:
+        ./ltib -m scbuild -p <package>
+
+    执行包安装,将安装到lfs-<version>/rootfs下:
+        ./ltib -m scinstall -p <package>
+
+    在自己的修改完成后可以生成一个patch文件:
+        ./ltib -m patchmerge -p <package>

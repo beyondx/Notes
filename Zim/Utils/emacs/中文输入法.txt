@@ -1,0 +1,198 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-03T19:52:50+08:00
+
+====== 中文输入法 ======
+Created 星期五 03 六月 2011
+http://blog.sciencenet.cn/home.php?mod=space&uid=443817&do=blog&id=325692
+
+__正确的配置__
+1.先从http://www.emacswiki.org/emacs/IBusMode%E4%B8%8B%E8%BD%BD%E6%8F%92%E4%BB%B6%EF%BC%8C%E9%98%B2%E7%9B%97load-path%E4%B8%AD
+2.Disabling XIM
+
+    If XIM is enabled, key events are directly handled by IBus so ibus.el can’t work.
+    To disable XIM in Emacs, put the following in ~/.Xresources file:
+
+       ** Emacs*useXIM: false**
+
+    and restart X session or execute a shell command:
+
+        xrdb ~/.Xresources
+3. 在/etc/rc.local里
+LC_CTYPE=zh_CN.UTF-8 /usr/bin/emacs --daemon -u geekard &>/dev/null &
+4.然后在emacs启动文件中添加：
+
+;; for ibus input method
+;;Archlinux uses Python 3, so add this to your (custom-set-varibles):
+(add-to-list 'load-path "~/.emacs.d/plugins/ibus")
+(setq ibus-python-shell-command-name "python2")
+(require 'ibus)
+;; Turn on ibus-mode automatically after loading .emacs
+(add-hook 'after-init-hook 'ibus-mode-on) ;
+;; Choose your key to toggle input status:
+(global-set-key (kbd __"C-\\__") 'ibus-toggle)
+;;; Or if you use __emacsclient__, replace init-hook line by these:
+(add-hook 'after-make-frame-functions
+          (lambda (new-frame)
+            (select-frame new-frame)
+            (ibus-mode-on)))
+5. 在ibus的配置界面中将：
+advanced::Global input method settings下的选项勾掉，这样emacs的C-SPC就可以当作标记按钮正常使用了。
+
+
+
+
+
+能否使用中文输入法有几个条件：
+1.是否安装了中文输入法(ibus本身只是个输入引擎)如ibus-pinyin, ibus-sunpinyin等。
+2.是否具有中文locale，特别是LC_CTYPE，它直接决定了程序使用的字符类型。若需使用中文，可以设置为：
+	LC_CTYPE="zh_CN.UTF-8"
+把上述语句添加到环境变量中。
+3.设置如下环境变量(～/.bash_profile)：
+	export XIM=ibus
+	export XIM=PROGRAM=/usr/bin/ibus
+	export XIM_ARGS=''
+	export GTK_IM_MODULE=ibus
+	export QT_IM_MODULE=xim
+	export XMODFIERS="@im=ibus"
+	export DEPENDS="ibus"
+	export LANG=zh_CN.UTF-8
+4.启动ibus-daemon时添加--xim选项(非必须，但有些程序如xterm依赖)。如
+	#/usr/bin/ibus-daemon --xim
+ 这样xterm才能输入中文
+5.安装中文字体
+6.对于Emacs使用上述方法后即可输入中文.
+
+3、网上说，__emacs使用的是xim输入法__。如果使用ibus-daemon启动ibus，则不会把ibus关联到xim，必须在启动时使用--xim参数。
+
+
+===== emacs使用ibus输入法 =====
+http://blog.free-abc.com.cn/?p=447
+从前，我要在 emacs 中输入中文，有两种方法：1，C-x RET C-\ chinese-py    2, 先在其他文档中输入中文，拷贝好，然后再粘贴到 emacs 中。
+今天终于让 emacs 使用上了 ibus 输入法。
+解决办法大概就两步：
+1，配置
+(global-unset-key (kbd "C-SPC"))
+(global-set-key (kbd "M-SPC") 'set-mark-command)
+2，修改 .bashrc 文件
+在末尾加alias emacs='export LC_CTYPE=zh_CN.UTF-8; emacs'
+然后重新打开 shell . 运行 emacs &.
+现在按 Ctrl-Space 就可以激活输入法了。
+
+
+http://code.google.com/p/ibus/issues/detail?id=208
+I made some tests.
+1. for the gtk programs, I can choose either XIM or ibus, both work.
+2. for the qt programs, only ibus works, when I change input method to XIM by right
+click, ibus cannot be activated.
+3. for the x programs, emacs, xfig, etc. ibus cannot be activated even with
+XMODIERS="@im=ibus"
+this is not a bug, In emacs, the "Ctrl+Space" in emacs is used as Mark Set key, so
+you can change the ibus active key as "Shift+Space".
+I also compile CVS version of emacs, still has this problem.
+
+-----这个不是一个bug，在emacs中，Ctrl+Space就是用来做标记的，覆盖了默认的ibus激活键，签于
+mark set在emacs中的重要性，我都是修改系统的输入法激活键为Shift+Space.
+
+------I used to use a xserver package 1.5.99.2 from xorg-edgers ppa repository. After 
+upgrade to 1.5.99.3 in jaunty's main repository, this problem's gone.
+So it's neither a bug of emacs, nor a bug of ibus. Maybe the __xserver in xorg-edgers__
+__has disabled XIM__. I'm not sure. But now ibus works perfectly with emacs. I can
+activate it with "Ctrl+Space".
+
+
+===== 一劳永逸 让 emacs 使用 ibus =====
+http://my.chinaunix.net/space.php?uid=23933445&do=blog&id=99708
+
+刚装好ubuntu，emacs 不能使用 ibus 输入，也不能显示中文
+后来google， 在 .bashrc 里面设置了
+export LC_CTYPE=zh_CN.UTF-8
+搞了半天，然后显示正常了，也能输入了
+第二天，打开emacs，C+Space，又不管用了。。。。
+偶然发现已神器： __ibus-el__
+世界终于清净了
+http://www.emacswiki.org/emacs/IBusMode
+
+下面是引用：
+
+ibus.el provides ibus-mode minor mode, which allows users on-the-spot style input with IBus on Emacs. The input statuses are individually kept for each buffer, and prefix-keys such as C-x and C-c can be used even if IBus is active. So you can input various languages fast and comfortably.
+===================================================================
+
+==== System requirements ====
+
+    emacs22 or emacs23
+    python (>= 2.5)
+    ibus (>= 1.2)
+    python-xlib
+
+==== Downloading ====
+
+    You can download ibus.el from ibus.el project in Launchpad
+    If you use Ubuntu Linux, you can install ibus-el package from PPA for Irie's Elisp
+
+==== Installation ====
+
+=== Manual Installation ===
+
+    Save ibus.el and byte-compile in a directory that is listed in **load-path**, and save** ibus-el-agent** somewhere in your system.
+    Put the following in your .emacs file:
+
+        (require 'ibus)
+        (add-hook 'after-init-hook 'ibus-mode-on)
+
+
+    If ibus.el and ibus-el-agent are saved in different directories, add a setting to the above as follows:
+
+        (setq ibus-agent-file-name "/PATH/TO/ibus-el-agent")
+
+=== Using deb package in PPA ===
+
+
+    Add ppa:irie/elisp to software sources:
+
+        sudo add-apt-repository ppa:irie/elisp
+        sudo apt-get update
+
+    and install ibus-el package:
+
+        sudo apt-get install ibus-el
+
+    Put the following in your .emacs file:
+
+        (require 'ibus)
+        (add-hook 'after-init-hook 'ibus-mode-on)
+
+=== Disabling XIM ===
+
+    If XIM is enabled, key events are directly handled by IBus so ibus.el can’t work.
+    To disable XIM in Emacs, put the following in ~/.Xresources file:
+
+       ** Emacs*useXIM: false**
+
+    and restart X session or execute a shell command:
+
+        xrdb ~/.Xresources
+
+=== Customize ===
+
+
+    Here is the example of .emacs file:
+
+        (require 'ibus)
+        ;; Turn on ibus-mode automatically after loading .emacs
+        (add-hook 'after-init-hook 'ibus-mode-on)
+        ;; Use C-SPC for Set Mark command
+        (ibus-define-common-key ?\C-\s nil)
+        ;; Use C-/ for Undo command
+        (ibus-define-common-key ?\C-/ nil)
+        ;; Change cursor color depending on IBus status
+        (setq ibus-cursor-color '("red" "blue" "limegreen"))
+
+
+    You can customize keybinding which toggles input status:
+
+        ;; Use s-SPC to toggle input status
+        (global-set-key (kbd "s-SPC") 'ibus-toggle)
+
+我也是用英文的locale，不过在Fedora下只要运行一下__im-chooser__(GUI程序)就可以了，依稀记得debian还是ubuntu里有一个__im-switch__命令行工具，也可以很容易的在英文locale激活输入法，但是我已经很久不碰这2个发行版了。是呀，Ubuntu 里面的 im-switch 很好用，不过 ArchLinux 里面没有这个工具。
+

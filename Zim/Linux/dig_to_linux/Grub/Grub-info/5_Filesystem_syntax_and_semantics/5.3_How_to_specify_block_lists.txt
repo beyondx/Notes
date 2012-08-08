@@ -1,0 +1,20 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2010-08-03T21:51:08.588023
+
+====== 5.3 How to specify block lists ======
+Created Tuesday 03 August 2010
+
+A block list is used for specifying a file that doesn't appear in the
+filesystem, like a chainloader. The syntax is
+`[OFFSET]+LENGTH[,[OFFSET]+LENGTH]...'.  Here is an example:
+
+     `0+100,200+1,300+300'
+
+   This represents that GRUB should read blocks 0 through 99, block 200,
+and blocks 300 through 599. If you omit an offset, then GRUB assumes
+the offset is zero.
+
+   Like the file name syntax (*note File name syntax::), if a blocklist
+does not contain a device name, then GRUB uses GRUB's "root device". So
+`(hd0,2)+1' is the same as `+1' when the root device is `(hd0,2)'.

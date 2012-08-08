@@ -1,0 +1,56 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-19T22:19:04+08:00
+
+====== TUN&TAP ======
+Created Thursday 19 May 2011
+http://en.wikipedia.org/wiki/TUN/TAP
+From Wikipedia, the free encyclopedia
+
+In computer networking, TUN and TAP are virtual network kernel devices. They are network devices that are supported entirely in software, which is different from ordinary network devices that are backed up by hardware network adapters.
+
+TAP (as in network tap) simulates an Ethernet device and it operates with layer 2 packets such as Ethernet frames. TUN (as in network TUNnel) simulates a network layer device and it operates with layer 3 packets such as IP packets. TAP is used to create a network bridge, while TUN is used with routing.
+
+Packets sent by an operating system via a TUN/TAP device are delivered to a user-space program that attaches itself to the device. A user-space program may also pass packets into a TUN/TAP device. In this case TUN/TAP device delivers (or "injects") these packets to the operating system network stack thus emulating their reception from an external source.
+
+TUN/TAP is used for:
+
+    virtual private networks
+        OpenVPN, Ethernet/IP over TCP/UDP; encrypted, compressed
+        tinc (protocol) [1], Ethernet/IPv4/IPv6 over TCP/UDP; encrypted, compressed
+        VTun [2], Ethernet/IP/serial/Unix pipe over TCP; encrypted, compressed, traffic shaping
+        OpenSSH
+        ICMPTX [3], IP over ICMP (ping)
+        NSTX [4], iodine [5], IP over DNS
+        HTun [6], IP over HTTP
+        coLinux, Ethernet/IP over TCP/UDP
+        Hamachi
+        NeoRouter
+        VPN-X Java TAP Wrapper, VPN-X can be a P2P VPN, can be a SSL VPN
+    virtual machine networking
+        Bochs
+        coLinux
+        Hercules (S/390 emulator)
+        QEMU/Kvm
+        User-mode Linux
+        VirtualBox
+
+TUN/TAP drivers are available on at least the following platforms:
+
+    FreeBSD
+    Linux, starting around version 2.1.60
+    Mac OS X
+    NetBSD
+    OpenBSD
+    Solaris Operating System
+    Microsoft Windows 2000/XP/Vista
+    QNX, only tap driver
+
+[edit] External links
+
+    http://vtun.sourceforge.net/
+    http://www.kernel.org/pub/linux/kernel/people/marcelo/linux-2.4/Documentation/networking/tuntap.txt
+    http://tuntaposx.sourceforge.net/ - tun/tap driver for Mac OS X
+    http://www.whiteboard.ne.jp/~admin2/tuntap/ - modified tun driver with tap support for Solaris
+    http://backreference.org/2010/03/26/tuntap-interface-tutorial/ Tun/Tap Tutorial
+

@@ -1,0 +1,56 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-21T13:11:59+08:00
+
+====== Bad Data CRC ======
+Created Tuesday 21 February 2012
+
+http://e2e.ti.com/support/embedded/linux/f/354/t/43146.aspx
+
+解决方法：将主机的MTU设为大于1468如1500即可：
+# ifconfig eth0 mtu 1500
+-------------------------------------------------
+Hi Tim,
+Thanks for debugging this.
+The only way forward here is to use wireshark or an equivalent network sniffer on the TFTP host and see what could __be wrong with the transfers__.
+
+Looking at the data my guess is that __your host ethernet card is unable to handle MTU sized packets__. Note that I am still suspecting the host only because I haven't seen this problem on my setup nor see widespread complaints regarding this issue.
+
+The 0x5BC in your analysis corresponds to 1468 which is what seems to be presented as block size option to the server:
+96 /* 512 is poor choice for ethernet, **MTU is typically 1500.**
+97  * Minus eth.hdrs thats __1468__.  Can get 2x better throughput with
+98  * almost-MTU block sizes.  At least try... fall back to 512 if need be.
+99  * (but those using CONFIG_IP_DEFRAG may want to set a larger block in cfg file)
+100  */
+101 #ifdef CONFIG_TFTP_BLOCKSIZE
+102 #define TFTP_MTU_BLOCKSIZE CONFIG_TFTP_BLOCKSIZE
+103 #else
+104 #define TFTP_MTU_BLOCKSIZE __1468__
+105#endif
+Looking further into the code, it looks like this value can be overridden using the __"tftpblocksize"__ environment variable. Can you please set this variable to something lower say 1024 bytes and try tftp again?
+Thanks,
+Sekhar
+---------------------------------------------------
+Hey Sekhar & Anshuman:
+
+We finally got this resolved.  __It had to do with the MTU packet size in the u-boot image being set to 1468__.  I was using a value of 1300 on my PC.  To fix this, I did the following:
+
+In the u-boot srouce code directory, I changed the file (__net/tftp.c__) in the u-boot source directory from:
+
+#define TFTP_MTU_BLOCKSIZE 1468
+static unsigned short TftpBlkSize=TFTP_BLOCK_SIZE;
+static unsigned short TftpBlkSizeOption=TFTP_MTU_BLOCKSIZE;
+
+to:
+
+#define TFTP_MTU_BLOCKSIZE __1024__
+static unsigned short TftpBlkSize=TFTP_BLOCK_SIZE;
+static unsigned short TftpBlkSizeOption=TFTP_MTU_BLOCKSIZE;
+
+and then rebuilt u-boot using the following:
+
+make distclean
+make **davinci_dm365_evm_config**
+make
+
+I used CCS to reflash the u-boot file on my FLASH on the board and then powered up the board using my Windows XP TFTP server and my VMWare Linux TFTP server and it worked just fine.  Looks like the MTU packet size was different on the DM365 EVM relative to what I was using with my DM6446 and DM6467 and DM6467T EVMs.  The MTU packet size on my PC was set at 1300__ to force it to use smaller packet sizes __from previous work I was doing with multicasting of video and needed smaller packet sizes to minimize packet losses.

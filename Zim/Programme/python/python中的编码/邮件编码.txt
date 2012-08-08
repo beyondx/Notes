@@ -1,0 +1,52 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-14T11:20:58+08:00
+
+====== 邮件编码 ======
+Created Friday 14 October 2011
+邮件原文部分截取：
+------=_NextPart_4DD5DF92_DEDA29B0_6A2747C7
+Content-Type: text/plain;
+	charset="__gbk__"          #邮件内容原始编码类型
+Content-Transfer-Encoding: __base64  __ #邮件内容编码类型，下一空行用来分割这一部分的头部与具体内容
+
+ztKw0bbUu7DQqcHL0rvPwqOsxOPDx7+0v7SwyaOs0qq4xLXEvs2/ydLUuMTSu8/Co6w=   #等号意味着base64编码的结束(因为等号为填充字符)
+
+------=_NextPart_4DD5DF92_DEDA29B0_6A2747C7  #上面的空行用来分割不同的部分，表示上一部分内容的结束，下一部分头部的开始
+Content-Type: text/html;
+	charset="gbk"
+Content-Transfer-Encoding: base64
+
+PERJVj7O0rDRttS7sNCpwcvSu8/Co6zE48PHv7S/tLDJo6zSqrjEtcS+zb/J0tS4xNK7z8Kj
+rDxJTUcgc3JjPSJodHRwOi8vY2FjaGUuc29zby5jb20vaW1nL2ltZy9lMTAwLmdpZiI+PC9E
+SVY+
+
+~ $ **python2**
+Python 2.7.2 (default, Jun 29 2011, 11:17:09) 
+[GCC 4.6.1] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import binascii
+>>> print binascii.__a2b_base64__("ztKw0bbUu7DQqcHL0rvPwqOsxOPDx7+0v7SwyaOs0qq4xLXEvs2/ydLUuMTSu8/Co6w=").decode(__'gbk'__)
+我把对话些了一下，你们看看吧，要改的就可以改一下，
+
+>>> print binascii.a2b_base64(__"__PERJVj7O0rDRttS7sNCpwcvSu8/Co6zE48PHv7S/tLDJo6zSqrjEtcS+zb/J0tS4xNK7z8Kj
+rDxJTUcgc3JjPSJodHRwOi8vY2FjaGUuc29zby5jb20vaW1nL2ltZy9lMTAwLmdpZiI+PC9E
+SVY+__"__).decode('gbk')    
+  File "<stdin>", line 1
+    print binascii.a2b_base64("PERJVj7O0rDRttS7sNCpwcvSu8/Co6zE48PHv7S/tLDJo6zSqrjEtcS+zb/J0tS4xNK7z8Kj
+                                                                                                      ^
+SyntaxError: EOL while scanning string literal
+>>> Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+NameError: name 'rDxJTUcgc3JjPSJodHRwOi8vY2FjaGUuc29zby5jb20vaW1nL2ltZy9lMTAwLmdpZiI' is not defined
+>>>   File "<stdin>", line 1
+    SVY+").decode('gbk')
+                       ^
+SyntaxError: EOL while scanning string literal
+
+>>> print binascii.a2b_base64(__'''__PERJVj7O0rDRttS7sNCpwcvSu8/Co6zE48PHv7S/tLDJo6zSqrjEtcS+zb/J0tS4xNK7z8Kj
+rDxJTUcgc3JjPSJodHRwOi8vY2FjaGUuc29zby5jb20vaW1nL2ltZy9lMTAwLmdpZiI+PC9E
+SVY+
+__'''__).decode('gbk')   #使用**三个引号**可以原文输出字符串中的换行。注意: base64(实际上大部分基于文本的网络协议如http, email)中的换行是两个字符“\r\n”
+#这两个控制字符并不是base64编码的一部分，在对字节字符串(已编码的字符串如utf-8, gbk)进行base64编码时，这两个
+... ... ... <DIV>我把对话些了一下，你们看看吧，要改的就可以改一下，<IMG src="http://cache.soso.com/img/img/e100.gif"></DIV>

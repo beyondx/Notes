@@ -1,0 +1,219 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-25T19:48:32+08:00
+
+====== MPC8315E-RDB启动输出 ======
+Created Monday 25 June 2012
+
+U-Boot 1.3.0-rc2 (Mar 21 2008 - 16:00:02) MPC83XX
+
+Reset Status:
+
+CPU:   e300c3, Rev: Unknown revision number:80b40012
+Warning: Unsupported cpu revision!
+Board: Freescale MPC8315ERDB Rev 1.0
+I2C:   ready
+DRAM:  128 MB
+PCIE0: No link
+PCIE1: No link
+FLASH:  8 MB
+NAND:  32 MiB                                                                   
+In:    serial                                                                   
+Out:   serial                                                                   
+Err:   serial                                                                   
+Net:   eTSEC0, eTSEC1                                                           
+Hit any key to stop autoboot:  0                                                
+## Booting image at fe500000 ...                                                
+   Image Name:   Linux-2.6.23                                                   
+   Created:      2008-03-21   6:25:53 UTC                                       
+   Image Type:   PowerPC Linux Kernel Image (gzip compressed)                   
+   Data Size:    1722476 Bytes =  1.6 MB                                        
+   __Load Address__: 00000000                                                       
+   Entry Point:  00000000                                                       
+   Verifying Checksum ... OK                                                    
+   __Uncompressing__ Kernel Image ... OK                                            
+## Loading RAMDisk Image at fe100000 ...                                        
+   Image Name:   uboot ext2 ramdisk rootfs                                      
+   Created:      2008-03-21   6:57:09 UTC                                       
+   Image Type:   PowerPC Linux RAMDisk Image (gzip compressed)                  
+   Data Size:    3922502 Bytes =  3.7 MB                                        
+   Load Address: 00000000                                                       
+   Entry Point:  00000000                                                       
+   Verifying Checksum ... OK                                                    
+   Booting using the fdt at 0xfe700000                                          
+   Loading __Ramdisk__ to **07b71000**, end 07f2ea46 ... OK                             
+   Loading __Device Tree__ to 007fc000, end 007fefff ... OK
+ **//以上是UBoot启动输出，以下为Kernel启动输出。**
+                       
+Using MPC8315 RDB __machine description__    //对应的数据结构为__struct ppc_md__                                       
+Linux version 2.6.23 (yhh@rock) (gcc version 4.1.2) #1 Fri Mar 21 14:25:50 CST 8
+Found initrd at 0xc7b71000:0xc7f2ea46    **//内核映射的虚拟地址从0XC000_0000开始，而initrd所在的物理内存为0X07B7_1000**                           
+**console** [udbg0] enabled              **//尽可能早地初始化console以打印启动信息，便于Debug。**                                           
+setup_arch: bootmem                   **//setup_arch是体系结构相关初始化的函数，主要初始化SDRAM和PCI、PCIE**                                          
+mpc8315_rdb_setup_arch()                                                        
+Freescale SerDes at e00e3000 initialized     **//PCIE和SGMII初始化，e00e3000为位于IMMBR中的控制寄存器**                                   
+Found MPC83xx __PCI host bridge__ at 0x0000000000008500. Firmware bus number: 0->0  **//两个PCI Slot**
+Found MPC83xx PCI host bridge at 0x00000000e0009000. Firmware bus number: 0->0  
+Found MPC83xx PCI host bridge at 0x00000000e000a000. Firmware bus number: 0->0  **//一个Mini-PCI Slot**
+arch: exit                                                                      
+Zone PFN ranges:  **//PFN：Page Frame Number，DDR SDRAM为128MB，因此没有高端内存映射**                                                              
+  DMA 0 -> 32768 **//32K个PFN每个PFN大小为4KB因此DMA内存区域为128MB即所有的SDRAM空间都可用于DMA寻址**                                           
+  Normal      32768 ->    32768                                                 
+Movable zone start PFN for each node                                            
+early_node_map[1] active PFN ranges                                             
+    0:        0 ->    32768                                                     
+Built 1 __zonelists__ in Zone order.  Total pages: 32512                            
+Kernel command line: root=/dev/ram rw console=ttyS0,115200     **//Uboot中指定的bootargs变量的值被用作内核命令行参数**                 
+IPIC (__128__ IRQ sources) at faef7700                                              
+PID hash table entries: 512 (order: 9, 2048 bytes)                              
+Dentry cache hash table entries: 16384 (order: 4, 65536 bytes)                  
+Inode-cache hash table entries: 8192 (order: 3, 32768 bytes)                    
+Memory: 122236k/131072k available (3380k kernel code, 8696k reserved, 148k data) **//kernel可管理的内存大小以及kenel自身所占的空间**
+Mount-cache hash table entries: 512                                             
+NET: Registered protocol family 16     **//PHY初始化**  
+__PCI: Probing PCI hardware__           **//PCI总线设备枚举**                                             
+Generic PHY: Registered new driver                                              
+SCSI subsystem initialized   **//SCSI必须先于USB、IDE和SATA初始化**                                                   
+usbcore: registered new interface driver __usbfs__                                  
+usbcore: registered new **interface driver** hub                                    
+usbcore: registered new **device driver** usb                                       
+NET: Registered protocol family 2                                               
+IP route cache hash table entries: 1024 (order: 0, 4096 bytes)                  
+TCP established hash table entries: 4096 (order: 3, 32768 bytes)                
+TCP bind hash table entries: 4096 (order: 2, 16384 bytes)                       
+TCP: Hash tables configured (established 4096 bind 4096)                        
+TCP reno registered                                                             
+checking if image is __initramfs.__..it isn't (no cpio magic); looks like an __initrd__ 
+__Freeing initrd memory__: 3830k freed
+                                              
+JFFS2 version 2.2. (NAND) © 2001-2006 Red Hat, Inc.                            
+io scheduler noop registered                                                    
+io scheduler anticipatory registered (default)                                  
+io scheduler deadline registered                                                
+io scheduler cfq registered                                                     
+Serial: 8250/16550 driver $Revision: 1.90 $ 4 ports, IRQ sharing disabled       
+serial8250.0: __ttyS0__ at __MMIO__ 0xe0004500 (irq = 22) is a __16550A__   **//串口的控制寄存器使用MMIO形式访问，0xe000_4500为串口控制器在IMMBR中的物理地址。**                
+console handover: boot [udbg0] -> real [ttyS0]                                  
+serial8250.0: __ttyS1__ at MMIO 0xe0004600 (irq = 23) is a 16550A 
+                 
+RAMDISK driver initialized: 16 RAM disks of 32768K size 1024 blocksize          
+loop: module loaded                                                             
+Intel(R) PRO/1000 Network Driver - version 7.3.20-k2-NAPI                       
+Copyright (c) 1999-2006 Intel Corporation.                                      
+__Gianfar MII Bus__: probed                                                         
+eth0: Gianfar Ethernet Controller Version 1.3-skbr, **04:00:00:00:00:0a**           
+GFAR: SKB Handler initialized at CPU#0(max=32)                                  
+eth0: MTU = 1500 (frame size=1526, truesize=1800)                               
+eth0: Running with NAPI enabled                                                 
+eth0: __64/64 RX/TX BD ring size__                                                  
+eth1: Gianfar Ethernet Controller Version 1.3-skbr, 04:00:00:00:00:0b           
+GFAR: SKB Handler initialized at CPU#0(max=32)                                  
+eth1: MTU = 1500 (frame size=1526, truesize=1800)                               
+eth1: Running with NAPI enabled                                                 
+eth1: 64/64 RX/TX BD ring size
+                                                  
+e100: Intel(R) PRO/100 Network Driver, 3.5.23-k4-NAPI                           
+e100: Copyright(c) 1999-2006 Intel Corporation                                  
+RTL821x Gigabit Ethernet: Registered new driver                                 
+st: Version 20070203, fixed bufsize 32768, s/g segs 256                         
+fsl-sata e0018000.sata: Sata FSL Platform/CSB Driver init                       
+scsi0 : sata_fsl                                                                
+ata1: SATA max UDMA/133 cmd 0xc906c000 ctl 0x00000000 bmdma 0x00000000 irq 44   
+ata1: No Device OR PHYRDY change,Hstatus = 0xa0000000                           
+ata1: reset failed (errno=-5), retrying in 10 secs                              
+ata1: SATA link down (SStatus 0 SControl 300)                                   
+fsl-sata e0019000.sata: Sata FSL Platform/CSB Driver init                       
+scsi1 : sata_fsl                                                                
+ata2: SATA max UDMA/133 cmd 0xc906e000 ctl 0x00000000 bmdma 0x00000000 irq 45   
+ata2: No Device OR PHYRDY change,Hstatus = 0xa0000000                           
+ata2: reset failed (errno=-5), retrying in 10 secs                              
+ata2: SATA link down (SStatus 0 SControl 300) 
+                                  
+__nor__: Found 1 x16 devices at 0x0 in 16-bit bank                                  
+ Amd/Fujitsu Extended Query Table at 0x0040                                     
+nor: Swapping erase regions for broken __CFI__ table.                               
+number of CFI chips: 1                                                          
+cfi_cmdset_0002: Disabling erase-suspend-program due to code brokenness.        
+RedBoot partition parsing not available                                         
+physmap-flash nor: __Using OF partition information__                               
+Creating 4 MTD partitions on "nor":                                             
+0x00000000-0x00100000 : "U-Boot"                                                
+0x00100000-0x00500000 : "FileSystem"                                            
+0x00500000-0x00700000 : "Kernel"                                                
+0x00700000-0x00800000 : "DTB"  
+                                                 
+Freescale eLBC NAND Driver (C) 2006-2007 Freescale                              
+NAND device: Manufacturer ID: 0xec, Chip ID: 0x75 (Samsung NAND 32MiB 3,3V 8-bi)
+Scanning device for __bad blocks__                                                  
+fsl-elbc fsl-elbc.0: Using __OF partition information__                             
+Creating 6 MTD partitions on "nand":                                            
+0x00000000-0x00100000 : "U-Boot-NAND"                                           
+0x00100000-0x00900000 : "JFFS2-NAND"                                            
+0x00900000-0x00d00000 : "Ramdisk-NAND"                                          
+0x00d00000-0x01d00000 : "Reserve-NAND"                                          
+0x01d00000-0x01f00000 : "Kernel-NAND"                                           
+0x01f00000-0x02000000 : "DTB-NAND"  
+                                            
+mpc83xx_spi.0: MPC83xx SPI Controller driver at 0xc9072000 (irq = 24)           
+usbmon: debugfs is not available                                                
+fsl-ehci fsl-ehci.0: Freescale **On-Chip EHCI Host Controller**                     
+fsl-ehci fsl-ehci.0: new USB bus registered, assigned bus number 1              
+fsl-ehci fsl-ehci.0: irq 38, __io base 0xe0023000__                                 
+fsl-ehci fsl-ehci.0: USB 2.0 started, EHCI 1.00, driver 10 Dec 2004  
+           
+usb usb1: configuration #1 chosen from 1 choice                                 
+__hub 1-0:1.0: USB hub found__                                                      
+hub 1-0:1.0: 1 port detected                                                    
+usb 1-1: new high speed USB device using fsl-ehci and address 2                 
+usb 1-1: configuration #1 chosen from 1 choice                                  
+hub 1-1:1.0: USB hub found                                                      
+hub 1-1:1.0: 4 ports detected
+                                                   
+usbcore: registered new interface driver usblp                                  
+Initializing USB Mass Storage driver...                                         
+usbcore: registered new interface driver __usb-storage__                            
+USB Mass Storage support registered.   
+                                         
+i2c /dev entries driver                                                         
+rtc-ds1307 0-0068: SET TIME!                                                    
+rtc-ds1307 0-0068: rtc core: registered __ds1339__ as rtc0  
+rtc-ds1307 0-0068: setting the system clock to 2000-01-01 00:00:52 (946684852) 
+                        
+WDT driver for MPC83xx initialized. mode:reset timeout=65535 (32 seconds)  
+     
+md: linear personality registered for level -1                                  
+md: raid0 personality registered for level 0                                    
+md: raid1 personality registered for level 1 
+md: Autodetecting RAID arrays.                                                  
+md: autorun ...                                                                 
+md: ... autorun DONE. 
+                                   
+TCP cubic registered                                                            
+NET: Registered protocol family 1                                               
+NET: Registered protocol family 17                                              
+  
+                                                        
+RAMDISK: Compressed image found at block 0                                      
+__VFS: Mounted root__ (ext2 filesystem).                                            
+__Freeing unused kernel memory: 164k init__                                         
+Setting the hostname to freescale                                               
+Mounting filesystems                                                            
+mount: Mounting usbfs on /proc/bus/usb failed: No such file or directory        
+Running sysctl                                                                  
+Setting up networking on loopback device:                                       
+Setting up networking on eth0:                                                  
+Setting up networking on eth1:                                                  
+Starting inetd:                                                                 
+Starting SMB services: /etc/rc.d/init.d/smb: /etc/rc.d/init.d/smb: 18: nmbd: nod
+/etc/rc.d/init.d/smb: /etc/rc.d/init.d/smb: 18: smbd: not found                 
+                                                                              
+                                                                                
+        Welcome to Freescale Semiconductor Embedded Linux Environment           
+                                                                                
+!!!!! WARNING !!!!!!!                                                           
+                                                                                
+The default password for the root account is: root                              
+please change this password using the 'passwd' command                          
+and then edit this message (/etc/issue) to remove this message                  
+                                                                                
+freescale login: 

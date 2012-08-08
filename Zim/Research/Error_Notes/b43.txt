@@ -1,0 +1,29 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-05T18:21:54+08:00
+
+====== b43 ======
+Created Sunday 05 August 2012
+
+Broadcom的BCM9 4318MPG系列miniPCI网卡，需要在kernel中编译相应的驱动，同时还要使用固件。
+驱动位于kernel中的wireless menu中，固件需要单独下载。注意，firmware是由网卡芯片执行的，所以
+与CPU体系结构无关，只需将其放到目标板的/lib/firmware/b43目录下即可(最后需要运行./ltib --config命令重新生
+成rootfs.ext2.gz.uboot目录)。
+
+broadcom的firmware按一下方法安装：
+
+wget http://bues.ch/b43/fwcutter/b43-fwcutter-015.tar.bz2
+tar xvf b43-fwcutter-015.tar.bz2 
+cd b43-fwcutter-015/
+make
+sudo make install    #安装fwcutter工具到host中
+cd ..
+export FIRMWARE_INSTALL_DIR="/lib/firmware"
+ wget http://www.lwfinger.com/b43-firmware/broadcom-wl-5.100.138.tar.bz2
+tar xvf broadcom-wl-5.100.138.tar.bz2 
+sudo b43-fwcutter -w "$FIRMWARE_INSTALL_DIR" broadcom-wl-5.100.138/linux/wl_apsta.o
+ls /lib/firmware/b43/
+sudo chmod  -R 755 /lib/firmware/b43/
+ls /lib/firmware/b43/
+sudo mkdir -p ~/PPC/ltib-mpc8315erdb-20100719/rootfs/lib/firmware/b43
+sudo cp /lib/firmware/b43/{bog*,ucode5.fw} [[~/PPC/ltib-mpc8315erdb-20100719/rootfs/lib/firmware/b43]]

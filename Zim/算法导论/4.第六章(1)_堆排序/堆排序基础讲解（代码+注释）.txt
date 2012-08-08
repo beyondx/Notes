@@ -1,0 +1,135 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-30T13:32:49+08:00
+
+====== 堆排序基础讲解（代码+注释） ======
+Created Saturday 30 July 2011
+首先，推荐一下《算法导论》的第六章—堆排序，在网上找了很多资料，发现还是这本圣经最给力。大家学堆排序一定要去看看，不然是一种浪费。如果大家没有，可以去网上下载英文版(chm版)的，既清晰又适合阅读。
+
+其实堆排序的讲解网上很多，而且基本都一样，不过我还是把一些基本概念写出来：
+
+堆：(二叉)堆数据结构是一种数组对象。它可以被视为一棵完全二叉树，树中每个结点与数组中存放该结点值的那个元素对应。
+
+二叉堆有两种：最大堆和最小堆(小根堆)。
+
+最大堆：所有节点的子节点比其自身小的堆。
+最小堆：所有节点的子节点比其自身大的堆。
+
+堆排序：堆排序利用了大根堆(或小根堆)堆顶记录的关键字最大(或最小)这一特征，使得在当前无序区中选取最大(或最小)关键字的记录变得简单
+
+在堆排序算法中，使用的是最大堆，最小堆通常在构造优先级队列时使用。
+
+再次提醒大家，去看看《算法导论》里的第六章-堆排序。因为书上讲的太详细了，所以我也就不再多说。
+
+这里我把《算法导论》上的伪代码用C/C++实现了，每个函数我都用自己的理解写出来了，如果大家还不懂，可以留言。
+
+	
+
+/*
+* Author: Tanky Woo
+* Blog:   www.WuTianQi.com
+* Data:   2010.12.20
+* Note:   堆排序(Heap Sort)
+*/
+#include <iostream>
+using namespace std;
+ 
+// 输出当前堆的排序状况
+void PrintArray(int data[], int size)
+{
+    for (int i=1; i<=size; ++i)
+        cout <<data[i]<<"  ";
+    cout<<endl;
+}
+ 
+// 堆化，保持堆的性质
+// MaxHeapify让a[i]在最大堆中"下降"，
+// 使以i为根的子树成为最大堆
+void MaxHeapify(int *a, int i, int size)
+{
+	int lt = 2*i, rt = 2*i+1;
+	int largest;
+	if(lt <= size && a[lt] > a[i])
+		largest = lt;
+	else
+		largest = i;
+	if(rt <= size && a[rt] > a[largest])
+		largest = rt;
+	if(largest != i)
+	{
+		int temp = a[i];
+		a[i] = a[largest];
+		a[largest] = temp;
+		MaxHeapify(a, largest, size);
+	}
+}
+ 
+// 建堆
+// 自底而上地调用MaxHeapify来将一个数组a[1..size]变成一个最大堆
+//
+void BuildMaxHeap(int *a, int size)
+{
+	for(int i=size/2; i>=1; --i)
+		MaxHeapify(a, i, size);
+}
+ 
+// 堆排序
+// 初始调用BuildMaxHeap将a[1..size]变成最大堆
+// 因为数组最大元素在a[1]，则可以通过将a[1]与a[size]互换达到正确位置
+// 现在新的根元素破坏了最大堆的性质，所以调用MaxHeapify调整，
+// 使a[1..size-1]成为最大堆，a[1]又是a[1..size-1]中的最大元素，
+// 将a[1]与a[size-1]互换达到正确位置。
+// 反复调用Heapify，使整个数组成从小到大排序。
+// 注意： 交换只是破坏了以a[1]为根的二叉树最大堆性质，它的左右子二叉树还是具备最大堆性质。
+//        这也是为何在BuildMaxHeap时需要遍历size/2到1的结点才能构成最大堆，而这里只需要堆化a[1]即可。
+void HeapSort(int *a, int size)
+{
+	BuildMaxHeap(a, size);
+	PrintArray(a, size);
+ 
+	int len = size;
+	for(int i=size; i>=2; --i)
+	{
+		int temp = a[1];
+		a[1] = a[i];
+		a[i] = temp;
+		len--;
+		MaxHeapify(a, 1, len);
+		cout << "中间过程:";
+		PrintArray(a, size);
+	}
+ 
+}
+ 
+int main()
+{
+	int size;
+	int arr[100];
+	cout << "Input the num of elements:\n";
+	cin >> size;
+	cout << "Input the elements:\n";
+	for(int i=1; i<=size; ++i)
+		cin >> arr[i];
+	cout << endl;
+    HeapSort(arr, size);
+	cout << "最后结果:";
+    PrintArray(arr, size);
+}
+
+最后，给大家推荐我在网上看到的写的不错的几篇堆排序文章：
+
+1.http://blog.csdn.net/super_chris/archive/2009/09/22/4581900.aspx
+
+  这一篇讲得很细致。
+
+2.http://blog.csdn.net/made_in_chn/archive/2010/04/12/5473871.aspx
+
+  大家可以看看文章里的图，注意那是最小堆实现的图。
+
+3.http://blog.csdn.net/midgard/archive/2009/04/14/4070074.aspx
+
+  同样讲的很细致的一篇。
+
+4.http://student.zjzk.cn/course_ware/data_structure/web/paixu/paixu8.4.2.2.htm
+
+   这是网站很给力，有flash模拟堆排序，大家可以实际去看看。 

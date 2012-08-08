@@ -1,0 +1,44 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-05T16:07:02+08:00
+
+====== structure padding and structure packing ======
+Created 星期日 05 六月 2011
+
+struct mystruct_A
+{
+char a;
+int b;
+char c;
+}x;
+
+struct mystruct_B
+{
+int b;
+char a;
+}y;
+
+the size of structure is 12 and 8 respectively...is this structure padding or packing...can any one tell me when padding takes and packing takes...is this structure padded or packing..??
+
+------------
+Padding aligns structure members to "natural" address boundaries - say, int members would have offsets, which are mod(4) == 0 on 32-bit platform. Padding is on by default. It inserts the following "gaps" into your first structure:
+
+struct mystruct_A {
+    char a;
+    char gap_0[3]; /* inserted by compiler: for alignment of b */
+    int b;
+    char c;
+    char gap_1[3]; /* -"-: for alignment of the whole struct in an array */
+} x;
+
+Packing, on the other hand prevents compiler from doing padding - this has to be explicitly requested - under GCC it's __attribute__((__packed__)), so the following:
+
+struct __attribute__((__packed__)) mystruct_A {
+    char a;
+    int b;
+    char c;
+};
+
+would produce structure of size 6 on a 32-bit architecture.
+
+A note though - unaligned memory access is slower on architectures that allow it (like x86 and amd64), and is explicitly prohibited on strict alignment architectures like SPARC.

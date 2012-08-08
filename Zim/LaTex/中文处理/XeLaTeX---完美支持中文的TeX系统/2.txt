@@ -1,0 +1,80 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-09-24T09:51:47+08:00
+
+====== 2 ======
+Created Saturday 24 September 2011
+摸索的两个月，终于知道如何让latex完美支持中文了，那就是Xetex。
+
+配置：
+从源中安装xetex.....ok。
+xetex将使用你系统的字体，也就是说你不用自己去编译字体了。
+
+使用 $ fc-list :lang=zh-cn 可以看到你的中文字体。
+使用 $ fc-list 可以看到你的所有字体。
+# su
+# mkdir /usr/share/texmf/tex/xelatex/zhfontcfg
+
+在zhfontcfg文件夹中创建一个“zhfontcfg.sty” 文件如下：
+
+% xetex/xelatex 字体设定宏包
+
+\ProvidesPackage{zhfontcfg}
+\usepackage{fontspec,xunicode}
+\defaultfontfeatures{Mapping=tex-text} %如果没有它，会有一些 tex 特殊字符无法正常使用，比如连字符。
+
+% 中文断行
+\XeTeXlinebreaklocale "zh"
+\XeTeXlinebreakskip = 0pt plus 1pt minus 0.1pt
+
+%将系统字体名映射为逻辑字体名称，主要是为了维护的方便
+\newcommand\fontnamehei{FZHeiTi}
+\newcommand\fontnamesong{Adobe Song Std}
+\newcommand\fontnamekai{FZKaiTi}
+\newcommand\fontnamemono{DejaVu Sans Mono}
+\newcommand\fontnameroman{Dustismo Roman}
+
+%设置文档正文字体为宋体
+\setmainfont[BoldFont=\fontnamehei]{\fontnamesong}
+\setsansfont[BoldFont=\fontnamehei]{\fontnamekai}
+\setmonofont{\fontnamemono}
+
+
+%楷体
+\newfontinstance\KAI{\fontnamekai}
+\newcommand{\kai}[1]
+
+%黑体
+\newfontinstance\HEI{\fontnamehei}
+\newcommand{\hei}[1]
+
+%英文
+\newfontinstance\ENF{\fontnameroman}
+\newcommand{\en}[1]{\,{\ENF #1}\,}
+\newcommand{\EN}{\,\ENF\,}
+
+注意：你可以选择你想要的字体。我是使用了Adobe Song Std，作为song体，这样文档可以在adobe reader墨色均匀。
+
+运行：
+#sudo mktexlsr
+
+一切ok.用xelatex编译，你的文档将不含任何乱码，包括书签，呵呵。
+
+例子：test.tex
+
+\documentclass{article}
+\usepackage{zhfontcfg}
+\usepackage[colorlinks,linkcolor=black]{hyperref}
+%opening
+\title{latex多字体简易示例}
+\author{颜开}
+\begin{document}
+\maketitle
+\section{楷体}
+\kai{楷体}
+\section{黑体}
+\hei{黑体}
+\end{document}
+
+哈哈，搞定了吧
+

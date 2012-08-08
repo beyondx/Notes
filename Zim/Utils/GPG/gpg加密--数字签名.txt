@@ -1,0 +1,51 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-29T19:46:39+08:00
+
+====== gpg加密--数字签名 ======
+Created Thursday 29 December 2011
+http://hi.baidu.com/aprilus/blog/item/0b31fbaeb2d3edc07cd92a47.html
+
+加密：公钥加密，私钥解密［数据保密性］
+数字签名：私钥加密，公钥解密［身份认证］［数据完整性］［不可抵赖性］
+
+生成密钥：
+$ gpg --gen-key
+--homedir 指定密钥存放的位置
+查看密钥：
+--list-keys
+--fingerprint
+--list-public-keys
+--list-secret-keys
+修改密钥：
+$ gpg --edit-key 标识名
+
+导出公钥：
+$ gpg --export 标识名 > 生成文件名                                      ::导出为二进制形式
+$ gpg --export --armor 标识名 > 生成文件名                         ::导出为ASCII字符形式
+导出私钥：
+$ gpg --export-secret-key 标识名 > 生成文件名                    ::导出为二进制形式
+$ gpg --export-secret-key --armor 标识名 > 生成文件名       ::导出为ASCII字符形式
+导入密钥：
+$ gpg --import 密钥文件
+
+加密：
+$ gpg --encrypt --recipient 标识名 欲加密文件                      ::生成gpg后缀的二进制加密文件
+$ gpg --encrypt --armor --recipient 标识名 欲加密文件         ::生成asc后缀的ASCII加密文件
+解密：
+$ gpg --decrypt 已加密文件名 > 生成文件名
+
+签名：
+$ gpg --local-user 标识名 --sign 欲签名文件                            ::生成gpg后缀的二进制签名文件
+$ gpg --local-user 标识名 --sign --armor 欲签名文件               ::生成asc后缀的ASCII签名文件
+验证：
+$ gpg --verify 签名文件                                                            ::只验证
+$ gpg --decrypt 签名文件 > 生成文件名                                   ::验证并还原信息
+
+此外还有以下两种签名方式：
+一种主要用于文本，签名时将签名信息附在文本内容的后面，验证时只要把该文件做参数就行了。
+$ gpg --clearsign 欲签名文件
+
+另一种是生成单独的签名文件。
+$ gpg --detach-sign 欲签名文件                                             ::生成sig后缀的二进制签名文件
+$ gpg --detach-sign --armor 欲签名文件                                ::生成asc后缀的ASCII签名文件

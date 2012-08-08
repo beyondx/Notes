@@ -1,0 +1,364 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-29T17:21:29+08:00
+
+====== freescale LTIB使用总结 ======
+Created Tuesday 29 November 2011
+http://blog.chinaunix.net/space.php?uid=12077574&do=blog&id=145099
+
+这里附上很久以前写的LTIB使用总结，学习资料主要来自飞思卡尔的板子MPC8349E-mITXE板子的资料，主要参考了<readme>，写的不是很详细，而且后来发现中间还有部分错误，不过懒得再修改了。
+ 
+板级支持包BSP的下载http://www.freescale.com/powerbsp 搜索MPC8349E-mITXE,注册下载即可.
+ 
+写在前面
+        符号'##'后面语句均为注释
+        需要做的操作命令以 '$' 或 '#'开头，且都位于一行的开始
+        以下绝大部分操作是针对于我们的开发主机(PC)，其他是针对于开发板(MPC8349itx)
+        对于主机上的操作，所说目录路径是相对于/usr/local/mpc8349/mytest/来描述的
+        开发主机的系统为redhat9，开发板通过串口1连接主机，终端工具为minicom
+        在主机上使用的普通用户名为liuby，用户主目录为/home/liuby/
+        符号'<<'和'>>'之间的内容表示随开发板自带的文件名
+
+由于这是一个介绍ltib使用并涉及相关部分的文档，所以呢，首先来介绍一下ltib的安装
+## 首先将**linux_BSP光盘**放入光驱，然后以root用户挂载
+
+$ su - root                ## 切换身份到root用户，需要root用户密码
+# mount /dev/cdrom  /mnt/cdrom -o loop                        ## 挂载光驱
+# cp -rf /mnt/cdrom/ltib-mpc8349e-mitx  /home/liuby/        ## copy到liuby的主目录下
+# umount /mnt/cdrom                ## 卸载光盘
+
+
+# mkdir -m 777 /usr/local/mpc8349        ## 创建安装ltib的根目录
+$ cd /usr/local/mpc8349/                        ## 进入mpc8349目录，是因为默认安装到当前工作目录
+$ /home/liuby/ltib-mpc8349e-mitx/__install__        ## 这个会有个提示询问你是否接受install
+                                ## 输入'Y'接受install，回答'yes' 接受 EULA
+                                ## 照上面操作，安装结束后的文件为/usr/local/mpc8349/**ltib-mpc8349itx-20070221/**
+                                ## 此位置下的doc/*文档有各种说明
+
+
+## 下面进行安装，首先是**小文件系统**形式
+$ cp -a  ltib-mpc8349itx-20070221   small         ## 这个只是复制，名字任意起的
+$ cd small        ## 进入到small目录下
+$ ./ltib **--preconfig** config/platform/mpc8349itx/defconfig-min-fs --batch        ## 开始build
+                ## 此目录开始安装host支持包，第一次安装可能时间会长些，half an hour? maybe.
+                ## 若发生错误，查看日志文件/usr/local/mpc8349/small/host_config.log
+                ## 此编译的是小文件系统**rootfs.ext2.gz.uboot，**并在rootfs下产生文件系统
+                ## 只编译了文件系统，没有内核镜像，没有uboot镜像
+                ## rootfs作为NFS输出目录(NFS-exported),是目标板的根文件系统
+                ## 此编译用的是**uclibc**的库
+                ## 建立交叉编译环境，若想使用powerpc-linux-gcc自动补全功能，需# vi /etc/bashrc，在最后添加一句：export  PATH=/opt/freescale/usr/local/gcc-3.4.3-uClibc-0.9.28-1/powerpc-linux /bin:$PATH，最后重启后，可用# echo $PATH来查看环境变量中是否有/opt/mtwk/usr/local/powerpc-linux/gcc-3.4.3-glibc-2.3.3 /bin路径变量。
+                ## 编译完毕会给出信息提示，然后继续完成下面的操作
+$ cd ..                ## 回到/usr/local/mpc8349/目录下
+
+## 下面进行安装，这次是**大文件系统**形式
+$ cp -a  ltib-mpc8349itx-20070221   large         ## 这个只是复制，名字任意起的
+$ cd large        ## 进入large目录下
+$ ./ltib        ## 开始了大文件系统的build
+                ## 编译后的rootfs.ext2.gz.uboot会大很多，并产生rootfs下文件系统
+                ## 此次编译了**uboot，内核和文件系统镜像**(难怪叫"the hard disk based file system")
+                ## 编译后的u-boot,u-boot.bin,uImage(bootable_kernel),vmlinux,System.map,vsc7385_load.bin,linux.config在rootfs/boot/下
+                ## 此次编译用的是glibc的库
+                ## 调用的配置文件为config/platform/mpc8349itx/**.config**
+## 注:文件夹ltib-mpc8349itx-20070221只是用来复制，我们没做任何操作，为何? 备份用的
+## 注:当small或large下我们编译总是不成功时，备份的作用就来了，当然这是笨方法，新手嘛，值得原谅!
+## 至此已经完成，下面是为了写这个文档而安装
+
+
+$ cd /usr/local/mpc8349/        ## 进入未来工作目录的上一级
+$ cp -a  ltib-mpc8349itx-20070221   mytest         ## 未来的工作目录诞生了
+$ ./ltib --preconfig config/platform/mpc8349itx/defconfig-min-fs --batch
+                ## 编译完毕，我的准备工作就结束了
+                ## 后面的大多数介绍操作都是在此目录下(/usr/local/mpc8349/mytest/)
+
+下面略述一种简单有效的方法编译内核和文件系统，并顺便介绍ltib核心工作流程和思想，然后再部分详述。
+需要__修改内核或文件系统__并编译时，一个比较简单的方法是利用自带的配置文件(eg:defconfig-min-fs)，综述如下:
+$ ./ltib --preconfig  config/platform/mpc8349itx/defconfig-min-fs
+## 此配置默认不编译bootloader: [ ] Build a boot loader
+## 此配置文件默认编译时不能修改配置内核:(X) Dont build the Linux kernel
+## 若想修改此配置:
+        ## 若需要编译bootloader，请找到并选中 [*] Build a boot loader
+        ## 若要编译内核，请找到并选中 kernel (linux 2.6.13.4)  ---> (X) linux 2.6.13.4 ；其__内核的默认配置文件__为 **nas_linux-2.6.13.4-mpc8349itx.config**
+        ## 若要修改内核的默认文件为其他，请找到 kernel config file，回车输入相应的配置文件名，其默认目录为config/platform/mpc8349itx/
+        ## 若想在编译时并修改内核，请找到并选中 [*] Configure the kernel
+        ## 若想**修改文件系统**，添加或删除程序包，请进入 Package list  ---> 并选中相应的包
+        ## 若想修改**busybox**选项配置，请进入并选中 Package list  ---> [*]   Configure busybox at build time
+        ## 其他目标系统配置、目标镜像生成选项配置类似。
+
+        ## (解释)Load an Alternate Configuration File选项是选则一个已有的配置文件来自动配置各个选项
+        ## Save Configuration to an Alternate File选项是将当前的配置信息保存为一个命名的文件名(eg:defconfig.liuby.today804)
+        ## 最后退出时会弹出对话框，选择Yes保存，默认保存到config/platform/mpc8349itx/，名字是上面的命名
+   
+     ## 开始编译
+        ## 附注:同时生成的配置文件也会另存为** defconfig.dev**(在config/platform/mpc8349itx/下)，
+        ## 再附注:defconfig.liuby.today804同样存在。
+        ## 再再附注: 按键请看说明，主要包括上下左右键、空格、回车、搜索键(s)、ESC键。
+        ## NB: 按ESC键要注意次数，多按容易前功尽弃!
+
+## 上面的操作做完后开始编译，假如选择了编译时配置内核，会弹出**内核的配置对话框**，可用用上面类似的方法修改配置，以添加8021Q模块支持为例
+        ## 添加8021Q: 进入 Networking  ---> [*] Networking support / Networking options  ---> <*> 802.1Q VLAN Support (注:<M>是编译为模块的形式)
+        ## 类似可以删除NTFS支持模块 < >NTFS file system support (注:以此为例是因为现在用不到NTFS)
+        ## 检查是否支持NFS(注:写此是因为开发常用，不详写)
+        ## 类似上面将内核配置信息保存为一个文件
+        ## 内核开始编译
+        ## 附注:生成的__内核配置文件__为 **nas_linux-2.6.13.4-mpc8349itx.config.dev**(在config/platform/mpc8349itx/下)
+
+## 内核编译完成后，开始选择程序包的编译，如果选择了编译时配置busybox，会弹出 BusyBox Configuration 配置对话框，配置和上面一样，下面随便举一例:
+        ## 如删除fdisk工具编译，进入Linux System Utilities，去除选项 [ ] fdisk
+        ## 如添加mount工具的nfs选项支持，进入并选中 Linux System Utilities  ---> [*]     Support mounting NFS file systems
+        ## 类似上面将busybox**配置信息**保存为一个文件
+        ## busybox开始编译
+        ## 附注: busybox是linux常用命令工具集，可根据开发需要选择需要的命令工具
+        ## 附注: 若不改文件名，生成的配置文件为**busybox.config**(在config/platform/mpc8349itx/下)
+
+## 若是想向文件系统里添加自己写的应用程序，或shell脚本。需要将相应的文件copy到**config/platform/mpc8349itx /merge/**文件夹下，此文件夹下的文件在开发板上相当于位于根文件系统下面。若想将程序烧进开发板后，开发板上电能自动执行程序或脚本，可以修改 config/platform/mpc8349itx/merge/etc/rc.d/rcS。注:此步操作需要在开始编译内核和文件系统之前做好。
+        ## 以添加vlan配置模块vlan.ko，和添加vlan及配置脚本vlan_config.sh为例:
+        ## 在config/platform/mpc8349itx/merge/下创建一个文件夹(eg: mypro)；
+        ## 将vlan.ko和vlan_config.sh添加到新建文件夹下config/platform/mpc8349itx/merge/mypro/下，配置好权限
+        ## 在config/platform/mpc8349itx/merge/etc/rc.d/rcS最后添加运行脚本和程序的语句(后面详细介绍)
+
+
+==== 下面分别描述内核修改配置以文件系统添加应用程序和脚本 ====
+在需要修改内核配置，比如为内核添加编译新的模块功能时，该如何完成，下面以将支持8021Q VLAN协议的模块编译进我们需要的内核中为例来演示:
+##首先按照前面所说的简单快捷的方式，执行命令:
+$ ./ltib --preconfig  config/platform/mpc8349itx/defconfig-min-fs
+        ## defconfig-min-fs是安装ltib后的自带文件，并没做修改。
+        ## 在弹出的对话框中，通过上下键移动光标到 Choose your Kernel /  kernel (**Dont build the Linux kernel**) 回车进入内核选择对话框，移动光标按空格键选中我们需要的内核 (X) linux 2.6.13.4，内核配置文件暂不修改，使用默认的。
+        ## 为了能添加我们需要的8021Q支持模块，需要修改内核的配置，移动光标按空格键选中 [*] Configure the kernel，这样在编译时可以修改其配置。
+         ## 移动光标到Save Configuration to an Alternate File，回车输入我们想将目前配置保存的文件名为defconfig-min-fs-modified任何回车。
+        ## 左右移动光标到最下面的Exit，弹出对话框询问是否保存配置文件，选择'Yes'
+## ltib开始根据配置进行工作。
+## 很快又会弹出新的对话框 Linux Kernel Configuration
+## 下面需要修改内核配置，添加8021Q
+        ## 移动光标选中 Networking  ---> 回车弹出新的对话框，移动光标到 [*] Networking support 下面一行 Networking options  ---> 然后回车，又弹出对话框，向下移动光标，按空格两次选中<*> 802.1Q VLAN Support 将其编译进我们需要的内核中。
+        ## 然后按两次ESC回到Linux Kernel Configuration的主界面
+        ## 移动光标选中 Save Configuration to an Alternate File 回车输入当前配置的保存名字 nas_linux-2.6.13.4-mpc8349itx.config-modified
+        ## 左右移动光标选中最下面的Exit，弹出对话框询问是否保存配置文件，选中'Yes'
+## ltib调用当前的配置信息编译内核。
+
+当我们写好了开发板上的应用程序，并且已经做好了各种测试，需要烧写到板子，达到上电时应用程序已经在板子上了，甚至是可以开机自动运行，该如何操作呢，下面讲述
+
+===== 如何向开发板添加应用程序及需要的脚本 =====
+。
+以添加VLAN配置模块vlan.ko和添加VLAN编号并配置ip的脚本 vlan_config.sh:
+## 首先需要明白config/platform/mpc8349itx/merge/下面的各种文件就是通过编译后成为**开发板文件系统的一部分**，并且此文件夹下的文件就相当于位于开发板的根目录下。
+## 在文件夹config/platform/mpc8349itx/merge/创建一个文件夹ourpro，再将我们之前编译的VLAN配置模块 vlan.ko以及脚本vlan_config.sh添加到刚才创建的文件夹config/platform/mpc8349itx/merge /ourpro/下(用命令为mkdir,cp)
+## 在config/platform/mpc8349itx/merge/etc/rc.d/rcS最后添加如下几句(可用命令vi完成)       
+        +++++++++++下面为添加内容++++++++++++++
+        if [ $mode = "start" ]
+        then
+            if [ -x /ourpro/vlan_config.sh ]
+            then
+                /ourpro/vlan_config.sh
+            fi
+        fi
+        +++++++++++上面为添加内容++++++++++++++
+        ## 附:vlan_config.sh脚本内容
+        ++++++++++++下面为vlan_config.sh脚本内容++++++++++++++++
+        #!/bin/sh
+        # This script is used to add vlan configuration module
+        # and config eth1 with vlan-id and the relevant ip.
+        # date: Wed Aug  6 17:00:18 CST 2008
+        echo "Now start to config vlan ,please have patience. ^_^ "
+        echo "boot eth1 now"
+        ifconfig eth1 up
+        sleep  3
+        echo "insmod /ourpro/vlan.ko "
+        if [ -f /ourpro/vlan.ko ]
+            then
+                insmod /ourpro/vlan.ko
+                rmmod  /ourpro/vlan.ko
+                usleep 100000
+                echo "Config vlan-name(1:6) ipaddr & netmask"
+                for x in 1 2 3 4 5 6
+                do
+                    vconfig add eth1 $x
+                    ifconfig eth1.$x 192.168.$x.1 netmask 255.255.255.0 up
+                    echo  eth1.$x 192.168.$x.1 netmask 255.255.255.0 up
+                done
+                echo "DONE. You can test vlan now.  ^_^"
+                exit 0
+        fi
+        echo "Not found /ourpro/vlan.ko"
+        exit 0
+        ++++++++++++上面为vlan_config.sh脚本内容++++++++++++++++
+
+        ## 在以上操作中要注意权限的设置
+
+## 要添加的文件和脚本，以及配置做好，可**以编译文件系统**了，我们可以使用上面编译内核所生成的配置defconfig-min-fs-modified
+$ ./ltib --preconfig  config/platform/mpc8349itx/defconfig-min-fs-modified
+        ## 首先弹出对话框 LTIB: Freescale MPC8349E-mITX board
+        ## 若不希望再编译内核，移动光标到--- Choose your Kernel下面一行 kernel (linux 2.6.13.4)  --->，按空格进入，弹出一个新的内核选择对话框kernel，移动光标并按空格选中 (X) Dont build the Linux kernel 。若希望编译内核，则跳过此步。
+        ## 此次操作我们选择编译内核，但不再编译时配置内核。
+        ## 编译时不再配置内核选项，移动光标按空格去除选项 [ ] Configure the kernel。
+        ## 移动光标到(nas_linux-2.6.13.4-mpc8349itx.config) kernel config file回车，输入我们的内核配置文件nas_linux-2.6.13.4-mpc8349itx.config.dev，确定返回到主对话框
+        ## 移动光标到 Save Configuration to an Alternate File，输入我们想保存为的文件名defconfig-min-fs-our-final
+        ## 左右移动光标到< Exit >回车，然后会弹出是否保存新的配置文件，直接选择 < Yes > 回车
+        ## 然后开始编译内核和文件系统
+## 编译结束。
+
+        ## 注:上面编译出的内核已经添加了8021Q内核模块，文件系统里也包含vlan.ko和vlan_config.sh，烧进开发板上电会自动执行vlan_config.sh实现添加vlan编号及配置ip信息。
+        ## 文件夹rootfs/下的文件就相当于在开发板上看到的全部文件系统
+        ## 我们需要的内核文件为rootfs/boot/uImage，根文件系统文件为rootfs.ext2.gz.uboot
+
+假如上面编译出来的内核文件和文件系统文件不小心删除了，或者文件遭到了破坏，需要重新编译，而且文件不需要变化的话，这里有一个比较简单的办法，执行如下命令可一次完成满足要求的内核和文件系统:
+$ ./ltib --preconfig config/platform/mpc8349itx/defconfig-min-fs-our-final __--batch__
+        ## 输入完这些命令回车就开始编译了，中间不需要任何操作，完全可以看会电影，或者学学vim...，大约半小时后就可以看到你希望的结果 :)
+
+上面编译出来的结果怎么知道一定是对的呢，而且开发板的FLASH烧写都有次数限制，一般情况下我们__不能随便烧写内核或文件系统到FLASH中__，下面一个方法可以解决这一问题。
+## 下面的方法是完全针对8349itx开发板出厂后设置未做修改时来完成的。
+## 假如开发主机的ip地址为59.64.155.150，开发板的ip地址59.64.155.79，网关为59.64.155.1
+## 开发主机上提供了__tftp服务__(参见另写的一篇笔记server.txt)，其根目录为__/home/liuby/tftpboot/__
+## 首先在tftp根目录下创建一个存放内核文件和根文件系统的目录down，并将刚才编译的结果复制到此文件夹下
+$ mkdir -m 777 /home/liuby/tftpboot/down
+$ cp rootfs/boot/uImage /home/liuby/tftpboot/down/
+$ cp rootfs.ext2.gz.uboot /home/liuby/tftpboot/down/
+## 此时开发主机上的工作已经完成了，下面介绍开发板上需要做的工作
+## 开发板的uboot默认有3秒的延迟，来让我们确定是否进入操作系统，在上电后uboot会给出一个提示:Hit any key to stop autoboot: 在这句后面的数字变为0之前按一下键盘。
+## 在上一步按下键盘后，终端上会出现uboot提示符 '=> '
+=> getwayip=59.64.155.1
+=> ipaddr=59.64.155.79
+=> serverip=59.64.155.150
+=> tftp_path=down
+=> saveenv                ## 保存uboot环境变量，这样保存是为了方便__以后不再设置其参量__，可不保存
+                        ## 一般不要修改uboot环境变量，可参看<<MPC8349ITX_set-uboot-env.txt>>
+=> run tftpramboot        ## 下载内核和文件系统镜像到DDR memory中，然后启动
+## 系统启动后输入user id "root"，with password "root"，可以用ifconfig查看配置已经生效。好玩吧 ?!
+## 也可以用"dmesg | grep -i 802"来查看内核是否支持8021Q
+
+经过各种测试，发现已经实现了所需要的功能，我们想把这样的__内核和文件镜像固化到板子__上，上面的办法显然不能满足要求了，那有没有一个简单的办法呢，答案是'有滴'，只需要花几分钟时间就可以实现。LET'S START:
+## 如上面介绍先把内核和文件系统镜像复制到tftp目录/home/liuby/tftpboot/down/下
+## 下面的操作是在开发板启动后进入uboot提示符下进行
+=> setenv bootdelay 3                ## 启动延迟3s
+=> setenv loadaddr 200000        ## 下载到DDR内存中的起始地址
+=> setenv kernaddr fe810000        ## flash中内核分配的起始地址
+=> setenv ramdiskaddr fe9a0000        ## flash中文件系统分配的起始地址
+=> setenv ipaddr  59.64.155.79
+=> setenv netmask 255.255.255.0
+=> setenv gatewayip 59.64.155.1
+=> setenv serverip 59.64.155.150
+=> setenv tftp_path=down        ## 相对根目录的路径
+                                ## 以上操作都可以不做，保留下来只是想看看以前是多么菜，时光啊
+=> tftpboot $loadaddr $tftp_path/uImage                ## 下载内核镜像到DDR memory中
+=> erase $kernaddr feefffff                        ## 擦除flash中为内核和文件系统分配的空间(起止地址之间)
+=> cp.b  $loadaddr $kernaddr $filesize                ## 写内核到flash中，filesize变量通过tftpboot获得
+=> cmp.b $loadaddr $kernaddr $filesize                ## 确认是否写错误
+=> tftpboot $loadaddr  $tftp_path/rootfs.ext2.gz.boot        ## 下载小文件系统到DDR memory中
+=> cp.b  $loadaddr $ramdiskaddr $filesize        ## 写文件系统到flash中
+=> cmp.b $loadaddr $ramdiskaddr $filesize        ## __确认__是否写错误
+=> imls                        ## 确认写到flash中的镜像是否为有效的u-bootable镜像
+=> boot                        ## 启动
+## 系统上电，发现就是我们想要实现的，再重启发现仍然是，心里默默地喊一个OH YEAH.
+        ## 附一个常用的uboot命令吧:   help 或者 ?
+###### 附注:都快写到吐了，与烧写有关的不再写了，请参看<<Readme.txt>>，此文不是一般的强大。
+
+下面再写一点ltib的常用命令参数吧，虽然觉得对其编译内核和文件系统流程有了一定了解，但是对其命令参数用过的还不是很多，可以说是不甚了解，下面介绍一些，希望有用:
+
+首先一个比较有用的命令参数就是help，一个人忘记命令参数很常见，何况刚开始熟悉这个工具。下面这个命令行可以查看ltib命令的使用帮助:
+**$ ./ltib --help    **                    ## 这个等同于 ./ltib -h
+
+在编译内核和文件系统时，有时忘了我们选了哪些程序包来进行编译操作，我们可以用下面的命令来查看__当前安装模式下所有可用的程序包__，是否被选择编译进工程 :
+$ ./ltib -m listpkgs                ## 此命令是根据ltib的配置来显示
+查看配置中已选编译的程序包，如内核版本包，系统工具包:
+$ ./ltib -m listpkgs | grep ' y '
+
+如果想看编译过程产生的信息并把这些信息也保存，以备以后查看，可用以下命令
+$ ./ltib --preconfig config/platform/mpc8349itx/defconfig-min-fs-our-final --batch 2>&1 | tee ltib_log.txt
+## 保存编译过程产生的信息及错误信息全部保存到ltib_log.txt文件中
+
+ltib提供了一种__shell模式__，它直接提供了我们当前配置的**交叉编译工具链模式**，下面的命令能让我们进入ltib的shell环境
+$ ./ltib -m shell        ## 完成后会给出提示，进入shell模式的提示符 'LTIB>'
+                        ## 输入exit可退出shell模式
+## 下面的命令可以看一下这个有什么用，我直接给出命令，它下面就是这个命令的结果，不再解释
+        LTIB> gcc --version
+        powerpc-linux-uclibc-gcc (GCC) 3.4.3
+        Copyright (C) 2004 Free Software Foundation, Inc.
+        This is free software; see the source for copying conditions.  There is NO
+        warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+        LTIB>
+
+有时候我们想看一下某些__程序包的源码__，比如kernel、uboot等这些看了有益于身心健康的程序源码，该怎么办呢? 还有一种情况就是这些源码中存放有板子的各种配置文件，比如内存映射分配，也需要看一下源码文件，其命令格式为 
+**$ ./ltib -m prep -p <program_package_name>**
+## 下面这部分我是在large文件夹下操作，所写路径也是相对于/usr/local/mpc8349/large/来写的，而不是mytest文件夹下
+## 例如我们要查看MPC8349ITX开发板上vsc7385的内存分配，或查找VSC7385的驱动模块部分，需要看uboot、内核源码，以下命令得到内核源码
+$ ./ltib -m prep -p kernel
+## 解压后的内核源码位于rpm/BUILD/linux-2.6.13/
+## 其中vsc7485的驱动是rpm/BUILD/linux-2.6.13/drivers/net/gianfar_phy.c
+## 下面操作必须在原来的large文件夹下操作，为什么这么做?自己思考吧。以下命令可以得到uboot源码
+$ ./ltib -m prep -p u-boot
+## 解压后得到的uboot源码位于rpm/BUILD/u-boot-1.1.3
+        ## 其中有关MPC8349MITX板子配置信息的重要文件为/include/configs/MPC8349ITX.h
+        ## 在上面的这个文件中可用看到VSC7385的内存分配基地址信息(#define CFG_VSC7385_BASE     0xF8000000)
+        ## 不用uboot命令的话，可参看一下源码帮助理解。
+## 注:上面这段命令操作我之所以选择在/usr/local/mpc8349/large文件夹下，是因为要得到某些程序源码，首先它得编译过。
+
+上面介绍了一个ltib编译内核和文件系统比较好用的办法，当你比较熟悉了ltib工作流程，完全__可以自己配置交叉编译工具链__，内核和文件系统，然后编译，可以用下面这个命令行
+$ ./ltib **--configure**
+
+如果想重新产生所有内核和RFS镜像有以下三个办法:
+## 办法一: 直**接调用配置文件编译**，如果配置文件没有更新，且编译过的目标镜像没有变化，会不进行编译。若有任何改动，会执行编译
+$ ./ltib --preconfig config/platform/mpc8349itx/defconfig-min-fs-our-final --batch
+## 办法二: 如办法一一样，但强制重新编译
+$ ./ltib --preconfig config/platform/mpc8349itx/defconfig-min-fs-our-final --batch __-f__
+## 办法三: 清除所有编译的程序包，然后重新配置编译镜像
+$ ./ltib -m distclean                ## 清除ltib工程文件
+$ ./ltib --configure                ## 重新配置编译
+
+假如我们对**ltib的配置文件**不满意，想自己通过配置操作来熟悉ltib的各种配置，或者相关工作做完了，甚至是看它不顺眼，都可以采用此操作，把LTIB完全卸载，
+## 首先执行命令:
+$ ./ltib -m distclean                ## 此操作将彻底清除所有当前ltib工程文件,  此命令不要轻易使用，除非比较熟悉ltib编译配置过程
+## 然后以root身份执行以下操作(注意:此操作将卸载所有的公共文件)
+# rm -rf /opt/freescale/pkgs
+# rm -rf /opt/freescale/ltib
+# rm <install_path>                ## 执行文件ltib的上级目录
+## 另一种更加暴力的办法是root身份运行rm命令来删除所有
+
+下面再写一下**外部内核模块**的编译，假如我们有一个文件夹test(位于主目录/home/liuby/下)，该文件夹包含程序源码文件test.c和Makefile，这两个文件的内容附在此段内容的最后。
+## 首先我们得到**内核源码**，然后再编译，为什么这么做，我也不懂~~~，有些纳闷，以后再解决
+**$ ./ltib -m prep -p kernel**
+$ ./ltib -m scbuild -p kernel        ## 编译的镜像为rpm/BUILD/linux/arch/ppc/boot/images/uImage
+## 将test文件夹copy到内核的driver文件夹下
+$ cp -a ~/test  rpm/BUILD/linux/drivers/
+## vi修改driver文件夹下的Makefile
+$ vi rpm/BUILD/linux/drivers/Makefile
+## 可以仿照Makefile里的内容在最后添加如下一行
+**ojb-m               += test/                 ## 然后保存退出**
+## 修改test文件夹下的test.c和Makefile确保其正确无误。
+## 下面的命令是进入__ltib的shell环境__，然后进入到test目录，然后编译
+$ ./ltib -m shell
+LTIB> cd rpm/BUILD/linux/drivers/test/
+LTIB> make V=1** ARCH=ppc**
+## rpm/BUILD/linux/drivers/test/test.ko就是我们想要的module，下载到板子上用insmod test.ko来执行模块(rmmod test.ko是卸载模块)
+        ++++++++++++++++下面为test.c程序内容++++++++++++++++++
+        #include <linux/init.h>
+        #include <linux/module.h>
+        #include <asm/mpc83xx.h>
+        MODULE_LICENSE("Dual BSD/GPL");
+        static int hello_init(void)
+        {
+            printk(KERN_ALERT "Hello, world\n");
+            printk(KERN_ALERT "IMMR virtual address: %X\n", VIRT_IMMRBAR);
+            printk(KERN_ALERT "IMMRBAR: %08lX\n", *(unsigned long*)(VIRT_IMMRBAR + 0x00000));
+            printk(KERN_ALERT "SPRIDR : %08lX\n", *(unsigned long*)(VIRT_IMMRBAR + 0x00108));
+            return 0;
+        }
+        static void hello_exit(void)
+        {
+            printk(KERN_ALERT "Goodbye, cruel world\n");
+        }
+        module_init(hello_init);
+        module_exit(hello_exit);
+        ++++++++++++++++上面为test.c程序内容++++++++++++++++++
+        +++++++++++++++下面为Makefile程序内容+++++++++++++++++
+        ifneq ($(KERNELRELEASE),)
+        obj-m := test.o
+        else
+        KDIR := ../..
+        PWD := $(shell pwd)
+        default:
+            $(MAKE)__ -C__ $(KDIR) M=$(PWD)
+        endif
+        +++++++++++++++上面为Makefile程序内容+++++++++++++++++
+## 类似地我们可以编译vlan配置模块
+            ┌——————————┐
+            │      写完收工      │
+            └——————————┘

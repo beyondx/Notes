@@ -1,0 +1,25 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-06T15:28:16+08:00
+
+====== sparse ======
+Created Wednesday 06 June 2012
+
+parse.h:
+
+		struct /* labeled_struct */ {
+			struct symbol *label_identifier;
+/*			struct statement *label_statement; */  注释掉这一个成员
+		};
+
+然后在
+
+[geekard@kb310 pkgs]$ tar -cvzf sparse-0.4.tar.gz sparse-0.4
+[geekard@kb310 pkgs]$ md5sum sparse-0.4.tar.gz >sparse-0.4.tar.gz.md5
+[geekard@kb310 pkgs]$ 
+
+两文件位于附件中：
+[[./sparse-0001.4.tar.gz]]
+ [[./sparse-0001.4.tar.gz.md5]]
+ [[./sparse-0001.4-array-fix.patch]] 
+[[./sparse-0001.4-array-fix.patch.md5]] 

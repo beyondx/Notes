@@ -1,0 +1,94 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-09-08T22:41:22+08:00
+
+====== Page cache和buffer cache的区别与联系 ======
+Created Thursday 08 September 2011
+http://blog.ednchina.com/tiloog/230815/message.aspx
+Page cache和buffer cache一直以来是两个比较容易混淆的概念，在网上也有很多人在争辩和猜想这两个cache到底有什么区别，讨论到最后也一直没有一个统一和正确的结论，在我工作的这一段时间，page cache和buffer cache的概念曾经困扰过我，但是仔细分析一下，这两个概念实际上非常的清晰。如果能够了解到这两个cache的本质，那么我们在分析io问题的时候可能会更加得心应手。
+
+ 
+
+Page cache实际上是针对文件系统的，是文件的缓存，在文件层面上的数据会缓存到page cache。文件的逻辑层需要映射到实际的物理磁盘，这种映射关系由文件系统来完成。当page cache的数据需要刷新时，page cache中的数据交给buffer cache，但是这种处理在2.6版本的内核之后就变的很简单了，没有真正意义上的cache操作。
+
+ 
+
+Buffer cache是针对磁盘块的缓存，也就是在没有文件系统的情况下，直接对磁盘进行操作的数据会缓存到buffer cache中，例如，文件系统的元数据都会缓存到buffer cache中。
+
+ 
+
+简单说来，page cache用来缓存文件数据，buffer cache用来缓存磁盘数据。在有文件系统的情况下，对文件操作，那么数据会缓存到page cache，如果直接采用dd等工具对磁盘进行读写，那么数据会缓存到buffer cache。
+
+补充一点，在文件系统层每个设备都会分配一个def_blk_ops的文件操作方法，这是设备的操作方法，在每个设备的inode下面会存在一个radix tree，这个radix tree下面将会放置缓存数据的page页。这个page的数量将会在top程序的buffer一栏中显示。如果设备做了文件系统，那么会生成一个inode，这个inode会分配ext3_ops之类的操作方法，这些方法是文件系统的方法，在这个inode下面同样存在一个radix tree，这里会缓存文件的page页，缓存页的数量在top程序的cache一栏进行统计。从上面的分析可以看出，2.6内核中的buffer cache和page cache在处理上是保持一致的，但是存在概念上的差别，page cache针对文件的cache，buffer是针对磁盘块数据的cache，仅此而已。
+
+
+现在不都是只有page cache了吗？ buffer pages其实也是page cache里面的页。只是多了一层抽象，通过buffer_head来进行一些访问管理
+
+对,从Linux算法实现的角度，page cache和buffer cache目前是一样的，但是从功能抽象和具体应用来讲，这两者还是存在区别的，这一点可以从top工具的统计信息中看得出来，关注一下buffer和cache这两个统计量。
+
+
+在网上看了一些相关资料，不过还是有些疑问：
+区别，主要是
+1 他们针对的对象不同。buffer cache 是供驱动使用， 而 page cache 是供vfs使用。
+2 他们存的内容不同。buffer cache 存放的是文件的元数据，而page cache 存放的是inode的内容，即文件的数据。
+第一点好理解，但是第二点，我有些疑问：
+1 因为buffer cache 和page cache 其实都指向同一段内存。即一个page cache里面可能包含多个buffer cache.他们的内容应该是相同的呀，怎么又有元数据和文件数据之分呢？
+2 磁盘读文件是以buffer cache为单位，这样，在有预读，并且文件被分片的情况下。读入连续4个buffer cache 即一个page cache的数据，并不一定都是文件数据呀。这样，page cache 又如何能反映文件的逻辑影射呢？
+
+不知道是否还有其他区别和联系，请兄弟们指教，谢谢
+
+ 
+
+ 
+
+ 
+
+这是我先看的一篇文章http://blog.chinaunix.net/u1/33412/showart_327801.html
+里面讲：
+在 Linux 的实现中，文件 Cache 分为两个层面，一是 Page Cache，另一个 Buffer Cache，每一个 Page Cache 包含若干 Buffer Cache。内存管理系统和 VFS 只与 Page Cache 交互，内存管理系统负责维护每项 Page Cache 的分配和回收，同时在使用 memory map 方式访问时负责建立映射；VFS 负责 Page Cache 与用户空间的数据交换。而具体文件系统则一般只与 Buffer Cache 交互，它们负责在外围存储设备和 Buffer Cache 之间交换数据。
+
+
+而在linuxforum上的一些文章上看到比较深入的分析里面说：
+page 不会同时存在于 buffer cache 和 page cache.add_page_to_hash_queue将此思想显露无余.buffer_head 定义在fs.h,和文件系统有着更为紧密的关系.
+从文件读写角度看buffer cache缓存文件系统的管理信息像root entry, inode等,而page cache缓存文件的内容
+
+注意函数block_read_full_page,虽然位于buffer.c,但并没有使用buffer cache. 但是确实使用了buffer:只是再指定page上创建buffer提交底层驱动读取文件内容.这个流程有两个值得注意的地方：
+一是普通file的read通过page cache进行
+二是page cache读取的时候不和buffer cache进行同步
+三是page cache的确使用了buffer,不过注意,buffer 不是buffer cache.
+
+我比较赞同后者的说法。
+但现在对page cache和buffer cache的理念仍旧不是太清晰。
+
+还有楼上说的很对。
+
+如果想深入想知道buffer cache的管理 可以参见“VFS 缓冲区缓存Buffer Cache实现原理剖析”一文
+google就可以搜到。里面讲的版本相对现在代码有稍微变动。但是剖析非常清楚，推荐看一下。
+
+　　缓存（cached）是把读取过的数据保存起来，重新读取时若命中（找到需要的数据）就不要去读硬盘了，若没有命中就读硬盘。其中的数据会根据读取频率进行组织，把最频繁读取的内容放在最容易找到的位置，把不再读的内容不断往后排，直至从中删除。
+
+　　缓存（cache）实际并不是缓冲文件的，而是缓冲块的，块是磁盘I/O操作的最小单元（在Linux中，它们通常是1KB）。这样，目录、超级块、其它文件系统的薄记数据以及非文件系统的磁盘数据都可以被缓冲了。
+
+　　如果缓存有固定的大小，那么缓存太大了也不好，因为这会使得空闲的内存太小而导致进行交换操作（这同样是慢的）。为了最有效地使用实际内存，Linux自动地使用所有空闲的内存作为高速缓冲，当程序需要更多的内存时，它也会自动地减小缓冲的大小。
+
+　　缓冲（buffers）是根据磁盘的读写设计的，把分散的写操作集中进行，减少磁盘碎片和硬盘的反复寻道，从而提高系统性能。linux有一个守护进程定期清空缓冲内容（即写磁盘），也可以通过sync命令手动清空缓冲。举个例子吧：我这里有一个ext2的U盘，我往里面cp一个3M的 MP3，但U盘的灯没有跳动，过了一会儿（或者手动输入sync）U盘的灯就跳动起来了。卸载设备时会清空缓冲，所以有些时候卸载一个设备时要等上几秒钟。
+
+　　两者都是RAM中的数据。简单来说，buffer是即将要被写入磁盘的，而cache是被从磁盘中读出来的。
+
+　　buffer是由各种进程分配的，由进程和系统一起管理.被用在如输入队列等方面，一个简单的例子如某个进程要求有多个字段读入，在所有字段被读入完整之前，进程把先前读入的字段放在buffer中保存。
+
+　　cache经常被用在磁盘的I/O请求上，如果有多个进程都要访问某个文件，于是该文件便被做成cache以方便下次被访问，这样可提供系统性能。
+
+　　综上所述可以理解为cache系统管理, buffer由进程和系统一起管理.
+
+ disk cache(page cache, buffer cache)
+{{~/sync/notes/zim/内核开发/Page_cache和buffer_cache的区别与联系/090503221821.jpg}}X
+ 
+1.         for ext2, buffer cache is used for reading super block and inode, and page cache is used for file reading. So the user process gets the file content (through the cache) indirectly from the disk
+2.         each file using page cache has an object addressspace
+3.         each page cache belongs to one list based on its status ( clean, dirty or locked )
+4.         there is a global hash table for page cache and buffer cache respectively
+5.         once triggered, kernel thread bflush or bupdate will write the dirty pages and buffers into the disk
+6.         a user process can selectively use direct IO, which essentially setups the same page table for the user process address with the kernel cache
+7.         for the buffer head, there is a free list for 2nd buffer for slab allocator
+ 

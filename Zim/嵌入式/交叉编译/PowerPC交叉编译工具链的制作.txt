@@ -1,0 +1,427 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-14T11:05:35+08:00
+
+====== PowerPC交叉编译工具链的制作 ======
+Created Wednesday 14 December 2011
+http://www.powerpcdev.net/read.php?tid=126
+
+本文主要讨论在X86平台上制作一个PowerPC的交叉编译工具链的方法和步骤。
+1. 交叉编译工具链的基本概念
+2. 准备工作
+3. Install Kernel Headers
+4. Binutils
+5. GCC 第一遍
+6. Glibc
+7. gcc 第二遍
+8. 总结
+
+===== 交叉编译工具链的基本概念 =====
+
+什么是交叉编译工具链，这是许多初学者的首要问题。通常我们已经习惯在X86平台上运行gcc，对源程序进行编译，编译得到的目标程序，仍然是在X86平台上跑的。而交叉编译工具链就是，需要在某个平台上，对源程序进行编译，但是得到的目标程序却是在另外一个平台上运行的。
+
+交叉编译工具链的制作包含哪些基本概念。我们已经知道，在某个平台对程序进行编译后，得到的目标程序，默认也是在该平台运行的(例如X86)。所以我们通常需要在现有平台(通常我们把这个平台称为Host)的基础上，制作出一个交叉编译工具链(包括gcc, binutils, glibc)，得到新的gcc仍然是在该平台(通常我们把该平台称为Host)上运行的，但是当利用新的gcc去对某个源程序进行编译时，得到的目标程序是在目标平台上运行的(通常我们把该平台称为Target)。
+
+因此，现在我们知道，制作交叉编译工具链少不了要先编译一个gcc和 binutils(包括链接器ld, strip等工具)，但是仅仅是这两个还不够的。我们知道，在对源程序进行编译时，少不了要依赖一些库，例如C运行时库(glibc)，而你的Host中的库，它是针对Host体系结构的。例如你的X86中的库，其机器指令一定是X86的。这样，你的交叉编译工具链中，必须有目标平台的库。你肯定已经想到了，先编译好gcc和binutils，然后用这个gcc编译目标平台的库，然后就可以在这个库的基础上，编译目标平台的程序了。
+
+现在你已经可以想到制作一个交叉编译工具链的步骤了，但是很快你会看到，在gcc的编译过程中，我们需要编译2遍，这是为什么呢？ 一个__全面的gcc__(支持各种语言的)，需要目标平台的C库(glibc)的一些头文件，但是这个新的gcc编译出来之前，我们又没有安装目标平台的库 (glibc)。所以我们先编译一个__基本的gcc__(仅仅支持C语言)，然后用这个gcc编译目标平台的glibc，注意此时得到的glibc是目标平台的。最后，再在这个库的基础上，重新编译一个全面的gcc。
+
+除此之外，我们还要准备好内核头文件，这样我们就可以直接使用内核的一些宏，数据结构定义，数据类型，等等。
+
+在有了这些概念的基础上，下面的操作就相对比较简单了。这里需要提醒的是，同样的编译参数，不同的编译环境，或者不同的gcc, binutils,glibc版本，都可能编译不成功。根据我的经验，制作交叉编译工具链，一帆风顺就成功是很少见的。因此在编译过程中，如果遇到失败，耐心+细心的分析config.log，Makefile，可以帮助你定位问题。尤其对于新手来说，千万不要急于求成，妄想直接复制一下命令行，一步步编译就成功。我建议只是先看完一遍，对自己要做什么，和每一步的目的有个大概的了解，然后再开始。欲速则不达，这个道理很简单，恐怕只有多品位几次才能体会。
+
+另外，千万不要以超级用户(root)的身份来制作交叉编译工具链，否则一不小心用target平台的库，把Host平台上的库给覆盖了，后果可是很严重哦！
+
+===== 准备工作 =====
+
+cd $HOME
+mkdir ppc
+cd ppc
+mkdir sources
+cd sources
+
+wget http://ftp.gnu.org/gnu/binutils/binutils-2.19.tar.bz2
+wget http://ftp.gnu.org/gnu/glibc/glibc-2.9.tar.bz2
+wget http://ftp.gnu.org/gnu/glibc/glibc-linuxthreads-2.5.tar.bz2
+wget http://ftp.gnu.org/gnu/gcc/gcc-4.4.2/gcc-4.4.2.tar.bz2
+wget ftp://ftp.kernel.org/pub/linux/kernel/v2.6/linux-2.6.31.tar.bz2
+
+wget ftp://ftp.gnu.org/gnu/gmp/gmp-4.3.1.tar.bz2
+wget http://www.mpfr.org/mpfr-current/mpfr-2.4.1.tar.bz2
+
+mkdir ../tools
+
+export TARGET=powerpc-linux
+export TOOLS=~/ppc/tools
+export SOURCES=~/ppc/sources
+export PATH=$TOOLS/bin:$PATH   #这一步是必需的，只有将__带target alias __即powerpc-linux-前缀的工具放到PATH中，才能使用整个交叉编译环境。
+export LANGUAGE=C  #下面两个参数编译glibc时默认使用的locale
+export LC_ALL=C
+
+~~exoprt SYSROOT=$TOOLS/$TARGET~~
+
+===== Install Kernel Headers =====
+
+cd $SOURCES
+tar jvxf linux-2.6.31.tar.bz2
+make __ARCH=powerpc__ INSTALL_HDR_PATH=$TOOLS/$TARGET/usr **headers_install**
+把内核头文件安装到$TOOLS/$TARGET/usr/include中。
+ls -p $TOOLS/$TARGET/usr/include
+asm/  asm-generic/  drm/  linux/  mtd/  rdma/  scsi/  sound/  video/  xen/
+
+== ================ ==
+~~推荐用下面的方法，因为要选择处理器型号=~~
+
+== ========================== ==
+也可以用以下方法生成：(http://www.linuxsir.org/bbs/archive/index.php/t-312188.html)
+编译完用来编译glibc 的gcc后，到linux内核目录
+make ARCH=arm CROSS-COMPLIE=arm-linux-  menuconfig
+system type中选中pxa270（根据你自己的cpu来定）
+退出保存
+make（待arm目录编译完成后，可按ctrl+c停止）   #实际上可以用 __make dep__命令
+把内核代码/arch/arm/include/asm 拷贝到prefix/include下
+configure时 加入 --with-headers=$prefix/include
+即可解决
+
+!!!!!__上面的代码是有问题的__，因为必须要指定CROSS-COMPLIE=arm-linux- 参数，但是__该交叉编译工具链系统现在还没有提供__，所以后面的menuconfig 和make 或make dep是执行不了的。如果有交叉编译环境，则只要arm-linux-*为与PATH中，上面的方式才可以使用。
+
+PS:: 经过测试，用第一种方法生成的内核头文件与用第二种方法生成的内核头文件__基本上是相同__的(实际上，相同的头文件后者比前者还大，说明前面一种方法得到的头文件更干净。)，但除了asm和linux目录外，默认还安装另外几个头文件目录到INSTALL_HDR_PATH中。
+
+===== Binutils =====
+
+cd $SOURCES
+tar jvxf binutils-2.19.tar.bz2
+mkdir binutils-build
+cd binutils-build
+../binutils-2.19/configure \
+--**prefix**=$TOOLS \
+--**target**=$TARGET   #生成的工具可以__处理target平台__的二进制代码，但是这些工具仍然**运行在编译这些工具的平台**上(编译平台类型由__--build__参数指定，但是一般不用指定，而是由源代码中的config.guess来猜测。编译后生成的工具的运行平台由--host参数指定，**默认与--build值相同**)。
+这里必须为--target不能为host，若指定--host=$TARGET, 则使用的都是以target alias开头的工具。
+
+make
+make install
+mkdir $TOOLS/include
+cp ../binutils-xxx/include/libiberty.h $TOOLS/include   #复制相关的头文件，以后如果要交叉编译gdb时会用到。
+
+安装完成后，$TOOLS目录如下：
+ls -p $TOOLS
+bin/  info/  lib/  man/  powerpc-linux/  share/
+此处需要注意的是：$TOOLS/bin/ 和 $TOOLS/$TARGET/bin(TARGET就是powerpc-linux)的内容
+ls -p $TOOLS/bin
+powerpc-linux-addr2line  powerpc-linux-c++filt   powerpc-linux-ld       powerpc-linux-objdump  powerpc-linux-size
+powerpc-linux-ar         powerpc-linux-embedspu  powerpc-linux-nm       powerpc-linux-ranlib   powerpc-linux-strings
+powerpc-linux-as         powerpc-linux-gprof     powerpc-linux-objcopy  powerpc-linux-readelf  powerpc-linux-strip
+
+ls -p $TOOLS/$TARGET/bin
+ar  as  ld  nm  objcopy  objdump  ranlib  strip
+这些文件虽然在不同的目录，有不同的名字，但其实是一个文件：
+md5sum $TOOLS/bin/powerpc-linux-as
+3f77cbaaa417e2f59059114457d7d074  bin/powerpc-linux-as
+root@yunhual-desktop:/home/yunhual/dev/ppc/tool# md5sum powerpc-linux/bin/powerpc-linux-as
+md5sum $TOOLS/$TARGET/bin/as
+3f77cbaaa417e2f59059114457d7d074  powerpc-linux/bin/as
+
+除此之外，binutils把用于生成目标平台的代码的__链接脚本__安装到$TOOLS/$TARGET/ldscripts目录下。
+
+
+===== GCC 第一遍 =====
+
+由于编译gcc依赖 gmp,mpfr这两个库，因此在编译gcc之前，首先__安装这两个库到系统中__.
+tar jvxf gmp-4.3.1.tar.bz2
+cd gmp-4.3.1
+./configure --enable-cxx --enable-mpbsd --prefix=/usr
+make
+make check
+sudo make install
+
+如果没有指定--prefix=/usr，那么gmp默认安装到/usr/local目录下，而mpfr默认到/usr目录下搜索这个库。
+因此这里通过--prefix=/usr，把他们都安装到/usr下。见mpfr的FAQ: http://www.mpfr.org/faq.html
+
+cd $SOURCES
+tar jvxf mpfr-2.4.1.tar.bz2
+./configure --enable-thread-safe --prefix=/usr \
+
+make
+make check
+sudo make install
+
+
+现在第一次编译GCC:
+
+cd $SOURCES
+tar jvxf gcc-4.4.2.tar.bz2
+mkdir gcc-bootstrap-build   
+cd gcc-bootstrap-build
+../gcc-4.4.2/configure \
+    **--target=$TARGET \ #编译后生成的gcc可以生成的目标代码的执行平台（即**__编译生成的gcc可以生成target对应的平台的代码__**）。**
+    **--prefix=$TOOLS** --disable-nls **--disable-shared** \
+  **  --disable-multilib **--disable-decimal-float **--disable-threads** --disable-libmudflap \
+    --disable-libssp --disable-libgomp **--without-headers**   **--with-newlib  \**
+    **--enable-languages**=c
+~~--with-sysroot=$TOOLS/$TARGET  #!!!!!!!!!!!!!!!!未测试~~
+~~好像必须要用--with-headers=/usr/include~~
+#这一步编译的是一个bootstarp类型的gcc(一个在当前主机上运行的、使用__自带的newlib库__的gcc)，因此不会使用上一步生成的binutils工具使用的当前系统的binutils，但是当我们编译glibc, 最后一次编译gcc时，需要使用上面生成的binutils。
+
+~~？？？？能否指定--exec-prefix为$TOOL，这样所有的可执行文件都在$TOOL/bin下，而不是在$TOOL/$TARGET~~
+不行，这样会将不带target alias 的命令如gcc都放到$TOOL/bin下，然后将该目录加到PATH中时(在编译binutils前或后，这一步是必需的。)交叉编译的gcc会替换掉系统的同名gcc，
+
+== =========== ==
+这里的--with-package 的含义是__drop newlib into the tree and do a combined build of both at once, which breaks the circular dependency. __所以我们编译的gcc被成为bootstrap, 即编译的是一个能引导整个编译环境的基本功能编译器。
+==============
+编译安装**gcc库**
+make all-gcc
+make install-gcc
+
+make all-target-libgcc        
+make install-target-libgcc
+
+make install-gcc 把编译好的gcc分别安装到$TOOLS/bin/ 和 $TOOLS/$TARGET/bin
+md5sum $TOOLS/bin/powerpc-linux-gcc
+737e148f8fcf46d9c38636f01a1dd887  bin/powerpc-linux-gcc
+md5sum $TOOLS/$TARGET/bin/gcc
+737e148f8fcf46d9c38636f01a1dd887  powerpc-linux/bin/gcc
+
+make install-target-libgcc
+主要把gcc的**库文件及头文件**安装到$TOOLS/lib/$TARGET/$GCC_VERSION/目录中。
+这里$GCC_VERSION表示gcc版本号。（"crtbegin.o crtbeginS.o crtbeginT.o crtend.o crtendS.o 
+crtbegin.o crtend.o crtbeginS.o crtendS.o crtbeginT.o ecrti.o ecrtn.o ncrti.o ncrtn.o）
+
+
+===== Glibc =====
+
+下面用这个新的gcc编译glibc，这个glibc可__运行在目标平台的(由host参数指定)__。
+cd $SOURCES
+tar jvxf glibc-2.9.tar.bz2
+tar jvxf glibc-linuxthreads-2.5.tar.bz2 --directory=glibc-2.9
+
+编译之前，修改glibc-2.9的Makeconfig，否则会__出错__。!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+vim glibc-2.9/Makeconfig
+把下面两行：
+gnulib := -lgcc $(libgcc_eh)  #libgcc_eh是用于处理**C++异常**的代码
+static-gnulib := -lgcc -lgcc_eh $(libunwind)
+
+改成：
+gnulib := -lgcc
+static-gnulib := -lgcc
+
+mkdir glibc-build
+cd glibc-build
+
+__CC=$TOOLS/bin/${TARGET}-gcc__   ../glibc-2.9/configure \     
+    --host=$TARGET  \ #生成的软件的运行平台
+    --build=$(../glibc-2.9/scripts/config.guess)   \ #编译该软件的平台类型
+#当host和build不同时，即为交叉编译: 在build对应的平台上编译可运行于host平台上的软件。
+    __--with-headers=$TOOLS/$TARGET/usr/include/ __ \  __#编译glibc时需要使用kernel的头文件，其中有关于powerpc相关的头文件__
+   __ --with-binutils=$TOOLS/$TARGET/bin\      #注意，一定要是$TARGET下的bin目录，这里面的程序没有target-alias__
+    --disable-profile 
+    libc_cv_forced_unwind=yes  libc_cv_c_cleanup=yes 
+    --prefix=/usr  --includedir=/usr/include    #指定glibc头文件的安装位置，一般和--prefix相对应
+     ~~ --enable-add-ons=linuxthreads~~  --enable-add-ons=nptl  \   #nptl和linuxthreads只能选一个
+   -~~-enable-add-ons ~~  #该参数会启用所有的附件如libidn, nptl（默认）
+#使用/usr/目录的原因如下面的注意后所述。--enable-add-ons: This enabled the add-ons that we install with Glibc: nptl libidn and crypt. 
+#这一步要使用
+make
+make __install_root__=$TOOLS/$TARGET prefix="" install
+#用这种方法(--prefix=/usr, 然后用install_root指定安装位置)编译安装的glibc可以直接拷贝到目标机上运行。
+
+首先，CC=...，binutils=... 指定了用我们**新编译好的gcc和binutils**，因此得到的glibc是目标平台的。（CC在下一步应该unset）
+
+最后，打开$TOOLS/$TARGET/lib/libc.so
+把 GROUP ( /lib/libc.so.6 /lib/libc_nonshared.a ) 改为：   !!!!!!!!!!!!!!!!!!!!!!!!!!!
+GROUP ( libc.so.6 libc_nonshared.a )
+
+~~FixMe:!!!~~
+~~好像向$TOOL/$TARGE/etc/ld.so.conf文件添加如下内容即可，从而不用修改上面的文件：~~
+~~cat > $TOOL/￥TARGET/etc/ld.so.conf << "EOF"~~
+~~# Begin /etc/ld.so.conf~~
+~~/home/geekard/ppc/tool/powerpc/lib~~
+
+~~# End /etc/ld.so.conf~~
+~~EOF~~
+已经试过，不可行。
+
+== ================注意================= ==
+参见：ARM cross-compiling howto
+#Notice that you can't use this compiled glibc on the target machine __because of the specified prefix__. If you want to compile a glibc which you can copy to your target machine, __use an empty prefix (--prefix=)__ instead and use the __install_root parameter__ to specify the installation directory:
+# make install install_root=/path/to/target/root
+
+== ============ ==
+http://www.gnu.org/software/libc/manual/html_node/Configuring-and-compiling.html
+configure takes many options, but the only one that is usually mandatory is ‘--prefix’. This option tells configure where you want glibc installed. This defaults to /usr/local, but the __normal setting to install as the standard system library is ‘--prefix=/usr’ __for GNU/Linux systems and ‘--prefix=’ (an empty prefix) for GNU/Hurd systems. 
+-------------------------------------
+编译glibc时，--prefix参数很重要，它不但控制着编译后glibc的安装位置，而且该参数还会写入到相关生成的文件中(特别是libc.so文件)。
+虽然指定--prefix=/usr但__实际上glibc库会被安装到/lib中__，其__头文件才会被安装到/usr/include目录中，这是硬编码的__。我们可以通过make的install_root来重新定义安装的root位置，但是glibc中相关文件的硬编码(如/还是/，而不是intall_root指定的参数)文件路径（有--prefix指定）还是没变，因此，一方面我们可以直接把install_root中的glibc直接拷贝到目标主机中使用，但另一方面如果我们在当前主机上使用install_root中的glibc时，需要手工修改glibc中的硬编码路径($insatll_root/lib/libc.so中的各个以/lib开头的绝对路径去掉。)
+
+== ================== ==
+Bug 13116 - glibc uses global /var, not prefix/var for install 
+Andi Kleen 2011-08-19 18:47:35 UTC
+
+Does not install to a custom prefix as non root because it tries to access
+/var.
+
+IMHO with a --prefix it **should** use prefix/var ..., not /var
+
+/usr/bin/install -c .../glibc/obj-master/nss/libnss_db.so
+.../glibc/master/lib/libnss_db-2.14.90.so.new
+/usr/bin/install -c -m 644 db-Makefile /var/db/Makefile
+/usr/bin/install: cannot remove `/var/db/Makefile': Permission denied
+mv -f .../glibc/master/lib/libnss_db-2.14.90.so.new
+.../glibc/master/lib/libnss_db-2.14.90.so
+make[2]: *** [/var/db/Makefile] Error 1
+-------------------------------------------------------
+Ulrich Drepper 2011-09-09 02:51:43 UTC
+(In reply to comment #0)
+> Does not install to a custom prefix as non root because it tries to access
+> /var.
+> 
+> IMHO with a --prefix it should use prefix/var ..., not /var
+
+No, __that path is hardcoded__, just like /etc/resolv.conf etc.
+
+If you want to install everything in another place but then use it using the correct layout use__ install_root__ at install time.
+
+== ============ ==
+http://www.gnu.org/software/libc/manual/html_node/Configuring-and-compiling.html
+Please note that even though you're building in a separate build directory, the compilation needs to modify a few files in the source directory, especially some files in the manual subdirectory. 
+
+===== gcc 第二遍（应该重新解压，在新的代码树下编译） =====
+
+现在，库已经准备好了，编译一个全面的gcc
+cd $SOURCES
+mkdir gcc-full-build
+cd gcc-full-build
+../gcc-4.4.2/configure **--target=$TARGET** --host=$(../gcc-4.4.2/config.guess)
+    --prefix=$TOOLS 
+    **--with-headers=$TOOLS/$TARGET/usr/include/   #这是必需的，因为powerpc-linux-gcc 会到--with-headers指定的目录查找头文件。这个选项会将相关目录复制到$TOOLS/$TARGET/sys-include目录下。**
+    --enable-languages=c,c++ --disable-libgomp
+    --disable-multilib  --disable-nls__ --enable-shared__
+
+#这里__没有指定--with-newlib__，所以使用的是$TOOL/$TARGET下的glibc库，以及$TOOL/$TARGET/bin中的__binutils工具__。
+#这里使用的是__系统的gcc__，而不是第一遍生成的powerpc-linux-gcc(因为最终的gcc是运行在本机上的。), 第一遍生成的gcc只用于编译glibc。
+#交叉编译gcc(powerpc-linux-gcc)被安装在$TOOL目录下，所以__不能直接使用$TOOL/$TARGET/bin/gcc__，因为交叉编译gcc所调用的一些辅助程序如cc1是放在$TOOL/libexec目录下的。而$TOOL/$TARGET/bin/gcc
+make all
+make install
+
+现在整个交叉编译环境就建立起来了，可以将__$TOOL/bin目录放到PATH变量__中，这样就可以使用__powerpc-linux-__gcc即目录中的其它工具为目标板编译任何程序了。（不能将$TOOL/$TARGET/bin放到PATH中，同时也不能使用$TOOL/$TARGET/bin中gcc来交叉编译程序，原因见后文解释。）
+
+===== 总结 =====
+
+上面的几个步骤中__只有编译glibc时__是交叉编译过程，需要用到交叉编译器powerpc-linux-gcc和相应的带target alias的binutils。
+__交叉编译是指在本机上本次编译生成的代码运行在目标主机上，这个过程才叫交叉编译过程。上面的编译bintuils和gcc的过程都不是交叉编译过程，因为它们生成的程序是在当前主机上运行。非交叉编译过程使用的都是本机上的gcc和binutils。__
+但是上面编译后获得的binutils和gcc是交叉编译环境中必不可少的组件(当然，还包括glibc)。一旦使用交叉编译环境中的gcc，则它会自动使用相应的binutils和glibc（因为它们都放在交叉编译环境的目录中$TOOL/$TARGET）。
+
+!!!!!FixME::
+下面是在最后一边编译gcc时的输出代码，为何要使用**编译出的ar**？libstdc++.a是由gcc提供？而非glibc提供？
+libtool: link: /home/geekard/ppc/tool3/powerpc-linux/bin/ar rc .libs/__libstdc++.a__  atomic.o bitmap_allocator.o pool_allocator.o mt_allocator.o codecvt.o compatibility.o compatibility-c++0x.o compatibility-debug_list.o compatibility-debug_list-2.o compatibility-list.o compatibility-list-2.o complex_io.o ctype.o debug.o
+
+现在，你就可以在X86平台上运行powerpc-linux-gcc，编译一个C程序，注意得到的目标程序是在 PowerPC平台上执行的。最好建议任何一个感兴趣的新手，最好玩几次LFS。注意千万不要跟着文档，一步步敲入现成的指令，最后看到你的LFS跑起来，就认为大功告成了。第一次你可以这么做，然后，自己再想想这个过程中，没一步是要做什么，然后再总结一下，最后按照自己的总结和理解，重新做两次。 LFS很费时，但是理解之后，你不需要把所有东西都编译出来。重要的时理解它。
+
+参考资料及推荐阅读：
+LFS官方资料：http://www.linuxfromscratch.org/
+LFS中文用户组：http://lfs.linuxsir.org/main/
+
+== ===========================可能出现的错误====================== ==
+
+#第二编编译gcc时出现下面的错误：
+if test -z "$objects"; then                             \
+  echo 'int __libgcc_eh_dummy;' > eh_dummy.c;           \
+  /home/geekard/ppc/source/build-full-gcc/./gcc/xgcc -B/home/geekard/ppc/source/build-full-gcc/./gcc/ -B/home/geekard/ppc/tool/powerpc-linux/bin/ -B/home/geekard/ppc/tool/powerpc-linux/lib/ -isystem /home/geekard/ppc/tool/powerpc-linux/include -isystem /home/geekard/ppc/tool/powerpc-linux/sys-include    -g -O2 -O2  -g -O2 -DIN_GCC -DCROSS_DIRECTORY_STRUCTURE  -W -Wall -Wwrite-strings -Wcast-qual -Wstrict-prototypes -Wmissing-prototypes -Wold-style-definition  -isystem ./include  -fPIC -g -DHAVE_GTHR_DEFAULT -DIN_LIBGCC2 -D__GCC_FLOAT_NOT_NEEDED -fno-stack-protector  -mlong-double-128 -I. -I. -I../.././gcc -I../../../gcc-4.6.2/libgcc -I../../../gcc-4.6.2/libgcc/. -I../../../gcc-4.6.2/libgcc/../gcc -I../../../gcc-4.6.2/libgcc/../include -I../../../gcc-4.6.2/libgcc/../libdecnumber/dpd -I../../../gcc-4.6.2/libgcc/../libdecnumber -DHAVE_CC_TLS  -fvisibility=hidden -DHIDE_EXPORTS -c eh_dummy.c             \
+     -o eh_dummy.o;                             \
+  objects=eh_dummy.o;                           \
+fi;                                                     \
+/home/geekard/ppc/tool/powerpc-linux/bin/ar  rc libgcc.a $objects
+/home/geekard/ppc/tool/powerpc-linux/bin/ld: __skipping incompatible /lib/libc.so.6__ when searching for /lib/libc.so.6
+/home/geekard/ppc/tool/powerpc-linux/bin/ld: cannot find /lib/libc.so.6
+/home/geekard/ppc/tool/powerpc-linux/bin/ld: cannot find /lib/libc_nonshared.a
+/home/geekard/ppc/tool/powerpc-linux/bin/ld: cannot find /lib/ld.so.1
+collect2: ld returned 1 exit status
+make[2]: *** [libgcc_s.so] Error 1
+make[2]: *** Waiting for unfinished jobs....
+/home/geekard/ppc/tool/powerpc-linux/bin/ranlib libgcc.a
+make[2]: Leaving directory `/home/geekard/ppc/source/build-full-gcc/powerpc-linux/libgcc'
+make[1]: *** [all-target-libgcc] Error 2
+make[1]: Leaving directory `/home/geekard/ppc/source/build-full-gcc'
+make: *** [all] Error 2
+[geekard@geekard build-full-gcc]$ 
+
+#出现这个问题是由于在编译glibc时使用的__--prefix参数指定的目录是/usr__(这是glibc默认的安装目录)，power-linux/bin/ld找到了$TOOL/$TARGET/lib下的函数库libc.so但是其中的GROUP参数是 ( /lib/libc.so.6 /lib/libc_nonshared.a  AS_NEEDED ( /lib/ld.so.1 ) ) ，这样ld就会查找host上的/lib/libc.so.6，这是不正确的。
+#解决的方法是，修改上一步编译glibc后生成的$TOOL/$TARGET/lib/libc.so文件将其中的/lib/都去掉。
+
+#交叉编译工具链生成了，如果使用**不带target alias(即powerpc-linux-)的gcc**编译程序可能会出现如下所示的错误：
+geekard@geekard ~]$ cd ppc
+[geekard@geekard ppc]$ source env.sh 
+[geekard@geekard ppc]$ echo $PATH
+/home/geekard/bin:/home/geekard/tmp/make/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:/usr/bin/vendor_perl:/usr/bin/core_perl 
+[geekard@geekard tool1]$ __./bin/powerpc-linux-gcc__ ~/dumy.c -o dumy -static
+[geekard@geekard ppc]$ ./dumy
+bash: ./a.out: cannot execute binary file
+[geekard@geekard ppc]$ file dumy 
+dumy: ELF 32-bit MSB executable, __PowerPC__ or cisco 4500, version 1 (SYSV), __statically linked__, for GNU/Linux 2.0.0, with unknown capability 0x41000000 = 0xf676e75, with unknown capability 0x10000 = 0x70401, not stripped
+[geekard@geekard ppc]$ __qemu-ppc__ dumy    #使用__带target alias版本gcc__编译程序成功
+hello, world!
+[geekard@geekard ppc]$  rm dumy  && ./bin/powerpc-linux-gcc ~/dumy.c -o dumy
+[geekard@geekard ppc]$ file dumy
+dumy: ELF 32-bit MSB executable, __PowerPC__ or cisco 4500, version 1 (SYSV), __dynamically linked__ (uses shared libs), for GNU/Linux 2.0.0, not stripped
+[geekard@geekard ppc]$ qemu-ppc dumy   #qemu不能执行动态链接的powerpc程序
+__/lib/ld.so.1: No such file or directory__
+[geekard@geekard ppc]$ 
+这里的/lib/ld.so.1其实是位于$TOOL/$TARGET/lib 目录下的文件：
+[geekard@geekard ppc]$ ls  powerpc-linux/lib/ld
+ld-2.14.so  ldscripts/  __ld.so.1__  
+[geekard@geekard ppc]$ cat powerpc-linux/lib/__libc.so__
+/* GNU ld script
+   Use the shared library, but some functions are only in
+   the static library, so try that secondarily.  */
+OUTPUT_FORMAT(elf32-powerpc)
+/* GROUP ( /lib/libc.so.6 /lib/libc_nonshared.a  AS_NEEDED ( /lib/ld.so.1 ) ) */  #这是安装glibc后的__原始配置__
+GROUP ( libc.so.6 libc_nonshared.a  AS_NEEDED ( ld.so.1 ) )    #这是__修改后的配置__
+[geekard@geekard ~]$ 
+注意：glibc中的各文件路径都是硬编码的(如上面的libc.so文件内容所示)，用powerpc-linux-gcc以动态链接形式生成的文件默认是和编译的target glibc相链接的。但是由于target glibc的硬编码机制使得生成的可执行文件中的库是以/lib开头而非$TOOL/$TARGET/lib开头。
+
+[geekard@geekard ppc]$ cd tool/powerpc-linux/bin/
+[geekard@geekard bin]$ ls
+ar  c++        g++  gencat   getent  ld      ldd     localedef  nm       objdump        ranlib  sotruss  strip     xtrace
+as  catchsegv  gcc  getconf  iconv   ld.bfd  locale  mtrace     objcopy  pcprofiledump  rpcgen  sprof    tzselect
+[geekard@geekard bin]$ __./gcc ~/dumy.c -o dumy  #使用无target alias的gcc编译__
+gcc: error trying to exec 'cc1': execvp: No such file or directory
+#出现这个错误是因为__交叉编译gcc被安装在$TOOL目录下(而非$TOOL/$TARGET目录)__但同时会自动在$TOOL/$TARGET/bin目录下生成无target alias的gcc, $TOOL目录下含有交叉编译gcc所需要的调用的一些辅助程序，而$TOOL/$TARGET目录下却没有。因此上面的错误是由于在$TOOL/$TARGET目录下找不到cc1程序所致。
+[geekard@geekard ppc]$ ls __libexec/gcc/powerpc-linux/4.6.2/__
+__cc1 __     collect2       liblto_plugin.la  liblto_plugin.so.0      lto1   #cc1被安装在--prefix指定的目录下的子目录libexec中。
+cc1plus  install-tools  liblto_plugin.so  liblto_plugin.so.0.0.0  lto-wrapper
+[geekard@geekard ppc]$ ls powerpc-linux/
+bin/         include/     libexec/     share/       usr/         
+etc/         lib/         sbin/        sys-include/ 
+[geekard@geekard ppc]$ __ls powerpc-linux/libexec/__
+getconf/  pt_chown  #无cc1
+[geekard@geekard tool1]$ 
+#同时还有注意，这里生成的交叉编译器powerpc-linux-gcc(或$TOOL/$TARGET/bin/gcc)以及binutils只能运行在当前主机上，不能直接将其拷贝到target board中运行，但是生成的glibc可以直接拷贝到target board中。
+
+== ==================== ==
+下面是第一次编译gcc过程中的一段输出，从中我们可以看出，交叉编译gcc编译程序时默认使用的选项：
+/home/geekard/ppc/source/build-bootstrap-gcc__/./gcc/xgcc __-B/home/geekard/ppc/source/build-bootstrap-gcc/./gcc/ -B/home/geekard/ppc/tool3/__powerpc-linux/bin/__ -B/home/geekard/ppc/tool3/__powerpc-linux/lib/ __-isystem /home/geekard/ppc/tool3/__powerpc-linux/include __-isystem /home/geekard/ppc/tool3/__powerpc-linux/sys-include__    -g -O2 -O2 -g -O2 -DIN_GCC  -DCROSS_DIRECTORY_STRUCTURE  -W -Wall -Wwrite-strings -Wcast-qual -Wstrict-prototypes -Wmissing-prototypes -Wold-style-definition  -isystem ./include  -I. -I. -I../../gcc-4.6.2/gcc -I../../gcc-4.6.2/gcc/. -I../../gcc-4.6.2/gcc/../include -I../../gcc-4.6.2/gcc/../libcpp/include  -I../../gcc-4.6.2/gcc/../libdecnumber -I../../gcc-4.6.2/gcc/../libdecnumber/dpd -I../libdecnumber    -g0 -finhibit-size-directive -fno-inline -fno-exceptions -fno-zero-initialized-in-bss -fno-toplevel-reorder  -fno-tree-vectorize -fno-stack-protector -Dinhibit_libc -I. -I. -I../.././gcc -I../../../gcc-4.6.2/libgcc
+ -I../../../gcc-4.6.2/libgcc/. -I../../../gcc-4.6.2/libgcc/../gcc -I../../../gcc-4.6.2/libgcc/../include  -o ecrtn.o -MT ecrtn.o -MD -MP -MF ecrtn.dep -c ecrtn.S
+
+== #上面的xgcc其实就是第一次编译后生成的交叉编译gcc的包装程序，。 ==
+
+== ====================================================== ==
+
+make all-target-libgcc 
+
+==============================
+
+Libraries have been installed in:
+   /home/geekard/ppc/tools/powerpc-linux/lib
+
+If you ever happen to want to link against installed libraries
+in a given directory, LIBDIR, you must either use libtool, and
+specify the full pathname of the library, or use the `-LLIBDIR'
+flag during linking and do at least one of the following:
+   - add LIBDIR to the `LD_LIBRARY_PATH' environment variable
+     during execution
+   - add LIBDIR to the `LD_RUN_PATH' environment variable
+     during linking
+   - use the `-Wl,-rpath -Wl,LIBDIR' linker flag
+   - have your system administrator add LIBDIR to `/etc/ld.so.conf'
+
+See any operating system documentation about shared libraries for
+more information, such as the ld(1) and ld.so(8) manual pages.

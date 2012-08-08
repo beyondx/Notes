@@ -1,0 +1,810 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-04T16:27:14+08:00
+
+====== Linux C Socket Quick Reference ======
+Created 星期六 04 六月 2011
+http://cloudhe.iteye.com/blog/147467
+1. accept（接受socket连线） 
+相关函数  socket，bind，listen，connect
+
+表头文件  #include<sys/types.h>
+#include<sys/socket.h>
+
+定义函数  int accept(int s,struct sockaddr * addr,int * addrlen);
+
+函数说明  accept ()用来接受参数s的socket连线。参数s的socket必需先经bind()、listen()函数处理过，当有连线进来时accept()会返回 一个新的socket处理代码，往后的数据传送与读取就是经由新的socket处理，而原来参数s的socket能继续使用accept()来接受新的连 线要求。连线成功时，参数addr所指的结构会被系统填入远程主机的地址数据，参数addrlen为scokaddr的结构长度。关于结构 sockaddr的定义请参考bind()。
+
+返回值  成功则返回新的socket处理代码，失败返回-1，错误原因存于errno中。
+
+错误代码 
+
+    EBADF 参数s 非合法socket处理代码[*]EFAULT 参数addr指针指向无法存取的内存空间[*]ENOTSOCK 参数s为一文件描述词，非socket[*]EOPNOTSUPP 指定的socket并非SOCK_STREAM[*]EPERM 防火墙拒绝此连线[*]ENOBUFS 系统的缓冲内存不足[*]ENOMEM 核心内存不足
+
+
+范例  参考listen()。
+
+
+
+
+
+2. bind（对socket定位） 
+相关函数  socket，accept，connect，listen
+
+表头文件  #include<sys/types.h>
+#include<sys/socket.h>
+
+定义函数  int bind(int sockfd,struct sockaddr * my_addr,int addrlen);
+
+函数说明  bind()用来设置给参数sockfd的socket一个名称。此名称由参数my_addr指向一sockaddr结构，对于不同的socket domain定义了一个通用的数据结构
+Cpp代码  收藏代码
+
+    struct sockaddr  
+    {  
+        unsigned short int sa_family;  
+        char sa_data[14];  
+    };  
+
+
+sa_family 为调用socket（）时的domain参数，即AF_xxxx值。
+sa_data 最多使用14个字符长度。
+此sockaddr结构会因使用不同的socket domain而有不同结构定义，例如使用AF_INET domain，其socketaddr结构定义便为
+Cpp代码  收藏代码
+
+    struct socketaddr_in  
+    {  
+        unsigned short int sin_family;  
+        uint16_t sin_port;  
+        struct in_addr sin_addr;  
+        unsigned char sin_zero[8];  
+    };  
+    struct in_addr  
+    {  
+        uint32_t s_addr;  
+    };  
+
+
+sin_family 即为sa_family
+sin_port 为使用的port编号
+sin_addr.s_addr 为IP 地址
+sin_zero 未使用。
+
+参数  addrlen为sockaddr的结构长度。
+
+返回值  成功则返回0，失败返回-1，错误原因存于errno中。
+
+错误代码 
+
+    EBADF 参数sockfd 非合法socket处理代码[*]EACCESS 权限不足[*]ENOTSOCK 参数sockfd为一文件描述词，非socket
+
+
+范例  参考listen()
+
+
+
+
+
+3. connect（建立socket连线） 
+相关函数  socket，bind，listen
+
+表头文件  #include<sys/types.h>
+#include<sys/socket.h>
+
+定义函数  int connect (int sockfd,struct sockaddr * serv_addr,int addrlen);
+
+函数说明  connect()用来将参数sockfd 的socket 连至参数serv_addr 指定的网络地址。结构sockaddr请参考bind()。参数addrlen为sockaddr的结构长度。
+
+返回值  成功则返回0，失败返回-1，错误原因存于errno中。
+
+错误代码 
+
+    EBADF 参数sockfd 非合法socket处理代码[*]EFAULT 参数serv_addr指针指向无法存取的内存空间[*]ENOTSOCK 参数sockfd为一文件描述词，非socket[*]EISCONN 参数sockfd的socket已是连线状态[*]ECONNREFUSED 连线要求被server端拒绝[*]ETIMEDOUT 企图连线的操作超过限定时间仍未有响应[*]ENETUNREACH 无法传送数据包至指定的主机[*]EAFNOSUPPORT sockaddr结构的sa_family不正确[*]EALREADY socket为不可阻断且先前的连线操作还未完成
+
+
+范例 
+Cpp代码  收藏代码
+
+    /* 利用socket的TCP client 
+    此程序会连线TCP server，并将键盘输入的字符串传送给server。 
+    TCP server范例请参考listen()。 
+    */  
+    #include<sys/stat.h>  
+    #include<fcntl.h>  
+    #include<unistd.h>  
+    #include<sys/types.h>  
+    #include<sys/socket.h>  
+    #include<netinet/in.h>  
+    #include<arpa/inet.h>  
+    #define PORT 1234  
+    #define SERVER_IP “127.0.0.1”  
+      
+    main()  
+    {  
+        int s;  
+        struct sockaddr_in addr;  
+        char buffer[256];  
+        if((s = socket(AF_INET,SOCK_STREAM,0))<0){  
+            perror(“socket”);  
+            exit(1);  
+        }  
+        /* 填写sockaddr_in结构*/  
+        bzero(&addr,sizeof(addr));  
+        addr.sin_family = AF_INET;  
+        addr.sin_port=htons(PORT);  
+        addr.sin_addr.s_addr = inet_addr(SERVER_IP);  
+        /* 尝试连线*/  
+        if(connect(s,&addr,sizeof(addr))<0){  
+            perror(“connect”);  
+            exit(1);  
+        }  
+        /* 接收由server端传来的信息*/  
+        recv(s,buffer,sizeof(buffer),0);  
+        printf(“%s\n”,buffer);  
+        while(1){  
+            bzero(buffer,sizeof(buffer));  
+            /* 从标准输入设备取得字符串*/  
+            read(STDIN_FILENO,buffer,sizeof(buffer));  
+            /* 将字符串传给server端*/  
+            if(send(s,buffer,sizeof(buffer),0)<0){  
+                perror(“send”);  
+                exit(1);  
+            }  
+        }  
+    }  
+
+
+执行  $ ./connect
+Welcome to server!
+hi I am client! /*键盘输入*/
+/*<Ctrl+C>中断程序*/
+
+
+
+
+
+4. endprotoent（结束网络协议数据的读取） 
+相关函数  getprotoent，getprotobyname，getprotobynumber，setprotoent
+
+表头文件  #include<netdb.h>
+
+定义函数  void endprotoent(void);
+
+函数说明  endprotoent()用来关闭由getprotoent()打开的文件。
+
+返回值 
+
+范例  参考getprotoent()
+
+
+
+
+
+5. endservent（结束网络服务数据的读取）
+相关函数  getservent，getservbyname，getservbyport，setservent
+
+表头文件  #include<netdb.h>
+
+定义函数  void endservent(void);
+
+函数说明  endservent()用来关闭由getservent()所打开的文件。
+
+返回值 
+
+范例  参考getservent()。
+
+
+
+
+
+6. getsockopt（取得socket状态）
+相关函数  setsockopt
+
+表头文件  #include<sys/types.h>
+#include<sys/socket.h>
+
+定义函数  int getsockopt(int s,int level,int optname,void* optval,socklen_t* optlen);
+
+函数说明  getsockopt()会将参数s所指定的socket状态返回。参数optname代表欲取得何种选项状态，而参数optval则指向欲保存结果的内存地址，参数optlen则为该空间的大小。参数level、optname请参考setsockopt()。
+
+返回值  成功则返回0，若有错误则返回-1，错误原因存于errno
+
+错误代码 
+
+    EBADF 参数s 并非合法的socket处理代码[*]ENOTSOCK 参数s为一文件描述词，非socket[*]ENOPROTOOPT 参数optname指定的选项不正确[*]EFAULT 参数optval指针指向无法存取的内存空间
+
+
+范例 
+Cpp代码  收藏代码
+
+    #include<sys/types.h>  
+    #include<sys/socket.h>  
+    main()  
+    {  
+        int s,optval,optlen = sizeof(int);  
+        if((s = socket(AF_INET,SOCK_STREAM,0))<0)   
+            perror(“socket”);  
+        getsockopt(s,SOL_SOCKET,SO_TYPE,&optval,&optlen);  
+        printf(“optval = %d\n”,optval);  
+        close(s);  
+    }  
+
+
+执行  optval = 1 /*SOCK_STREAM的定义正是此值*/
+
+
+
+
+
+7. htonl（将32位主机字符顺序转换成网络字符顺序） 
+相关函数  htons，ntohl，ntohs
+
+表头文件  #include<netinet/in.h>
+
+定义函数  unsigned long int htonl(unsigned long int hostlong);
+
+函数说明  htonl（）用来将参数指定的32位hostlong 转换成网络字符顺序。
+
+返回值  返回对应的网络字符顺序。
+
+范例  参考getservbyport()或connect()。
+
+
+
+
+
+8. htons（将16位主机字符顺序转换成网络字符顺序）
+相关函数  htonl，ntohl，ntohs
+
+表头文件  #include<netinet/in.h>
+
+定义函数  unsigned short int htons(unsigned short int hostshort);
+
+函数说明  htons()用来将参数指定的16位hostshort转换成网络字符顺序。
+
+返回值  返回对应的网络字符顺序。
+
+范例  参考connect()。
+
+
+
+
+
+9. inet_addr（将网络地址转成二进制的数字）
+相关函数  inet_aton，inet_ntoa
+
+表头文件  #include<sys/socket.h>
+#include<netinet/in.h>
+#include<arpa/inet.h>
+
+定义函数  unsigned long int inet_addr(const char *cp);
+
+函数说明  inet_addr()用来将参数cp所指的网络地址字符串转换成网络所使用的二进制数字。网络地址字符串是以数字和点组成的字符串，例如:“163.13.132.68”。
+
+返回值  成功则返回对应的网络二进制的数字，失败返回-1。
+
+
+
+
+
+10. inet_aton（将网络地址转成网络二进制的数字） 
+相关函数  inet_addr，inet_ntoa
+
+表头文件  #include<sys/scoket.h>
+#include<netinet/in.h>
+#include<arpa/inet.h>
+
+定义函数  int inet_aton(const char * cp,struct in_addr *inp);
+
+函数说明  inet_aton()用来将参数cp所指的网络地址字符串转换成网络使用的二进制的数字，然后存于参数inp所指的in_addr结构中。
+结构in_addr定义如下
+Cpp代码  收藏代码
+
+    struct in_addr  
+    {  
+        unsigned long int s_addr;  
+    };  
+
+
+
+返回值  成功则返回非0值，失败则返回0。
+
+
+
+
+
+11. inet_ntoa（将网络二进制的数字转换成网络地址） 
+相关函数  inet_addr，inet_aton
+
+表头文件  #include<sys/socket.h>
+#include<netinet/in.h>
+#include<arpa/inet.h>
+
+定义函数  char * inet_ntoa(struct in_addr in);
+
+函数说明  inet_ntoa()用来将参数in所指的网络二进制的数字转换成网络地址，然后将指向此网络地址字符串的指针返回。
+
+返回值  成功则返回字符串指针，失败则返回NULL。
+
+
+
+
+
+12. listen（等待连接） 
+相关函数  socket，bind，accept，connect
+
+表头文件  #include<sys/socket.h>
+
+定义函数  int listen(int s,int backlog);
+
+函数说明  listen ()用来等待参数s 的socket连线。参数backlog指定同时能处理的最大连接要求，如果连接数目达此上限则client端将收到ECONNREFUSED的错误。 Listen()并未开始接收连线，只是设置socket为listen模式，真正接收client端连线的是accept()。通常listen()会 在socket()，bind()之后调用，接着才调用accept()。
+
+返回值  成功则返回0，失败返回-1，错误原因存于errno
+
+附加说明  listen()只适用SOCK_STREAM或SOCK_SEQPACKET的socket类型。如果socket为AF_INET则参数backlog 最大值可设至128。
+
+错误代码 
+
+    EBADF 参数sockfd非合法socket处理代码[*]EACCESS 权限不足[*]EOPNOTSUPP 指定的socket并未支援listen模式
+
+
+范例 
+Cpp代码  收藏代码
+
+    #include<sys/types.h>  
+    #include<sys/socket.h>  
+    #include<netinet/in.h>  
+    #include<arpa/inet.h>  
+    #include<unistd.h>  
+    #define PORT 1234  
+    #define MAXSOCKFD 10  
+    main()  
+    {  
+        int sockfd,newsockfd,is_connected[MAXSOCKFD],fd;  
+        struct sockaddr_in addr;  
+        int addr_len = sizeof(struct sockaddr_in);  
+        fd_set readfds;  
+        char buffer[256];  
+        char msg[ ] =”Welcome to server!”;  
+        if ((sockfd = socket(AF_INET,SOCK_STREAM,0))<0){  
+            perror(“socket”);  
+            exit(1);  
+        }  
+        bzero(&addr,sizeof(addr));  
+        addr.sin_family =AF_INET;  
+        addr.sin_port = htons(PORT);  
+        addr.sin_addr.s_addr = htonl(INADDR_ANY);  
+        if(bind(sockfd,&addr,sizeof(addr))<0){  
+            perror(“connect”);  
+            exit(1);  
+        }  
+        if(listen(sockfd,3)<0){  
+            perror(“listen”);  
+            exit(1);  
+        }  
+        for(fd=0;fd<MAXSOCKFD;fd++)  
+            is_connected[fd]=0;  
+        while(1){  
+            FD_ZERO(&readfds);  
+            FD_SET(sockfd,&readfds);  
+            for(fd=0;fd<MAXSOCKFD;fd++)  
+                if(is_connected[fd])   
+                    FD_SET(fd,&readfds);  
+            if(!select(MAXSOCKFD,&readfds,NULL,NULL,NULL))  
+                continue;  
+            for(fd=0;fd<MAXSOCKFD;fd++)  
+                if(FD_ISSET(fd,&readfds)){  
+                    if(sockfd = =fd){  
+                        if((newsockfd = accept (sockfd,&addr,&addr_len))<0)  
+                            perror(“accept”);  
+                        write(newsockfd,msg,sizeof(msg));  
+                        is_connected[newsockfd] =1;  
+                        printf(“cnnect from %s\n”,inet_ntoa(addr.sin_addr));  
+                    }else{  
+                        bzero(buffer,sizeof(buffer));  
+                        if(read(fd,buffer,sizeof(buffer))<=0){  
+                        printf(“connect closed.\n”);  
+                        is_connected[fd]=0;  
+                        close(fd);  
+                    }else  
+                        printf(“%s”,buffer);  
+                }  
+            }  
+        }  
+    }  
+
+
+执行  $ ./listen
+connect from 127.0.0.1
+hi I am client
+connected closed.
+
+
+
+
+
+13. ntohl（将32位网络字符顺序转换成主机字符顺序） 
+相关函数  htonl，htons，ntohs
+
+表头文件  #include<netinet/in.h>
+
+定义函数  unsigned long int ntohl(unsigned long int netlong);
+
+函数说明  ntohl()用来将参数指定的32位netlong转换成主机字符顺序。
+
+返回值  返回对应的主机字符顺序。
+
+范例  参考getservent()。
+
+
+
+
+
+14. ntohs（将16位网络字符顺序转换成主机字符顺序） 
+相关函数  htonl，htons，ntohl
+
+表头文件  #include<netinet/in.h>
+
+定义函数  unsigned short int ntohs(unsigned short int netshort);
+
+函数说明  ntohs()用来将参数指定的16位netshort转换成主机字符顺序。
+
+返回值  返回对应的主机顺序。
+
+范例  参考getservent()。
+
+
+
+
+
+15. recv（经socket接收数据）
+相关函数  recvfrom，recvmsg，send，sendto，socket
+
+表头文件  #include<sys/types.h>
+#include<sys/socket.h>
+
+定义函数  int recv(int s,void *buf,int len,unsigned int flags);
+
+函数说明  recv()用来接收远端主机经指定的socket传来的数据，并把数据存到由参数buf 指向的内存空间，参数len为可接收数据的最大长度。
+
+参数  flags一般设0。其他数值定义如下:
+
+    MSG_OOB 接收以out-of-band 送出的数据[*]MSG_PEEK 返回来的数据并不会在系统内删除，如果再调用recv()会返回相同的数据内容[*]MSG_WAITALL强迫接收到len大小的数据后才能返回，除非有错误或信号产生[*]MSG_NOSIGNAL此操作不愿被SIGPIPE信号中断返回值成功则返回接收到的字符数，失败返回-1，错误原因存于errno中
+
+
+错误代码 
+
+    EBADF 参数s非合法的socket处理代码[*]EFAULT 参数中有一指针指向无法存取的内存空间[*]ENOTSOCK 参数s为一文件描述词，非socket[*]EINTR 被信号所中断[*]EAGAIN 此动作会令进程阻断，但参数s的socket为不可阻断[*]ENOBUFS 系统的缓冲内存不足[*]ENOMEM 核心内存不足[*]EINVAL 传给系统调用的参数不正确
+
+
+范例  参考listen()。
+
+
+
+
+
+16. recvfrom（经socket接收数据） 
+相关函数  recv，recvmsg，send，sendto，socket
+
+表头文件  #include<sys/types.h>
+#include<sys/socket.h>
+
+定义函数  int recvfrom(int s,void *buf,int len,unsigned int flags ,struct sockaddr *from ,int *fromlen);
+
+函数说明  recv ()用来接收远程主机经指定的socket 传来的数据，并把数据存到由参数buf 指向的内存空间，参数len 为可接收数据的最大长度。参数flags 一般设0，其他数值定义请参考recv()。参数from用来指定欲传送的网络地址，结构sockaddr 请参考bind()。参数fromlen为sockaddr的结构长度。
+
+返回值  成功则返回接收到的字符数，失败则返回-1，错误原因存于errno中。
+
+错误代码 
+
+    EBADF 参数s非合法的socket处理代码[*]EFAULT 参数中有一指针指向无法存取的内存空间[*]ENOTSOCK 参数s为一文件描述词，非socket[*]EINTR 被信号所中断[*]EAGAIN 此动作会令进程阻断，但参数s的socket为不可阻断[*]ENOBUFS 系统的缓冲内存不足[*]ENOMEM 核心内存不足[*]EINVAL 传给系统调用的参数不正确
+
+
+范例 
+Cpp代码  收藏代码
+
+    /*利用socket的UDP client 
+    此程序会连线UDP server，并将键盘输入的字符串传给server。 
+    UDP server 范例请参考sendto() 
+    */  
+    #include<sys/stat.h>  
+    #include<fcntl.h>  
+    #include<unistd.h>  
+    #include<sys/typs.h>  
+    #include<sys/socket.h>  
+    #include<netinet/in.h>  
+    #include<arpa/inet.h>  
+    #define PORT 2345  
+    #define SERVER_IP “127.0.0.1”  
+    main()  
+    {  
+        int s,len;  
+        struct sockaddr_in addr;  
+        int addr_len =sizeof(struct sockaddr_in);  
+        char buffer[256];  
+        /* 建立socket*/  
+        if((s = socket(AF_INET,SOCK_DGRAM,0))<0){  
+            perror(“socket”);  
+            exit(1);  
+        }  
+        /* 填写sockaddr_in*/  
+        bzero(&addr,sizeof(addr));  
+        addr.sin_family = AF_INET;  
+        addr.sin_port = htons(PORT);  
+        addr.sin_addr.s_addr = inet_addr(SERVER_IP);  
+        while(1){  
+            bzero(buffer,sizeof(buffer));  
+            /* 从标准输入设备取得字符串*/  
+            len =read(STDIN_FILENO,buffer,sizeof(buffer));  
+            /* 将字符串传送给server端*/  
+            sendto(s,buffer,len,0,&addr,addr_len);  
+            /* 接收server端返回的字符串*/  
+            len = recvfrom(s,buffer,sizeof(buffer),0,&addr,&addr_len);  
+            printf(“receive: %s”,buffer);  
+        }  
+    }  
+
+
+执行  (先执行udp server 再执行udp client)
+hello /*从键盘输入字符串*/
+receive: hello /*server端返回来的字符串*/
+
+
+
+
+
+17. recvmsg（经socket接收数据） 
+相关函数  recv，recvfrom，send，sendto，sendmsg，socket
+
+表头文件  #include<sys/types.h>
+#include<sys/socktet.h>
+
+定义函数  int recvmsg(int s,struct msghdr *msg,unsigned int flags);
+
+函数说明  recvmsg ()用来接收远程主机经指定的socket传来的数据。参数s为已建立好连线的socket，如果利用UDP协议则不需经过连线操作。参数msg指向欲连 线的数据结构内容，参数flags一般设0，详细描述请参考send()。关于结构msghdr的定义请参考sendmsg()。
+
+返回值  成功则返回接收到的字符数，失败则返回-1，错误原因存于errno中。
+
+错误代码 
+
+    EBADF 参数s非合法的socket处理代码[*]EFAULT 参数中有一指针指向无法存取的内存空间[*]ENOTSOCK 参数s为一文件描述词，非socket[*]EINTR 被信号所中断[*]EAGAIN 此操作会令进程阻断，但参数s的socket为不可阻断[*]ENOBUFS 系统的缓冲内存不足[*]ENOMEM 核心内存不足[*]EINVAL 传给系统调用的参数不正确
+
+
+范例  参考recvfrom()。
+
+
+
+
+
+18. send（经socket传送数据） 
+相关函数  sendto，sendmsg，recv，recvfrom，socket
+
+表头文件  #include<sys/types.h>
+#include<sys/socket.h>
+
+定义函数  int send(int s,const void * msg,int len,unsigned int falgs);
+
+函数说明  send()用来将数据由指定的socket 传给对方主机。参数s为已建立好连接的socket。参数msg指向欲连线的数据内容，参数len则为数据长度。参数flags一般设0，其他数值定义如下
+MSG_OOB 传送的数据以out-of-band 送出。
+MSG_DONTROUTE 取消路由表查询
+MSG_DONTWAIT 设置为不可阻断运作
+MSG_NOSIGNAL 此动作不愿被SIGPIPE 信号中断。
+
+返回值  成功则返回实际传送出去的字符数，失败返回-1。错误原因存于errno
+
+错误代码 
+
+    EBADF 参数s 非合法的socket处理代码[*]EFAULT 参数中有一指针指向无法存取的内存空间[*]ENOTSOCK 参数s为一文件描述词，非socket[*]EINTR 被信号所中断[*]EAGAIN 此操作会令进程阻断，但参数s的socket为不可阻断[*]ENOBUFS 系统的缓冲内存不足[*]ENOMEM 核心内存不足[*]EINVAL 传给系统调用的参数不正确
+
+
+范例  参考connect()
+
+
+
+
+
+19. sendmsg（经socket传送数据） 
+相关函数  send，sendto，recv，recvfrom，recvmsg，socket
+
+表头文件  #include<sys/types.h>
+#include<sys/socket.h>
+
+定义函数  int sendmsg(int s,const strcut msghdr *msg,unsigned int flags);
+
+函数说明  sendmsg()用来将数据由指定的socket传给对方主机。参数s为已建立好连线的socket，如果利用UDP协议则不需经过连线操作。参数msg 指向欲连线的数据结构内容，参数flags一般默认为0，详细描述请参考send()。
+结构msghdr定义如下
+Cpp代码  收藏代码
+
+    struct msghdr  
+    {  
+        void *msg_name; /*Address to send to /receive from . */  
+        socklen_t msg_namelen; /* Length of addres data */  
+        strcut iovec * msg_iov; /* Vector of data to send/receive into */  
+        size_t msg_iovlen; /* Number of elements in the vector */  
+        void * msg_control; /* Ancillary dat */  
+        size_t msg_controllen; /* Ancillary data buffer length */  
+        int msg_flags; /* Flags on received message */  
+    };  
+
+
+
+返回值  成功则返回实际传送出去的字符数，失败返回-1，错误原因存于errno
+
+错误代码 
+
+    EBADF 参数s 非合法的socket处理代码[*]EFAULT 参数中有一指针指向无法存取的内存空间[*]ENOTSOCK 参数s为一文件描述词，非socket[*]EINTR 被信号所中断[*]EAGAIN 此操作会令进程阻断，但参数s的socket为不可阻断[*]ENOBUFS 系统的缓冲内存不足[*]ENOMEM 核心内存不足[*]EINVAL 传给系统调用的参数不正确
+
+
+范例  参考sendto()。
+
+
+
+
+
+20. sendto（经socket传送数据） 
+相关函数  send , sendmsg,recv , recvfrom , socket
+
+表头文件  #include < sys/types.h >
+#include < sys/socket.h >
+
+定义函数  int sendto ( int s , const void * msg, int len, unsigned int flags, const
+struct sockaddr * to , int tolen ) ;
+
+函数说明  sendto() 用来将数据由指定的socket传给对方主机。参数s为已建好连线的socket,如果利用UDP协议则不需经过连线操作。参数msg指向欲连线的数据内 容，参数flags 一般设0，详细描述请参考send()。参数to用来指定欲传送的网络地址，结构sockaddr请参考bind()。参数tolen为sockaddr 的结果长度。
+
+返回值  成功则返回实际传送出去的字符数，失败返回－1，错误原因存于errno 中。
+
+错误代码 
+
+    EBADF 参数s非法的socket处理代码[*]EFAULT 参数中有一指针指向无法存取的内存空间[*]WNOTSOCK canshu s为一文件描述词，非socket[*]EINTR 被信号所中断[*]EAGAIN 此动作会令进程阻断，但参数s的soket为补课阻断的[*]ENOBUFS 系统的缓冲内存不足[*]EINVAL 传给系统调用的参数不正确
+
+
+范例 
+Cpp代码  收藏代码
+
+    #include < sys/types.h >  
+    #include < sys/socket.h >  
+    #include <netinet.in.h>  
+    #include <arpa.inet.h>  
+    #define PORT 2345 /*使用的port*/  
+    main()  
+    {  
+        int sockfd,len;  
+        struct sockaddr_in addr;  
+        char buffer[256];  
+        /*建立socket*/  
+        if(sockfd=socket (AF_INET,SOCK_DGRAM,0))<0){  
+            perror (“socket”);  
+            exit(1);  
+        }  
+        /*填写sockaddr_in 结构*/  
+        bzero(&addr, sizeof(addr) );  
+        addr.sin_family=AF_INET;  
+        addr.sin_port=htons(PORT);  
+        addr.sin_addr=hton1(INADDR_ANY) ;  
+        if (bind(sockfd, &addr, sizeof(addr))<0){  
+            perror(“connect”);  
+            exit(1);  
+        }  
+        while(1){  
+            bezro(buffer,sizeof(buffer));  
+            len = recvfrom(socket,buffer,sizeof(buffer), 0 , &addr &addr_len);  
+            /*显示client端的网络地址*/  
+            printf(“receive from %s\n “ , inet_ntoa( addr.sin_addr));  
+            /*将字串返回给client端*/  
+            sendto(sockfd,buffer,len,0,&addr,addr_len);”  
+        }  
+    }  
+
+
+执行  请参考recvfrom()
+
+
+
+
+
+21. setprotoent（打开网络协议的数据文件） 
+相关函数  getprotobyname, getprotobynumber, endprotoent
+
+表头文件  #include <netdb.h>
+
+定义函数  void setprotoent (int stayopen);
+
+函数说明  setprotoent()用来打开/etc/protocols， 如果参数stayopen值为1，则接下来的getprotobyname()或getprotobynumber()将不会自动关闭此文件。
+
+
+
+
+
+22. setservent（打开主机网络服务的数据文件） 
+相关函数  getservent, getservbyname, getservbyport, endservent
+
+表头文件  #include < netdb.h >
+
+定义函数  void setservent (int stayopen);
+
+函数说明  setservent()用来打开/etc/services，如果参数stayopen值为1，则接下来的getservbyname()或getservbyport()将补回自动关闭文件。
+
+
+
+
+
+23. setsockopt（设置socket状态） 
+相关函数  getsockopt
+
+表头文件  #include<sys/types.h>
+#include<sys/socket.h>
+
+定义函数  int setsockopt(int s,int level,int optname,const void * optval,,socklen_toptlen);
+
+函数说明  setsockopt()用来设置参数s所指定的socket状态。参数level代表欲设置的网络层，一般设成SOL_SOCKET以存取socket层。参数optname代表欲设置的选项，有下列几种数值:
+
+    SO_DEBUG 打开或关闭排错模式[*]SO_REUSEADDR 允许在bind（）过程中本地地址可重复使用[*]SO_TYPE 返回socket形态[*]SO_ERROR 返回socket已发生的错误原因[*]SO_DONTROUTE 送出的数据包不要利用路由设备来传输[*]SO_BROADCAST 使用广播方式传送[*]SO_SNDBUF 设置送出的暂存区大小[*]SO_RCVBUF 设置接收的暂存区大小[*]SO_KEEPALIVE 定期确定连线是否已终止[*]SO_OOBINLINE 当接收到OOB 数据时会马上送至标准输入设备[*]SO_LINGER 确保数据安全且可靠的传送出去
+
+
+参数  optval代表欲设置的值，参数optlen则为optval的长度。
+
+返回值  成功则返回0，若有错误则返回-1，错误原因存于errno。
+
+附加说明  EBADF 参数s并非合法的socket处理代码
+ENOTSOCK 参数s为一文件描述词，非socket
+ENOPROTOOPT 参数optname指定的选项不正确。
+EFAULT 参数optval指针指向无法存取的内存空间。
+
+范例  参考getsockopt()。
+
+
+
+
+
+24. shutdown（终止socket通信） 
+相关函数  socket，connect
+
+表头文件  #include<sys/socket.h>
+
+定义函数  int shutdown(int s,int how);
+
+函数说明  shutdown()用来终止参数s所指定的socket连线。参数s是连线中的socket处理代码，参数how有下列几种情况:
+how=0 终止读取操作。
+how=1 终止传送操作
+how=2 终止读取及传送操作
+
+返回值  成功则返回0，失败返回-1，错误原因存于errno。
+
+错误代码 
+
+    EBADF 参数s不是有效的socket处理代码[*]ENOTSOCK 参数s为一文件描述词，非socket[*]ENOTCONN 参数s指定的socket并未连线
+
+
+
+
+
+
+25. socket（建立一个socket通信） 
+相关函数  accept，bind，connect，listen
+
+表头文件  #include<sys/types.h>
+#include<sys/socket.h>
+
+定义函数  int socket(int domain,int type,int protocol);
+
+函数说明  socket()用来建立一个新的socket，也就是向系统注册，通知系统建立一通信端口。参数domain 指定使用何种的地址类型，完整的定义在/usr/include/bits/socket.h 内，底下是常见的协议:
+
+    PF_UNIX/PF_LOCAL/AF_UNIX/AF_LOCAL UNIX 进程通信协议[*]PF_INET?AF_INET Ipv4网络协议[*]PF_INET6/AF_INET6 Ipv6 网络协议[*]PF_IPX/AF_IPX IPX-Novell协议[*]PF_NETLINK/AF_NETLINK 核心用户接口装置[*]PF_X25/AF_X25 ITU-T X.25/ISO-8208 协议[*]PF_AX25/AF_AX25 业余无线AX.25协议[*]PF_ATMPVC/AF_ATMPVC 存取原始ATM PVCs[*]PF_APPLETALK/AF_APPLETALK appletalk(DDP)协议[*]PF_PACKET/AF_PACKET 初级封包接口
+
+
+参数  type有下列几种数值:
+
+    SOCK_STREAM 提供双向连续且可信赖的数据流，即TCP。支持
+    OOB 机制，在所有数据传送前必须使用connect()来建立连线状态。
+    SOCK_DGRAM 使用不连续不可信赖的数据包连接[*]SOCK_SEQPACKET 提供连续可信赖的数据包连接[*]SOCK_RAW 提供原始网络协议存取[*]SOCK_RDM 提供可信赖的数据包连接[*]SOCK_PACKET 提供和网络驱动程序直接通信。
+
+protocol用来指定socket所使用的传输协议编号，通常此参考不用管它，设为0即可。
+
+返回值  成功则返回socket处理代码，失败返回-1。
+
+错误代码 
+
+    EPROTONOSUPPORT 参数domain指定的类型不支持参数type或protocol指定的协议[*]ENFILE 核心内存不足，无法建立新的socket结构[*]EMFILE 进程文件表溢出，无法再建立新的socket[*]EACCESS 权限不足，无法建立type或protocol指定的协议[*]ENOBUFS/ENOMEM 内存不足[*]EINVAL 参数domain/type/protocol不合法
+
+
+范例  参考connect()。

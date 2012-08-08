@@ -1,0 +1,197 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-06T17:20:04+08:00
+
+====== C++学习笔记之对文件的操作1 ======
+Created Saturday 06 August 2011
+http://www.cnblogs.com/uniqueliu/archive/2011/08/03/2126545.html
+===========================前言===========================
+
+       我们在编写程序的时候，最密不可分的就是对文件进行相应的操作，我们可以从文件中读取数据，可以将数据保存到文件，可以……
+
+       总而言之，言而总之，一言以蔽之，对文件的操作是非常重要的，下面我们就来介绍一下C++中是如何对文件进行操作的。
+
+===========================功能展示===========================
+
+===== 文件的输出操作 =====
+
+想要程序中的数据输出到文件中，一共需要以下5个步骤：
+
+① 包含fstream头文件：#include <fstream>
+② 建立ofstream对象：ofstream ocout;
+③ 将对象与文件关联：ocout.open(“test.txt”);
+④ 使用该对象将数据输出到文件test中：ocout<<”Hello,C++!”;
+⑤ 关闭与文件的连接：ocout.close();
+
+      p.s. 在这里我们应用ofstream的对象ocout将数据直接输出到了文件中，而不是屏幕上!
+
+完整程序示例：
+01	#include <fstream>
+02	using namespace std;
+03	 
+04	int main()
+05	{
+06	    ofstream ocout;
+07	    ocout.open("test.txt");
+08	    ocout<<"Hello,C++!";
+09	    ocout.close();
+10	    return 0;
+11	}
+
+      运行程序后，我们就会在程序的目录下发现一个test.txt文件，打开之后会显示“Hello，C++！”。如下图所示
+{{./1.png}}
+      特别注意的是，我们也可以把上面程序的第6和第7行合并为一句话：
+ofstream ocout("test.txt");
+
+      这句话的意思就是__调用ofstream类中的构造函数来创建这个文本文件。__另外，我们需要特别注意一点，在完成对整个文件的操作之后，一定要用close()函数将这个文件关闭了，否则在程序结束后，所操作的文件将什么都不会保存下来！！！
+
+===== 读取文件中的数据 =====
+
+       打开文件读取数据的方法和输出数据到文集中的方法基本上是一样的，同样也需要5个步骤：
+
+① 包含fstream头文件：#include <fstream>
+② 建立ifstream对象：ifstream icin;
+③ 将对象与文件关联：icin.open(“test.txt”);
+④ 使用该对象读取文件test中的数据到数组temp中：icin>>temp;
+⑤ 关闭与文件的连接：icin.close();
+
+       p.s同上面一样，我们也可以将第2步和第3步合并成一句话：
+ifstream icin("test.txt");
+
+      它的作用就是调用ifstream类中的构造函数来读取这个本地的文本文件。
+
+完整的程序示例:
+01	#include <fstream>
+02	#include <iostream>
+03	using namespace std;
+04	 
+05	int main()
+06	{
+07	    ifstream icin;
+08	    icin.open("test.txt");
+09	    char temp[100];//定义一个字符数组temp
+10	    icin>>temp;//将文件中的数据读到字符数组temp中
+11	    cout<<temp<<endl;//将temp中存放的内容输出到屏幕上
+12	    return 0;
+13	}
+
+      运行之前，我们需要在该文件夹下建立test.txt文件，其中的内容就是上面的“Hello,C++!”。那么输出如下：
+{{./2.png}}
+      可以看到，程序在命令行中显示出来了test.txt文本文件中的内容。
+
+===== 如何读取空格和空格后面的字符 　 =====
+
+      我们在写文件的时候，空格是不可避免的。但是由于C++的插入操作符有一个毛病，它只要一**遇到空字符便会停止输出**。这里的空字符就是空格，或者是’\0’。那么这样一来，如果我们在文件中有空格字符，那么空格后面的字符就无法被输出到屏幕上了。比如说，我们建立的test.txt文件中的内容为：Hello C++!即把Hello后面的逗号改成空格，那么重新运行该程序，输出如下：
+{{./3.png}}
+
+那么有没有什么解决方法呢，当然是有的哈。用__getline()__函数嘛。下面粘一段MSDN上面关于getline()函数原型和参数的介绍哈：
+
+首先是函数原型：
+
+template<class CharType, class Traits, class Allocator>
+   basic_istream<CharType, Traits>& getline(
+      basic_istream<CharType, Traits>& **_Istr**,
+      basic_string<CharType, Traits, Allocator>& **_Str**
+);
+
+template<class CharType, class Traits, class Allocator>
+   basic_istream<CharType, Traits>& getline(
+      basic_istream<CharType, Traits>&** _Istr**,
+      basic_string<CharType, Traits, Allocator>& **_Str**,
+      const CharType **_Delim**
+); 
+
+函数中的参数已经用黑体表示出来了哈，下面是参数说明：
+
+_Istr 
+The input stream from which a string is to be extracted. 
+指明输入的缓冲区是谁
+
+_Str 
+The string into which are read the characters from the input stream. 
+读取到流中的字符数据
+
+_Delim 
+The line delimiter. 
+结束符号 
+（默认的结束符号是’\n’，而这里采用自定义的结束符号替换掉默认的结束符号。意思就是输出遇到_Delim才会停止输出）
+
+好了，有了这个函数，我们就可以把上面的程序中的第10行改成：
+icin.getline(temp,100);
+
+这就表示把字符数组temp中的内容全部读取到屏幕上，如下图所示
+{{./4.png}}
+      OK~~这样一来，我们就不怕文件中有空格了。
+
+      另外，如果我们想要在命令行中写一段话，而且这段换中包含了空格和回车，那么我们就应该利用上面getline()函数的第三个参数，因为一段话中有可能会有回车的出现，我们就必须利用getline()的第三个函数将__默认的结束符号’\n’换成空字符‘\0’__。这是由于空字符的ASCII码为0，我们不可能在文件中输入空字符，因此这个时候，getline()函数会一直读取到文件的末尾才会结束。而如何停止用户输入呢？方法其实很简单，在我们输入完一段话之后，肯定会按下回车。之后我们就应该向该函数发出EOF标志，即文件结束符标志(End Of File)。在命令行里面发送文件结束符的方法是“Ctrl+Z”，之后再次按下回车键就能停止输入了。
+       p.s. 空格不是空字符，它的ASCII码为32。
+
+      下面，咱们用一个实际的例子来演示一下：首先读取一段话，然后将其输出到文件中：
+#include <iostream>
+#include <fstream>
+using namespace std;
+ 
+int main()
+{
+    const int num=255;
+    char temp1[num]={0};//初始化数组temp1
+    char temp2[num]={0};//初始化数组temp2
+    //① 输出数据到文件text.txt中
+    ofstream f_out("text.txt");
+    cout<<"请输入文本的内容：\n";
+    cin.getline(temp1,num,0);
+    f_out<<temp1;
+    f_out.close();
+    //② 将文件text.txt中的内容重新读回屏幕上
+    ifstream f_in("text.txt");
+    f_in.getline(temp2,num,0);
+    cout<<temp2<<endl;
+    return 0;
+}
+
+      对整个程序的分析：
+① 输出数据到文件text.txt中
+      首先我们在第11行定义了一个文件的输出流对象f_out，并用该对象创建了一个text.txt文本文件。之后在程序的第13行采用getline()函数接受文本内容，并将其放到temp1字符数组中。注意，这里的getline()函数的第三个参数为空字符，说明它可以接受空格，并且只有达到文件的末尾才能停止读取用户的键盘输入。好了，如果我们输入完文件之后按下Ctrl+Z，那么接着再次按下Enter回车键就会停止输入。之后在程序的第14行，我们用ofstream的对象fout将缓冲区中的内容输出到文本文件text.txt中。最后关闭这个文件。
+② 将文件text.txt中的内容重新读回屏幕上
+      同输出一样，首先我们在程序的第17行定义了一个文件的输入流对象f_in，并用该对象读取了刚刚创建的text.txt文本文件。之后又调用getlin()函数将文件中的内容输出到了字符数组temp2中，之后运用cout来输出temp2数组的内容到屏幕上。这样一来，我们就完成了对文件的输入输出操作。
+
+       其运行的结果如下：
+{{./5.png}}
+      OK啦！！！程序输出成功咯！！但是这个程序还有一个小小的瑕疵，注意看上面输出结果，我们可以看到在命令行中“请按任意键继续…”上面居然还有一个回车！这是怎么回事呢？我们并没有在多输出一个回车啊？
+
+      其实是有的！！！！注意，我们在“！”之后回了一次车，然后才输出了ctrl+Z，向getline()函数发送了一个文件结束的标志。之后为了让程序结束，又按了一下回车。那么这里面第2次按下的回车由于超出了文件结束符EOF被自动抛弃了，但是，第一次按下的回车，就是！之后的那个回车却没有被丢弃掉，而是被写入了temp1函数中。这个就是问题的所在。所以我们在输出之后，会看到在“请按任意键继续…”上面居然还有一个回车！对于这个问题，解决方法其实很简单，我们只需要把最后一个Enter改成空字符’\0’就可以了。即在程序的13行之后添加上这样两句话：
+1	int n=strlen(temp1);
+2	temp1[n-1]='\0';
+
+      第一句话的意思就是读取字符数组temp1中可见字符的长度，并保存到整型变量n中；第二句话的意思就是找到保存Enter键的元素的下标，然后将这个下标的元素赋值成空字符就可以了。完整的程序如下：
+01	#include <iostream>
+02	#include <fstream>
+03	using namespace std;
+04	 
+05	int main()
+06	{
+07	    const int num=255;
+08	    char temp1[num]={0};//初始化数组temp1
+09	    char temp2[num]={0};//初始化数组temp2
+10	    //① 输出数据到文件text.txt中
+11	    ofstream f_out("text.txt");
+12	    cout<<"请输入文本的内容：\n";
+13	    cin.getline(temp1,num,0);
+14	    int n=strlen(temp1);
+15	    temp1[n-1]='\0';
+16	    f_out<<temp1;
+17	    f_out.close();
+18	    //② 将文件text.txt中的内容重新读回屏幕上
+19	    ifstream f_in("text.txt");
+20	    f_in.getline(temp2,num,0);
+21	    cout<<temp2<<endl;
+22	    return 0;
+23	}
+
+　　然后是程序的输出：
+{{./6.png}}
+       好了，终于把这个程序搞定了，好麻烦！！！呼呼~~
+
+      这篇博文就记录这么多了，下次接着学习关于C++对文件的操作的方法，^_^
+
+　　

@@ -1,0 +1,75 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-29T13:12:18+08:00
+
+====== Gmail的IMAP和Mutt ======
+Created Thursday 29 December 2011
+http://www.adamjiang.com/archives/891
+Posted by jcadam - 27/08/10 at 12:08 下午
+
+今天我想说的还是Mutt的问题。一年以前我写了通过mutt使用gmail。现在再回头看这篇文章的内容已经有些老旧了，只好在感慨时光如梭的同时附上更新。电子邮件对我来说越来越重，相应的Mutt这个邮件客户端也是如此。就像Mutt的作者说的，所有的邮件客户端都很烂，只是Mutt烂的不那么厉害罢了。我希望这几篇文章有用。
+
+之前的解决方法相当复杂，需要mutt, procmail, fetchmail和msmtp等等工具的配合，配置起来非常繁琐。使用了很久这个方法之后，我发现还是**使用IMAP直接远程接入**Gmail比较简便。但是也有相应的缺点，那就是，使用IMAP的话，你就不能在离线状态中使用mutt了。
+
+配置Gmail的IMAP和Mutt一起工作，相比用fetchmail去pop3服务器上的邮件，这个方法主要更改以下几点：
+
+* 配置Gmail的IMAP
+* 设置远程服务器上的文件夹
+* 设置本地计算机上的缓冲
+* 设置远程服务器上的smtp服务
+
+至于，邮件别名，色彩，和快捷键绑定等等，跟之前介绍的方法并无二致。
+
+===== 配置Gmail的IMAP =====
+创建或者修改~/.muttrc，
+
+vi ~/.muttrc
+
+添加如下几行来告诉mutt你是谁，这里设置的姓名和邮件地址将出现在你的邮件的头部；
+
+set from = "yourusername@gmail.com"
+set realname = "yourname"
+
+接着，告诉mutt你Gmail邮箱和密码；
+
+set imap_user = "yourusername@gmail.com"
+set imap_pass = "yourpassword"
+
+在初次启动mutt的时候，mutt会询问你是否接受**认证文件**，你只需要回答”Yes”就可以了。
+
+===== 设置远程服务器上的文件夹 =====
+Mutt可以**自动的识别IMAP服务器上的邮件文件夹**，所以这里其实不需要更多的动作。但是如果你想做一些自己的配置，可以采用下面的方法；
+
+set folder = "imaps://imap.gmail.com:993"
+set spoolfile = "+INBOX"
+set postponed ="+[Gmail]/Drafts"
+set trash = "imaps://imap.gmail.com/[Gmail]/Trash"
+
+===== 设置本地计算机上的缓冲 =====
+在本地计算机上，你需要一个缓冲来__保存文件头信息__，以及TLS证书等；
+
+set header_cache =~/.mutt/cache/headers
+set message_cachedir =~/.mutt/cache/bodies
+set certificate_file =~/.mutt/certificates
+
+别忘了创建相应的本地文件夹
+
+mkdir -p ~/.mutt/cache
+
+===== 设置远程服务器上的smtp服务 =====
+设置smtp服务器用来发送邮件
+
+set smtp_url = "smtp://yourusername@smtp.gmail.com:587/"
+set smtp_pass = "yourpassword"
+
+===== 其他设置 =====
+告诉Mutt不要将邮件移动的mbox里，同时为了增强安全性，设置连续上线时间不超过900分钟；
+
+set move = no
+set imap_keepalive = 900
+
+让mutt的配置文件成为“只读”属性。
+
+chmod 700 .muttrc
+
+配置结束。关于诸如色彩，快捷键，邮件编辑器等其他部分的配置，请参考我的mutt配置文件。

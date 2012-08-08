@@ -1,0 +1,6 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-14T12:36:48+08:00
+
+====== 交叉编译 ======
+Created Wednesday 14 December 2011

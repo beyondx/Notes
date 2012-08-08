@@ -1,0 +1,152 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-03T14:08:45+08:00
+
+====== Linux命令技巧 ======
+Created Wednesday 03 August 2011
+
+1.站点根目录下查找是否被放置webshell木马根据语句判断是不是PHP木马脚本
+# find /storage/www/ -name "*.php" | xargs grep -in --color "eval("
+# grep -i --include='*.php' -r system\s*\( /storage/www/
+
+2.统计访问日志中来自同ip出现的次数分析盗链、攻击、机器人
+# cat access.log |awk '{print $1}'| sort | uniq -c |sort -rn
+
+3.分析出现次数最多的ip对网站的具体数据访问情况
+# grep -e IP access.log > filename
+# cat filename |awk '{print $8}'|sort|uniq -c|sort -rn
+
+4.访问次数最多的文件或页面,取前20
+# cat access.log|awk '{print $11}'|sort|uniq -c|sort -nr|head -20
+
+5.列出传输最大的几个exe文件（分析下载站的时候常用）
+# cat access.log |awk '($7~/\.exe/){print $10 " " $1 " " $4 " " $7}'|sort -nr|head -20
+
+6.列出输出大于200000byte(约200kb)的exe文件以及对应文件发生次数
+# cat access.log |awk '($10 > 200000 && $7~/\.exe/){print $7}'|sort -n|uniq -c|sort -nr|head -100
+
+7.如果日志最后一列记录的是页面文件传输时间，则有列出到客户端最耗时的页面
+# cat access.log |awk '($7~/\.php/){print $NF " " $1 " " $4 " " $7}'|sort -nr|head -100
+
+8.列出最最耗时的页面(超过60秒的)的以及对应页面发生次数
+# cat access.log |awk '($NF > 60 && $7~/\.php/){print $7}'|sort -n|uniq -c|sort -nr|head -100
+
+9.列出传输时间超过 30 秒的文件
+# cat access.log |awk '($NF > 30){print $7}'|sort -n|uniq -c|sort -nr|head -20
+
+10.统计网站流量（G)
+# cat access.log |awk '{sum+=$10} END {print sum/1024/1024/1024}'
+
+11.统计404的连接
+# awk '($9 ~/404/)' access.log | awk '{print $9,$7}' | sort
+
+12. 统计http status.
+# cat access.log |awk '{counts[$(9)]+=1}; END {for(code in counts) print code, counts[code]}'
+# cat access.log |awk '{print $9}'|sort|uniq -c|sort -rn
+
+13.查找挂马内容进行批量清除
+# find /webbase/ -type f -exec grep 'www.800816.com.cn' -l {} \;    
+# sed -i "s/body{.*www.800816.com.cn.*}//g" `grep www.800816.com.cn -rl ./`
+
+14.批量转换GBK为UTF-8文件编码
+# find default -type d -exec mkdir -p utf/{} \;
+# find default -type f -exec iconv -f GBK -t UTF-8 {} -o utf/{} \;
+
+15.find查找文件的时候怎么避开多个文件目录
+# find /usr/sam \(-path /usr/sam/dir1 -o -path /usr/sam/file1 \) -prune -o -name "*.txt" -print
+
+16.查看tcp的并发请求数及其TCP连接状态：
+# netstat -n | awk '/^tcp/ {++S[$NF]} END {for(a in S) print a, S[a]}'
+# netstat -nat |awk '{print $6}'|sort|uniq -c|sort -rn
+# netstat -n | awk '/^tcp/ {++state[$NF]}; END {for(key in state) print key,"\t",state[key]}'
+# netstat -n | awk '/^tcp/ {++arr[$NF]};END {for(k in arr) print k,"\t",arr[k]}'
+# netstat -n |awk '/^tcp/ {print $NF}'|sort|uniq -c|sort -rn
+# netstat -ant | awk '{print $NF}' | grep -v '[a-z]' | sort | uniq -c
+
+17.查找请求数前20的IP（常用于查找攻来源）
+# netstat -anlp|grep 80|grep tcp|awk '{print $5}'|awk -F: '{print $1}'|sort|uniq -c|sort -nr|head -n20
+# netstat -ant |awk '/:80/{split($5,ip,":");++A[ip[1]]}END{for(i in A) print A[i],i}' |sort -rn|head -n10
+
+18.查看有多少个活动的php-cgi进程
+# netstat -anp | grep php-cgi | grep ^tcp | wc -l
+
+19.查找较多time_wait连接
+# netstat -n|grep TIME_WAIT|awk '{print $5}'|sort|uniq -c|sort -rn|head -n20
+
+20.找查较多的SYN连接
+# netstat -an | grep SYN | awk '{print $5}' | awk -F: '{print $1}' | sort | uniq -c | sort -nr | more
+
+21.根据端口列进程
+# netstat -ntlp | grep 80 | awk '{print $7}' | cut -d/ -f1
+
+22.抓包用来防止80端口被人攻击时可以分析数据
+# tcpdump -c 10000 -i eth0 -n dst port 80 > /root/pkts
+
+23.用tcpdump嗅探80端口的访问看看谁最高
+# tcpdump -i eth0 -tnn dst port 80 -c 1000 | awk -F"." '{print $1"."$2"."$3"."$4}' | sort | uniq -c | sort -nr |head -20
+
+24.查看是哪些蜘蛛在抓取内容。
+# /usr/sbin/tcpdump -i eth0 -l -s 0 -w - dst port 80 | strings | grep -i user-agent | grep -i -E 'bot|crawler|slurp|spider'
+
+25.按域统计流量
+# zcat squid_access.log.tar.gz| awk '{print $10,$7}' |awk 'BEGIN{FS="[ /]"}{trfc[$4]+=$1}END{for(domain in trfc){printf "%s\t%d\n",domain,trfc[domain]}}'
+
+26.查看数据库执行的sql
+# /usr/sbin/tcpdump -i eth0 -s 0 -l -w - dst port 3306 | strings | egrep -i 'SELECT|UPDATE|DELETE|INSERT|SET|COMMIT|ROLLBACK|CREATE|DROP|ALTER|CALL'
+
+27.将匹配Root一行中no替换成yes
+# sed -i '/Root/s/no/yes/' /etc/ssh/sshd_config
+
+28.去掉第一列
+# awk '{for(i=2;i<=NF;i++) if(i!=NF){printf $i" "}else{print $i} }' list
+
+29.按内存从大到小排列
+# ps -e -o "%C : %p : %z : %a"|sort -k5 -nr
+
+30.按cpu利用率从大到小排列
+# ps -e -o "%C : %p : %z : %a"|sort -nr
+
+31.怎样知道某个进程在哪个CPU上运行
+# ps -eo pid,args,psr
+
+32.清除僵死进程。
+# ps -eal | awk '{ if ($2 == "Z") {print $4}}' | kill -9
+
+33.查看硬件制造商
+# dmidecode -s system-product-name
+
+34.查找占用磁盘IO最多的进程
+# wget -c http://linux.web.psi.ch/dist/scientific/5/gfa/all/dstat-0.6.7-1.rf.noarch.rpm
+# dstat -M topio -d -M topbio
+
+35.检查I/O使用率(%util)是否超过100%
+# iostat -x 1 2
+
+36.磁盘空间，检查是否有分区使用率(Use%)过高(比如超过90%) 如发现某个分区空间接近用尽，可以进入该分区的挂载点，用以下命令找出占用空间最多的文件或目录：
+# df -h
+# du -cks * | sort -rn | head -n 10
+
+37.CPU负载检查前三个输出值是否超过了系统逻辑CPU的4倍。
+# cat /proc/loadavg
+
+38.CPU的数量
+# cat /proc/cpuinfo |grep -c processor
+
+39.检查网络流量(rxbyt/s, txbyt/s)是否过高
+# sar -n DEV
+
+40.每隔1秒显示一下网络流量
+# watch -n 1 "/sbin/ifconfig eth0 | grep bytes"
+
+41.批量覆盖目录下的文件不用确定是否执行
+# \cp -rf /svn/wwwroot /wwwroot
+
+42.调试命令
+# strace -p pid
+
+43.跟踪指定进程的PID
+# gdb -p pid
+
+44.查看当前进程打开了多少个文件句柄
+
+lsof -n |awk ‘{print $2}’|sort|uniq -c |sort -nr|more

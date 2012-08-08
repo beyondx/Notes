@@ -1,0 +1,16 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2010-08-03T21:28:21.577655
+
+====== 1.2 History of GRUB ======
+Created Tuesday 03 August 2010
+
+GRUB originated in 1995 when Erich Boleyn was trying to boot the GNU Hurd with the University of Utah's Mach 4 microkernel (now known as GNU Mach).  Erich and Brian Ford designed the Multiboot Specification(*note Multiboot Specification: (multiboot)Top.), because they were determined not to add to the large number of mutually-incompatible PC
+boot methods.
+
+   Erich then began modifying the FreeBSD boot loader so that it would understand Multiboot. He soon realized that it would be a lot easier to
+write his own boot loader from scratch than to keep working on the FreeBSD boot loader, and so GRUB was born.
+
+   Erich added many features to GRUB, but other priorities prevented him from keeping up with the demands of its quickly-expanding user base. In
+1999, Gordon Matzigkeit and Yoshinori K. Okuji adopted GRUB as an official GNU package, and opened its development by making the latest
+sources available via anonymous CVS. *Note Obtaining and Building GRUB::, for more information.

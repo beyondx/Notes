@@ -1,0 +1,24 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-09-07T21:32:49+08:00
+
+====== What is e-TeX ======
+Created Wednesday 07 September 2011
+
+While Knuth has declared that __TeX will never change__ in any substantial way, there remain things that one might wish had been done differently, or indeed implemented at all.
+
+The NTS project set out to produce an __advanced replacement for TeX__, to provide a basis for developing such modifications: this “New Typesetting System” would share Knuth’s aims, but would implement the work in a modern way taking account of the lessons learned with TeX. While a first demonstrator NTS did appear, it wasn’t practically useful, and the project seems no longer active.
+
+In parallel with its work on NTS itself, the project developed __a set of extensions__ that can be used with a (“true”) TeX system. Such a modified system is known as an__ e-TeX__ system, and the concept has proved widely successful.
+
+ Indeed, current TeX distributions are delivered with __most formats built with an e-TeX-based system__ (for those who don’t want them, e-TeX’s extensions can be disabled, leaving a functionally standard TeX system).
+
+当前的发行版使用的主要就是e-Tex
+
+The extensions range from the seemingly simple (increasing the number of available registers from 256 to 32768) through to extremely subtle programming support.
+
+ConTeXt has required e-TeX for its operation for some time, though development is now focused on the use of LuaTeX.
+
+Some LaTeX packages already specify the use of **e-TeX**. Some such packages may not work at all on a non-e-TeX system; others will work, but not as well as on an e-TeX system. The LaTeX team has announced that future LaTeX packages (specifically those from the team, as opposed to those individually contributed) may require e-TeX for optimum performance.
+
+e-TeX

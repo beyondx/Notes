@@ -1,0 +1,45 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-07T22:31:23+08:00
+
+====== Linux操作系统中内存buffer和cache的区别 ======
+Created Wednesday 07 December 2011
+http://www.linuxdiyf.com/blog/?90293/action_viewspace_itemid_3004.html
+
+我们一开始，先从Free命令说起。free 命令相对于top 提供了更简洁的查看系统内存使用情况：
+$ free
+                     total  used   free  shared  buffers  cached
+Mem:         255268 238332 16936 0 85540 126384
+-/+ buffers/cache:  26408  228860
+Swap:        265000   0    265000
+
+Mem：表示**物理内存统计**
+-/+ buffers/cached：表示物理内存的__缓存统计__
+Swap：表示硬盘上交换分区的使用情况，这里我们不去关心。
+
+系统的总物理内存：255268Kb（256M），但系统当前真正可用的内存b__并不是__第一行free 标记的 16936Kb，它仅代表__未被分配__的内存。我们使用total1、used1、free1、used2、free2 等名称来代表上面统计数据的各值，1、2 分别代表第一行和第二行的数据。
+total1：表示物理内存总量。
+used1：表示总计__分配给缓存__（包含buffers 与cache ）使用的数量，但其中可能部分缓存__并未实际使用__。
+free1：未被分配的内存。
+shared1：共享内存，一般系统不会用到，这里也不讨论。
+buffers1：系统__分配但未被使用__的buffers 数量。
+cached1：系统__分配但未被使用__的cache 数量。buffer 与cache 的区别见后面。
+used2：实际使用的buffers 与cache 总量，也是__实际使用的内存总量__。
+free2：未被使用的buffers 与cache 和未被分配的内存之和，这就是系统__当前实际可用内存__。
+可以整理出如下等式：
+total1 = used1 + free1 total1 = used2 + free2 used1 = buffers1 + cached1 + used2  free2 = buffers1 + cached1 + free1
+
+===== buffer 与cache 的区别 =====
+
+A buffer is something that has yet to be "written" to disk. 
+A cache is something that has been "read" from the disk and stored for later use.
+
+更详细的解释参考：Difference Between Buffer and Cache
+对于共享内存（Shared memory），主要用于在UNIX 环境下**不同进程之间共享数据**，是进程间通信的一种方法，一般的应用程序不会申请使用共享内存，笔者也没有去验证共享内存对上面等式的影响。如果你有兴趣，请参考：What is Shared Memory?
+[b]cache 和 buffer的区别：[/b]
+[b]Cache：__高速缓存__，是位于CPU与主内存间的一种容量较小但速度很高的存储器。[/b]由于CPU的速度远高于主内存，CPU直接从内存中存取数据要等待一定时间周期，Cache中保存着CPU刚用过或循环使用的一部分数据，当CPU再次使用该部分数据时可从Cache中直接调用,这样就减少了CPU的等待时间,提高了系统的效率。Cache又分为一级Cache(L1 Cache)和二级Cache(L2 Cache)，L1 Cache集成在CPU内部，L2 Cache早期一般是焊在主板上,现在也都集成在CPU内部，常见的容量有256KB或512KB L2 Cache。
+[b]Buffer：__缓冲区__，一个用于存储速度不同步的设备或优先级不同的设备之间传输数据的区域。[/b]通过缓冲区，可以使进程之间的相互等待变少，从而使从速度慢的设备读入数据时，速度快的设备的操作进程不发生间断。
+Free中的buffer和cache：（它们都是占用内存）：
+buffer : 作为buffer cache的内存，是块设备的读写缓冲区
+cache: 作为page cache的内存, 文件系统的cache
+如果 cache 的值很大，说明cache住的文件数很多。如果频繁访问到的文件都能被cache住，那么磁盘的读IO 必会非常小。

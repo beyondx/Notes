@@ -1,0 +1,7 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-05T16:08:21+08:00
+
+====== 维基百科 ======
+Created Friday 05 August 2011
+

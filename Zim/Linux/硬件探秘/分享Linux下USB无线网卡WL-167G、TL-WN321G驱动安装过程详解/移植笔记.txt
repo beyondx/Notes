@@ -1,0 +1,58 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-28T20:08:30+08:00
+
+====== 移植笔记 ======
+Created Monday 28 November 2011
+http://blog.csdn.net/sailor_8318/article/details/1724477
+
+sailor:
+你好！
+这是我的移植笔记，你能帮忙看看出了什么问题吗？
+硬件 yl9200 usb无线网卡 wl 167g
+软件 arm-linux-gcc 3.3.2 开发板 linux 2.6.13 主机 2.6.24
+网卡驱动 CVS的RT73驱动
+参照 http://blog.sina.com.cn/s/blog_53baed1201008gfp.html
+
+1，下载解压驱动
+# wget http://rt2x00.serialmonkey.com/rt73-cvs-daily.tar.gz
+解压：# tar zxvf rt73-cvs-daily.tar.gz
+
+2，在**内核中创建新文件夹**drivers/usb/net/rt73，
+# mkdir drivers/usb/net/rt73
+将解压出来的文件夹Module下的文件拷贝到刚才新建的rt73文件夹中：
+cp **Module/*** /usr/local/linux/linux-2.6.13-hzh/drivers/usb/net/rt73
+
+3,修改内核源代码，加入__RT73驱动配置信息__
+修改drivers/usb/net/__Kconfig__文件，加入RT73的驱动模块的配置项：
+# gedit drivers/usb/net/Kconfig 
+加入以下内容：
+**config RT73**
+**tristate “support for rt73 wireless usb device”**
+**depends on USB  NET  USB_USBNET**
+
+修改drivers/usb/net/__Makefile__, 加入rt73的编译项：
+# gedit drivers/usb/net/Makefile
+添加一下内容：
+obj-$(CONFIG_RT73)+= __rt73/__
+
+4，修改RT73的**Makefile**，设置内核位置和编译选项：
+
+删除以前的modules选项，并将arm编译项改成modules，这样编译的时候才是for ARM版本的驱动模块；
+修改KERNDIR为开发板内核位置：
+**KERNDIR=/usr/local/linux/linux-2.6.13-hzh**
+
+5，配置内核：
+在USB devices à network à support for rt73 wireless usb device，按空格键选为M，将其编译成模块。
+
+6，编译内核模块：
+# make modules
+成功编译后，会在**drivers/usb/net/rt73**目录下生成rt73.ko驱动文件
+
+7，将rt73.ko复制到NFS目录
+cp rt73.ko /home/nfsboot
+
+8,加载模块
+insmod rt73.ko
+file rt73.ko
+rt73.ko: ELF 32-bit LSB relocatable,

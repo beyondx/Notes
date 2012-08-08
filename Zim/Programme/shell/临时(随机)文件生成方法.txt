@@ -1,0 +1,49 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-21T20:04:54+08:00
+
+====== 临时(随机)文件生成方法 ======
+Created Wednesday 21 December 2011
+
+http://www.cyberciti.biz/tips/shell-scripting-bash-how-to-create-temporary-random-file-name.html
+
+Various methods exists to create a** random temporary** file name. This is useful if your application/shell scripting needs temporary unique file names.
+
+===== Method #1: Use of $RANDOM bash shell variable =====
+
+1) At shell prompt type command:
+# echo __$RANDOM__
+
+You will get random value every time. This variable can be use to create unique file name
+
+===== Method # 2 Use of $$ variable =====
+
+This is old and classic method. __$$__ **shell variable **returns the current running process this can be use to create unique temporary file as demonstrated in following script:
+vi random2.bash
+
+#!/bin/bash
+#
+TFILE="/tmp/__$(basename $0)__.$$.tmp"
+ls > $TFILE
+echo "See diretory listing in $TFILE"
+
+Save the script and execute as follows:
+$ chmod +x random2.bash
+$ ./ random2.bash
+
+===== Method # 3 Use of mktemp or tempfile utility =====
+
+As name suggest both makes unique temporary filename. Just type mktemp at shell prompt to create it:
+$ __mktemp__
+Output:
+/tmp/tmp.IAnO5O
+OR
+$ __tempfile__
+Output:
+/tmp/IAnO5O
+
+Make a unique __temporary directory__ instead of a file using –d option to both of them
+$ mktemp –d
+$ tempfile –d
+
+Both mktemp or tempfile provides the shell scripts facility to use temporary files** in safe manner** hence it is highly recommended to use them.

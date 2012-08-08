@@ -1,0 +1,70 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-03T15:22:10+08:00
+
+====== Linux 设备和驱动加载的先后顺序 ======
+Created Saturday 03 December 2011
+http://blog.csdn.net/gorilla0123/article/details/5958874
+
+Linux驱动先注册总线，总线上可以先挂device，也可以先挂driver，那么究竟怎么控制先后的顺序呢。
+
+Linux系统使用两种方式去加载系统中的模块：动态和静态。
+
+静态加载：将所有模块的程序编译到Linux内核中，由do_initcall函数加载
+
+核心进程（__/init/main.c__）kernel_init--->do_basic_setup()--->do_initcalls（）该函数中会将在__initcall_start和__initcall_end之间定义的各个模块依次加载。那么在__initcall_start 和 __initcall_end之间都有些什么呢？
+
+找到__/arch/powerpc/kernel/vmlinux.lds__文件，找到.initcall.init段：
+ 
+
+.initcall.init : {
+
+  __initcall_start = .;
+
+  *(.initcall0.init) *(.initcall0s.init) *(.initcall1.init) *(.initcall1s.init) *(.initcall2.init) *(.initcall2s.init) *(.initcall3.init) *(.initcall3s.init) *(.initcall4.init) *(.initcall4s.init) *(.initcall5.init) *(.initcall5s.init) *(.initcallrootfs.init) *(.initcall6.init) *(.initcall6s.init) *(.initcall7.init) *(.initcall7s.init)
+
+  __initcall_end = .;
+
+  }
+
+ 
+
+可以看出在这两个宏之间依次排列了**14个等级的宏**，由于这其中的宏是按先后顺序链接的，所以也就表示，这14个宏有优先级：0>1>1s>2>2s………>7>7s。
+
+那么这些宏有什么具体的意义呢，这就要看__/include/linux/init.h__文件：
+
+ 
+#define pure_initcall(fn)              __define_initcall("0",fn,0)
+
+#define core_initcall(fn)              __define_initcall("1",fn,1)
+
+#define core_initcall_sync(fn)           __define_initcall("1s",fn,1s)
+
+#define postcore_initcall(fn)              __define_initcall("2",fn,2)
+
+#define postcore_initcall_sync(fn)    __define_initcall("2s",fn,2s)
+
+#define arch_initcall(fn)        __define_initcall("3",fn,3)
+
+#define arch_initcall_sync(fn)            __define_initcall("3s",fn,3s)
+
+#define subsys_initcall(fn)          __define_initcall("4",fn,4)
+
+#define subsys_initcall_sync(fn)       __define_initcall("4s",fn,4s)
+
+#define fs_initcall(fn)                   __define_initcall("5",fn,5)
+
+#define fs_initcall_sync(fn)         __define_initcall("5s",fn,5s)
+
+#define rootfs_initcall(fn)            __define_initcall("rootfs",fn,rootfs)
+
+#define device_initcall(fn)          __define_initcall("6",fn,6)
+
+#define device_initcall_sync(fn)       __define_initcall("6s",fn,6s)
+
+#define late_initcall(fn)         __define_initcall("7",fn,7)
+
+#define late_initcall_sync(fn)             __define_initcall("7s",fn,7s)
+
+ 
+这里就定义了具体的宏，我们平时用的module_init在__静态编译__时就相当于device_initcall。举个例子，在2.6.24的内核中：gianfar_device使用的是arch_initcall，而gianfar_driver使用的是module_init，因为arch_initcall的优先级大于module_init，所以gianfar设备驱动的device先于driver在总线上添加。

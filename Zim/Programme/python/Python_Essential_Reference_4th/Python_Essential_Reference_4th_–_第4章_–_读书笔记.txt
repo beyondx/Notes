@@ -1,0 +1,162 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-05T14:51:06+08:00
+
+====== Python Essential Reference 4th – 第4章 – 读书笔记 ======
+Created 星期二 05 七月 2011
+
+1、关于除法/和//。
+在Python 2中，/还是整除，即只返回整数部分。
+而Python 3中，/变为浮点除，不在约为整数。
+
+在Python 2中，想要获取浮点结果，可以将除数或者被除数强转为float：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+float(1)/100
+0.01
+
+2、一些有用的函数
+abs(x)：返回x的绝对值
+pow(x,y)：x ^ y，等价于x ** y
+round(x)：返回离x最近的10^n值，n可正或者负
+
+3、关于对tuple、list、字符等的乘法：重复字符
+如’a’ * 5或者 5 * ‘a’都行：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> 'a' * 10
+'aaaaaaaaaa'
+>>> 10 * 'a'
+'aaaaaaaaaa'
+
+4、
+all(s)：s中所有元素都是true时，返回true。
+any(s)：s中有任何元素为true时，返回true。
+
+5、v1, v2…, vn = S，将S容器unpack给v1~vn
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#字符串也可以unpack
+>>> x,y,z = "abc"
+>>> print x,y,z
+a b c
+
+但是注意，unpack出的v和S里面的格式必须完全一致！
+
+6、s[-1]：倒数第一个元素。
+s[i:j]，是取所有的k，其中i<=k< p=""> <>
+
+7、对于字符串，in和not in可以相当于子字符串查找，但是它不支持正则表达式！
+
+8、s[ i:j ] = r，将s[i,j)都替换为r。
+
+9、del s[i]的时候，出了从list移除之外，还会删除引用计数！
+
+10、sequence之间也可以比，< > <= >= == 和!=。单都是基于全部匹配的。
+
+11、字符串通过字典序比较。
+
+12、不要将Unicode和普通Byte String混合使用。
+
+13、String格式化(s % d)，d是tuple，s是格式化的字符串。
+
+14、String格式化时，d也可以不是tuple而是dictionary，如下：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> stock = { "name":"GOOG","shares":100,"price":300 }
+>>> "%(shares)d of %(name)s at %(price)0.2f" % stock
+#格式化后结果
+'100 of GOOG at 300.00'
+
+15、更高级的字符串格式化，format(*args,*kwargs)，这之中交叉使用了顺序参数和key-value参数。
+
+这些高级字符串格式化方法都使用format，并且用{ }
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> r = "{0} {1} {2}".format("GOOG",100,500.1)
+>>> print r
+#输出
+GOOG 100 500.1
+ 
+#混合使用，加入key-value取值
+>>> "{name:8} {share:8d} {price:8.2f}".format(name="lhy",share=100,price=500.1)
+'lhy           100   500.10'
+
+16、Dictionary上的一些操作：
+
+x = d[k]：取dict d中的key k
+d[k] = x：设置dict d中的k对应val为x
+del d[k]：删除d中key为k的
+k in d：如果d中有以k为键的元素，返回True，否则False
+len(d)：dict中的长度
+
+17、set和frozenset都支持并| 交& 差- 反^，len，max，min等操作
+
+18、对字符串使用+=，相当于拼接字符串的简写。
+
+19、对点.的使用：为属性访问操作符。
+如foo.x = 3
+在一行中可连用多个点.，如foo.bar(3,4,5).spam
+
+20、使用functools包的partial函数可以分两次来给函数传入参数：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> def func(x,y,z):
+...     return x + y + z
+...
+>>> f = partial(func,1,2)
+>>> from functools import partial
+>>> f = partial(func,1,2)
+>>> f(3)
+6
+
+21、Python中类型之间的转换没有C、C++那么麻烦，直接类型名()的函数即可。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> a = "123"
+>>> b = int(a)
+>>> print b
+123
+
+
+22、unichar：将整型转化成对应的unicode的char
+chr：将int转化成对应的ascii码的char
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#chr转化为ascii码的字符
+>>> a = 49
+>>> chr(a)
+'1'
+ 
+#unichar转为unicode的字符
+>>> a = 21271  #21271是北的unicode编码
+>>> print unichr(a)
+北
+
+
+23、在用于分支判断等时，Ture/False和其他类型的转换：所有非零的数、非空字符串、list、tuple、dictionary都会被视为True。而False，0,None空list、tuple等转化为False。
+
+24、x == y，检查两个对象在逻辑上是否相等（如完全相同的字典序、容器中每个元素都相同等）
+而
+x is y，则检查两个对象是否指向同一个引用（即指向的内存地址是否相同）。
+
+25、乘幂运算 ** 是右结合。
+
+26、Python中没有C、C++、就Java等之中常见的三元操作符，但是可以用一行写if：
+minvalue = a if a<=b else b
+类似的，也可以用于[构造数组]中：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+[x if x < 50 else 50 for x in values]
+
+
+完毕。

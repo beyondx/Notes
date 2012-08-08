@@ -1,0 +1,73 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-09T22:37:53+08:00
+
+====== python-mode and ipython ======
+Created Monday 09 January 2012
+https://bugs.launchpad.net/python-mode/+bug/912919
+
+rev 752 breaks ipython
+
+    python-mode.el
+    Bugs
+    Bug #912919
+
+Reported by Thomas Caswell on 2012-01-06
+2 out of 4 heat flames
+This bug affects 1 person
+Affects 	Status 	Importance 	Assigned to 	Milestone
+​ 	python-mode.el 	
+Incomplete
+	
+Medium
+	Andreas Roehler 	
+python-mode.el 6.0.5 "hill"
+Also affects project   Also affects distribution Nominate for series
+Bug Description
+
+Changing py-mode-map to python-mode-map broke ipython. I have added a hacky fix to their tracking.
+
+https://github.com/ipython/ipython/pull/1242
+Tags: ipython
+ 
+Andreas Roehler (a-roehler) wrote on 2012-01-07: Re: [Bug 912919] [NEW] rev 752 breaks ipython 	#1
+
+Am 06.01.2012 21:57, schrieb Thomas Caswell:
+> Public bug reported:
+>
+> Changing py-mode-map to python-mode-map broke ipython. I have added a
+> hacky fix to their tracking.
+>
+> https://github.com/ipython/ipython/pull/1242
+>
+
+Hi,
+
+need some recipe to reproduce.
+Completion in IPython works fine here with TAB.
+
+Did you patch against current trunk?
+
+BTW have a look at
+
+defcustom py-complete-function
+
+thanks,
+
+Andreas
+Andreas Roehler (a-roehler) on 2012-01-07
+Changed in python-mode:
+importance: 	Low → Medium
+status: 	New → Incomplete
+assignee: 	nobody → Andreas Roehler (a-roehler)
+milestone: 	none → 6.0.5 
+
+
+https://github.com/ipython/ipython/pull/1242
+
+===== changed key map name to match changes to python mode =====
+
+This is a minor change to handling the python-mode key mappings. In reversion 752
+( http://bazaar.launchpad.net/~python-mode-devs/python-mode/python-mode/revision/752 ) the name of the map was changed from py-mode-map to python-mode-map.
+
+This isn't in any distributions yet, so I am not sure how you want to deal with this.

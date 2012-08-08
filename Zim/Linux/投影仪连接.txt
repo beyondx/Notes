@@ -1,0 +1,24 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-09T16:22:51+08:00
+
+====== 投影仪连接 ======
+Created Friday 09 March 2012
+
+http://www.shallowsky.com/linux/LinuxPresentations.html
+
+===== Using Linux for Presentations Mini-HOWTO =====
+Akkana Peck
+
+===== The Moment of Truth: Connecting to the Projector =====
+Here's a nice howto on configuring X for connecting to projectors.  Some additional tips I've found:
+
+If you use an xorg.conf file, include some common lower resolutions like add 800x600 and 640x480. Then use ctl-alt-KeypadPlus and Minus to cycle through resolutions "live".
+
+ctl-alt-KeypadPlus and Minus may not work in all xorg setups. In newer Xorgs with some graphics cards, especially Intel, use xrandr to control resolution and send the signal to the projector. This command works on my current laptop:
+
+xrandr --output VGA --mode 1024x768
+
+When I'm done and no longer want to send to the projector, I run:
+
+__xrandr --auto__

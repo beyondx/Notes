@@ -1,0 +1,46 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-26T21:13:48+08:00
+
+====== 转义字符实验 ======
+Created Sunday 26 February 2012
+转义字符(Escape charater)和控制字符(Control charater)是不同的概念。前者是改变其后面的某个字符或字符串的含义(例如，使其具有命令功能如改变光标位置，命令行编辑，前后景颜色等)，后者只是__本字符__起到特殊作用。
+
+[geekard@geekard ~]$** cat   #默认从标准输入读取一行后返回。**
+123     #这是__终端回显__的字符。
+123
+!@#     #同上
+!@#
+asd      
+asd     
+ASD  #Shift-a 回显
+ASD
+áóä   #Alt -a 回显
+áóä
+^A[geekard@geekard ~]$ cat  #Clt-s回显后暂停终端输入，**Clt-d回显后cat退出**。
+^[OP^[OQ^[OR^[OS ** #输入F1， F2，F3，F4后回显。**
+ PQRS                         **#程序输出。**
+^[[A^[[D^[[C^[[B^[[H^[[5~^[[6~^[[F  **#左右上下，Home,PU, PD,END回显。回车后，光标移到到屏幕上方。**
+
+[geekard@geekard ~]$ cat color.c 
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void)
+{
+  int i ;
+  printf("hello, world!\n");
+  printf("__\033OP__\n","K_Linux_Man");   #以下四行为F1-F4的转义字符串。
+  printf("\033OQ\n","K_Linux_Man");
+  printf("\033OR\n","K_Linux_Man");
+  printf("\033OS\n","K_Linux_Man");
+  exit(0);
+}
+
+[geekard@geekard ~]$ gcc color.c && [[./a.out]]
+hello, world!
+P   #转义字符串被输出为单个字符。
+Q
+R
+S
+[geekard@geekard ~]$ 

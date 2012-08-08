@@ -1,0 +1,93 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-03T21:35:23+08:00
+
+====== Linux网络编程socket选项之SO LINGER,SO REUSEADDR ======
+Created 星期五 03 六月 2011
+
+Linux网络编程中,socket的选项很多.其中几个比较重要的选项有:SO_LINGER(仅仅适用于TCP,SCTP), SO_REUSEADDR.
+
+    SO_LINGER
+
+在默认情况下,当调用close关闭socke的使用,close会立即返回,但是,如果send buffer中还有数据,系统会试着先把send buffer中的数据发送出去,然后close才返回.
+
+SO_LINGER选项则是用来修改这种默认操作的.于SO_LINGER相关联的一个结构体如下:
+
+view plaincopy to clipboardprint?
+
+    #include <sys/socket.h>  
+    struct linger {  
+          int l_onoff  //0=off, nonzero=on(开关)  
+          int l_linger //linger time(延迟时间)  
+    }  
+
+当调用setsockopt之后,该选项产生的影响取决于linger结构体中 l_onoff和l_linger的值:
+
+0 = l_onoff
+
+当l_onoff被设置为0的时候,将会关闭SO_LINGER选项,即TCP或则SCTP保持默认操作:close立即返回.l_linger值被忽略.
+
+l_lineoff值非0，0 = l_linger
+
+当调用close的时候,TCP连接会立即断开.send buffer中未被发送的数据将被丢弃,并向对方发送一个RST信息.值得注意的是，由于这种方式，是非正常的4中握手方式结束TCP链接，所以，TCP连接将不会进入TIME_WAIT状态，这样会导致新建立的可能和就连接的数据造成混乱。具体原因详见我的上一篇文章《linux 网络编程之TIME_WAIT状态》
+
+    l_onoff和l_linger都是非0
+
+在这种情况下，回事的close返回得到延迟。调用close去关闭socket的时候，内核将会延迟。也就是说，如果send buffer中还有数据尚未发送，该进程将会被休眠直到一下任何一种情况发生：
+
+1)    send buffer中的所有数据都被发送并且得到对方TCP的应答消息（这种应答并不是意味着对方应用程序已经接收到数据，在后面shutdown将会具体讲道）
+2)    延迟时间消耗完。在延迟时间被消耗完之后，send buffer中的所有数据都将会被丢弃。
+
+上面1),2)两种情况中，如果socket被设置为O_NONBLOCK状态，程序将不会等待close返回，send buffer中的所有数据都将会被丢弃。所以，需要我们判断close的返回值。在send buffer中的所有数据都被发送之前并且延迟时间没有消耗完，close返回的话，close将会返回一个EWOULDBLOCK的error.
+
+下面用几个实例来说明：
+
+
+A.    Close默认操作：立即返回
+{{./1.jpg}}
+                                         
+
+此种情况，close立即返回，如果send buffer中还有数据，close将会等到所有数据被发送完之后之后返回。由于我们并没有等待对方TCP发送的ACK信息，所以我们只能保证数据已经发送到对方，我们并不知道对方是否已经接受了数据。由于此种情况，TCP连接终止是按照正常的4次握手方式，需要经过TIME_WAIT。
+
+   B.    l_onoff非0，并且使之l_linger为一个整数
+
+   {{./2.jpg}}                                     
+
+在这种情况下，close会在接收到对方TCP的ACK信息之后才返回(l_linger消耗完之前)。但是这种ACK信息只能保证对方已经接收到数据，并不保证对方应用程序已经读取数据。
+
+C.    l_linger设置值太小
+
+  {{./3.jpg}}                                       
+
+这种情况，由于l_linger值太小，在send buffer中的数据都发送完之前，close就返回，此种情况终止TCP连接，更l_linger = 0类似，TCP连接终止不是按照正常的4步握手，所以，TCP连接不会进入TIME_WAIT状态，那么，client会向server发送一个RST信息.
+
+D.    Shutdown，等待应用程序读取数据
+
+{{./4.jpg}}                                        
+
+同上面的B进行对比，调用shutdown后紧接着调用read,此时read会被阻塞,直到接收到对方的FIN,也就是说read是在server的应用程序调用close之后才返回的。当server应用程序读取到来自client的数据和FIN之后，server会进入一个叫CLOSE_WAIT，关于CLOSE_WAIT，详见我的博客《 Linux 网络编程 之 TCP状态转换》 。那么，如果server端要断开该TCP连接，需要server应用程序调用一次close，也就意味着向client发送FIN。这个时候，说明server端的应用程序已经读取到client发送的数据和FIN。read会在接收到server的FIN之后返回。所以，shutdown 可以确保server端应用程序已经读取数据了，而不仅仅是server已经接收到数据而已。
+
+shutdown参数如下:
+
+SHUT_RD:调用shutdown的一端receive buffer将被丢弃掉,无法接受数据,但是可以发送数据,send buffer的数据可以被发送出去
+
+SHUT_WR:调用shutdown的一端无法发送数据,但是可以接受数据.该参数表示不能调用send.但是如果还有数据在send buffer中,这些数据还是会被继续发送出去的.
+
+    SO_REUSEADDR和SO_REUSEPORT
+
+最近,看到CSDN的linux版块,有人提问,说为什么server程序重启之后,无法连接,需要过一段时间才能连接上.我想对于这个问题,有两种可能:一种可能就是该server一直停留在TIME_WAIT状态.这个时候,需要等待2MSL的时间才能重新连接上,具体细节原因请见我的另一篇文章《linux 网络编程之TIME_WAIT状态》
+
+另一种可能就是SO_REUSEADDR参数设置问题.关于TIME_WAIT的我就不在这里重述了,这里我讲一讲SO_REUSEADDR.
+
+    SO_REUSEADDR允许一个server程序listen监听并bind到一个端口,既是这个端口已经被一个正在运行的连接使用了.
+
+我们一般会在下面这种情况中遇到:
+
+    一个监听(listen)server已经启动
+    当有client有连接请求的时候,server产生一个子进程去处理该client的事物.
+    server主进程终止了,但是子进程还在占用该连接处理client的事情.虽然子进程终止了,但是由于子进程没有终止,该socket的引用计数不会为0，所以该socket不会被关闭.
+    server程序重启.
+
+默认情况下,server重启,调用socket,bind,然后listen,会失败.因为该端口正在被使用.如果设定SO_REUSEADDR,那么server重启才会成功.因此,所有的TCP server都必须设定此选项,用以应对server重启的现象.
+
+    SO_REUSEADDR允许同一个端口上绑定多个IP.只要这些IP不同.另外,还可以在绑定IP通配符.但是最好是先绑定确定的IP,最后绑定通配符IP.一面系统拒绝.简而言之,SO_REUSEADDR允许多个server绑定到同一个port上,只要这些server指定的IP不同,但是SO_REUSEADDR需要在bind调用之前就设定.在TCP中,不允许建立起一个已经存在的相同的IP和端口的连接.但是在UDP中,是允许的.

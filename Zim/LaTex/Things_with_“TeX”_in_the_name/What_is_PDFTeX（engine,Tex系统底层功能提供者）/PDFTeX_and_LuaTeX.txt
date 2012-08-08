@@ -1,0 +1,25 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-09-07T21:27:37+08:00
+
+====== PDFTeX and LuaTeX ======
+Created Wednesday 07 September 2011
+
+As is said elsewhere in these FAQs, development of __PDFTeX is “in essence” complete__ — no new facilities are being developed at the time of writing. The PDFTeX team has announced that they have __frozen__ PDFTeX’s specification in its current state (version 1.40.11), and that nothing but bug corrections will be provided up to the time of the final release, PDFTeX 1.50.0. (The interpretation of the statement seems to allow sensible changes that are beyond any reasonable definition of bug\dots)
+
+In parallel with the running-down of PDFTeX development, development of a new system,__ LuaTeX__ is under way. Lua is a script language, designed to offer an interpreter that may be incorporated into other applications. LuaTeX consists of a TeX-like __engine__ with a lua interpreter ‘embedded’ in it; the lua interpreter has access to many of the data structures used for typesetting, and the user may also interpolate chunks of lua code into their (La)TeX macros, or as ‘call-backs’ for use when the TeX-like engine does certain operations.
+
+This arrangement offers the prospect of __a “semi-soft” typesetting engine__: it will have its basic behaviour, but the user gets to redefine functionality if an idea occurs — there will be no need to persuade the world first, and then find a willing developer to work on the sources of of the distribution.
+
+The LuaTeX project is (with monetary support from various sources) pursuing avenues that many of the other current projects have in their sights, notably **Unicode** character representations and support for** OpenType** fonts. The intention is to integrate the extensions pioneered by Aleph.
+
+The current released version (Beta 0.70.1, in June 2011) of LuaTeX is supposed at least to demonstrate the final functionality. This stability was declared with version 0.50.0, released near the end of December 2009. Much work remains to be done, and this remains a beta-release. TeX Live 2010 incorporates (at the time of writing) LuaTeX version 0.60.2, and current MiKTeX (version 2.9) offers version 0.70.0.
+
+__ConTeXt ‘Mark 4’ can already make use of LuaTeX;__ much of its code already appears in two forms — a TeX-based version (.mkii) and a ‘.mkiv’ version, which uses LuaTeX extensions (including lua scripting). LaTeX packages that support its use are appearing (some of them providing re-implementations of existing ConTeXt code).
+
+LuaTeX snapshot
+    systems/luatex (or browse the directory); catalogue entry 
+PDFTeX distribution
+    systems/pdftex (or browse the directory); catalogue entry 
+
+This answer last edited: 2011-07-10

@@ -1,0 +1,10 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-12T22:03:28+08:00
+
+====== BIOS ======
+Created Monday 12 March 2012
+http://bbs3.driverdevelop.com/read.php?tid=14104
+
+系统BIOS是作为计算机上电或复位后首先加载执行的程序，通常BIOS程序的功能是执行引导（例如根据设置加载软盘和硬盘的引导程序，从而启动操作系统），应一个重要功能是提供给用户统一的操作接口，这就是__BIOS中断调用__，用户可以通告标准的BIOS调用访问不同的硬件。
+PCI BIOS是部分PCI卡(例如支持远程引导的网卡）上所装载的程序，系统BIOS在引导时会扫描映射区间，寻找可以执行的程序，如果一块PCI卡上携带了可以执行的程序，那么将执行该程序 

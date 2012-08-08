@@ -1,0 +1,29 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-22T22:26:12+08:00
+
+====== autoconf软件包 ======
+Created Thursday 22 December 2011
+
+===== Autoconf的内容 =====
+Autoconf 能生成用于自动配置源代码的 shell 脚本(**configure**),该脚本可以生成makefile文件。
+
+安装下列程序: autoconf, autoheader, autom4te, autoreconf, autoscan, autoupdate 和 ifnames
+
+===== 简短说明 =====
+autoconf是一个产生可以自动配置源代码包，生成shell脚本的工具，以适应各种类UNIX系统的需要。autoconf 产生的配置脚本在运行时独立于autoconf ，因此使用这些脚本的用户不需要安装autoconf。
+
+autoheader能够产生供configure脚本使用的C #define语句模板文件。
+
+autom4te对文件执行 GNU M4。
+
+autoreconf，如果有多个autoconf产生的配置文件，autoreconf可以保存一些工作，它通过重复运行autoconf（以及在合适的地方运行autoheader）以重新产生autoconf配置脚本和配置头模板，这些文件保存在以当前目录为根的目录树中。
+
+autoscan程序可以用来为软件包创建configure.in文件。autoscan在以命令行参数中指定的目录为根（如果未给定参数，则以当前目录为根）的目录树中检查源文件。它为通常的轻便问题搜索源文件，并且为那个包创建一个configure.scan文件，这个文件就是configure.in的前身。
+
+autoupdate程序将一个调用autoconf 宏的旧名称的configure.in文件中的宏更新为新的名称。
+
+ifnames当为一个软件包写configure.in 时，ifnames可以提供一些帮助。它打印包中那些在C预处理器中已经使用了的表示符。如果一个包已经设置成具有某些可移植属性，这个程序能够帮助指出它的配置应该如何检查。它可以用来填补由autoscan产生的configure.in中的隔阂。
+
+===== Autoconf 安装依赖关系 =====
+Autoconf 依赖于: Bash, Coreutils, Diffutils, Grep, M4, Make, Perl, Sed.

@@ -1,0 +1,584 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-01T22:25:08+08:00
+
+====== Linux USB gadget设备驱动解析（4）--编写一个gadget驱动 ======
+Created Thursday 01 December 2011
+
+一、编写计划
+
+通过前面几节的基础，本节计划编写一个简单的gadget驱动。重在让大家快速了解gadget驱动结构。
+
+上节中简单介绍了zero.c程序。这个程序考虑到了多配置、高速传输、USB OTG等因素。应该说写的比较清楚，是我们了解gadget驱动架构的一个非常好的途径。但把这些东西都放在一起，对很多初学人员来说还是不能快速理解。那就再把它简化一些，针对S3C2410平台，只实现一个配置、一个接口、一个端点，不考虑高速及OTG的情况。只完成单向从host端接收数据的功能，但要把字符设备驱动结合在里面。这需要有一个host端的驱动，来完成向device端发送数据。关于在主机端编写一个简单的USB设备驱动程序，有很多的资料。相信大家很快就会完成的。
+
+二、功能展示
+
+1、PC端编写了一个usbtransfer.ko，能够向device端发送数据
+
+2、对目标平台编写一个gadget驱动，名称是g_zero.ko
+
+3、测试步骤
+
+在目标平台（基于S3C2410）上加载gadget驱动
+
+# insmod g_zero.ko
+        name=ep1-bulk
+        smdk2410_udc: Pull-up enable
+        # mknod /dev/usb_rcv c 251 0
+        #
+
+在PC主机上加载驱动usbtransfer.ko
+
+#insmod usbtransfer.ko
+        #mknod /dev/usbtransfer c 266 0
+
+连接设备，目标平台的终端显示：
+
+connected
+
+目标平台读取数据
+
+# cat /dev/usb_rcv
+
+PC端发送数据
+
+#echo “12345” > /dev/usbtransfer
+        #echo “abcd” > /dev/usbtransfer
+
+设备端会显示收到的数据
+
+# cat /dev/usb_rcv
+        12345
+        abcd
+
+三、代码分析
+
+下面的代码是在原有的zero.c基础上做了精简、修改的。一些结构的名称还是保留以前的，但含义有所变化。如：loopback_config，不再表示loopback，而只是单向的接收数据。
+/*
+
+* zero.c -- Gadget Zero, for simple USB development
+        * lht@farsight.com.cn
+        * All rights reserved.*/
+        /* #define VERBOSE_DEBUG */
+
+#include <linux/kernel.h>
+        #include <linux/utsname.h>
+        #include <linux/device.h>
+        #include <linux/usb/ch9.h>
+        #include <linux/usb/gadget.h>
+        #include "gadget_chips.h"
+        #include <linux/slab.h>
+        #include <linux/module.h>
+        #include <linux/init.h>
+        #include <linux/usb/input.h>
+        #include <linux/cdev.h>
+        #include <asm/uaccess.h>
+        #include <linux/fs.h>
+        #include <linux/poll.h>
+        #include <linux/types.h> /* size_t */
+        #include <linux/errno.h> /* error codes */
+        #include <asm/system.h>
+        #include <asm/io.h>
+        #include <linux/sched.h>
+
+/*-------------------------------------------------------------------------*/
+        static const char shortname[] = "zero";
+        static const char loopback[] = "loop input to output";
+        static const char longname[] = "Gadget Zero";
+        static const char source_sink[] = "source and sink data";
+        #define STRING_MANUFACTURER 25
+        #define STRING_PRODUCT 42
+        #define STRING_SERIAL 101
+        #define STRING_SOURCE_SINK 250
+        #define STRING_LOOPBACK 251
+
+//#define DRIVER_VENDOR_NUM 0x0525 /* NetChip */
+        //#define DRIVER_PRODUCT_NUM 0xa4a0 /* Linux-USB "Gadget Zero" */
+        #define DRIVER_VENDOR_NUM 0x5345 /* NetChip */
+        #define DRIVER_PRODUCT_NUM 0x1234 /* Linux-USB "Gadget Zero" */
+
+static int usb_zero_major = 251;
+        /*-------------------------------------------------------------------------*/
+        static const char *EP_OUT_NAME; /* sink */
+        /*-------------------------------------------------------------------------*/
+
+/* big enough to hold our biggest descriptor */
+        #define USB_BUFSIZ 256
+        struct zero_dev { //zero设备结构
+                    spinlock_t lock;
+                    struct usb_gadget *gadget;
+                    struct usb_request *req; /* for control responses */
+                    struct usb_ep *out_ep;
+                    struct cdev cdev;
+                    unsigned char data[128];
+                    unsigned int data_size;
+                    wait_queue_head_t bulkrq;
+        };
+        #define CONFIG_LOOPBACK 2
+        static struct usb_device_descriptor device_desc = { //设备描述符
+                    .bLength = sizeof device_desc,
+                    .bDescriptorType = USB_DT_DEVICE,
+                    .bcdUSB = __constant_cpu_to_le16(0x0110),
+                    .bDeviceClass = USB_CLASS_VENDOR_SPEC,
+                    .idVendor = __constant_cpu_to_le16(DRIVER_VENDOR_NUM),
+                    .idProduct = __constant_cpu_to_le16(DRIVER_PRODUCT_NUM),
+                    .iManufacturer = STRING_MANUFACTURER,
+                    .iProduct = STRING_PRODUCT,
+                    .iSerialNumber = STRING_SERIAL,
+                    .bNumConfigurations = 1,
+        };
+        static struct usb_endpoint_descriptor fs_sink_desc = { //端点描述符
+                    .bLength = USB_DT_ENDPOINT_SIZE,
+                    .bDescriptorType = USB_DT_ENDPOINT,
+
+   .bEndpointAddress = USB_DIR_OUT, //对主机端来说，输出
+                    .bmAttributes = USB_ENDPOINT_XFER_BULK,
+        };
+
+static struct usb_config_descriptor loopback_config = { //配置描述符
+                    .bLength = sizeof loopback_config,
+                    .bDescriptorType = USB_DT_CONFIG,
+                    /* compute wTotalLength on the fly */
+                    .bNumInterfaces = 1,
+                    .bConfigurationValue = CONFIG_LOOPBACK,
+                    .iConfiguration = STRING_LOOPBACK,
+                    .bmAttributes = USB_CONFIG_ATT_ONE | USB_CONFIG_ATT_SELFPOWER,
+                    .bMaxPower = 1, /* self-powered */
+        };
+        static const struct usb_interface_descriptor loopback_intf = { //接口描述符
+                    .bLength = sizeof loopback_intf,
+                    .bDescriptorType = USB_DT_INTERFACE,
+
+    .bNumEndpoints = 1,
+                    .bInterfaceClass = USB_CLASS_VENDOR_SPEC,
+                    .iInterface = STRING_LOOPBACK,
+        };
+        /* static strings, in UTF-8 */
+        #define STRING_MANUFACTURER 25
+        #define STRING_PRODUCT 42
+        #define STRING_SERIAL 101
+        #define STRING_SOURCE_SINK 250
+        #define STRING_LOOPBACK 251
+        static char manufacturer[50];
+        /* default serial number takes at least two packets */
+        static char serial[] = "0123456789.0123456789.0123456789";
+        static struct usb_string strings[] = { //字符串描述符
+                    { STRING_MANUFACTURER, manufacturer, },
+                    { STRING_PRODUCT, longname, },
+                    { STRING_SERIAL, serial, },
+                    { STRING_LOOPBACK, loopback, },
+                    { STRING_SOURCE_SINK, source_sink, },
+                    { } /* end of list */
+        };
+
+static struct usb_gadget_strings stringtab = {
+                    .language = 0x0409, /* en-us */
+                    .strings = strings,
+        };
+
+static const struct usb_descriptor_header *fs_loopback_function[] = {
+                    (struct usb_descriptor_header *) &loopback_intf,
+                    (struct usb_descriptor_header *) &fs_sink_desc,
+                    NULL,
+        };
+
+static int
+        usb_zero_open (struct inode *inode, struct file *file) //打开设备
+        {
+                  struct zero_dev *dev =
+                    container_of (inode->i_cdev, struct zero_dev, cdev);
+                    file->private_data = dev;
+                  init_waitqueue_head (&dev->bulkrq);
+
+         return 0;
+        }
+
+static int
+        usb_zero_release (struct inode *inode, struct file *file) //关闭设备
+        {
+                  return 0;
+        }
+        static void free_ep_req(struct usb_ep *ep, struct usb_request *req)
+        {
+                    kfree(req->buf);
+                    usb_ep_free_request(ep, req);
+        }
+        static struct usb_request *alloc_ep_req(struct usb_ep *ep, unsigned length)//分配请求
+        {
+                    struct usb_request *req;
+
+            req = usb_ep_alloc_request(ep, GFP_ATOMIC);
+                    if (req) {
+                                req->length = length;
+                                req->buf = kmalloc(length, GFP_ATOMIC);
+                                if (!req->buf) {
+                                        usb_ep_free_request(ep, req);
+                                        req = NULL;
+                                }
+                    }
+                    return req;
+        }
+        static void source_sink_complete(struct usb_ep *ep, struct usb_request *req)//请求完成函数
+        {
+                    struct zero_dev *dev = ep->driver_data;
+                    int status = req->status;
+                    switch (status) {
+                    case 0: /* normal completion */
+                               if (ep == dev->out_ep) {
+                                        memcpy(dev->data, req->buf, req-> actual);//返回数据拷贝到req->buf中，                                                                                                     //dev->data_size=req->length;
+                                        dev->data_size=req->actual; //实际长度为req-> actual；需要确认
+        req –>short_not_ok为0。参考gadget.h中关于usb_request结构的注释
+                                }
+                                break;
+                     /* this endpoint is normally active while we're configured */
+                    case -ECONNABORTED: /* hardware forced ep reset */
+                    case -ECONNRESET: /* request dequeued */
+                    case -ESHUTDOWN: /* disconnect from host */
+                               printk("%s gone (%d), %d/%d\n", ep->name, status,
+                                                  req->actual, req->length);
+                    case -EOVERFLOW: /* buffer overrun on read means that
+                                                              * we didn't provide a big enough
+                                                              * buffer.
+                                                              */
+                    default:
+        #if 1
+                               printk("%s complete --> %d, %d/%d\n", ep->name,
+                                                  status, req->actual, req->length);
+        #endif
+                    case -EREMOTEIO: /* short read */
+                               break;
+                    }
+                    free_ep_req(ep, req);
+                    wake_up_interruptible (&dev->bulkrq); //唤醒读函数
+        }
+
+static struct usb_request *source_sink_start_ep(struct usb_ep *ep)//构造并发送读请求
+        {
+                    struct usb_request *req;
+                    int status;
+                    //printk("in %s\n",__FUNCTION__);
+                    req = alloc_ep_req(ep, 128);
+                    if (!req)
+                               return NULL;
+                    memset(req->buf, 0, req->length);
+                    req->complete = source_sink_complete; //请求完成函数
+                    status = usb_ep_queue(ep, req, GFP_ATOMIC); //递交请求
+                    if (status) {
+                             struct zero_dev *dev = ep->driver_data;
+                             printk("start %s --> %d\n", ep->name, status);
+                             free_ep_req(ep, req);
+                             req = NULL;
+                    }
+                    return req;
+        }
+        ssize_t
+        usb_zero_read (struct file * file, const char __user * buf, size_t count,loff_t * f_pos) //读设备
+        {
+                    struct zero_dev *dev =file->private_data;
+                    struct usb_request *req;
+                    int status;
+                    struct usb_ep *ep;
+                    struct usb_gadget *gadget = dev->gadget;
+                    ssize_t ret = 0;
+                    int result;
+                    ep=dev->out_ep;
+                    source_sink_start_ep(ep);//构造、递交读请求
+                    if (count < 0)
+                             return -EINVAL;
+                    interruptible_sleep_on (&dev->bulkrq);//睡眠，等到请求完成
+                    if (copy_to_user (buf,dev->data,dev->data_size)) //拷贝读取的数据到用户空间
+                    {
+                         ret = -EFAULT;
+                    }
+                    else
+                    {
+                        ret = dev->data_size;
+                    }
+                    return ret;
+        }
+
+struct file_operations usb_zero_fops = {
+                .owner = THIS_MODULE,
+                .read = usb_zero_read,
+                .open = usb_zero_open,
+                .release = usb_zero_release,
+        };
+
+static void
+        usb_zero_setup_cdev (struct zero_dev *dev, int minor)//注册字符设备驱动
+        {
+                int err, devno = MKDEV (usb_zero_major, minor);
+
+     cdev_init(&dev->cdev, &usb_zero_fops);
+                dev->cdev.owner = THIS_MODULE;
+                err = cdev_add (&dev->cdev, devno, 1);
+                if (err)
+                   printk ("Error adding usb_rcv\n");
+        }
+
+static void zero_setup_complete(struct usb_ep *ep, struct usb_request *req)//配置端点0的请求
+完成处理
+        {
+                   if (req->status || req->actual != req->length)
+                      printk("setup complete --> %d, %d/%d\n",
+                                      req->status, req->actual, req->length);
+        }
+        static void zero_reset_config(struct zero_dev *dev) //复位配置
+        {
+                      usb_ep_disable(dev->out_ep);
+                      dev->out_ep = NULL;
+        }
+        static void zero_disconnect(struct usb_gadget *gadget)//卸载驱动时被调用，做一些注销工作
+        {
+                   struct zero_dev *dev = get_gadget_data(gadget);
+                   unsigned long flags;
+                   unregister_chrdev_region (MKDEV (usb_zero_major, 0), 1);
+                   cdev_del (&(dev->cdev));
+                   zero_reset_config(dev);
+                   printk("in %s\n",__FUNCTION__);
+        }
+
+static int config_buf(struct usb_gadget *gadget,
+                      u8 *buf, u8 type, unsigned index)
+        {
+                   //int is_source_sink;
+                   int len;
+                   const struct usb_descriptor_header **function;
+                   int hs = 0;
+                   function =fs_loopback_function;//根据fs_loopback_function，得到长度，
+                                                         //此处len=配置（9）+1个接口（9）+1个端点（7）=25
+                   len = usb_gadget_config_buf(&loopback_config,
+                                      buf, USB_BUFSIZ, function);
+                   if (len < 0)
+                                      return len;
+                   ((struct usb_config_descriptor *) buf)->bDescriptorType = type;
+                   return len;
+        }
+
+static int set_loopback_config(struct zero_dev *dev)
+        {
+                int result = 0;
+                struct usb_ep *ep;
+                struct usb_gadget *gadget = dev->gadget;
+                ep=dev->out_ep;
+                const struct usb_endpoint_descriptor *d;
+                d = &fs_sink_desc;
+                result = usb_ep_enable(ep, d); //激活端点
+                //printk("");
+                if (result == 0) {
+                                printk("connected\n"); //如果成功，打印“connected”
+                }
+                else
+                                printk("can't enable %s, result %d\n", ep->name, result);
+                return result;
+        }
+        static int zero_set_config(struct zero_dev *dev, unsigned number)
+        {
+                int result = 0;
+                struct usb_gadget *gadget = dev->gadget;
+                result = set_loopback_config(dev);//激活设备
+                if (result)
+                        zero_reset_config(dev); //复位设备
+                else {
+                        char *speed;
+
+switch (gadget->speed) {
+                        case USB_SPEED_LOW: speed = "low"; break;
+                        case USB_SPEED_FULL: speed = "full"; break;
+                        case USB_SPEED_HIGH: speed = "high"; break;
+                        default: speed = " "; break;
+                        }
+                }
+                return result;
+        }
+        /***
+        zero_setup完成USB设置阶段和具体功能相关的交互部分
+        ***/
+        static int
+        zero_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
+        {
+                struct zero_dev *dev = get_gadget_data(gadget);
+                struct usb_request *req = dev->req;
+                int value = -EOPNOTSUPP;
+                u16 w_index = le16_to_cpu(ctrl->wIndex);
+                u16 w_value = le16_to_cpu(ctrl->wValue);
+                u16 w_length = le16_to_cpu(ctrl->wLength);
+
+/* usually this stores reply data in the pre-allocated ep0 buffer,
+                   * but config change events will reconfigure hardware.
+                   */
+                req->zero = 0;
+
+switch (ctrl->bRequest) {
+                case USB_REQ_GET_DESCRIPTOR: //获取描述符
+                        if (ctrl->bRequestType != USB_DIR_IN)
+                               goto unknown;
+                        switch (w_value >> 8) {
+                        case USB_DT_DEVICE: //获取设备描述符
+                                value = min(w_length, (u16) sizeof device_desc);
+                                memcpy(req->buf, &device_desc, value);
+                                break;
+                        case USB_DT_CONFIG: //获取配置，注意：会根据fs_loopback_function读取到接口、端点描述符，注意通过config_buf完成读取数据及数量的统计。
+                                value = config_buf(gadget, req->buf,
+                                                w_value >> 8,
+                                                w_value & 0xff);
+                                if (value >= 0)
+                                        value = min(w_length, (u16) value);
+                                break;
+
+case USB_DT_STRING:
+                                value = usb_gadget_get_string(&stringtab,
+                                                w_value & 0xff, req->buf);
+                                if (value >= 0)
+                                        value = min(w_length, (u16) value);
+                                break;
+                        }
+                        break;
+
+case USB_REQ_SET_CONFIGURATION:
+                        if (ctrl->bRequestType != 0)
+                                goto unknown;
+                        spin_lock(&dev->lock);
+                        value = zero_set_config(dev, w_value);//激活相应的端点
+                        spin_unlock(&dev->lock);
+                        break;
+
+default:
+        unknown:
+                        printk(
+                                "unknown control req%02x.%02x v%04x i%04x l%d\n",
+                                ctrl->bRequestType, ctrl->bRequest,
+                                w_value, w_index, w_length);
+                  }
+                  /* respond with data transfer before status phase */
+                  if (value >= 0) {
+                        req->length = value;
+                        req->zero = value < w_length;
+                        value = usb_ep_queue(gadget->ep0, req, GFP_ATOMIC);//通过端点0完成setup
+                        if (value < 0) {
+                                       printk("ep_queue --> %d\n", value);
+                                       req->status = 0;
+                                       zero_setup_complete(gadget->ep0, req);
+                        }
+                  }
+                  /* device either stalls (value < 0) or reports success */
+                  return value;
+        }
+        static void zero_unbind(struct usb_gadget *gadget) //解除绑定
+        {
+                struct zero_dev *dev = get_gadget_data(gadget);
+
+printk("unbind\n");
+                unregister_chrdev_region (MKDEV (usb_zero_major, 0), 1);
+                cdev_del (&(dev->cdev));
+                /* we've already been disconnected ... no i/o is active */
+                if (dev->req) {
+                        dev->req->length = USB_BUFSIZ;
+                        free_ep_req(gadget->ep0, dev->req);
+                }
+                kfree(dev);
+                set_gadget_data(gadget, NULL);
+        }
+        static int __init zero_bind(struct usb_gadget *gadget) //绑定过程
+        {
+                struct zero_dev *dev;
+                struct usb_ep *ep;
+                int gcnum;
+                usb_ep_autoconfig_reset(gadget);
+                ep = usb_ep_autoconfig(gadget, &fs_sink_desc);//根据端点描述符及控制器端点情况，分配一个合适的端点。
+                if (!ep)
+                        goto enomem;
+                EP_OUT_NAME = ep->name; //记录名称
+                gcnum = usb_gadget_controller_number(gadget);//获得控制器代号
+                if (gcnum >= 0)
+                        device_desc.bcdDevice = cpu_to_le16(0x0200 + gcnum);//赋值设备描述符
+                else {
+                        pr_warning("%s: controller '%s' not recognized\n",
+                              shortname, gadget->name);
+                        device_desc.bcdDevice = __constant_cpu_to_le16(0x9999);
+        }
+        dev = kzalloc(sizeof(*dev), GFP_KERNEL); //分配设备结构体
+        if (!dev)
+                return -ENOMEM;
+        spin_lock_init(&dev->lock);
+        dev->gadget = gadget;
+        set_gadget_data(gadget, dev);
+        dev->req = usb_ep_alloc_request(gadget->ep0, GFP_KERNEL);//分配一个请求
+        if (!dev->req)
+                goto enomem;
+        dev->req->buf = kmalloc(USB_BUFSIZ, GFP_KERNEL);
+        if (!dev->req->buf)
+                goto enomem;
+        dev->req->complete = zero_setup_complete;
+        dev->out_ep=ep; //记录端点（就是接收host端数据的端点）
+        printk("name=%s\n",dev->out_ep->name); //打印出这个端点的名称
+        ep->driver_data=dev;
+        device_desc.bMaxPacketSize0 = gadget->ep0->maxpacket;
+        usb_gadget_set_selfpowered(gadget);
+        gadget->ep0->driver_data = dev;
+        snprintf(manufacturer, sizeof manufacturer, "%s %s with %s",
+                init_utsname()->sysname, init_utsname()->release,
+        gadget->name);
+/**************************字符设备注册*******************/
+        dev_t usb_zero_dev = MKDEV (usb_zero_major, 0);
+        int result = register_chrdev_region (usb_zero_dev, 1, "usb_zero");
+        if (result < 0)
+        {
+                printk (KERN_NOTICE "Unable to get usb_transfer region, error %d\n",result);
+                return 0;
+        }
+        usb_zero_setup_cdev (dev, 0);
+        return 0;
+    enomem:
+        zero_unbind(gadget);
+        return -ENOMEM;
+    }
+/*-------------------------------------------------------------------------*/
+        static struct usb_gadget_driver zero_driver = { //gadget驱动的核心数据结构
+        #ifdef CONFIG_USB_GADGET_DUALSPEED
+                        .speed = USB_SPEED_HIGH,
+        #else
+                        .speed = USB_SPEED_FULL,
+        #endif
+                        .function = (char *) longname,
+                        .bind = zero_bind,
+                        .unbind = __exit_p(zero_unbind),
+                        .setup = zero_setup,
+                        .disconnect = zero_disconnect,
+                        //.suspend = zero_suspend, //不考虑电源管理的功能
+                        //.resume = zero_resume,
+                        .driver = {
+                                .name = (char *) shortname,
+                                .owner = THIS_MODULE,
+                        },
+        };
+        MODULE_AUTHOR("David Brownell");
+        MODULE_LICENSE("GPL");
+        static int __init init(void)
+        {
+                return usb_gadget_register_driver(&zero_driver); //注册驱动，调用bind绑定到控制器
+        }
+        module_init(init);
+
+static void __exit cleanup(void)
+        {
+                usb_gadget_unregister_driver(&zero_driver); //注销驱动，通常会调用到unbind解除绑定， //在s3c2410_udc.c中调用的是disconnect方法
+        }
+        module_exit(cleanup);
+
+三、总结
+
+    时间关系，上面的代码没有做太多的优化，但功能都是测试通过。希望能给大家的学习提供一点帮助。最后想谈谈学习USB驱动的一些方法。
+    USB驱动比较难掌握，主要原因是：
+
+    复杂的USB协议，包括USB基本协议、类规范等
+
+    控制器包括主机端、设备端。控制器本身相对复杂，其对应的主、从控制器驱动比较复杂
+
+    Hub功能及驱动、管理程序比较复杂
+
+    需要专业的硬件测试工具，硬件信号调试较困难
+
+    主、从端上层驱动程序本身不难，但由于对硬件不理解，及不好编写测试程序。所以往往望而却步。 我觉得学习USB驱动前应该有一个比较好的思路，个人建议可以按下面的过程学习
+
+    熟悉USB协议。不用看完所有的协议，重点关注一些概念、配置过程及数据包格式 

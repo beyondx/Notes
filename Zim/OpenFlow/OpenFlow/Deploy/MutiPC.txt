@@ -1,0 +1,254 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-19T22:50:14+08:00
+
+====== MutiPC ======
+Created Thursday 19 May 2011
+
+Create OpenFlow network with
+multiple PCs/NetFPGAs
+
+Setup OpenFlow network controlled by NOX with a set of PCs in the Lab in half day.
+
+    1. Description of an Example Setup
+        Configuration Summary
+            OpenFlow Switches
+            OpenFlow Controller (NOX 0.6)
+    2. Hardware Requirements
+        PCs for OpenFlow Switches
+        PC for OpenFlow Switch with NetFPGA card
+        PC for OpenFlow Controller
+    3. Setup OpenFlow Switches on PCs/NetFPGAs
+        3.1. Setup OpenFlow Switch on PC
+            3.1.1. Stanford Software Reference Design
+                Step1. Download Software
+                Step2. Compile
+                Step3. Run OpenFlow Switch
+                Step4. Let OpenFlow Switch talk to the controller
+            3.1.2. OpenVswitch Implementation
+                Step1. Download Software
+                Step2. Compile
+                Step3. Run OpenFlow switch
+                Step4. Let OpenFlow Switch talk to the controller
+        3.2. Setup OpenFlow Switch on NetFPGA
+            Step0. Basic Setup of NetFPGA
+            Step1. Download Software
+            Step2. Compile
+            Step3. Run
+            Step4. Let OpenFlow Switch talk to the controller
+
+4. Controller Setup
+
+    Step0. Install Pre-requisite Packages
+    Step1. Download Software
+    Step2. Compile
+    Step3. Run
+
+5. Basic Test
+
+    For Stanford reference design OpenFlow implementation
+    For OpenVswitch OpenFlow implementation
+
+ 
+1. Description of an Example Setup
+{{./deploy-lab.gif}}
+In this page, we’ll create an OpenFlow network with three OpenFlow switches controlled by NOX 0.6 controller. Among three OpenFlow switches, two are PC based software OpenFlow switches and one is NetFPGA based hardware OpenFlow switch. If you don’t have NetFPGA board, then just use a PC instead. Lab Setup
+Configuration Summary
+OpenFlow Switches
+Switch 	IP address to talk to the controller 	Controller Ethernet Port 	OpenFlow Ethernet Ports
+Switch1 (PC1) 	192.168.0.1/255.255.255.0 	eth0 	eth1, eth2
+Switch2 (PC2 with NetFPGA board) 	192.168.0.2/255.255.255.0 	eth0 	nf2c0, nf2c1, nf2c2, nf2c3
+Switch3 (PC3) 	192.168.0.3/255.255.255.0 	eth0 	eth1, eth2
+OpenFlow Controller (NOX 0.6)
+IP address 	TCP port number
+192.168.0.100/255.255.255.0 	6633
+2. Hardware Requirements
+PCs for OpenFlow Switches
+
+These are PC1, PC2, PC3 shown in the figure. We’ll run OpenFlow software reference design on those PCs. Any PC running Linux 2.6 kernel would work, but there are some dependency on the linux distribution. Please check the release notes in OpenFlow reference design. Depending on the network topology you would like to create, you need to install NICs (network interface cards) on those PCs. Note that NetFPGA only work with 1Gb/s ethernet (not 100Mbps or 10Mbps), so the interface connecting to the NetFPGA interface has to be gigabit ethernet NIC. In the configuration shown in the figure, you need three ethernet ports on each PC.
+PC for OpenFlow Switch with NetFPGA card
+
+Go User Guide page in the NetFPGA website (http://netfpga.org/foswiki/bin/view/NetFPGA/OneGig/Guide) to see the requirement of the PC and how to get NetFPGA card. Pre-built system is also available.
+PC for OpenFlow Controller
+
+This is for PC4 shown in the figure. Currently we have three different types of OpenFlow controllers, NOX, SNAC and Reference Controller. In this page, we use SNAC 0.6 for the controller. Any Linux PC would work, but we assume it runs Debian Stable (Lenny) in this page.
+3. Setup OpenFlow Switches on PCs/NetFPGAs
+3.1. Setup OpenFlow Switch on PC
+
+There are two different OpenFlow v1.0 switch implementations available. One is Stanford’s software reference design and the other is OpenVswitch (http://openvswitch.org/) implementation. While the former has user-space implementation, the latter has kernel-space implementation. The forwarding performance is (naturally) better in the kernel space implementation. Adding new features would be easier in the user space implementation. Pick the one depending on your need.
+3.1.1. Stanford Software Reference Design
+Step1. Download Software
+
+ $ git clone git://gitosis.stanford.edu/openflow.git
+ $ cd openflow
+ $ git checkout -b openflow.v1.0 origin/release/1.0.0
+
+Step2. Compile
+
+ $ ./boot.sh
+ $ ./configure
+ $ make
+
+Step3. Run OpenFlow Switch
+
+Here we assume eth1 and eth2 will be included in OpenFlow datapath (as shown in Configuration Summary). We also need to assign datapath-id to this OpenFlow switch. The datapath-id has to be unique among the switches controlled by a single OpenFlow controller. One way to pick an unique datapath id is to use MAC address of one of this PC’s interface. Let’s assume we’ll use datapath-id 0x004E46324304 for this OpenFlow switch.
+
+# ./udatapath/ofdatapath --detach punix:/var/run/dp0 -d 004E46324304 -i eth1,eth2
+
+Note: ‘–detach’ option make it run in background as daemon. ‘punix:/var/run/dp0′ is specifying an Unix domain socket file through which we can talk to this switch.
+Step4. Let OpenFlow Switch talk to the controller
+
+Then run OpenFlow protocol module talk to the controller. Here we assume the controller is running on 192.168.0.100 port 6633.
+
+ # ./secchan/ofprotocol unix:/var/run/dp0 tcp:192.168.0.100:6633
+
+Note that the file name ‘/var/run/dp0′ has to be consistent to the UNIX domain socket file name we specified in the previous step.
+3.1.2. OpenVswitch Implementation
+
+Another choice is OpenVswitch implementation.
+Step1. Download Software
+
+As of Nov 19, 2010, the latest version is “1.1.0 pre2″ and you can download it from the link, http://openvswitch.org/releases/openvswitch-1.1.0pre2.tar.gz
+
+ $ wget http://openvswitch.org/releases/openvswitch-1.1.0pre2.tar.gz
+ $ tar zxvf openvswitch-1.1.0pre2.tar.gz
+ $ cd  openvswitch-1.1.0pre2
+
+Step2. Compile
+
+ $ ./boot.sh
+ $ ./configure --with-l26=/lib/modules/`uname -r`
+ $ make
+
+Step3. Run OpenFlow switch
+
+Insert OpenFlow kernel module, openvswitch_mod.ko.
+
+ $ su -
+ # /sbin/insmod ./datapath/linux-2.6/openvswitch_mod.ko
+
+Create OpenFlow switch datapath.
+
+ # ./utilities/ovs-dpctl adddp dp0
+
+Then, add interface to the datapath. Interfaces names (eth1, eth2) depend on your system.
+
+ # ./utilities/ovs-dpctl addif nl:0 eth1
+ # ./utilities/ovs-dpctl addif nl:0 eth2
+
+Step4. Let OpenFlow Switch talk to the controller
+
+Then let OpenFlow protocol module talk to the controller. Let’s assume we’ll use datapath-id 0x004E46324304 for this OpenFlow switch and the controller is running on 192.168.0.100 port 6633.
+
+# ./utilities/ovs-openflowd dp0 --datapath-id=0000004E46324304 tcp:192.168.0.100 port 6633 --out-of-band
+
+3.2. Setup OpenFlow Switch on NetFPGA
+
+Please refer to the following page for the complete instruction: CentOS NetFPGA Install
+Step0. Basic Setup of NetFPGA
+
+Please refer http://netfpga.org/foswiki/bin/view/NetFPGA/OneGig/Guide to setup NetFPGA.
+Step1. Download Software
+
+ $ git clone git://gitosis.stanford.edu/openflow.git
+ $ cd openflow
+ $ git checkout -b 1.0.0-netfpga origin/devel/tyabe/1.0.0-netfpga
+
+Step2. Compile
+
+ $ ./boot.sh
+ $ cd ./hw-lib/nf2
+ $ wget http://gitosis.stanford.edu/downloads/netfpga/openflow_switch.bit.100_3.tar.gz
+ $ tar zxvf openflow_switch.bit.100_3.tar.gz
+ $ cd ../../
+ $ ./configure --enable-hw-tables=nf2
+ $ make
+
+Step3. Run
+
+Program NetFPGA card as OpenFlow switch.
+
+ # /root/NF2/lib/scripts/cpci_reprogram/cpci_reprogram.pl
+ # nf_download ./datapath/hwtable_nf2/openflow_switch.bit
+
+Here we assume eth1 and eth2 will be included in OpenFlow datapath (as shown in Configuration Summary). We also need to assign datapath-id to this OpenFlow switch. The datapath-id has to be unique among the switches controlled by a single OpenFlow controller. One way to pick an unique datapath id is to use MAC address of one of this PC’s interface. Let’s assume we’ll use datapath-id 0x004E46324304 for this OpenFlow switch.
+
+# ./udatapath/ofdatapath --detach punix:/var/run/dp0 -d 004E46324304 -i nf2c0,nf2c1,nf2c2,nf2c3
+
+Note: ‘–detach’ option make it run in background as daemon. ‘punix:/var/run/dp0′ is specifying an Unix domain socket file through which we can talk to this switch.
+Step4. Let OpenFlow Switch talk to the controller
+
+Then run OpenFlow protocol module talk to the controller. Here we assume the controller is running on 192.168.0.100 port 6633.
+
+# ./secchan/ofprotocol unix:/var/run/dp0 tcp:192.168.0.100:6633
+
+Note that the file name ‘/var/run/dp0′ has to be consistent to the UNIX domain socket file name we specified in the previous step.
+4. Controller Setup
+
+We’ll setup NOX 0.6 here. For the complete information, visit NOX website.
+Step0. Install Pre-requisite Packages
+
+Prerequiste packages depend on the linux distribution on the controller PC. In the case of Debian Stable (Lenny), you have to install the following packages:
+
+$ apt-get install autoconf automake g++ libtool python python-twisted \
+       swig libboost1.35-dev libxerces-c2-dev libssl-dev make        \
+       libsqlite3-dev python-simplejson        \
+        python-sphinx
+
+Step1. Download Software
+
+ $ git clone git://noxrepo.org/nox
+ $ cd nox
+
+By default, you’ll get OpenFlow v0.8.9 compatible NOX (as of 5/20/2010). If you want to OpenFlow v1.0 compatible NOX, then you need to checkout the corresponding branch. Here is the instruction:
+
+ #### this is only for OpenFlow v1.0 user
+   $ git branch -a
+      * master
+      remotes/origin/HEAD -> origin/master
+      remotes/origin/destiny
+      remotes/origin/master
+      remotes/origin/openflow-0.9
+      remotes/origin/openflow-1.0
+   $ git checkout -b nox_v06_ofv1.0 remotes/origin/openflow-1.0
+   $ git branch -a
+        master
+      * nox_v06_ofv1.0
+         remotes/origin/HEAD -> origin/master
+         remotes/origin/destiny
+         remotes/origin/master
+         remotes/origin/openflow-0.9
+         remotes/origin/openflow-1.0
+
+Step2. Compile
+
+$ ./boot.sh
+$ mkdir build
+$ cd build/
+$ ../configure
+$ make
+
+Step3. Run
+
+Run NOX with routing module only. Routing module will do the shortest path routing.
+
+$ cd src
+$ ./nox_core -i ptcp:6633 routing
+
+5. Basic Test
+
+On the controller PC, first check the switches are connected to the controller. You can check this by
+
+$ netstat -an | grep 6663
+
+Assign the IP addresses to Client1 and Client2 (on the same subnet) and run ping to check they can communicate. On each switch, you can run the following command to see the flow table is actually installed.
+For Stanford reference design OpenFlow implementation
+
+$ cd <your OpenFlow comipled dir>
+$ ./utilities/ovs-dpctl dump-flows unix:/var/run/dp0
+
+For OpenVswitch OpenFlow implementation
+
+$ cd <your OpenFlow comipled dir>
+$ ./utilities/ovs-dpctl dump-flows dp0
+

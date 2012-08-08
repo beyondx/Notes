@@ -1,0 +1,19 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2010-08-03T21:49:39.938628
+
+====== 5.2 How to specify files ======
+Created Tuesday 03 August 2010
+
+There are two ways to specify files, by "absolute file name" and by
+"block list".
+
+   An absolute file name resembles a Unix absolute file name, using `/'
+for the directory separator (not `\' as in DOS). One example is
+`(hd0,1)/boot/grub/grub.cfg'. This means the file `/boot/grub/grub.cfg'
+in the first partition of the first hard disk. If you omit the device
+name in an absolute file name, GRUB uses GRUB's "root device"
+implicitly. So if you set the root device to, say, `(hd1,1)' by the
+command `root' (*note root::), then `/boot/kernel' is the same as
+`(hd1,1)/boot/kernel'.
+

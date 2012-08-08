@@ -1,0 +1,488 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-02T16:44:29+08:00
+
+====== PCI设备的驱动架构 ======
+Created Monday 02 July 2012
+http://blog.chinaunix.net/uid-20543183-id-1930829.html
+------------------------------------------
+本文系本站原创,欢迎转载!
+转载请注明出处:http://ericxiao.cublog.cn/
+------------------------------------------
+前面分析的几个部份都是由内核处理的.驱动工程师最关心就是如何编写PCI设备驱动了.经过前面的处理,__所有设备及其信息__都已经遍历出来了.在深入分析PCI驱动架构之前,我们来回顾一下前面遍历PCI设备时,对__pci_dev->dev__的一些重要成员的赋值.以及各结构在sysfs中的视图
+
+**.1:pci架构在sysfs中视图**
+
+==== 1:对于pci_dev ====
+pci_dev->dev的所属bus,parent和name的赋值:
+在pci_scan_child_bus() -->  pci_scan_slot()--> pci_scan_single_device()-->pci_scan_device():
+……
+dev->**dev.parent** = bus->bridge;
+dev->**dev.bus** = &pci_bus_type;
+……
+pci_scan_child_bus()-->pci_scan_slot()-->pci_scan_single_device()-->pci_scan_device()-->pci_setup_device()
+……
+        sprintf(__pci_name(dev)__, "%04x:%02x:%02x.%d", pci_domain_nr(dev->bus),
+                   dev->bus->number, PCI_SLOT(dev->devfn), PCI_FUNC(dev->devfn));
+……
+
+由此可见.对于所有的pci_dev.它的所属bus全为pci_bus_type.它的name部份由四个部份组成:所属的__总线域__(根据代码看,好像总线域一直都是0.不知道是x86平台是样子,还是我忽略掉了很多东西?),__总线号__,__设备号和功能号__.它的parent为bus->bridge.
+
+对于根总线:
+pci_scan_bus_parented()-->pci_create_bus():
+……
+         memset(dev, 0, sizeof(*dev));
+         dev->parent = parent;
+         dev->release = pci_release_bus_bridge_dev;
+         sprintf(dev->bus_id, "__pci%04x:%02x__", pci_domain_nr(b), bus);
+         error = device_register(dev);
+         if (error)
+                   goto dev_reg_err;
+         b->bridge = get_device(dev);
+……
+从上面的代码片段可以看出.根总线的bridge的赋值情况.对于第一根根总线.对于根总线的name:由pci+两部份组成.分别是总线域和根总线号.
+
+对于下层总线:
+pci_scan_bridge()-->pci_add_new_bus()-->pci_alloc_child_bus():
+……
+         child->self = bridge;
+         child->parent = parent;
+         child->ops = parent->ops;
+         child->sysdata = parent->sysdata;
+         child->bus_flags = parent->bus_flags;
+         child->bridge = get_device(&bridge->dev);
+……
+从上面的代码看到.下层总线的bridge对应于它的pci-pci bridge.我们到/sys下面看看,来论证我们的分析:
+
+[root@localhost /]# cd /sys/device
+[root@localhost devices]# ls
+isa  LNXSYSTM:00  pci0000:00  platform  pnp0  pnp1  system
+可以看到,在/sys/device下有一个名为__pci0000:00__的结点.根据上面的分析,这就是__第一条根总线__.另外,也看可以看到,我的机器上只有一条根总线.
+[root@localhost devices]# cd pci0000\:00/
+[root@localhost pci0000:00]# ls
+0000:00:00.0  0000:00:07.0  0000:00:07.2  0000:00:0f.0  0000:00:11.0  pci_bus:0000:00  uevent
+0000:00:01.0  0000:00:07.1  0000:00:07.3  0000:00:10.0  0000:00:12.0  power
+下面以0000开头的,对应了根总线下的所有设备.其它的文件是在pci_bus_add_device()生成的.我们暂且不要管它们.再来看一看,下面有没有pci-pci bridge.
+
+[root@localhost pci0000:00]# tree
+.
+|-- 0000:00:00.0
+|   |-- broken_parity_status
+|   |-- bus -> ../../../bus/pci
+|   |-- class
+|   |-- config
+|   |-- device
+|   |-- driver -> ../../../bus/pci/drivers/agpgart-intel
+|   |-- enable
+|   |-- irq
+|   |-- local_cpus
+|   |-- modalias
+|   |-- msi_bus
+|   |-- power
+|   |   `-- wakeup
+|   |-- resource
+|   |-- resource0
+|   |-- subsystem -> ../../../bus/pci
+|   |-- subsystem_device
+|   |-- subsystem_vendor
+|   |-- uevent
+|   `-- vendor
+|-- 0000:00:01.0
+|   |-- broken_parity_status
+|   |-- bus -> ../../../bus/pci
+|   |-- class
+|   |-- config
+|   |-- device
+|   |-- enable
+|   |-- irq
+|   |-- local_cpus
+|   |-- modalias
+|   |-- msi_bus
+|   |-- pci_bus:0000:01 -> ../../../class/pci_bus/0000:01
+|   |-- power
+|   |   `-- wakeup
+|   |-- resource
+|   |-- subsystem -> ../../../bus/pci
+|   |-- subsystem_device
+|   |-- subsystem_vendor
+|   |-- uevent
+|   `-- vendor
+……
+……
+由于输出较长,我把后面的省略掉了.用tree命令看到，在下层目录中，并没有对应0000开头的文件．（为什么是0000开头呢？因为同一根总线下的所有设备．根总线域是相同的^_^）.那说明，下层总线没有任何的设备．我们在些还不能够确有没有下层总线．因为可能有这样的情况：有下层总线，但下层总线上没有挂上任何设备.
+ 
+
+==== 2:pci_bus. ====
+pci_bus在sysfs的存放和pci_dev是不相同的. 根总线的pci_bus初始化如下所示:
+pci_create_bus():
+……
+ 
+         b->dev.class = __&pcibus_class__;
+         b->dev.parent = b->bridge;
+         sprintf(b->dev.bus_id, "%04x:%02x", pci_domain_nr(b), bus);
+……
+我们可以看到,pci_bus是属于pcibus_class的.它的父结点为b->bridge. b->bridge我们在上面已经分析过了.它的名称为总线域+总线号.
+对于下级总线,初始化如下所示:
+……
+         child->parent = parent;
+         ……
+         child->dev.class = &pcibus_class;
+         sprintf(child->dev.bus_id, "%04x:%02x", pci_domain_nr(child), busnr);
+…….
+我们可以看到,它的parent为它的上层总线,属于pcibus_class类.另外,名称为总线域+总线号
+ 
+在sysfs中论证一下我们刚才的分析:
+[root@localhost linux-2.6.25]# cd /sys/class/pci_bus/
+[root@localhost pci_bus]# ll
+total 0
+drwxr-xr-x 3 root root 0 08-21 05:41 0000:00
+drwxr-xr-x 3 root root 0 08-21 05:41 0000:01
+可以看出.有两个pci 总线.用tree命令看下:
+|-- 0000:00
+|   |-- cpuaffinity
+|   |-- device -> ../../../devices/pci0000:00
+|   |-- power
+|   |   `-- wakeup
+|   |-- subsystem -> ../../pci_bus
+|   `-- uevent
+`-- 0000:01
+    |-- cpuaffinity
+    |-- device -> ../../../devices/pci0000:00/0000:00:01.0
+    |-- power
+    |   `-- wakeup
+    |-- subsystem -> ../../pci_bus
+`-- uevent
+ 
+从device的指向可以看出. 0000:00的parent为/sys/device/pci0000:00.即为第一根根总线
+0000:01的parent为/sys/devices/pci0000:00/0000:00:01.0
+ 
+综合上面的分析,我们看到得出这样的结论:
+测试的PC上只有一根根总线,根总线下面有一个次总线.次总线下面没有设备.
+ 
+
+===== 8.2:PCI 驱动架构初始化: =====
+Pci驱动架构的初始化如下所示:
+static int __init pci_driver_init(void)
+{
+         return **bus_register**(&__pci_bus_type__);
+}
+ 
+postcore_initcall(pci_driver_init);
+
+即初始化了一个名为pci_bus_type的总线.其初始化如下示:
+
+__struct bus_type__ pci_bus_type = {
+         .name                = "pci",
+         .match                = pci_bus_match,
+         .uevent               = pci_uevent,
+         .probe                = pci_device_probe,
+         .remove             = pci_device_remove,
+         .suspend = pci_device_suspend,
+         .suspend_late  = pci_device_suspend_late,
+         .resume_early  = pci_device_resume_early,
+         .resume             = pci_device_resume,
+         .shutdown         = pci_device_shutdown,
+         .dev_attrs = pci_dev_attrs,
+};
+上面的几个接口,我们等用到的时候再进行分析.
+ 
+注册一个pci driver的接口为: pci_register_driver(),代码如下所示:
+
+pci_register_driver()-> __pci_register_driver():
+
+int __pci_register_driver(__struct pci_driver__ *drv, __struct module__ *owner, const char *mod_name)
+{
+         int error;
+ 
+         /* initialize common driver fields */
+         drv->driver.name = drv->name;
+         drv->driver.bus = __&pci_bus_type__;
+         drv->driver.owner = owner;
+         drv->driver.mod_name = mod_name;
+ 
+         spin_lock_init(&drv->dynids.lock);
+         INIT_LIST_HEAD(&drv->dynids.list);
+ 
+         /* register with core */
+         error = __driver_register__(&drv->driver);   //详细过程，可以参考[[../../../../内核开发/驱动/驱动注册并调用probe的过程.txt]]
+         if (error)
+                   return error;
+ 
+         error = pci_create_newid_file(drv);
+         if (error)
+                   driver_unregister(&drv->driver);
+ 
+         return error;
+}
+Pci_driver的结构如下所示:
+
+struct module;
+__struct pci_driver__ {
+         struct list_head node;
+         char *name;
+         const struct pci_device_id *__id_table__;         /* must be non-NULL for probe to be called */
+         int  (*probe)  (__struct pci_dev__ *dev, const __struct pci_device_id__ *id);  /* New device inserted */
+         void (*remove) (struct pci_dev *dev);          /* Device removed (NULL if not a hot-plug capable driver) */
+         int  (*suspend) (struct pci_dev *dev, pm_message_t state);   /* Device suspended */
+         int  (*suspend_late) (struct pci_dev *dev, pm_message_t state);
+         int  (*resume_early) (struct pci_dev *dev);
+         int  (*resume) (struct pci_dev *dev);                         /* Device woken up */
+         void (*shutdown) (struct pci_dev *dev);
+ 
+         struct pci_error_handlers *err_handler;
+         __struct device_driver  driver__;
+         struct pci_dynids dynids;
+};
+
+由此可见:pci_driver中封装了一个device_driver结构.pci_driver的注册过程,就是初始化pci_driver封装的device-driver然后将其注册的过程. Struct pci_driver这个结构成员的含义,在下面的分析中遇到的时候再进行分析.
+
+我们注意到,在注册pci_driver的过程,将其封装的device_driver->bus赋值为pci_bus_type. 回忆一下,在遍历pci 设备的时候,也是将其bus设置为pci_bus-type.
+
+根据我们之前对设备模型的分析.注册pci_driver会对所有挂在pci_bus_type的pci_dev**产生一次probe事件(关于probe的调用过程，可以参考**[[../../../../内核开发/驱动/驱动注册并调用probe的过程.txt]]**)**.首先,它会调用 __pci_bus_type->match()__来匹配驱动对应的设备.对应的接口如下所示:
+
+static int pci_bus_match(**struct device *dev**, **struct device_driver *drv**)
+{
+         struct pci_dev *pci_dev = to_pci_dev(dev);
+         struct pci_driver *pci_drv = to_pci_driver(drv);
+         const struct pci_device_id *found_id;
+ 
+         found_id = __pci_match_device__(pci_drv, pci_dev);
+         if (found_id)
+                   return 1;
+ 
+         return 0;
+}
+
+Pci_dev中封装了struct device. Pci_driver中封装了struct device_driver.根据它们的位置差,就可以进行struct device. Struct device-driver到pci_dev,pci_driver的转换(具体可以参考).  然后调用pci_match_device().代码如下:
+ 
+static const **struct pci_device_id ***pci_match_device(struct pci_driver *drv, struct pci_dev *dev)
+{
+         struct pci_dynid *dynid;
+ 
+         /* Look at the __dynamic ids__ first, before the static ones */
+         spin_lock(&drv->dynids.lock);
+         list_for_each_entry(dynid, **&drv->dynids.list**, node) {
+                   if (**pci_match_one_device**(&dynid->id, dev)) {
+                            spin_unlock(&drv->dynids.lock);
+                            return &dynid->id;
+                   }
+         }
+         spin_unlock(&drv->dynids.lock);
+ 
+         return **pci_match_id**(drv->__id_table__, dev);
+}
+根据代码中的注释,可以得到,在匹配的过程中,会优先匹配drv-dynids的数据.如果匹配不同功,再去匹配drv->id-table.  struct pci_dynid定义如下所示:
+struct pci_dynid {
+         struct list_head node;
+         struct pci_device_id id;
+};
+
+其中,node用来形成链表.  __struct pci_device_id__定义如下所示:
+struct pci_device_id {
+         __u32 vendor, device;                 /* Vendor and device ID or PCI_ANY_ID*/
+         __u32 subvendor, subdevice;   /* Subsystem ID's or PCI_ANY_ID */
+         __u32 class, class_mask;        /* (class,subclass,prog-if) triplet */
+         kernel_ulong_t driver_data;      /* **Data private to the driver** */
+};
+
+看到这个结构里面的成员是不是觉得很熟悉?没错,__pci驱动就是根据这些信息来匹配设备的__.具体的匹配过程是由pci_match_one_device()完成的.代码如下示:
+
+static inline const struct pci_device_id *
+pci_match_one_device(const struct pci_device_id *id, const struct pci_dev *dev)
+{
+         if ((id->vendor == PCI_ANY_ID || id->vendor == dev->vendor) &&
+             (id->device == PCI_ANY_ID || id->device == dev->device) &&
+             (id->subvendor == PCI_ANY_ID || id->subvendor == dev->subsystem_vendor) &&
+             (id->subdevice == PCI_ANY_ID || id->subdevice == dev->subsystem_device) &&
+             !((id->class ^ dev->class) & id->class_mask))
+                   return id;
+         return NULL;
+}
+
+由此可以看出,必须vendor, device, subvendor, subdevice, class__全部匹配__才能认为该驱动和设备是匹配的.特别的,对于PCI_ANY_ID,表示任何该类型的设备.例如,如果id->vendor == PCI_ANY_ID,表示匹配任何厂商的设备. 如果匹配成功,就会调用所属bus的probe函数，然后调用驱动的probe函数(具体可以参考：[[../../../../内核开发/驱动/驱动注册并调用probe的过程.txt]]).相应接口如下所示:
+
+static int pci_device_probe(struct device * dev)  //pci bus的probe。
+{
+         int error = 0;
+         struct pci_driver *drv;
+         struct pci_dev *pci_dev;
+ 
+         drv = to_pci_driver(dev->driver);
+         pci_dev = to_pci_dev(dev);
+         pci_dev_get(pci_dev);
+         error = **__pci_device_probe**(drv, pci_dev);
+         if (error)
+                   pci_dev_put(pci_dev);
+ 
+         return error;
+}
+
+同理,还是先转换到封装的结构.然后调用__pci_device_probe().代码如下所示:
+
+static int
+____pci_device_probe(struct __pci_driver__ *drv, struct __pci_dev__ *pci_dev)
+{
+         const struct pci_device_id *id;
+         int error = 0;
+ 
+         if (!pci_dev->driver && drv->probe) {
+                   error = -ENODEV;
+ 
+                   id = **pci_match_device**(drv, pci_dev);
+                   if (id)
+                            error = __pci_call_probe__(drv, pci_dev, id);
+                   if (error >= 0) {
+                            pci_dev->driver = drv;
+                            error = 0;
+                   }
+         }
+         return error;
+}
+
+如果pci_dev被成功的驱动,就会就pci_dev->driver指向它所属的驱动.在这里,第一次匹配设备的时候,设备是没有被驱动的.然后,再次确认pci_dev和pci_driver匹配之后,转入pci_call_probe ().代码如下:
+
+static int pci_call_probe(**struct pci_driver *drv**, struct pci_dev *dev,
+                              const struct pci_device_id *id)
+{
+         int error;
+#ifdef CONFIG_NUMA
+         /* Execute driver initialization on node where the
+            device's bus is attached to.  This way the driver likely
+            allocates its local memory on the right node without
+            any need to change it. */
+         struct mempolicy *oldpol;
+         cpumask_t oldmask = current->cpus_allowed;
+         int node = pcibus_to_node(dev->bus);
+         if (node >= 0 && node_online(node))
+             set_cpus_allowed(current, node_to_cpumask(node));
+         /* And set default memory allocation policy */
+         oldpol = current->mempolicy;
+         current->mempolicy = NULL;    /* fall back to system default policy */
+#endif
+         __error = drv->probe(dev, id);    //调用PCI设备的probe函数，从而完成PCI设备驱动的注册和初始化。__
+#ifdef CONFIG_NUMA
+         set_cpus_allowed(current, oldmask);
+         current->mempolicy = oldpol;
+#endif
+         return error;
+}
+上面代码中,我们忽略一些选择编译的东东,然后就非常清楚了.它就是将probe操作回溯到pci_driver的probe函数中.另外,我们可以看到,pci_bus_type的很多函数都是这样处理的.
+ 
+再来关心一下__hotplug事件.每注册pci_dev 的时候都会调用pci_bus_type的uevent函数__.代码如下:
+int pci_uevent(struct device *dev, struct kobj_uevent_env *env)
+{
+         struct pci_dev *pdev;
+ 
+         if (!dev)
+                   return -ENODEV;
+ 
+         pdev = to_pci_dev(dev);
+         if (!pdev)
+                   return -ENODEV;
+ 
+         if (__add_uevent_var__(env, "PCI_CLASS=%04X", pdev->class))
+                   return -ENOMEM;
+ 
+         if (add_uevent_var(env, "PCI_ID=%04X:%04X", pdev->vendor, pdev->device))
+                   return -ENOMEM;
+ 
+         if (add_uevent_var(env, "PCI_SUBSYS_ID=%04X:%04X", pdev->subsystem_vendor,
+                               pdev->subsystem_device))
+                   return -ENOMEM;
+ 
+         if (add_uevent_var(env, "PCI_SLOT_NAME=%s", pci_name(pdev)))
+                   return -ENOMEM;
+ 
+         if (add_uevent_var(env, "__MODALIAS__=pci:v%08Xd%08Xsv%08Xsd%08Xbc%02Xsc%02Xi%02x",
+                               pdev->vendor, pdev->device,
+                               pdev->subsystem_vendor, pdev->subsystem_device,
+                               (u8)(pdev->class >> 16), (u8)(pdev->class >> 8),
+                               (u8)(pdev->class)))
+                   return -ENOMEM;
+         return 0;
+}
+
+从此可以看出.它会将class, vendor, device放到__hotplug的环境变量中__.我们从sysfs中验证一下.根据我们前面的分析.bus/device/event这个文件会将bus添加的环境变量列出来.进一个pci devcie的目录:
+Cd /sys/bus/pci/ devices
+上面显示了注册到pci_bus_type上的设备.
+然后:
+[root@localhost devices]# cat 0000\:00\:00.0/uevent
+DRIVER=agpgart-intel
+PHYSDEVBUS=pci
+PHYSDEVDRIVER=agpgart-intel
+PCI_CLASS=60000
+PCI_ID=8086:7190
+PCI_SUBSYS_ID=15AD:1976
+PCI_SLOT_NAME=0000:00:00.0
+MODALIAS=pci:v00008086d00007190sv000015ADsd00001976bc06sc00i00
+[root@localhost devices]#
+这样就验证了我们刚才所说的.  到此为至.对pci架构分析已经清楚了.再来看一下,在pci驱动中经常所用到的接口函数.
+ 
+
+==== 8.3:pci驱动程序常用接口分析: ====
+Linux内核开发人员建议PCI驱动程序,在使用设备的时候pci_enable_device().在关闭的时候pci_disable_device ().
+pci_enable_device()这个函数其实我们在分析pci设备资源分配的时候就已经讨论过,只是那时候没有给出详细的分析.
+代码如下:
+int pci_enable_device(struct pci_dev *dev)
+{
+         return __pci_enable_device_flags(dev, IORESOURCE_MEM | IORESOURCE_IO);
+}
+static int __pci_enable_device_flags(struct pci_dev *dev,
+                                          resource_size_t flags)
+{
+         int err;
+         int i, bars = 0;
+ 
+         //如果enable_cnt 已经大于1.则说明它已经被启用了
+         if (atomic_add_return(1, &dev->enable_cnt) > 1)
+                   return 0;             /* already enabled */
+ 
+         //对需要设置的资源项都在bars中置位
+for (i = 0; i < DEVICE_COUNT_RESOURCE; i++)
+                   if (dev->resource[i].flags & flags)
+                            bars |= (1 << i);
+         //启用该设备
+         err = __do_pci_enable_device__(dev, bars);
+ 
+         //如果分配失败.递减enable_cnt
+         if (err < 0)
+                   atomic_dec(&dev->enable_cnt);
+         return err;
+}
+对照添加在代码中的注释.应该不难理解.跟进do_pci_enable_device():
+ 
+static int do_pci_enable_device(struct pci_dev *dev, int bars)
+{
+         int err;
+         //更改设备的电源状态.可能设备之前处于suspended状态
+         err = pci_set_power_state(dev, PCI_D0);
+         if (err < 0 && err != -EIO)
+                   return err;
+         //启用设备
+         err = __pcibios_enable_device__(dev, bars);
+         if (err < 0)
+                   return err;
+         //一些平台的修正函数
+         pci_fixup_device(pci_fixup_enable, dev);
+ 
+         return 0;
+}
+ 
+pcibios_enable_device()函数代码如下所示:
+int pcibios_enable_device(struct pci_dev *dev, int mask)
+{
+         int err;
+ 
+         if ((err = __pcibios_enable_resources__(dev, mask)) < 0)
+                   return err;
+ 
+         if (!dev->msi_enabled)
+                   return __pcibios_enable_irq__(dev);
+         return 0;
+}
+
+这个函数会启用设备的相关存储区.然后调用pcibios_enable_irq()启用设备的中断.这个过程包括到PIR中取得中断号,并开启中断功能.
+ 
+
+==== PCI学习部份小结: ====
+Pci是一个庞大的工程,由于PCI总线结构的特性,代码中大量采用了深度优先遍历算法.完全理解这部份代码首先需要对PCI的体系结构要一个较为深刻的认识.其实这部份的重点和难点是在对PCI设备的遍历上.其它后续的步骤都是在遍时生成树的基础上完成的.这个复杂的一个结构,展再在驱动工程师面前却非常简单.只需要按部就班的就pci_driver中的接口完成就可以了.

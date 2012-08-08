@@ -1,0 +1,115 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-17T13:19:34+08:00
+
+====== 关于C++类成员函数的重载、覆盖、隐藏与virtual关键字 ======
+Created Friday 17 February 2012
+
+http://www.cppblog.com/phoenix8848cn/archive/2008/10/13/63849.html
+
+  最近看<<高质量C++>>时读到的关于成员函数的重载/覆盖/隐藏,把我的一点理解写出来,希望大家批评与指正.
+
+===== 1. 重载、覆盖与隐藏 =====
+
+1)．重载(overload)：成员函数具有以下的特征时发生“重载”
+A．__相同的范围__（同一个类中）
+B．函数的名字相同
+C．参数类型不同（不能进行隐式类型转换）
+D．Virtual关键字可有可无
+
+2)．覆盖（override, 也叫“继承”）：指派生类函数覆盖基类函数，特征是：
+A．__不同的范围__（分别位于基类与派生类中）
+B．函数名字相同
+C．**参数相同**
+D．基类函数__必须有virtual__关键字
+
+3)．隐藏(hide)：是指派生类的函数屏蔽了与其同名的基类函数，规则如下：
+A．如果派生类的函数与基类的函数同名，但是参数不同，此时不论有无virtual关键字，__基类的函数都将被隐藏__，注意别与重载混淆
+B．如果派生类的函数与基类的函数同名，并且参数也相同，但是基类函数没有virtual关键字，此时基类的函数被隐藏（注意别与覆盖混淆）
+
+2．看下面这个例子代码：
+
+ 1 #include <iostream>
+ 2 using std::cout;
+ 3 using std::endl;
+ 4 
+ 5 class Base
+ 6 {
+ 7 public:
+ 8     virtual void f(float x){ cout << "Base::f(float) " << x << endl;}
+ 9     void g(float x){ std::cout << "Base::g(float) " << x << std::endl;}
+10    void h(float x){ std::cout << "Base::h(float) " << x <<std::endl;}
+11 };
+12 
+13 class Derived : public Base
+14 {
+15 public:
+16     virtual void f(float x){ std::cout << "Derived::f(float) " << x << std::endl;}
+17     void g(int x){ std::cout << "Derived::g(int) " << x << std::endl;}
+18     void h(float x){ std::cout << "Derived::h(float) " << x << std::endl;}
+19 };
+20 
+21 void main(void)
+22 {
+23     Derived d;
+24     Base *pb = &d;
+25     Derived *pd = &d;
+26 
+27     pb->f(3.14f);//Derived::f(float) 3.14
+28     pd->f(3.14f);//Derived::f(float) 3.14
+29 
+30     pb->g(3.14f);//Base::g(float) 3.14
+31    __ pd->g(3.14f);//Derived::g(int) 3__
+32 
+33     pb->h(3.14f);//Base:h(float) 3.14
+34     pd->h(3.14f);//Derived::h(float) 3.14
+35 }
+
+ 
+3. 解释
+在27与28行，派生类的Derived::f(float x)通过virtual关键字 __继承（覆盖）__了基类的Base::f(float x)方法，所以这里无论采有基类指针还是派生类指针，最后调用的其实都是Derived::f(float x)方法。这正是一般情况我们所期望的。
+
+在30行，由于基类的Base::g()没有用virtual关键字声明，所以这里它不会被派生类的Derived::g()方法覆盖。所以通过基类指针访问时只能访问到Base::g(float x)，而在31行通过派生类指针时可以访问的方法有Base::g(float x)和Derived::g(int x)，这两个方法虽然方法名相同而且参数不同（似乎）符合重载的标准，__但是它们却分属于不同的“域”因此重载不会发生__，这时Derived::g(int x)就只能把Base::g(float x)“隐藏”掉。
+
+同上，在第33行通过基类指针能访问的方法只有Base::h(float x)，由于该方法没有被virtual关键字声明，所以不会被派生类方法Derived::h(float x)“替换”，因此调用的是Base::h(float x)。而在第34行通过派生类指针可以访问的方法同时有Base::h(float x)与Derived::h(float x)，这似乎又冲突，而这时C++的“隐藏”规则发生作用，所以派生类方法Derived::h(float x)把基类方法Base::h(float x)“隐藏”，于是Derived::h(float x)被调用。
+
+===== 4．总结 =====
+
+C++的“重载”、“继承”与“隐藏”机制比一般想象中的要复杂，而这就突显了__virtual关键字的重要性__。所以在派生类存在的前提下一，__一定要把基类中可能在派生类中也实现的方法用virtual关键字声明__。除非在特殊情况下，比如需要检查指针类型的时候。
+
+ 1 #include <iostream>
+ 2 using std::cout;
+ 3 using std::endl;
+ 4 
+ 5 class Base
+ 6 {
+ 7 public:
+ 8     void CheckType(void){ cout << "This's Base Ptr" << endl;}
+ 9 };
+10 
+11 class Derived : public Base
+12 {
+13 public:
+14     void CheckType(void){ cout << "This;s Derived Ptr" << endl;}
+15 };
+16 
+17 void main(void)
+18 {
+19     Derived d;
+20     Base *pb = &d;
+21     Derived *pd = &d;
+22 
+23     pb->CheckType();//This's Base Ptr
+24     pd->CheckType();//This's Derived Ptr
+25 }
+26 
+
+ 
+posted on 2008-10-13 07:42 西门有悔 阅读(2588) 评论(1)  编辑 收藏 引用
+评论
+# re: 关于C++类成员函数的重载、覆盖、隐藏与virtual关键字  回复  更多评论   
+整理得非常好
+不过对隐藏的概念应该还可以简化为：__基类成员函数中，不满足覆盖条件的派生类同名成员函数，都视为隐藏__（既基类方法不能被派生类继承使用）。
+而显然满足覆盖的充要条件是：
+(a)在基类中函数声明的时候有virtual关键字
+(b)基类中的函数和派生类中的函数声明一模一样即函数名，参数，返回类型都一样 

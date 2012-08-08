@@ -1,0 +1,181 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-23T17:16:52+08:00
+
+====== dialog小结 ======
+Created Friday 23 December 2011
+http://molinux.blog.51cto.com/2536040/466001
+内容导述：
+
+    1、命令说明 
+
+    2、命令概要
+
+    3、框体类型
+
+    4、通用选项
+
+    5、命令用法
+
+    6、命令示例
+
+命令说明：
+   liunx 下的dialog 工具是一个可以和shell脚本配合使用的文本界面下的创建对话框的工具。
+每个对话框提供的输出有两种形式：
+   1.  将所有输出用stderr 输出，不显示到屏幕。
+   2.  使用退出状态码，“OK”为0，“NO”为1
+
+命令概要：
+   dialog --clear
+   dialog --create-rc file
+   dialog --print-maxsize
+   dialog common-options box-options
+
+窗体类型：
+calendar       日历
+checklist      允许你显示一个选项列表，每个选项都可以被单独的选择 (复选框)
+form              表单,允许您建立一个带标签的文本字段，并要求填写
+fselect         提供一个路径，让你选择浏览的文件
+gauge          显示一个表，呈现出完成的百分比，就是显示出进度条。
+infobox        显示消息后，（没有等待响应）对话框立刻返回，但不清除屏幕(信息框)
+inputbox       让用户输入文本(输入框)
+inputmenu       提供一个可供用户编辑的菜单（可编辑的菜单框）
+menu                 显示一个列表供用户选择(菜单框)
+msgbox(message)       显示一条消息,并要求用户选择一个确定按钮(消息框)
+password        （密码框）显示一个输入框，它隐藏文本
+pause           显示一个表格用来显示一个指定的暂停期的状态
+radiolist       提供一个菜单项目组，但是只有一个项目，可以选择(单选框)
+tailbox          在一个滚动窗口文件中使用tail命令来显示文本
+tailboxbg     跟tailbox类似，但是在background模式下操作
+textbox           在带有滚动条的文本框中显示文件的内容  (文本框)
+timebox          提供一个窗口，选择小时，分钟，秒    
+yesno(yes/no)    提供一个带有yes和no按钮的简单信息框
+
+
+通用选项 common options：
+         这个选项来设置dialog box的背景，颜色和 标题等。
+
+ 
+
+常用选项说明：
+[--title <title>]  指定将在对话框的上方显示的标题字符串
+[--colors]    解读嵌入式“\ Z”的对话框中的特殊文本序列，序列由下面的字符 0-7, b  B, u, U等，恢复正常的设置使用“\Zn”。
+[--no-shadow]   禁止阴影出现在每个对话框的底部
+[--shadow]   应该是出现阴影效果
+
+ 
+
+[--insecure]   输入部件的密码时，明文显示不安全，使用星号来代表每个字符
+[--no-cancel]   设置在输入框，菜单，和复选框中，不显示“cancel”项
+[--clear]   完成清屏操作。在框体显示结束后，清除框体。这个参数只能单独使用，不能和别的参数联合使用。
+[--ok-label <str>]   覆盖使用“OK”按钮的标签，换做其他字符。
+[--cancel-label <str>]  功能同上
+[--backtitle <backtitle>] 指定的backtitle字符串显示在背景顶端。
+[--begin <y> <x>]   指定对话框左上角在屏幕的上的做坐标
+[--timeout <secs>]   超时（返回的错误代码），如果用户在指定的时间内没有给出相应动作，就按超时处理
+[--defaultno]   使的是默认值 yes/no，使用no
+[--sleep <secs>]
+[--stderr]  以标准错误方式输出
+[--stdout]  以标准方式输出
+[--default-item <str>]  设置在一份清单，表格或菜单中的默认项目。通常在框中的第一项是默认
+   
+其余各种选项可以自行从man文档里面查找.
+[--aspect <ratio>]  [--backtitle <backtitle>]  [--begin <y> <x>] [--cr-wrap]  [--item-help] [--no-collapse]
+[--default-item <str>]  [--defaultno]   [--extra-button]  [--extra-label <str>]  [--help-button] [--no-kill]
+[--help-label <str>]  [--help-status]  [--ignore]  [--input-fd <fd>] [--keep-window]  [--max-input <n>]
+[--output-fd <fd>]  [--print-maxsize]  [--print-size]  [--print-version]  [--separate-output] [--size-err]
+[--separate-widget <str>]  [--single-quoted]  [--sleep <secs>]  [--tab-correct] [--tab-len <n>]
+[--timeout <secs>]  [--trim]  [--visit-items]  [--version]
+
+ 
+
+附注：
+
+--cr-wrap
+解释对话框内的文本换行相当于一个新行。另外。dialog只会控制文本适应对话框。即使你可以控制一行突破这个规则，dialog也会自动调整所有在对话框内的文本使他们与对话框的宽度一样。不用cr-wrap，文本的版面会排列成脚本的原始规则。
+--colors 
+解释内含在对话框的”\Z”的顺序属性。他告诉对话框设置颜色或者视频属性:
+0到7是ANSI码在curses中分别指定为:黑色，红色，绿色，黄色，蓝色，紫红色，蓝绿色和白色。
+粗体用’b’设置，重设用‘B’。背面用’r’设置，重设用’R’。下划线用’u’设置，重设用’U’。所做出的改动将会累积起来。例如，”\Zb\Z1’”表示文本显示红色。恢复正常的设置用”\Zn”
+--input-fd fd
+从给定的文件描述符中读取键盘输入。大部分的dialog脚本从标准输入读取，但是gauge组件从管道读取(那通常是标准输入)。当dialog试着重新打开终端时一些配置不能严格执行。如果你的脚本必须工作在那种类型的环境中，可以使用这个选项.
+
+--output-fd fd
+直接输出到给定的文件描述符。多数dialog脚本写到标准输出，但是错误信息可能也被输出到那里，这取决于你的脚本。
+
+
+--insecure
+输入密码时回显星号(×)，将使得passwd组件更友好但较不安全。
+
+--keep-window
+退出时不清屏和重绘窗口。当几个组件在同一个程序中运行时，对于保留窗口内容很有用的。
+注意，curses在开始一个新的处理时会清空屏幕。
+
+--max-input size
+限制输入的字符串在给定的大小之内。如果没有指定，默认是2048。
+
+--separate-output
+对于chicklist组件,输出结果一次输出一行,没有限额.这一便利的分离可以被别的程序使用。
+
+--separator string
+--separate-widget string
+指定一个分隔符，分离dialog中每个组件的输出。它可以用来简单地分析一个dialog中几个组件的结果。如果没有给出这个选项，默认的分隔符是一个tab符号。
+
+--sleep secs
+在处理完一个对话框后静止(延迟)的时间(秒)。
+
+ 
+
+
+命令用法Box options：
+  --calendar     <text> <height> <width> <day> <month> <year>
+  --checklist    <text> <height> <width> <list height> <tag1> <item1> <status1>...
+  --form         <text> <height> <width> <form height> <label1> <l_y1> <l_x1> <item1> <i_y1> <i_x1> <flen1> <ilen1>...
+  --fselect      <filepath> <height> <width>     //文件选择
+  --gauge        <text> <height> <width> [<percent>]
+  --infobox      <text> <height> <width>
+  --inputbox     <text> <height> <width> [<init>]
+  --inputmenu    <text> <height> <width> <menu height> <tag1> <item1>...
+  --menu         <text> <height> <width> <menu height> <tag1> <item1>...
+  --msgbox       <text> <height> <width>
+  --passwordbox  <text> <height> <width> [<init>]
+  --pause        <text> <height> <width> <seconds>
+  --radiolist  <text> <height> <width> <list height> <tag1> <item1><status1>...
+  --tailbox      <file> <height> <width>
+  --tailboxbg    <file> <height> <width>
+  --textbox      <file> <height> <width>
+  --timebox      <text> <height> <width> <hour> <minute> <second>
+  --yesno        <text> <height> <width>
+
+ 
+
+使用附注：
+
+  可以在一个脚本中放置一个或多个对话框
+- 使用 –and-widget 表示强制Dialog处理到下一个dialog直到按下ESC键取消。
+- 简单地加一个标志给下一个对话框，组合成一条链。当一个dialog的返回值为非0，比如，Cancel或者No(查看诊断)，dialog就会停止。
+一些部件，比如，清单，会写文本到dialog的输出。
+一般情况下是标准错误，但是这里有一些选项可以改变它: --output-fd，--stderr 和 --stdout。
+在按下Cancel(或ESC)时不会写入文本；这种情况下dialog会立即退出。
+
+ 
+
+选项附注：
+
+所有的选项以"--"开头。
+
+单独的”--“符号作为跳脱符(ESCAPE)使用，也就是说，命令行上的下一个标记不作为一个选项。
+
+例：dialog --title --  --NotAnOption
+
+--file 选项告诉dialog从文件中读取参数作为它的值。
+
+例：dialog --file parameterfile
+
+ 
+
+命令示例：
+
+ 
+
+不再贴图， /usr/share/doc/dialog/sample/  下有各中框体的使用示例。可以通过查看脚本示例熟悉功能来使用。

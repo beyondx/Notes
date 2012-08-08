@@ -1,0 +1,143 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-05T15:06:55+08:00
+
+====== Django构建一个Blog入门例子 ======
+Created 星期二 05 七月 2011
+1、创建项目文件。windows下，在cmd中，进入Django项目存放的目录下,比如在D盘符中,取名为mysite，进入D盘，输入：
+        python django-admin.py startproject mysite
+        可以看到在D盘中新生成了一个Django项目文件名为mysite，文件中包含
+        __init__.py # 在python中，__init__.py文件说明此项目目录为一个python包
+        manage.py   # Django管理工具使用manage.py help查看其使用方法
+        settings.py # 项目的默认配置，放置的一些静态变量
+        urls.py     # 配置django URL映射
+    2、启动服务器。在此目录下,输入：
+        python ./manage.py runserver # 启动Django
+        输入127.0.0.1：8000即可看到It‘s working字样
+    3、创建项目web应用文件。输入：
+        python ./manage.py startapp blog
+        可以看到在mysite下新建了一个blog文件，文件包含
+        __init__.py # 视为一个python包
+        models.py   # 编写django数据类，创建数据库等
+        views.py    # 编写视图函数，从数据中获取数据显示，映射到模板
+    4、在models.py中输入：
+        from django.db import models
+        from django.contrib import admin
+       
+        class BlogPost(models.Model):
+            title=models.CharField(max_length=150)
+            body=models.TextField()
+            timestamp=models.DateTimeField()
+    5、设置数据库，这里以SQLite3为例，在settings.py设置：
+   
+        DATABASE_ENGINE = 'sqlite3'           # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
+        DATABASE_NAME = r'D:/djangoapp/db/blog.db'             # Or path to database file if using sqlite3.
+        DATABASE_USER = ''             # Not used with sqlite3.
+        DATABASE_PASSWORD = ''         # Not used with sqlite3.
+        DATABASE_HOST = ''             # Set to empty string for localhost. Not used with sqlite3.
+        DATABASE_PORT = ''             # Set to empty string for default. Not used with sqlite3.
+    6、重启启动Django服务器(python ./manage.py runserver),使用：
+        python ./manage.py syncdb # 因为Django数据库是ORM对象关系映射,通过models.py定义的类，创建数据库对应表
+        创建数据库，过程中会提示设置Django admin后台超级管理员用户和密码，用户名输入email
+    7、设置启动自动admin应用后台，在settings.py中：
+        LANGUAGE_CODE = 'zh-CN'
+       
+        INSTALLED_APPS = (
+            'django.contrib.auth',
+            'django.contrib.admin',
+            'django.contrib.contenttypes',
+            'django.contrib.sessions',
+            'django.contrib.sites',
+            'mysite.blog',
+        )
+        在目录中输入:
+        python ./manage.py syncdb
+        创建django_admin_log表
+        修改urls.py，去掉注释：
+        # Uncomment the next line to enable the admin:
+        (r'^admin/', include(admin.site.urls)),       
+    8、修改models.py，在admin注册models
+        from django.db import models
+        from django.contrib import admin
+       
+        class BlogPost(models.Model): #继承Django models
+            title=models.CharField(max_length=150)
+            body=models.TextField()
+            timestamp=models.DateTimeField()
+       
+        admin.site.register(BlogPost)
+    9、在127.0.0.1:8000/admin/，输入刚设置admin用户名和密码
+        在blog posts中填加数据.
+    10、定制admin后台，添加BlogPostAdmin修改models.py，并在admin中注册：
+        from django.db import models
+        from django.contrib import admin
+       
+        class BlogPost(models.Model):
+            title=models.CharField(max_length=150)
+            body=models.TextField()
+            timestamp=models.DateTimeField()
+       
+        class BlogPostAdmin(admin.ModelAdmin):
+            list_display=('title','timestamp')
+       
+        admin.site.register(BlogPost,BlogPostAdmin)
+    11、建立template模板
+        在mysite/themes/default/templates/archive.html,使用Django模板块标签，他将模板渲染到序列中的每个元素
+        {% extends "base.html" %}
+        {% block content %}
+        {% for post in posts %}
+        <h2>{{post.title}}</h2>
+        <p>{{post.timestamp|date:"F j, Y"}}</p>
+        <p>{{post.body}}</p>
+        {% endfor %}
+        {% endblock %}
+        在 base.html，html标签加入:
+        {% block content %}
+        {% endblock %}
+    12、修改view.py，编写视图函数，渲染模板：
+        # Create your views here.
+        from django.template import loader, Context
+        from django.http import HttpResponse
+        from mysite.blog.models import BlogPost
+       
+        def archive(request):
+            posts=BlogPost.objects.all()
+            t=loader.get_template("archive.html")
+            c=Context({'posts':posts})
+            return HttpResponse(t.render(c))
+       
+    13、激活blog url映射，在mysite/urls.py
+        urlpatterns = patterns('',
+            # Example:
+            # (r'^mysite/', include('mysite.foo.urls')),
+       
+            # Uncomment the admin/doc line below and add 'django.contrib.admindocs'
+            # to INSTALLED_APPS to enable admin documentation:
+            # (r'^admin/doc/', include('django.contrib.admindocs.urls')),
+           
+            # Uncomment the next line to enable the admin:
+            (r'^admin/', include(admin.site.urls)),
+            (r'^blog/', include('mysite.blog.urls')), #添加映射
+            (r'^themes/(?P<path>.*)$', 'django.views.static.serve',
+                {'document_root': os.path.dirname(os.path.abspath(__file__)) + '/themes/'}),    
+        )
+       
+        # (r'^themes/(?P<path>.*)$', 'django.views.static。。。因为Django外部调用css无效，需要通过url映射进行调用，此映射到项目静态文件
+          如base.html中<link href="/themes/default/style.css" rel="stylesheet" type="text/css"/>
+          通过映射，/themes/便会匹配到mysite/themes/目录下，即可成功加载css文件
+       
+        创建mysite/blog/urls.py
+        #coding=utf-8
+        from django.conf.urls.defaults import *
+        from mysite.blog.views import archive # 导入视图函数
+       
+        # 映射URL
+        urlpatterns=patterns('',
+            (r'^$',archive),
+        )
+        输入http://127.0.0.1:8000/mysite/blog
+        即可看到文章显示
+        在base.html中使用了一个免费的css模板，文章参考Django开发指南例子，本人初涉Django，有不足之处望指教，共勉共进！
+
+ 
+源码下载mysite.rar

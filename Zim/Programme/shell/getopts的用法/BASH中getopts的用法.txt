@@ -1,0 +1,131 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-21T20:10:39+08:00
+
+====== BASH中getopts的用法 ======
+Created Wednesday 21 December 2011
+
+http://blog.chinaunix.net/space.php?uid=7216005&do=blog&id=2062590
+
+getopts optstring varname [arg ...]
+
+optstring   **option字符串**，会逐个匹配
+varname    每次匹配成功的变量名
+arg            参数列表，没写时它会取命令行参数列表
+
+$OPTIND    特殊变量，option index，会逐个递增
+$OPTARG    特殊变量，option argument，不同情况下有不同的值
+
+
+细则1：当optstring以”:“开头时，getopts会区分invalid option错误和miss option argument错误。
+      invalid option时，varname会被设成?，$OPTARG是出问题的option；
+      miss option argument时，varname会被设成:，$OPTARG是出问题的option。
+
+      如果optstring不以”:“开头，invalid option错误和miss option argument错误都会使varname被设成?，$OPTARG是出问题的option。
+
+细则2：当optstring中的**字母**跟”:“时，表明该option可接参数，参数(argument)放在$OPTARG中；
+      如果缺参数，且optstring是以”:“开头，则varname的值会是:，$OPTARG是该option，
+      否则varname的值是?，$OPTARG是该option。(参照细则1)
+
+简单的sample:
+
+#!/bin/bash
+
+SKIPBLANKS=
+TMPDIR=/tmp
+CASE=lower
+
+**while getopts :bt:u arg     **#这是while的特殊使用形式
+do
+    case **$arg** in
+        b) SKIPBLANKS=TRUE
+                  echo "If skip blanks? $SKIPBLANKS"
+                  ;;
+
+        t) if [ -d "$OPTARG" ]
+                    then
+                    TMPDIR=$OPTARG
+                    echo "Temp dir is $TMPDIR."
+                  else
+                    echo "$0: $OPTARG is not a directory." __>&2__
+                    __exit 1__
+                  fi
+                  __;;__
+
+        u) CASE=upper
+                  echo "Case sensitivity is $CASE."
+                  ;;
+
+        :) echo "$0: Must supply an argument to -$OPTARG." >&2
+                  exit 1
+                  ;;
+
+        \?) echo "Invalid option -$OPTARG ignored." >&2
+                  ;;
+        esac
+done
+
+
+===============================================================
+
+#!/bin/bash  
+# Example: args parse    
+
+__usage()__ {  
+    local __prog__="__`basename $1`__"  
+    echo "Usage: $prog -n name1 [name2...] [-c count] [-D DestDir]"  
+    echo "       $prog -h for help."  
+    exit 1  
+}  
+
+__showhelp()__ {  
+
+    echo "Usage: `basename $1`: **-n name1 [name2...]** [-c count] [-D OutputDir]"   
+    echo "  -n target name (__\"__None\" for no tag)"    #同类型引号嵌套时相互没有保护作用。
+    echo "  -c count for each name (\"None\"=1)"  
+    echo "  -D output directory"  
+    echo "  -h show this help"  
+    exit 1  
+}  
+
+name=  
+count=  
+outputdir=  
+file="${!#}"  
+filename="__`basename $file`__"   #变量替换早于命令替换
+run=false       # once for "None"   
+
+while getopts "n:c:D:h" arg  
+do  
+    case $arg in  
+        n)  **name**=$OPTARG;;  
+        c)  count=$OPTARG;;  
+        D)  outputdir=$OPTARG;;  
+        h) __ showhelp $0__;;  
+        ?)  __usage $0__;;  
+    esac  
+done  
+
+#[ ! -f $file ] && usage $0   
+
+[ -z "$name" ] && usage $0  
+[ -z "$count" ] && count=1  
+[ -z "$outputdir" ] && outputdir="**`dirname $file`**"   
+ 
+for n in $name  
+do  
+    for((c=0; c<count; c++))  
+    do  
+        if [ "None" == "$n" ];then  
+            if [ "false" == "$run" ];then  
+                run=true  
+                c=""  
+            else  
+                break  
+            fi  
+        fi  
+        suffix="${n}${c}"  
+        echo $filename | sed "s/.iso$/-${suffix}.iso/"  
+    done  
+done  
+exit 0  

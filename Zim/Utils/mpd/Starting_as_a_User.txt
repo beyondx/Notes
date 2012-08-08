@@ -1,0 +1,47 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-28T16:09:39+08:00
+
+====== Starting as a User ======
+Created Saturday 28 May 2011
+
+MPD need not be started with root permissions. The only reason why MPD needs to be started as root (by being called from /etc/rc.conf) is because the default files and folders in the default configuration file points to directories owned by root (the /var directory). A less common, but perhaps more sensible, approach is to make MPD work with files and directories owned by a normal user. Running MPD as a normal user has several advantages:
+
+    You can easily have a single directory ~/.mpd (or any other directory under /home/username) for all MPD configuration files
+    No read/write permission errors
+    More flexible calls to MPD by using ~/.xinitrc instead of including 'mpd' in the /etc/rc.conf DAEMONS array. 
+
+The following steps shows how to run MPD as a normal user. Note: this approach will not work if you want multiple users to have access to MPD.
+
+    Copy the contents of the default MPD configuration file in /usr/share/mpd/mpd.conf.example to your home directory. A good place would be "/home/user/.mpd/mpd.conf".
+    Follow the 'old setup instructions' from above, ignoring the first part about copying the config to /etc/mpd.conf.
+    Create all of the requisite files in "/home/user/.mpd/": 
+
+"~/.mpd/playlists"
+"~/.mpd/db"
+"~/.mpd/mpd.log"
+"~/.mpd/mpd.error"
+"~/.mpd/mpd.pid"
+"~/.mpd/mpdstate"
+
+ Let MPD start on bootup by calling it from your ~/.xinitrc as follows: 
+
+# this starts mpd as normal user
+mpd ~/.mpd/mpd.conf
+
+Note: that you don't have to put a "&" at the end of the line here, since MPD will automatically daemonize itself.
+
+Lastly, delete the entry 'mpd' from your DAEMONS array in /etc/rc.conf, as you are not running it as root anymore.
+Quick setup
+
+The fastest way to do set up the structure is to do this:
+
+$ mkdir -p ~/.mpd/playlists && touch ~/.mpd/database && cp /usr/share/doc/mpd/mpdconf.example ~/.mpd/mpd.conf
+
+Then edit mpd.conf to your liking, in a manner similar to Music_Player_Daemon#Edit_mpd.conf. Beware that you must uncomment the db_file entry if you do edit mpd.conf.
+
+Then, to run it:
+
+$ mpd ~/.mpd/mpd.conf
+
+

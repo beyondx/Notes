@@ -1,0 +1,1084 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-18T16:24:35+08:00
+
+====== U-Boot ======
+Created Monday 18 June 2012
+http://www.stlinux.com/u-boot
+
+The U-Boot utility is a multi-platform, open-source, universal boot-loader with comprehensive support for loading and managing boot images, such as the Linux kernel.
+
+This book explains how to use U-Boot in a STLinux context.
+
+* Introduction To U-Boot
+* Using U-Boot
+* Installing U-Boot On The Host
+* Installing U-Boot & Linux Kernel On The Target
+* Booting The Linux Kernel
+* U-boot and Flash (NOR, NAND & SPI)
+* Using mkimage To Create U-Boot Images
+* Compiling U-Boot
+* Modifying U-Boot
+* Porting U-Boot To A New Board
+
+===== Introduction To U-Boot › =====
+
+The U-Boot utility is a multi-platform, open-source, universal boot-loader with comprehensive support for loading and managing boot images, such as the Linux kernel. It supports the following features:
+
+* Network download: TFTP, BOOTP, DHCP, NFS
+* Serial download: s-record, binary (via Kermit)
+* Flash management: copy, erase, protect, cramfs, jffs2
+* Flash Types: __CFI__ NOR-Flash, NAND-Flash
+* Memory utilities: copy, dump. crc, check, mtest
+* Mass Storage Devices: IDE, SATA, USB
+* Boot from disk: raw block, ext2, fat, reiserfs
+* Interactive shell: choice of simple or "busybox" shell with many scripting features.
+
+This book is a quick guide to getting started. For full details of U-Boot's features please refer to the README file and visit the official website. 
+
+===== Using U-Boot =====
+U-boot provides a powerful __command line interface__ which may be accessed through __a terminal emulator__ connected to the target board's serial port. For example type "help" at the command prompt will print a list of all the available commands:
+
+**MB680> help**
+?       - alias for 'help'
+askenv  - get environment variables from stdin
+autoscr - run script from memory
+base    - print or set address offset
+__bdinfo__  - print Board Info structure
+boot    - boot default, i.e., run 'bootcmd'
+bootd   - boot default, i.e., run 'bootcmd'
+bootm   - boot application image from memory
+bootp   - boot image via network using BootP/TFTP protocol
+__chpart__  - change active partition
+cmp     - memory compare
+__coninfo__ - print console devices and information
+cp      - memory copy
+crc32   - checksum calculation
+dhcp    - invoke DHCP client to obtain IP/boot params
+echo    - echo args to console
+erase   - erase FLASH memory
+exit    - exit script
+ext2load- load binary file from a Ext2 filesystem
+ext2ls  - list files in a directory (default /)
+fatinfo - print information about filesystem
+fatload - load binary file from a dos filesystem
+fatls   - list files in a directory (default /)
+flinfo  - print FLASH memory information
+__fsinfo__  - print information about filesystems
+fsload  - load binary file from a filesystem image
+go      - start application at address 'addr'
+help    - print online help
+iminfo  - print __header information__ for application image
+imls    - list all images found in flash
+itest   - return true/false on integer compare
+__loadb__   - load binary file over serial line (kermit mode)
+loads   - load S-Record file over serial line
+loady   - load binary file over serial line (ymodem mode)
+loop    - infinite loop on address range
+ls      - list files in a directory (default /)
+md      - memory display
+__mii__     - MII utility commands
+mm      - memory modify (auto-incrementing)
+mtdparts- define flash/nand partitions
+mtest   - simple RAM test
+mw      - memory write (fill)
+nand    - NAND sub-system
+nboot   - boot from NAND device
+nfs     - boot image via network using NFS protocol
+nm      - memory modify (constant address)
+ping    - send ICMP ECHO_REQUEST to network host
+pmb     - displays the contents of the PMB
+printenv- print environment variables
+__protect__ - enable or disable FLASH write protection
+__rarpboot__- boot image via network using RARP/TFTP protocol
+reset   - Perform RESET of the CPU
+run     - run commands in an environment variable
+saveenv - save environment variables to persistent storage
+setenv  - set environment variables
+sleep   - delay execution for some time
+test    - minimal test like /bin/sh
+tftpboot- boot image via network using TFTP protocol
+usb     - USB sub-system
+__usbboot__ - boot from USB device
+version - print monitor version
+
+For help on an individual command type "help command". For example:
+
+MB680> help setenv
+setenv name value ...
+    - set environment variable 'name' to 'value ...'
+setenv name
+    - delete environment variable 'name'
+
+Note you only need to provide enough of a commands name to distinguish it from all other commands. For example you may type "save" instead of "saveenv".
+
+**Command Line Editing**
+Simple command line editing and history is also provided:
+Key 	Function
+Control-A 	move to start of line
+Control-E 	move to end of line
+Control-B or Left-Arrow 	move character left
+Control-F or Right-Arrow 	move character right
+Control-K 	erase to end of line
+Control-X 	erase entire line
+Back-Space or Delete 	erase character to the left of the cursor
+Control-D 	erase character under the cursor
+Control-P or Up-Arrow 	previous command history
+Control-N or Down-Arrow 	next command history
+Control-O 	toggle overwrite/insert mode
+Control-C 	break
+
+===== U-Boot Environment =====
+U-Boot provides user configuration using __Environment Variables__ which can be saved to Flash memory.
+
+Environment Variables are set using "**setenv**", printed using "**printenv**", and saved to Flash using "**saveenv**".
+
+The value of environment variables can be used in commands (or scripts) by **prefixing their name by a dollar ("$")**. To stop the evaluation of variables either prepend the dollar with a back-slash ("\") or quote the string with quotes ("'"). Here are some examples of using environment variables:
+
+MB680> setenv targetname fred
+MB680> print targetname
+targetname=fred
+MB680> echo $targetname
+fred
+MB680> echo ${targetname}
+fred
+MB680> echo __\$__{targetname}
+${targetname}
+MB680> echo __'__${targetname}__'__
+${targetname}
+
+Using "setenv" without a value can be used to **delete a variable** from the environment. As long as the environment variables are not saved to flash, then you will be working with an in-memory copy. If there is no valid environment in the Flash, a default environment is provided.
+
+===== Command Scripts =====
+Command scripts can also be __saved in environment variables__ and executed using the __"run"__ command. The syntax for the scripts is similar to the "sh" shell. Commands return 0 if they ran successfully and 1 if they failed. The result of executing a command can be tested with condition commands:
+
+* if <list>; then <command list>; [ elif <list>; then <list>; ] ... [ else <list>; ] fi
+* while <list> ; do <list> ; done
+* until <list> ; do <list> ; done
+* for <name> in <word list> ; do <list> ; done
+
+The following is an example script that boots a known good default kernel, if the standard kernel is not available/good in flash - note the script is quoted with quotes ("'") to defer the expansion of the environment variables __until__ the script is eventually executed:
+
+MB680> setenv vm_default_base A0060000
+MB680> setenv vm_base A0660000
+MB680> set doboot 'if iminfo ${vm_base}; then bootm ${vm_base}; else bootm ${vm_default_base}; fi'
+MB680> __run doboot__
+ 
+## Checking Image at a0660000 ...
+   Bad Magic Number
+## Booting image at a0060000 ...
+   Image Name:   2.6.23.17_0116 #1 (mb680)
+   Image Type:   SuperH Linux Kernel Image (uncompressed)
+   Data Size:    3895568 Bytes =   3.7 MiB
+   Load Address: 8c001000
+   Entry Point:  8c002000
+   Verifying Checksum ... OK
+OK
+ 
+Starting kernel console=ttyAS0,115200 ...
+
+Note: commands need to be typed on a single line. In some of the examples long commands will wrap over on to the following line - these __must always be entered on a single line.__
+
+===== Tests And Comparisons =====
+There are two commands provided for comparing values **"test"** and **"itest"**.
+
+To compare the values of environment variables use "test". The syntax is the same as the shell command:
+Expression 	Evaluated to TRUE if ...
+! EXPRESSION 	EXPRESSION is false
+EXPRESSION1 -a EXPRESSION2 	both EXPRESSION1 and EXPRESSION2 are true
+EXPRESSION1 -o EXPRESSION2 	either EXPRESSION1 or EXPRESSION2 is true
+-n STRING 	the length of STRING is non-zero
+-z STRING 	the length of STRING is zero
+STRING1 = STRING2 	the strings are equal
+STRING1 != STRING2 	the strings are not equal
+INTEGER1 -eq INTEGER2 	INTEGER1 is equal to INTEGER2
+INTEGER1 -ge INTEGER2 	INTEGER1 is greater than or equal to INTEGER2
+INTEGER1 -gt INTEGER2 	INTEGER1 is greater than INTEGER2
+INTEGER1 -le INTEGER2 	INTEGER1 is less than or equal to INTEGER2
+INTEGER1 -lt INTEGER2 	INTEGER1 is less than INTEGER2
+INTEGER1 -ne INTEGER2 	INTEGER1 is not equal to INTEGER2
+
+The command "itest" allows __values in memory__ to be tested. The syntax for"itest" is:
+
+itest[.b,.w,.l,.s] [*]value1 <op> [*]value2
+ 
+Where the optional suffix means:
+* .b byte
+* .w short
+* .l long (default)
+* .s string
+ 
+value1 and value2 can be a constant or and __address__ if preceded by a *.
+ 
+<op> can be one of:
+	-lt	<		Less than
+	-gt	>		Greater than
+	-eq	==		Equal to
+	-ne	!=	<>	not Equal to
+	-ge	>=		Greater than or Equal to
+	-le	<=		Less than or Equal to
+
+===== Installing U-Boot On The Host =====
+There are a number of RPMs for U-Boot: a source RPM; a set of pre-built binary RPMs; and a host tools' RPM. The details of these are as follows:
+
+There is **a source RPM**:
+
+stlinux23-host-u-boot-source-sh4-1.3.1_stm23_nnnn-nn.noarch.rpm
+
+Where "nn" and "nnnn" are the release numbers (higher is newer).
+
+There is a set of **pre-built binary RPM**s - one for each target board (per environment):
+
+stlinux23-sh4-u-boot-board-1.3.1_stm23_nnnn-nn.sh4.rpm
+
+Where "nn" and "nnnn" are the release numbers, and "board" is the board name (higher is newer).
+
+There is a **host tools' RPM**:
+
+stlinux23-host-u-boot-tools-1.3.1_stm23-nn.i386.rpm
+
+Where "nn" are the release numbers (higher is newer).
+
+After installing the RPMs the __U-Boot source tree__ can be found in:
+
+/opt/STM/STLinux-2.3/devkit/sources/u-boot/u-boot-sh4-1.3.1_stm23_nnnn
+
+Where "nnnn" are the release numbers (higher is newer).
+
+A set of pre-compiled U-Boot files - one for each target can be found in the following directories:
+
+/opt/STM/STLinux-2.3/devkit/sh4/target/boot/u-boot-1.3.1_stm23_nnnn-board
+
+Where "nnnn" is the release number, and "board" is the board name.
+
+And the host tool __"mkimage"__ for creating U-Boot images is:
+
+    STLinux-2.3
+
+/opt/STM/STLinux-2.3/host/bin/mkimage
+
+Each of the pre-built binary directories contains the following files:
+
+u-boot		- compiled u-boot Elf binary
+u-boot.bin	- compiled u-boot raw binary image
+u-boot.map	- compiled u-boot map file
+u-boot.srec	- compiled u-boot srec image
+
+After installing U-Boot, please add the following directory to your "PATH" shell variable, to ensure you have the aforementioned host tool mkimage application on your path.
+
+/opt/STM/STLinux-2.3/host/bin
+
+===== Installing U-Boot & Linux Kernel On The Target =====
+There are a number of ways of setting up a target board. In this page, only one of them will be detailed - which is the way most users perform these common tasks.
+
+==== Installing U-Boot On The Target ====
+First of all, it is required to connect to the correct __serial port__ to the target board, (typically ST40 linux's /dev/ttyAS0) from __a terminal emulator__ (running on a host system) with the following communications parameters:
+
+baud=115200, data=8, parity=none, Flow Control=none   #开发主机上的终端仿真器参数设置
+
+In another window on the host system, then use sh4-linux-__gdb__ to download and run U-Boot on the target system, over the __JTAG__ debug link. For example, for executing on a STx7111 Mboard (MB618), then the following would be appropriate.
+
+host% sh4-linux-gdb
+GNU gdb STMicroelectronics/Linux Base 6.5-33 [build Jul 30 2008]
+Copyright (C) 2006 Free Software Foundation, Inc.
+GDB is free software, covered by the GNU General Public License, and you are
+welcome to change it and/or distribute copies of it under certain conditions.
+Type "show copying" to see the conditions.
+There is absolutely no warranty for GDB.  Type "show warranty" for details.
+This GDB was configured as "--host=i686-pc-linux-gnu --target=sh4-linux".
+(gdb) **sh4tp TARGET:mb618:st40,silent=1**
+The target is assumed to be little endian
+The target architecture is assumed to be sh4
+0xa0000000 in ?? ()
+(gdb) **load** /opt/STM/STLinux-2.3/devkit/sh4/target/boot/u-boot-1.3.1_stm23_0042-mb618/u-boot
+Loading section .text, size 0x1f6b0 lma 0x93f00000
+Loading section .rodata, size 0x834 lma 0x93f1f6b0
+Loading section .rodata.str1.4, size 0x7ddc lma 0x93f1fee4
+Loading section .data, size 0xcf0 lma 0x93f27cc0
+Loading section .u_boot_cmd, size 0x570 lma 0x93f289b0
+Start address 0x93f00000, load size 167712
+Transfer rate: 1753850 bits/sec, 33542 bytes/write.
+(gdb) continue
+Continuing.
+
+Where "TARGET" is the DNS name (or IP address) of the ST MicroConnect.
+
+Something similar to the following should be observed on the terminal emulator from the serial port:
+
+Board: STx7111-Mboard (MB618)  [29-bit mode]
+MB618: revision D, EPLD version 11
+  
+U-Boot 1.3.1 (Oct 15 2008 - 00:16:15) - stm23_0042
+ 
+DRAM:  128 MiB
+NOR:    32 MiB
+In:    serial
+Out:   serial
+Err:   serial
+MB618>
+
+It is now possible to enter any U-Boot command on **the serial console** for U-Boot to execute. For a list of all the U-Boot commands type:
+
+MB618> help
+
+==== Fundamentals Of Installing U-Boot In Flash ====
+The following sub-sections show how to download U-Boot and burn it in to __flash__ on the target board. This section will also help in understanding how to use various common U-Boot commands.
+
+Also it should be noted that there are two binary files built when U-Boot is compiled, and one must ensure one uses the correct file, in all cases.
+
+* u-boot is an __Elf__ file, and is used by GDB to download U-Boot to be executed. This file should __only be used by GDB__, and it should never be burned in to flash on the target board.
+* u-boot.bin is __a raw binary file__, and is intended to be written directly in to flash to be used at boot-time. This file is typically not utilized by GDB, and should be burned in to flash on the target board.
+
+In order to burn U-Boot in to flash, then it is required **first to have U-Boot running on the target system**, typically this is achieved by downloading U-Boot ("u-boot") with GDB, as above. Secondly, we need to __download__ in to __SDRAM__ (on the target system) with the U-Boot binary ("u-boot.bin") to be flashed. This download can be done by several different means (for example: Serial, USB, IDE, SATA, NFS, HDCP, BOOTP, TFTP). However, in this section we will just use the most popular means: NFS.
+
+It should be noted that although it is possible to burn an image **straight in** to flash from NFS, typically a 2-stage solution is preferred. That is, normally, the image to be burned is first loaded in to the target's SDRAM, and then subsequently __burned from SDRAM in to the flash__. This approach will be used throughout this guide.
+
+Note: __"load_addr"__ is a U-Boot environment variable containing a desirable download address on the target. The actual depends on **the location of SDRAM** for the board being used, and it also depends if the system is in 29-bit mode or 32-bit (SE) mode. Typically this address will be the **very beginning of SDRAM** (as __U-Boot itself typically runs from the end of SDRAM__). See the ST40 Memory Map for further information on the memory map for the ST40.
+
+Note: The "u-boot.bin" file needs to be in a directory exported by the NFS server, accessible to the target board. In the following examples it is assumed the directory containing the pre-built U-Boot binaries (in /opt/STM/...) are exported.
+
+==== MAC Address Setup Preparations ====
+Increasingly, some boards do not have their MAC address programmed in to EEPROM. In these cases, it is required to supply a unique MAC address to U-Boot, to use when on the network. (See this page, for further details.) One way of telling U-Boot to use such an address, is by adding an extra parameter to __CONFIG_EXTRA_ENV_SETTINGS__ in the board-specific "__include/configs/board-name.h__" configuration. For example:
+
+#define CONFIG_EXTRA_ENV_SETTINGS     \
+        "ethaddr=XX:XX:XX:XX:XX:XX\0" \
+
+Alternatively, if it is not desired to put the MAC address in the board-specific configuration file, then a MAC address may be provided by setting an environment variable interactively. To do this, then the __CONFIG_ENV_OVERWRITE__ macro should be defined in the board-specific "include/configs/board-name.h" configuration file, such as:
+
+/*  If this board does not have eeprom for ethernet address so allow the user
+* to set it in the environment
+ */
+#define CONFIG_ENV_OVERWRITE
+
+Then the "ethaddr" environment variable should be set (as appropriate) and saved in flash:
+
+MB618> setenv ethaddr XX:XX:XX:XX:XX:XX
+MB618> saveenv
+
+==== Network Setup ====
+To use the network function, it is required need to set up the target board's IP address and other network parameters. This may be done by setting the following environment variables:
+
+MB618> setenv __serverip__  <server-ip>
+MB618> setenv netmask   <netmask>
+MB618> setenv gatewayip <gateway-ip>
+MB618> setenv __ipaddr__    <board-ip-addr>
+
+Where "<server-ip>" is the IP address of the NFS server machine; "<netmask>" is the appropriate site's netmask; "<gateway-ip>" is the site's gateway IP address; and "<board-ip-addr>" is the desired IP address of the target board itself. To save these changes to the environment variables permanently in to non-volatile flash, then type:
+
+MB618> __saveenv__
+Saving Environment to Flash...
+Unprotecting Flash...
+. done
+Un-Protected 1 sectors
+Erasing Flash...
+. done
+Erased 1 sectors
+Writing to Flash...
+........ done
+Protecting Flash...
+. done
+Protected 1 sectors
+
+==== Downloading U-Boot Using NFS ====
+Once the appropriate network parameters have been set, it is now possible to use the "nfs" command to copy the U-Boot binary "u-boot.bin" file, from the server, over the network, in to SDRAM on the target system:
+
+MB618> __nfs__ **$load_addr** /opt/STM/STLinux-2.3/devkit/sh4/target/boot/u-boot-1.3.1_stm23_0042-mb618/u-boot.bin
+ 
+Warning: MAC addresses don't match:
+        HW MAC address:  FF:FF:FF:FF:FF:FF
+        "ethaddr" value: AA:00:04:00:0F:0F
+Using MAC Address AA:00:04:00:0F:0F
+STM-GMAC: SMSC LAN8700 found
+STM-GMAC: 100Mbs full duplex link detected
+File transfer via NFS from server 164.129.12.192; our IP address is 164.129.15.15
+Filename '/opt/STM/STLinux-2.3/devkit/sh4/target/boot/u-boot-1.3.1_stm23_0042-mb618/u-boot.bin'.
+Load address: **0x8c000000**
+Loading: #################################
+done
+Bytes transferred = 167712 (28f20 hex)
+
+==== Burning The U-Boot Image To Flash ====
+To burn (a previously downloaded) U-Boot image (in SDRAM) in to flash, then type:
+
+MB618> **run unprot**
+Un-Protect Flash Sectors 0-4 in Bank # 1
+..... done
+MB618> **run update**
+Erase Flash Sectors 0-4 in Bank # 1
+..... done
+Copy to Flash
+................ done
+Protect Flash Sectors 0-4 in Bank # 1
+..... done
+
+This executes the two scripts held in the environment variables "unprot" and "update", which are defined as:
+
+MB618> print unprot ; print update
+unprot=protect off __$monitor_sec__
+update=erase $monitor_sec;__cp.b__ $load_addr __$monitor_base__ __$monitor_len__;protect on $monitor_sec
+
+These scripts rely on the following environment variables all being correctly setup: **monitor_sec, load_addr, monitor_base, and monitor_len**.
+
+===== Installing The Linux Image On The Target =====
+Once U-Boot has been burned in to the flash, the __kernel image__ should be burned info flash. The process involved in doing this is very similar to that of burning U-Boot into flash.
+
+==== Downloading The Linux Kernel Image File ====
+The linux image file can then be downloaded in to SDRAM using any supported mechanism, as mentioned above. In this example, NFS is used to download the image as this is very fast. After it is downloaded, the **"iminfo"** command is used to check the image was downloaded correctly, by verifying its __inherent CRC checksum__.
+
+MB618> nfs $load_addr /opt/STM/STLinux-2.3/devkit/sh4/target/boot/vmlinux-2.6.23.17_stm23_0117-mb618.ub
+ 
+Warning: MAC addresses don't match:
+        HW MAC address:  FF:FF:FF:FF:FF:FF
+        "ethaddr" value: AA:00:04:00:0F:0F
+Using MAC Address AA:00:04:00:0F:0F
+STM-GMAC: SMSC LAN8700 found
+STM-GMAC: 100Mbs full duplex link detected
+File transfer via NFS from server 164.129.12.192; our IP address is 164.129.15.15
+Filename '/opt/STM/STLinux-2.3/devkit/sh4/target/boot/vmlinux-2.6.23.17_stm23_0117-mb618.ub'.
+Load address: 0x8c000000
+Loading: #################################################################
+         #################################################################
+         #################################################################
+         #################################################################
+         #################################################################
+         ####################################
+done
+Bytes transferred = 1845332 (1c2854 hex)
+MB618> iminfo $load_addr
+ 
+## Checking Image at 8c000000 ...
+   Image Name:   Linux-2.6.23.17_stm23_0117-mb618
+   Image Type:   SuperH Linux Kernel Image (gzip compressed)
+   Data Size:    1845268 Bytes =   1.8 MiB
+   Load Address: 8c001000
+   Entry Point:  8c002000
+   Verifying Checksum ... OK
+
+==== Burning The Kernel Image To Flash ====
+Next we can burn the Linux image to flash and then check it is valid. It is required to choose some empty sectors in the flash to store the kernel image. In this example (MB618), the Linux image will be written in to **flash sectors 1:6-20**, as the first six sectors are already used by U-Boot - the first five (1:0-4) contains the __U-Boot image__ ("u-boot.bin") and the sixth (1:5) holds the __U-Boot environment variables__. After burning the image in to flash, it is recommended that it has been flashed correctly, by re-verifying the CRC checksum using the "iminfo" command.
+
+MB618> **protect off** 1:6-20
+Un-Protect Flash Sectors 6-20 in Bank # 1
+............... done
+MB618> **erase** 1:6-20
+Erase Flash Sectors 6-20 in Bank # 1
+............... done
+MB618> **cp.b** $load_addr __a0060000__ $filesize
+Copy to Flash
+................................................................................
+................................ done
+MB618> **iminfo** a0060000
+ 
+## Checking Image at a0060000 ...
+   Image Name:   Linux-2.6.23.17_stm23_0117-mb618
+   Image Type:   SuperH Linux Kernel Image (gzip compressed)
+   Data Size:    1845268 Bytes =   1.8 MiB
+   Load Address: 8c001000
+   Entry Point:  8c002000
+   Verifying Checksum ... OK
+
+Note: that __the environment variable "filesize", is automatically created__ and initialized after a successful nfs download command. 
+
+===== Booting The Linux Kernel Interactively from U-Boot =====
+The U-Boot environment variable __"bootargs"__ is used to hold the list of parameter options __passed to__ the Linux kernel, as the __kernel's command line parameters__. (See "Documentation/kernel-parameters.txt" in the Linux source directory for details.)
+
+Typically the required set of kernel parameters are:
+
+* Console settings
+* Memory organisation
+* Location of root file system
+
+Optionally, the following parameters may also be set:
+
+* Ethernet configuration
+* Flash MTD partition configuration
+* Co-processor memory allocation
+
+==== Booting The Linux Kernel With A NFS Root Filesystem ====
+This example shows how to setup U-Boot, to boot a linux kernel (resident in flash) with an NFS mounted root filesystem. It is assumed that all the **network parameters** for U-Boot (that is: "ipaddr", "serverip", "gatewayip", "netmask" and "ethaddr") are still correct for linux, and were appropriately setup as per the example in Network Setup. This example will use eth0, with /dev/ttyAS0 as the serial console device, with 128MiB of memory.
+
+MB618> setenv hostname my-target
+MB618> setenv ip ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}:${hostname}:eth0:off
+MB618> setenv nfsroot nfsroot=/opt/STM/STLinux-2.3/devkit/sh4/target
+MB618> setenv nfsroot ${nfsroot},nfsvers=2,rsize=4096,wsize=8192,tcp
+MB618> setenv nwhwconf nwhwconf=device:eth0,hwaddr:${ethaddr}
+MB618> setenv bootargs console=**ttyAS0**,115200 mem=128M
+MB618> setenv bootargs ${bootargs} ${ip} ${nwhwconf}
+MB618> setenv bootargs ${bootargs} rw __root=/dev/nfs__ ${nfsroot}
+MB618> saveenv
+Saving Environment to Flash...
+Unprotecting Flash...
+. done
+Un-Protected 1 sectors
+Erasing Flash...
+. done
+Erased 1 sectors
+Writing to Flash...
+........ done
+Protecting Flash...
+. done
+Protected 1 sectors
+
+Once the linux command-line parameters are safely saved to non-volatile storage, then the kernel may be booted from flash, and U-Boot will automatically pass the contents of the expanded environment variable "bootargs" to the kernel. This expansion takes place just before control is passed from U-Boot to linux. So, if the kernel is stored in flash at an address of 0xA0060000, then the following is sufficient to boot it.
+
+MB618> **bootm** A0060000
+## Booting image at a0060000 ...
+   Image Name:   Linux-2.6.23.17_stm23_0117-mb618
+   Image Type:   SuperH Linux Kernel Image (gzip compressed)
+   Data Size:    1845268 Bytes =   1.8 MiB
+   Load Address: 8c001000
+   Entry Point:  8c002000
+   Verifying Checksum ... OK
+   Uncompressing Kernel Image ... OK
+ 
+Starting kernel console=ttyAS0,115200 mem=128M ip=164.129.15.15:164.129.15.56:0.0.0.0:255.255.248.0:my-target:eth0:off nwhwconf=device:eth0,hwaddr:AA:00:04:00:0F:0F rw root=/dev/nfs nfsroot=/opt/STM/STLinux-2.3/devkit/sh4/target,nfsvers=2,rsize=4096,wsize=8192,tcp - 0x00000000 - 0 ...
+ 
+Linux version 2.6.23.17_stm23_0117-mb618-mb618 (products@macaroni.bri.st.com) (gcc version 4.2.4 (snapshot) (STMicroelectronics/Linux Base 4.2.4-42)) #1 PREEMPT Tue Oct 21 00:43:26 BST 2008
+ 
+... (rest omitted)
+
+==== Booting The Linux Kernel With A Hard Disk Root Filesystem ====
+It is also possible to boot linux with __a partition on a hard disk drive__ as the target's root filesystem. Thus a partition on an __IDE (PATA or SATA) disk__ can be used instead of NFS as the root filesystem. In this case, all the necessary files required by the target system will need to be copied into the partition beforehand.
+
+MB618> setenv **rootpart** sda1
+MB618> setenv bootargs console=ttyAS0,115200 mem=128M
+MB618> setenv bootargs ${bootargs} ro root=/dev/${rootpart}
+MB618> saveenv
+... (omitted)
+MB618> **bootm** A0060000
+... (omitted)
+
+==== Booting The Linux Kernel With A RAM Disk Root Filesystem ====
+It is also possible to boot linux with a ramdisk as the target's root filesystem. This requires __a special ramdisk image__, with all the necessary files required by the target system to be created, and then also __burned in to flash__ beforehand. See Creating The RAM Disk Image for details on how to do this.
+
+In order to use a ramdisk, U-Boot must copy both the ramdisk image from flash to RAM; as well as copying the linux kernel image from flash to RAM. Hence the __"bootm"__ command requires 2 parameters to be used when using a ramdisk image:
+
+* Address of the linux image in FLASH
+* Address of the ramdisk image in FLASH
+
+MB618> setenv bootargs console=ttyAS0,115200 mem=128M
+MB618> setenv bootargs ${bootargs} rw root=/dev/__ram0 ramdisk_size=16384__
+MB618> saveenv
+Saving Environment to Flash...
+Unprotecting Flash...
+. done
+Un-Protected 1 sectors
+Erasing Flash...
+. done
+Erased 1 sectors
+Writing to Flash...
+........ done
+Protecting Flash...
+. done
+Protected 1 sectors
+MB618> __bootm A0060000 A0300000  #RAMDISK已经被烧录到flash的A0300000位置。__
+## Booting image at a0060000 ...
+   Image Name:   Linux-2.6.23.17_stm23_0117-mb618
+   Image Type:   SuperH Linux Kernel Image (gzip compressed)
+   Data Size:    1845268 Bytes =   1.8 MiB
+   Load Address: 8c001000
+   Entry Point:  8c002000
+   Verifying Checksum ... OK
+   Uncompressing Kernel Image ... OK
+
+   Image Name:   ST40 Linux ramdisk
+   Image Type:   SuperH Linux RAMDisk Image (gzip compressed)
+   Data Size:    4739544 Bytes =   4.5 MiB
+   Load Address: 8c800000
+   Entry Point:  8c800000
+   Verifying Checksum ... OK
+   Loading Ramdisk to 8cb7a000, length 004851d8 ... OK
+ 
+Starting kernel console=ttyAS0,115200 mem=128M rw root=/dev/ram0 ramdisk_size=16384 - 0x00b7a000 - 4739544 ...
+ 
+Linux version 2.6.23.17_stm23_0117-mb618-mb618 (products@macaroni.bri.st.com) (gcc version 4.2.4 (snapshot) (STMicroelectronics/Linux Base 4.2.4-42)) #1 PREEMPT Tue Oct 21 00:43:26 BST 2008
+ 
+... (rest omitted)
+
+==== Booting The Linux Kernel Image On Reset ====
+On reset, U-Boot __automatically runs__ the script held in the environment variable __"bootcmd"__. This allows for any number of actions to be performed by U-Boot, before ultimately booting the kernel. To boot the kernel image already saved in flash, automatically, then set "bootcmd" as follows:
+
+MB618> setenv bootcmd bootm A0060000
+MB618> saveenv
+... (omitted)
+MB618> reset
+... (omitted)
+target# reboot
+... (omitted)
+
+==== Adding A Delay Prior To Booting (Stopping The Boot Process) ====
+It is also possible to enable a timed delay, prior to executing the "bootcmd" command, to give a user a chance to __halt__ the boot process. The __"bootdelay"__ environment variable (if set) contains the number of seconds to delay. See "doc/README.autoboot" for more details on the "autoboot" options.
+
+MB618> setenv bootdelay 10
+MB618> saveenv
+... (omitted)
+MB618> reset
+... (omitted)
+
+==== Speeding Up The Boot Process ====
+For ST40 targets, in 29-bit mode (SE=0), you can speed up the boot from flash times by providing a P1 (cachable) address, instead of a P2 (uncachable) address for the location of the kernel (and ramdisk) images in flash. The __caches__ are enabled when U-Boot copies the images from flash into SDRAM, so by __using cachable addresses__, there will be a performance improvement. See ST40 Memory for further information on the cacheability of memory for the ST40.
+
+To convert an uncachable P2 address to a cachable P1 address then, use the following ("C") expression:
+
+P1 = (P2 & 0x1fffffff) | 0x80000000;
+
+For the above examples, then the following will be logically identical, but faster, in a 29-bit system:
+
+MB618> bootm 80060000
+## Booting image at 80060000 ...
+   Image Name:   Linux-2.6.23.17_stm23_0117-mb618
+   Image Type:   SuperH Linux Kernel Image (gzip compressed)
+   Data Size:    1845268 Bytes =   1.8 MiB
+   Load Address: 8c001000
+   Entry Point:  8c002000
+   Verifying Checksum ... OK
+   Uncompressing Kernel Image ... OK
+ 
+... (rest omitted)
+
+===== U-boot and Flash (NOR, NAND & SPI) =====
+U-boot now has support for 3 different flash technologies:
+
+* NOR flash (traditional __parallel__ 8-bit or 16-bit wide data bus, with a dedicated address bus).
+* NAND flash (newer technology 8-bit or 16-bit data bus, which is multiplexed with the address bus).
+* SPI serial flash (newer technology, simple __4-wire__ serial bus). 
+
+These different flash technologies require **different device drivers** to communicate with them, due to __the different ways they are wired to the CPU__. As a result, there are different U-boot commands used to access them. It is important to use the correct command for each type of flash device.
+
+==== Which Flash command sets to use? ====
+The following table shows the appropriate command sets for each type of flash.
+**Action 					NOR 		NAND 		SPI**
+Copy Flash to RAM 		cp.[bwl] 		nand read 	eeprom read
+Write to Flash from RAM 	cp.[bwl] 		nand write 	eeprom write
+Dump Flash 				md.[bwl] 	nand dump 	eeprom read ; md.[bwl]
+Ease Flash 				erase 		nand erase 	n/a
+Write Protection 			protect on	nand lock	n/a
+								protect off 	nand unlock	n/a	
+Additional Info 			flinfo		nand info	n/a
+								imls 		nand bad	n/a		
+ 	
+For more information on each of these U-boot commands, then please use the help command, for example:
+
+MB680> help cp
+MB680> help nand
+MB680> help eeprom
+
+==== Writing data to Flash ====
+The following are examples of how to burn U-boot into flash, so it may be booted from flash. In all cases, we assume that the binary to be burned is in a NFS server, and that both the NFS server, and U-boot's networking are correctly set up. In addition, we assume that we want to burn the U-boot image into __the first block__ in flash (i.e. offset zero).
+
+NOTE: The following commands may need to be changed for your specific board, configuration, environment, etc. - they are just examples!
+
+==== • For NOR Flash ====
+In the case of NOR flash, __the flash should be explicitly erased__ (and if necessary unprotected), prior to writing to it.
+
+MB680> nfs $load_addr /export/u-boot.bin
+MB680> protect off 1:0-4
+MB680> erase 1:0-4
+MB680> cp.b $load_addr A0000000 $filesize
+MB680> protect on 1:0-4
+
+It should be noted that by default, U-boot has 2 environment variables (__unprot__, and __update__) which should **be automatically defined** which help with burning U-boot into NOR flash. These may be used instead of the above code, as follows:
+
+MB680> nfs $load_addr /export/u-boot.bin
+MB680> run unprot
+MB680> run update
+
+==== For NAND Flash ====
+In the case of NAND flash, the flash should be explicitly erased, prior to writing to it.
+
+In the case of NAND, then most access operations need to be __multiples__ of certain page/block sizes. For simplicity, the following code assumes that u-boot.bin fits in **256 KiB** (0x40000). However, you may use smallest figures that are appropriately aligned.
+
+MB680> nfs $load_addr /export/u-boot.bin
+MB680> nand erase 0 40000
+MB680> nand write $load_addr 0 40000
+
+==== For SPI Serial Flash ====
+In the case of SPI serial flash, U-boot will automatically erase the flash, prior to writing to it. Hence, users may just use the eeprom write command without explicitly having to erase the SPI serial flash device at all.
+
+MB680> nfs $load_addr /export/u-boot.bin
+MB680> eeprom write $load_addr 0 $filesize
+
+===== Using The mkimage Tool To Create U-Boot Images =====
+U-Boot supports a number of different __image formats__ that can be downloaded, saved to flash and executed. The types of such image files supported by U-Boot, include:
+
+* Linux kernels
+* script files
+* Standalone binaries
+* RAM disk images
+
+These images are often referred to as a ".ub" files, as that is **the file extension name** that is often used to name them.
+
+* Creating Linux Kernel U-Boot Images
+* Creating RAM Disk U-Boot Images
+
+==== Creating Linux Kernel U-Boot Images ====
+This sub-section shows you how to __create a Linux kernel image__, in preparation to download and burn it in to flash, ready to be booted.
+
+To make a U-Boot image file containing the **Elf binary vmlinux** kernel file, it is first required to __use "objcopy" to get the raw binary data__, followed by the "mkimage" tool to __encapsulate__ it (as a ".ub" file). In this example the kernel is __also compressed__ to save space (this is recommended, but not necessary).
+
+host% sh4-linux-__objcopy__ -O binary vmlinux vmlinux__.bin__
+host% gzip --best --force vmlinux.bin
+host% ./tools/__mkimage__ -A sh -O linux __-T__ kernel __-C__ gzip __-a__ 0x8C001000 __-e__ 0x8C002000 __-n__ "Linux 2.6" __-d__ vmlinux.bin.gz vmlinux.ub
+Image Name:   Linux 2.6
+Created:      Thu Nov  6 19:45:04 2008
+Image Type:   SuperH Linux Kernel Image (gzip compressed)
+Data Size:    1914573 Bytes = 1869.70 KiB = 1.83 MiB
+Load Address: 0x8C001000
+Entry Point:  0x8C002000
+
+The addresses for the two parameters "-a" (load address) and "-e" (execute address) **depend of the specific target board** that is being used, and they also depend on the SE mode.
+
+When running in 32-bit mode (SE=1), then, by default, the load address will always be 0x80001000, and the execute address will always be 0x80002000.
+
+When running in 29-bit mode (SE=0), then, the values will depend on the exact board that is used, and where the physical memory is. The following table lists these values from some common boards.
+Board 	Load Address ("-a") 	Execute Address ("-e")
+MB411 	0x84001000 	0x84002000
+MB442 	0x84001000 	0x84002000
+MB448 	0x84001000 	0x84002000
+MB519 	0x88001000 	0x88002000
+MB618 	0x8C001000 	0x8C002000
+MB628 	0x8C001000 	0x8C002000
+MB680 	0x8C001000 	0x8C002000
+
+Special note for STAPI users. The values in the above table are common for non-STAPI users. Typically STAPI users will need to add another 7 or 8 MiB to these values. It is strongly recommended to use the following technique to ensure the correct addresses are always used.
+
+It is __absolutely essential__ that the addresses used with these two parameters are correct, and totally consistent with the information in the original vmlinux Elf file. To this end, if there is any doubt as to which values to use then the following may be used to obtain the execute address (for the "-e" parameter).
+
+**host% sh4-linux-objdump -f vmlinux | grep '^start address ' | awk '{print $3}'   **
+
+In general, to obtain the load address (for the "-a" parameter), then just subtract 0x1000 from the execute address. However, as a sanity check, the following command should also obtain the load address:
+
+**host% sh4-linux-objdump -h vmlinux | grep .empty_zero_page | awk '{print $4}'**
+
+Alternatively, it may be easier to just __create the U-Boot kernel image directly using the linux build system.__ This is achieved when performing a kernel build by using __"uImage"__ as the target of a kernel build. For example:
+
+host% make __ARCH__=sh __CROSS_COMPILE__=sh4-linux__-__ uImage
+  SYMLINK include/asm-sh/cpu -> include/asm-sh/cpu-sh4
+  SYMLINK include/asm-sh/mach -> include/asm-sh/mb618
+  CHK     include/linux/version.h
+make[1]: `include/asm-sh/machtypes.h' is up to date.
+  CHK     include/linux/utsrelease.h
+  CALL    scripts/checksyscalls.sh
+  CHK     include/linux/compile.h
+  GEN     .version
+  CHK     include/linux/compile.h
+  UPD     include/linux/compile.h
+  CC      init/version.o
+  LD      init/built-in.o
+  LD      .tmp_vmlinux1
+  KSYM    .tmp_kallsyms1.S
+  AS      .tmp_kallsyms1.o
+  LD      .tmp_vmlinux2
+  KSYM    .tmp_kallsyms2.S
+  AS      .tmp_kallsyms2.o
+  LD      vmlinux.o
+  MODPOST vmlinux.o
+  **LD      vmlinux**
+  SYSMAP  System.map
+  SYSMAP  .tmp_System.map
+  **OBJCOPY** arch/sh/boot/vmlinux.bin
+  **GZIP**    arch/sh/boot/vmlinux.bin.gz
+  **UIMAGE**  arch/sh/boot/uImage
+Image Name:   Linux-2.6.23.17_stm23_0116-mb618
+Created:      Thu Nov  6 20:18:51 2008
+Image Type:   SuperH Linux Kernel Image (gzip compressed)
+Data Size:    1888829 Bytes = 1844.56 KiB = 1.80 MiB
+Load Address: 0x8C001000
+Entry Point:  0x8C002000
+Image arch/sh/boot/uImage is ready
+
+This will create a U-Boot Linux kernel image "arch/sh/boot/uImage", which may then be downloaded and burned into flash on the target, as before.
+
+Also, note that this process automatically extracts both the load and execute addresses, and uses them appropriately. 
+
+===== Creating RAM Disk U-Boot Images =====
+With U-Boot it is possible to store a ramdisk image in flash and __use that as a root filesystem__ for the Linux kernel. The following example shows how to build, and download a ramdisk image to flash and boot the kernel in flash using this ramdisk image.
+
+==== Creating The RAM Disk Image ====
+Instructions for creating the ramdisk image see **Booting with a ramdisk root file system**. Once this filesystem image has been created it __needs to be converted__ into a U-Boot image file:
+
+host% ./tools/mkimage -A sh -O linux **-T ramdisk** -a 0x8C800000 -n "ST40 Linux ramdisk" **-d** initrd.img /export/ramdisk.ub
+Image Name:   ST40 Linux ramdisk
+Created:      Fri Nov  7 17:00:42 2008
+Image Type:   SuperH Linux RAMDisk Image (gzip compressed)
+Data Size:    4739544 Bytes = 4628.46 KiB = 4.52 MiB
+Load Address: 0x8C800000
+Entry Point:  0x8C800000
+
+Note: the address given for the "-a" argument should be located shortly beyond the address where the Linux kernel resides in SDRAM. Typically, add about 8MiB to the kernel's load addresses.
+
+==== Downloading The RAM Disk Image ====
+The U-Boot ramdisk image can then be downloaded to the target using NFS download:
+
+MB618> __nfs__ $load_addr /export/ramdisk.ub
+ 
+Warning: MAC addresses don't match:
+        HW MAC address:  FF:FF:FF:FF:FF:FF
+        "ethaddr" value: AA:00:04:00:0F:0F
+Using MAC Address AA:00:04:00:0F:0F
+STM-GMAC: SMSC LAN8700 found
+STM-GMAC: 100Mbs full duplex link detected
+File transfer via NFS from server 164.129.15.56; our IP address is 164.129.15.15
+Filename '/export/ramdisk.ub'.
+Load address: 0x8c000000
+Loading: #################################################################
+         #################################################################
+         #################################################################
+         #################################################################
+         #################################################################
+         #################################################################
+         #################################################################
+         #################################################################
+         #################################################################
+         #################################################################
+         #################################################################
+         #################################################################
+         #################################################################
+         #################################################################
+         ################
+done
+Bytes transferred = 4739608 (485218 hex)
+MB618> iminfo __$fileaddr__
+ 
+## Checking Image at 8c000000 ...
+   Image Name:   ST40 Linux ramdisk
+   Image Type:   SuperH Linux RAMDisk Image (gzip compressed)
+   Data Size:    4739544 Bytes =   4.5 MiB
+   Load Address: 8c800000
+   Entry Point:  8c800000
+   Verifying Checksum ... OK
+
+==== Burning The RAM Disk Image To Flash ====
+The ramdisk image can then by copied in to flash:
+
+MB618> prot off 1:**27-63**
+Un-Protect Flash Sectors 27-63 in Bank # 1
+..................................... done
+MB618> erase 1:27-63
+Erase Flash Sectors 27-63 in Bank # 1
+..................................... done
+MB618> cp.b $fileaddr A0300000 $filesize
+Copy to Flash
+................................................................................
+................................................................................
+................................................................................
+................................................. done
+MB618> iminfo A0300000
+ 
+## Checking Image at a0300000 ...
+   Image Name:   ST40 Linux ramdisk
+   Image Type:   SuperH Linux RAMDisk Image (gzip compressed)
+   Data Size:    4739544 Bytes =   4.5 MiB
+   Load Address: 8c800000
+   Entry Point:  8c800000
+   Verifying Checksum ... OK
+
+At this point, there will typically be __2 U-Boot images__ burned in the flash - one for the kernel, and one for the ramdisk. All U-Boot images in flash can be easily seen (and verified) using the "imls" command:
+
+MB618> __imls__
+Image at A0060000:
+   Image Name:   Linux-2.6.23.17_stm23_0117-mb618
+   Image Type:   SuperH Linux Kernel Image (gzip compressed)
+   Data Size:    1845268 Bytes =   1.8 MiB
+   Load Address: 8c001000
+   Entry Point:  8c002000
+   Verifying Checksum ... OK
+Image at A0300000:
+   Image Name:   ST40 Linux ramdisk
+   Image Type:   SuperH Linux RAMDisk Image (gzip compressed)
+   Data Size:    4739544 Bytes =   4.5 MiB
+   Load Address: 8c800000
+   Entry Point:  8c800000
+   Verifying Checksum ... OK
+
+Note: neither the U-Boot program (u-boot.bin), nor U-Boot's environment variables are displayed using the imls command, as this command only lists ".ub" images in flash.
+
+==== Booting The Linux Kernel With A RAM Disk Root Filesystem ====
+To use a ramdisk image when booting a kernel, set the appropriate value for "bootargs", and add the address of the ramdisk image (__in flash__) to the "bootm" command, after the address of the linux kernel image (in flash). See Booting The Linux Kernel With A RAM Disk Root Filesystem for further details. 
+
+===== Compiling U-Boot =====
+To configure and build U-Boot for a target board "cd" to, or copy the source tree to somewhere local and then type:
+
+host% make distclean
+host% make __<config>__
+host% make
+
+Where <config> is one of the configuration names given in the table in here.
+
+Note: If building for a 32-bit environment (SE=1) then the config will have a "se" suffix after the board name, otherwise, for 29-bit mode (SE=0) it will not.
+
+This will create the following set of files:
+
+* u-boot - Elf executable file (for download with GDB)
+* __u-boot.bin__ - binary file (for burning into Flash)
+* u-boot.map - **Linker memory map file**
+
+For example, to build a 29-bit U-Boot for a STx7111 on a MB618 board, then run the following commands:
+
+host% make distclean
+host% make mb618_config
+host% make
+
+To build a 32-bit U-Boot for a STx7105 on a MB680 board, then run the following commands:
+
+host% make distclean
+host% make mb680se_config
+host% make
+
+===== Modifying U-Boot =====
+This section gives a brief overview of **the structure** of the U-Boot code.
+
+==== Configuration files ====
+The important configuration information for U-Boot is defined in the file:
+
+__include/configs/<board>.h__
+
+For example, the Espresso board default configuration file is:
+
+include/configs/espresso.h
+
+This file defines such things as __the memory layout__, default baud rate, the U-Boot features that are included in the build, and so forth. Refer to the README file for a description of the options defined in the configuration file.
+
+==== Memory Map ====
+The following table shows **the default locations** in Flash and RAM used by U-Boot:
+Board 			FLASH* 											RAM*
+					U-Boot code 				U-Boot env 				memory start 			U-Boot base
+espresso			0xA0000000-0xA003FFFF 	0xA0040000-0xA003FFFF 	0x84000000			0x85F00000
+sti5528eval 		0xA0000000-0xA003FFFF 	0xA0040000-0xA003FFFF 	0x84000000 			0x85F00000
+stb7100mboard 	0xA0000000-0xA001FFFF 	0xA0020000-0xA002FFFF 	0x84000000 			0x85F00000
+stb7100ref_* 		0xA0000000-0xA001FFFF 	0xA0020000-0xA002FFFF 	0x84000000 			0x85F00000
+stb7109eref 		0xA0000000-0xA001FFFF 	0xA0020000-0xA002FFFF 	0x84000000 			0x85F00000
+sti5301mb390 	0x7FFE0000-0x7FFFFFFF 	0x7F800000-0x7F80FFFF 	0xC0000000 			0xC1F00000
+sti5301mb424 	0x7FFC0000-0x7FFFFFFF 	0x7F800000-0x7F80FFFF 	0xC0000000 			0xC1F00000
+traviata 			0x00000000-0x0002FFFF 	0x007F0000-0x007F7FFF 	0x80000000 			0x81F00000
+
+1 Flash addresses are given as P2 (unchached) addresses for ST40.
+2 RAM addresses are given as P1 (cached) addresses for ST40.
+
+==== Code organization ====
+The target-specific code is held in the following directories:
+
+include/configs/<board-config>.h 	Board configuration header file
+board/<board> 					Board files
+cpu/<cpu> 						CPU files
+cpu/<cpu>/<soc> 				SoC files
+lib_<arch> 						Architecture support files
+include/asm-<arch> 				Architecture headers
+
+The following example is for the Espresso board:
+
+include/configs/espresso.h 	Board configuration header file
+board/espresso/ 			**Board-specific files**
+  	config.mk 			Defines __base address__ for U-boot in memory
+  	espresso.c 			Board specific initialization
+  	Makefile 	 
+  	sconsole.c 			Used if no physical serial port exists
+  	sconsole.h 	 
+  	u-boot.lds 			Linker script
+  	init-espresso.S 		Memory/SoC configuration table
+cpu/sh4_1xx 				CPU files
+  	config.mk 			__CPU make flags__
+  	cpu.c 				CPU functions
+  	interrupts.c 			Interrupt routines (not needed for sh4)
+  	Makefile
+  	start.S 				__Main CPU entry point__
+  	init-st40common.S 	Common configuration code
+cpu/sh4_1xx/sti5528 		SoC files
+  	Makefile 	 
+  	sti5528.c 			SoC specific functions (for example, reset)
+lib_sh4 					Architecture support files 	 
+  	board.c 				Generic board initialization code
+  	cacheops.S 	 
+  	io.c 	 
+  	io_generic.c 	 
+  	linkage.h 	 
+  	memchr.S 	 
+  	memcpy.S 	 
+  	memmove.S 	 
+  	memset.S 	 
+  	sh4_linux.c 		Code for booting sh4 linux kernel
+  	strlen.S 	 
+  	time.c 			Generic code for reading TMU
+include/asm-sh4 		Architecture headers
+
+===== Porting U-Boot to a new board =====
+
+The process of porting U-Boot to a new board consists of the following steps:
+
+1. Choose an existing board which is __most similar__ to the new board.
+2. Copy the following files and directories using the name of the new board. For instance, change:
+3. Old name 	New name
+      board/<existing-board> 	board/<new-board>
+      include/configs/<existing-board>.h 	include/configs/<new-boad>.h
+4. Rename __the files in__ board/<new-board> to match the name of the new board.
+5. Modify board/__Makefile__ to match the name of the new board.
+6. Modify the __memory initialization__ file: board/init-<new-board>.S.
+7. Modify the __board initialization__ file: board/<new-board>.c.
+8. Modify the __configuration file__ include/configs/<new-board>.h to match the memory organisation and peripherals of the new board.
+9. Modify the value of TEXT_BASE in board/stb7100mboard/config.mk. This variable defines the **SDRAM** load address.
+
+==== Modifying the memory initialization file ====
+Very early in the boot sequence, the bootstrap calls the function __init_ram__ to configure all the critical SoC and board devices. This is in order to enable U-Boot to be copied from Flash to SDRAM and start executing. This function is normally defined in the file board/init-<boardname>.S.
+
+For ST40 targets the structure of this file is typically as follows:
+
+#define _SH4REG_ASM_
+  
+/* Include some register definitions for this device */
+#include "asm/stb7100reg.h"
+ 
+/* 
+Include **the common memory initialization code** for this SOC.
+This file contains the "init_ram" function which uses the
+__memory_setup_table defined below to do the appropriate memory setups.
+*/
+ 
+#include "../../cpu/sh4_2xx/stb7100/init-stb7100common.S"
+ 
+.balign 32
+ 
+____memory_setup_table__:
+ 
+  /* Define memory config table */
+ 
+  POKE_LONG(STB7100_CLOCKGENA_LOCK, 0xc0de)
+  OR_LONG(STB7100_CLOCKGENA_PLL0_CFG, 0x00100000)
+  UPDATE_LONG(STB7100_CLOCKGENA_PLL0_CFG, 0xfff7ffff, 0)
+  UPDATE_LONG(STB7100_CLOCKGENA_PLL0_CFG, 0xfff80000, 0x06 | (0x3b << 8) | (0x0 << 16))
+  OR_LONG(STB7100_CLOCKGENA_PLL0_CFG, 0x00080000)
+  WHILE_NE(STB7100_CLOCKGENA_PLL0_STATUS, 0x00000001, 0x00000001)
+  UPDATE_LONG(STB7100_CLOCKGENA_PLL0_CFG, 0xffefffff, 0)
+  POKE_LONG(STB7100_CLOCKGENA_LOCK, 0x0)
+ 
+ ...
+ 
+  END_MARKER
+
+The initialization of the configuation registers is carried out using __memory_setup_table. This table defines **a sequence of memory operations** that are executed in order, with a suitable time delay between each operation.
+
+The memory operations currently supported are as follows:
+Operation 	Function
+POKE_LONG(A, V) 	*(*long)(A) = V;
+POKE_SHORT(A, V) 	*(*short)(A) = V;
+POKE_CHAR(A, V) 	*(*char)(A) = V;
+OR_LONG(A, V)  	*(*long)(A) |= V;
+UPDATE_LONG(A, MASK, V) 	*(*long)(A) = (*(*long)(A) & MASK) | V; 
+POKE_UPDATE_LONG(A1, A2, MASK, SHIFT, V) 	*(*long)(A1) = ((*(*long)(A2) & MASK) << SHIFT) | V;
+WHILE_NE(A, MASK, V) 	while( (*(*long)(A1) & MASK) != V)
+  {;}
+IF_DEVID(V)  	If the device ID config register matches V then do the following memory operations until the next ELSE or ENDIF, otherwise execute the operations between the next ELSE and ENDIF.
+Currently supported for 710X targets only
+IF_NOT_DEVID(V) 	If the device ID config register does NOT match V then do the following memory operations until the next ELSE or ENDIF, otherwise execute the operations between the next ELSE and ENDIF.
+Currently supported for 710X targets only
+ELSE 	 
+ENDIF
+END_MARKER 	marks end of table
+
+Modify this table to match the target SoC target board combination.
+
+The ST200 memory setup is very similar to the ST40, expect that it has an extra table _xpu_mmu_setup_table. This table sets up the MMU (and may also require changing).
+
+==== Modifying the board initialization file ====
+After U-Boot has been __relocated to SDRAM__, the initial bootstrap code sets up __a stack__ and calls the C function **start_<cpu>boot** (see lib_<cpu>/board.c). This function then calls a number of initialization functions including the function **board_init** (which is defined in the file board/<boardname>/<boardname>.c).
+
+The file board/<boardname>/<boardname>.c contains a number of functions that __must be modified__ to match the target board. Typically, these functions set up PIO pins for serial ports, do any EPLD programming required, reset devices and provide functions for enabling or disabling writes to Flash.

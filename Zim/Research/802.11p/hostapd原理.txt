@@ -1,0 +1,75 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-22T21:25:21+08:00
+
+====== hostapd原理 ======
+Created Wednesday 22 February 2012
+
+http://haohetao.iteye.com/blog/1135353
+
+* Wireless-Extensions--旧的无线驱动框架（即wicd设置中的wext）
+* mac80211--为softMAC驱动服务的API
+* cfg80211--新的配置API
+* __nl80211__--新的用户控件<->内核空间通讯方式(一般系统内核并__没有编译__没有该模块)
+
+[geekard@geekard ~]$ modinfo __cfg80211__
+filename:       /lib/modules/3.2.5-1-ARCH/kernel/net/wireless/cfg80211.ko.gz
+description:    **wireless configuration support**
+license:        GPL
+author:         Johannes Berg
+depends:        **rfkill**
+
+[geekard@geekard ~]$ modinfo __mac80211 __#mac(media access control)
+filename:       /lib/modules/3.2.5-1-ARCH/kernel/net/mac80211/mac80211.ko.gz
+license:        GPL
+description:   ** IEEE 802.11 subsystem**
+depends:        **cfg80211**
+intree:         Y
+
+[geekard@geekard ~]$ modinfo __rfkill__
+filename:       /lib/modules/3.2.5-1-ARCH/kernel/net/rfkill/rfkill.ko.gz
+license:        GPL
+description:   ** RF switch support (射频切换)**
+author:         Johannes Berg <johannes@sipsolutions.net>
+author:         Ivo van Doorn <IvDoorn@gmail.com>
+depends:        
+[geekard@geekard ~]$ 
+
+===== 组件交互的基本原理图 =====
+[Wireless Card]
+      |
+[Linux Kernel ]
+       |
+[**udev**][libnl]-[__iw__]      
+   |  /   \      
+[crda]    \     
+    |       \     
+[ Wireless ] |[Regulatory] |[ Database ] |
+             |
+             |
+        [ hostapd ]
+
+===== 理解每一部分是做什么的： =====
+Wireless Card: Should be self explanitory... handles sending/receiving wireless packets
+无线网卡：操作接收/发达无线包
+
+Linux Kernel: The linux kernel contains the driver for the wireless card, the __mac80211 subsystem__ which handles packet generation and scheduling, and the __nl80211 subsystem__, which handles configuring the wireless interfaces for userspace
+linux核：linux核包涵了无线网尗的驱动，mac80211子系统 处理包的产生与时序安排。nl80211处理__在用户空间配置无线接口__  cfg80211
+
+__libnl: __libnl is the transport layer used to communicate with the kernel via __netlink__
+libnl: 通过netlink与内核对话的传输层
+
+__udev: __udev is the facility the kernel uses to pass events/calls to crda
+udev:udev是内核通过events/calls到 crda的设施
+
+__iw: __iw is a userspace utility that we can use to test that libnl is working correctly, as well as create additional virtual wireless interfaces on the wireless card
+iw:是我们用来测试 libnl是否正确工作，以及在无线网卡上创建额外的虚拟无线接口的用户空间工具 。
+
+__crda: __**crda is a userspace program** that the kernel queries (through udev) to find what channels/frequencies are usable, and at what powers. This moves the information out of static tables maintained in kernel to userspace, which allows them to be updated without reloading drivers/rebooting
+crda:是内核通过udev来查找什么频段／频率是有效的，在什么强度的用户空间程序。这个从内核维护的静态表中移到用户空间，它可以不需要重载驱动和重启的情况下更新。
+
+Wireless Regulatory Database: database of allowable frequencies and transmit power levels used by crda
+无线控制数据库：crda使用允许的频率和传输强度等级的数据库
+
+__hostapd: __This is the daemon that handles generation of beacons and other wireless packets, as wel as wpa-psk, wpa2, etc encryptions.
+hostapd:这是个用来操作信号的产生和其它无线包，以及wpa-psk, wpa2等加密的守护进程。softMAC是一个用于描述无线网尗的类型的一个术语。

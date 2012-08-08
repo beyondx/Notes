@@ -1,0 +1,158 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-15T17:05:31+08:00
+
+====== CSS Pseudo-elements ======
+Created Sunday 15 May 2011
+http://www.w3schools.com/css/css_pseudo_elements.asp
+
+CSS pseudo-elements are used to **add special effects to some selectors**.
+
+===== Syntax =====
+
+The syntax of pseudo-elements:
+
+**selector:pseudo-element {property:value;}**
+
+CSS classes can also be used with pseudo-elements:
+
+**selector.class:pseudo-element {property:value;}**
+
+===== The :first-line Pseudo-element =====
+
+The "first-line" pseudo-element is used to **add a special style to the first line of a text**.
+
+In the following example the browser formats the first line of text in a p element according to the style in the "first-line" pseudo-element (where the browser breaks the line, depends on the size of the browser window):
+
+==== Example ====
+**p:first-line**
+{
+color:#ff0000;
+font-variant:small-caps;
+}
+
+
+=== Note: ===
+ The "first-line" pseudo-element can only be used with **block-level elements**.
+
+=== Note: ===
+ The following properties apply to the "first-line" pseudo-element:
+
+    font properties
+    color properties 
+    background properties
+    word-spacing
+    letter-spacing
+    text-decoration
+    vertical-align
+    text-transform
+    line-height
+    clear
+
+===== The :first-letter Pseudo-element =====
+
+The "first-letter" pseudo-element is used to** add a special style to the first letter of a text**:
+
+=== Example ===
+p:first-letter
+{
+color:#ff0000;
+font-size:xx-large;
+}
+
+
+**Note: **The "first-letter" pseudo-element can only be used with** block-level elements**.
+
+**Note: **The following properties apply to the "first-letter" pseudo- element: 
+
+    font properties
+    color properties 
+    background properties
+    margin properties
+    padding properties
+    border properties
+    text-decoration
+    vertical-align (only if "float" is "none")
+    text-transform
+    line-height
+    float
+    clear
+
+===== Pseudo-elements and CSS Classes =====
+
+Pseudo-elements can be combined with CSS classes: 
+
+p.article:first-letter {color:#ff0000;}
+
+<p class="article">A paragraph in an article</p>
+
+The example above will display the first letter of all paragraphs with class="article", in red.
+
+===== Multiple Pseudo-elements =====
+
+Several pseudo-elements can also be combined.
+
+In the following example, the first letter of a paragraph will be red, in an xx-large font size. The rest of the first line will be blue, and in small-caps. The rest of the paragraph will be the default font size and color:
+
+=== Example ===
+p:first-letter
+{
+color:#ff0000;
+font-size:xx-large;
+}
+p:first-line
+{
+color:#0000ff;
+font-variant:small-caps;
+}
+
+**PS：对p用多个伪元素**
+
+===== CSS - The :before Pseudo-element =====
+
+The ":before" pseudo-element can be used to** insert some content before the content of an element**.
+
+**PS：**插入的内容将作为原来元素内容的一部分
+
+The following example inserts an image before each <h1> element:
+
+==== Example ====
+h1:before
+{
+__content:__url(smiley.gif);
+}
+
+===== CSS - The :after Pseudo-element =====
+
+The ":after" pseudo-element can be used to insert some content after the content of an element.
+
+**PS：**插入的内容将作为原来元素内容的一部分，如:
+dir:after {
+content:"the appended line"
+}
+字符串"the appended line"将作为div内部内容的一部分而被div包含，这种特性可以用来enclose a floated element。
+{{../float/How_to_completely_enclose_a_floated_element_in_CSS2/pesudo-of-after.png?width=600}}
+如上图所示，“The append text”包含在dvi的空间内。
+
+The following example inserts an image after each <h1> element:
+Example
+h1:after
+{
+content:url(smiley.gif);
+}
+
+
+
+===== All CSS Pseudo Classes/Elements =====
+**Selector 		Example 		Example description**
+:link 			a:link 			Selects all unvisited links
+:visited 			a:visited 			Selects all visited links
+:active 			a:active 			Selects the active link
+:hover 			a:hover 			Selects links on mouse over
+:focus 			input:focus 		Selects the input element which has focus
+:first-letter 		p:first-letter 		Selects the first letter of every <p> element
+:first-line 		p:first-line 		Selects the first line of every <p> element
+:first-child 		p:first-child 		Selects every <p> elements that is the first child of its parent
+:before 			p:before 			Insert content before every <p> element
+:after 			p:after 			Insert content after every <p> element
+:lang(language) 	p:lang(it) 		Selects every <p> element with a lang attribute value starting with "it"

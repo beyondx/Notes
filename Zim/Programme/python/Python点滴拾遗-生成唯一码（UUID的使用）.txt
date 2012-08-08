@@ -1,0 +1,48 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-23T20:45:40+08:00
+
+====== Python点滴拾遗-生成唯一码（UUID的使用） ======
+Created Sunday 23 October 2011
+在C#中很容易生成一组唯一码，最常用的是结构体GUID的NewGuid()实例。如果C#运行Guid.NewGuid();将会得到据说世界唯一的号码，形如：887687be-00cf-4dca-8fe4-7c4fc19b9ecc 。最近看了一下Python的相关模块，也发现了一个模块uuid。当然里面的类和函数也不亚于C#。详细的东西就不一一介绍了，有兴趣的朋友，搜索uuid或者参考官方文档吧。以下只是照搬官方文档的典型案例，用中文说明一下：
+
+>>> import uuid
+
+# 生成基于计算机主机ID和当前时间的UUID
+>>> uuid.uuid1()
+输出结果：
+UUID('a8098c1a-f86e-11da-bd1a-00112444be1e')
+
+# 基于命名空间和一个字符的MD5加密的UUID
+>>> uuid.uuid3(uuid.NAMESPACE_DNS, 'python.org')
+输出结果：
+UUID('6fa459ea-ee8a-3ca4-894e-db77e160355e')
+
+# 随机生成一个UUID
+>>> uuid.uuid4()
+输出结果：
+UUID('16fd2706-8baf-433b-82eb-8c7fada847da')
+
+# 基于命名空间和一个字符的SHA-1加密的UUID
+>>> uuid.uuid5(uuid.NAMESPACE_DNS, 'python.org')
+输出结果：
+UUID('886313e1-3b8a-5372-9b90-0c9aee199e5d')
+
+# make a UUID from a string of hex digits (braces and hyphens ignored)
+#根据十六进制字符生成UUID（英语好的请看上面的原话）
+>>> x = uuid.UUID('{00010203-0405-0607-0809-0a0b0c0d0e0f}')
+# convert a UUID to a string of hex digits in standard formUUID
+#转换成十六进制的UUID表现字符（英语好的请看上面的原话）
+>>> str(x)
+输出结果：
+'00010203-0405-0607-0809-0a0b0c0d0e0f'
+
+# 获取原始UUID的16位字符
+>>> x.bytes
+输出结果：
+'\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f'
+
+#生成16位字符的UUID
+>>> uuid.UUID(bytes=x.bytes)
+输出结果：
+UUID('00010203-0405-0607-0809-0a0b0c0d0e0f')

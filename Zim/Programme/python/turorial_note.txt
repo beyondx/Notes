@@ -1,0 +1,578 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-25T20:06:38+08:00
+
+====== turorial note ======
+Created Wednesday 25 May 2011
+
+===== 1.命令行参数 =====
+[geekard@geekard ~]$ python __-i -c __'print("hello")' m=3 n=4
+hello
+>>> import sys
+>>> sys.argv[:]
+['-c', 'm=3', 'n=4']
+>>> 
+
+[geekard@geekard ~]$ python -i __ -__
+Python 3.2 (r32:88445, Apr 15 2011, 11:20:08) 
+[GCC 4.5.2 20110127 (prerelease)] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import sys
+>>> sys.argv[:]
+['-']
+>>> 
+**命令行中的-c、- 会在argv中保存**
+[geekard@geekard ~]$ python -i -c 'print("hello")__;m = 3__'
+hello
+>>> m
+3
+>>> 
+
+[geekard@geekard ~]$ python -i -c '__print("hello");m = 3;import sys;print(sys.argv[:])__'
+hello
+['-c']
+>>> 
+**字符串中可以有多个语句相互间用分号隔开**
+
+[geekard@geekard ~]$ python __-i  n=4__ -c 'print("hello");m = 3' 
+python: can't open file 'n=4': [Errno 2] No such file or directory
+[geekard@geekard ~]$ 
+
+脚本、命令等的参数必须在脚本名、语句串后指定
+
+
+[geekard@geekard ~]$ python -  -c 'print("hello")' m=4
+Python 3.2 (r32:88445, Apr 15 2011, 11:20:08) 
+[GCC 4.5.2 20110127 (prerelease)] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import sys; sys.argv[:]
+['-', '-c', 'print("hello")', 'm=4']
+>>> 
+
+[geekard@geekard ~]$ python - **test1.py**   //指定两种类型，但以-为准，test.py作为其参数
+Python 3.2 (r32:88445, Apr 15 2011, 11:20:08) 
+[GCC 4.5.2 20110127 (prerelease)] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import sys; sys.argv[:]
+['-', 'test1.py']
+>>> 
+
+同一个命令行中-、-c、-m以及脚本文件名只能指定一个，否则以第一个为准，其他的作为其参数。
+
+[geekard@geekard ~]$ python - **-i test1.py**   //作为交互输入的参数
+Python 3.2 (r32:88445, Apr 15 2011, 11:20:08) 
+[GCC 4.5.2 20110127 (prerelease)] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import sys; sys.argv[:]
+['-', '-i', 'test1.py']
+>>> 
+
+[geekard@geekard ~]$ python -i - **test1.py **
+Python 3.2 (r32:88445, Apr 15 2011, 11:20:08) 
+[GCC 4.5.2 20110127 (prerelease)] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import sys; sys.argv[:]
+['-', 'test1.py']
+>>> 
+
+===== 2.出错处理 =====
+>>> def f1(num, dic):
+...     return(num/dic)
+... 
+>>> def f2(num, dic):
+...     f1(num, dic)
+... 
+>>> f2(2, 0)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "<stdin>", line 2, in f2
+  File "<stdin>", line 2, in f1
+ZeroDivisionError: division by zero
+>>> 
+出错时的返回的调用堆栈信息是从上到下为最近调用的顺序，最后一个为出错时的直接调用情况。
+[geekard@geekard ~]$ cat !$
+cat test1.py
+#!/usr/bin/env python
+string = 'hello,world!'
+print(string)
+
+def test()
+    print(string)
+[geekard@geekard ~]$ python test1.py 
+  File "test1.py", line 5
+    def test()
+             ^
+SyntaxError: invalid syntax
+[geekard@geekard ~]$ 
+指示了错误时的文件名，第几行，以及发现错误时的位置指示，最后是错误类型。
+
+[geekard@geekard ~]$ python -i -c 'import sys;**sys.ps1=">>";sys.ps2=">"**'
+>>def test():
+>
+
+===== range用于迭代 =====
+In many ways the object returned by range() behaves as if it is a list, but in fact it isn’t. It is an object which
+returns the successive items of the desired sequence when you iterate over it, but it doesn’t really make the list,
+thus saving space.
+We say such an object is iterable, that is, suitable as a target for functions and constructs that expect something
+from which they can obtain successive items until the supply is exhausted. We have seen that the** for **statement
+is such an iterator. The function** list()** is another; it creates lists from iterables:
+
+===== 函数及返回值 =====
+The** execution** of a function introduces a new symbol table used for the local variables of the function. More
+precisely, all variable assignments in a function store the value in the local symbol table; whereas variable refer-
+ences first look in the local symbol table, then in the local symbol tables of enclosing functions, then in the global
+symbol table, and finally in the table of built-in names. Thus, global variables cannot be directly assigned a value
+within a function (unless named in a global statement), although they may be referenced.
+
+The actual parameters (arguments) to a function call are introduced in the local symbol table of the called function
+when it is called; thus, arguments are passed using call by value (where the value is always an object reference,
+not the value of the object). 1 When a function calls another function, a new local symbol table is created for that
+call.
+ Actually, call by object reference would be a better description, since if a mutable object is passed, the caller will see any changes the
+callee makes to it (items inserted into a list).
+
+A function definition introduces the function name in the current symbol table. The value of the function name
+has a type that is recognized by the interpreter as a user-defined function. This value can be assigned to another
+name which can then also be used as a function. This serves as a general renaming mechanism:
+>>> fib
+<function fib at 10042ed0>
+>>> f = fib
+>>> f(100)
+0 1 1 2 3 5 8 13 21 34 55 89
+
+Coming from other languages, you might object that fib is not a function but a procedure since it doesn’t return
+a value. In fact, even functions without a return statement do return a value, albeit a rather boring one. This
+value is called None (it’s a built-in name). Writing the value None is normally **suppressed（忽略）** by the interpreter if it
+would be the only value written. You can see it if you really want to using print():
+>>> fib(0)
+>>> print(fib(0))
+None
+没有返回值的函数实际也返回一个值，该值通常并不打印出来：None
+The return statement returns with a value from a function. return without an expression argument
+returns None. Falling off the end of a function also returns None.
+
+===== 函数默认参数 =====
+**Important warning: **The default value is evaluated only once. This makes a difference when the default is
+a mutable object such as a list, dictionary, or instances of most classes. For example, the following function
+accumulates the arguments passed to it on subsequent calls:
+def f(a, L=[]):
+L.append(a)
+return L
+print(f(1))
+print(f(2))
+print(f(3))
+This will print
+[1]
+[1, 2]
+[1, 2, 3]
+If you don’t want the default to be shared between subsequent calls, you can write the function like this instead:
+def f(a, L=None):
+if L is None:
+L = []
+L.append(a)
+return L
+
+但是如果是函数内容定义的本地变量则在多次调用时并不累积(累积现象仅限于函数定义中的默认参数)。
+The default values are evaluated at the point of function definition in the defining scope, so that
+i = 5
+def f(arg=i):
+print(arg)
+i = 6
+f()
+will print 5.
+
+===== 关键字参数形式调用 =====
+In general, an argument list must have any positional arguments followed by any keyword arguments(关键字参数必须放在位置参数的后面), where the keywords must be chosen from the** formal parameter（形参）**names. It’s not important whether a formal parameter has a default value or not(不管形参是否有默认值，都可以用关键字参数形式向其传值). No argument may receive a value more than once — formal parameter names corresponding to positional arguments cannot be used as keywords in the same calls. Here’s an example that fails due to this restriction:(同一个形参不能通过关键字和位置形式传递两次)
+
+When a final formal parameter of the form **name is present, it receives a dictionary (see typesmapping) con-
+taining all keyword arguments except for those corresponding to a formal parameter（name 包含了所有在形参列表中未定义的关键字实参）. This may be combined with  a formal parameter of the form *name (described in the next subsection) which receives a tuple containing the positional arguments beyond the formal parameter list.(name中包含了所有超过形参列表的所有位置参数) (*name must occur before **name.) For example, if we define a function like this:
+
+def cheeseshop(kind, *arguments, **keywords):
+print("-- Do you have any", kind, "?")
+print("-- I’m sorry, we’re all out of", kind)
+for arg in arguments:
+print(arg)
+print("-" * 40)
+**keys = sorted(keywords.keys())**
+for kw in keys:
+print(kw, ":", keywords[kw])
+
+It could be called like this:
+
+cheeseshop("Limburger", "It’s very runny, sir.",
+"It’s really very, VERY runny, sir.",
+shopkeeper="Michael Palin",
+client="John Cleese",
+sketch="Cheese Shop Sketch")
+and of course it would print:
+-- Do you have any Limburger ?
+-- I’m sorry, we’re all out of Limburger
+It’s very runny, sir.
+It’s really very, VERY runny, sir.
+----------------------------------------
+client : John Cleese
+shopkeeper : Michael Palin
+sketch : Cheese Shop Sketch
+
+===== 可变参数调用 =====
+Finally, the least frequently used option is to specify that a function can be called with an arbitrary number of
+arguments. These arguments will be wrapped up in a tuple (see Tuples and Sequences). Before the variable
+number of arguments, zero or more normal arguments may occur.
+
+def write_multiple_items(file, separator, ***args**):
+file.write(separator.join(args))
+
+Normally, these** variadic **arguments will be last in the list of formal parameters, because they scoop up all
+remaining input arguments that are passed to the function. Any formal parameters which occur **after** the *args
+parameter are ‘keyword-only’ arguments, meaning that they can only be used as keywords rather than positional
+arguments.(arg只收集位置参数，传入的关键字参数则不收集)
+>>> def concat(*args, sep="/"):
+...
+return sep.join(args)
+>>> concat("earth", "mars", "venus")
+’earth/mars/venus’
+>>> concat("earth", "mars", "venus", sep=".")
+’earth.mars.venus’
+
+===== 字典类型 =====
+diction={'A+':90,'B+':80,'C+':70}
+>>> for arg in diction:
+...     print(arg)
+... 
+C+
+A+
+B+
+>>> diction.keys()
+dict_keys(['C+', 'A+', 'B+'])
+>>> diction.items()
+dict_items([('C+', 70), ('A+', 90), ('B+', 80)])
+>>> diction.values()
+dict_values([70, 90, 80])
+>>> 
+
+>>> resault = {'geekard':90, 'tom':80, 'harry':70}
+>>> type(resault.keys())
+<class 'dict_keys'>
+>>> keys = resault.keys()
+>>> keys
+dict_keys(['harry', 'geekard', 'tom'])
+>>> for val in keys:
+...     print(val, ':', resault[val])
+... 
+harry : 70
+geekard : 90
+tom : 80
+>>> dict([(x, x**2) for x in (2, 4, 6)])# use a list comprehension
+{2: 4, 4: 16, 6: 36}
+The dict() constructor builds dictionaries directly from sequences of key-value pairs:
+>>> dict([(’sape’, 4139), (’guido’, 4127), (’jack’, 4098)])
+{’sape’: 4139, ’jack’: 4098, ’guido’: 4127}
+In addition, dict comprehensions can be used to create dictionaries from arbitrary key and value expressions:
+>>> {x: x**2 for x in (2, 4, 6)}
+{2: 4, 4: 16, 6: 36}
+When the keys are simple strings, it is sometimes easier to specify pairs using keyword arguments:
+>>> dict(sape=4139, guido=4127, jack=4098)
+{’sape’: 4139, ’jack’: 4098, ’guido’: 4127}
+
+
+===== 参数列表的拆分(主要是list、tuple、dict等顺序类型参数) =====
+The reverse situation occurs when the arguments are already in a list or tuple but need to be  unpacked for a function
+call requiring** separate positional arguments**. For instance, the built-in range() function expects separate start
+and stop arguments. If they are not available separately, write the function call with the *****-operator to unpack the
+arguments out of a **list or tuple**:
+>>>list(range(3, 6))		# normal call with separate arguments
+[3,4, 5]
+>>>args = [3, 6]
+>>>list(range(*args))  # call with arguments unpacked from a list
+[3,4, 5]
+
+
+In the same fashion, **dictionaries can deliver keyword arguments with the ****-operator:
+>>> def parrot(voltage, state=’a stiff’, action=’voom’):
+...
+print("-- This parrot wouldn’t", action, end=’ ’)
+...
+print("if you put", voltage, "volts through it.", end=’ ’)
+...
+print("E’s", state, "!")
+...
+>>> d = {"voltage": "four million", "state": "bleedin’ demised", "action": "VOOM"}
+>>> parrot(**d)
+-- This parrot wouldn’t VOOM if you put four million volts through it. E’s bleedin’ demi
+
+===== Lambda函数形式 =====
+
+By popular demand, a few features commonly found in functional programming languages like Lisp have been
+added to Python. With the lambda keyword, small anonymous functions(匿名函数) can be created. Here’s a function that
+returns the sum of its two arguments: **lambda a, b: a+b**. Lambda forms can be used wherever function
+objects are required. They are syntactically(语法) restricted to a single expression. Semantically, (语义)they are just syntactic
+sugar for a normal function definition. Like nested function definitions(嵌套函数定义), lambda forms can reference variables
+from the containing scope:
+>>>def make_incrementor(n):
+...return lambda x: x + n
+...**f = make_incrementor(42)   //第一次调用时传一个参数进去**
+>>>**f(0)						//被 lambda接收**
+42
+>>>f(1)
+43
+
+===== docstring =====
+在help该函数名时，显示该内容
+The Python parser does not strip indentation from multi-line string literals in Python, so tools that process docu-
+mentation have to strip indentation if desired. This is done using the following convention. The **first non-blank**
+line after the first line of the string determines the **amount** of indentation for the entire documentation string. (We
+can’t use the first line since it is generally adjacent to the string’s opening quotes so its indentation is not apparent
+in the string literal.) Whitespace “equivalent” to this indentation is then stripped from the start of all lines of
+the string. Lines that are** indented less should not occur**, but if they occur all their leading whitespace should be
+stripped. Equivalence of whitespace should be tested after expansion of tabs (to 8 spaces, normally).
+
+>>> def fun1(n):
+...     '''this is a test fun1.
+... 
+... it is used to test docstring.'''  //没有缩进
+...     pass
+... 
+>>> help(fun1)
+
+>>> def fun2(n):
+...     '''this is a test fun2.
+...     
+...     it is used to test docstring.'''  //缩进两个字符
+...     pass
+... 
+>>> print(fun1.__doc__)
+this is a test fun1. 			//第一行总是没有缩进
+
+it is used to test docstring.   //显示时没有缩进
+>>> print(fun2.__doc__)
+this is a test fun2.
+
+        it is used to test docstring.	//有缩进
+
+===== Coding Style =====
+* Use 4-space indentation, and no tabs.
+	4 spaces are a good compromise between small indentation (allows greater nesting depth) and large inden-
+	tation (easier to read). Tabs introduce confusion, and are best left out.
+* Wrap lines so that they don’t exceed 79 characters.
+	This helps users with small displays and makes it possible to have several code files side-by-side on larger
+	displays.
+* Use blank lines to separate functions and classes, and larger blocks of code inside functions.
+* When possible, put comments on a line of their own.
+* Use docstrings.
+* Use spaces around operators and after commas, but not directly inside bracketing constructs: a = f(1,
+2) + g(3, 4).
+* Name your classes and functions consistently; the convention is to use CamelCase for classes and
+	lower_case_with_underscores for functions and methods. Always use self as the name for
+	the first method argument (see A First Look at Classes for more on classes and methods).
+* Don’t use fancy encodings if your code is meant to be used in international environments. Python’s default,
+	UTF-8, or even plain ASCII work best in any case.
+* Likewise, don’t use non-ASCII characters in identifiers if there is only the slightest chance people speaking
+	a different language will read or maintain the code.
+
+
+===== 模块内置类型 =====
+[geekard@geekard ~]$ python
+Python 3.2 (r32:88445, Apr 15 2011, 11:20:08) 
+[GCC 4.5.2 20110127 (prerelease)] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> dir()
+**['__builtins__', '__doc__', '__name__', '__package__']**
+>>> 
+>>> dir(__builtins__)
+['ArithmeticError', 'AssertionError', 'AttributeError', 'BaseException', 'BufferError', 'BytesWarning', 'DeprecationWarning', 'EOFError', 'Ellipsis', 'EnvironmentError', 'Exception', 'False', 'FloatingPointError', 'FutureWarning', 'GeneratorExit', 'IOError', 'ImportError', 'ImportWarning', 'IndentationError', 'IndexError', 'KeyError', 'KeyboardInterrupt', 'LookupError', 'MemoryError', 'NameError', 'None', 'NotImplemented', 'NotImplementedError', 'OSError', 'OverflowError', 'PendingDeprecationWarning', 'ReferenceError', 'ResourceWarning', 'RuntimeError', 'RuntimeWarning', 'StopIteration', 'SyntaxError', 'SyntaxWarning', 'SystemError', 'SystemExit', 'TabError', 'True', 'TypeError', 'UnboundLocalError', 'UnicodeDecodeError', 'UnicodeEncodeError', 'UnicodeError', 'UnicodeTranslateError', 'UnicodeWarning', 'UserWarning', 'ValueError', 'Warning', 'ZeroDivisionError', '__build_class__', '__debug__', '__doc__', '__import__', '__name__', '__package__', 'abs', 'all', 'any', 'ascii', 'bin', 'bool', 'bytearray', 'bytes', 'callable', 'chr', 'classmethod', 'compile', 'complex', 'copyright', 'credits', 'delattr', 'dict', 'dir', 'divmod', 'enumerate', 'eval', 'exec', 'exit', 'filter', 'float', 'format', 'frozenset', 'getattr', 'globals', 'hasattr', 'hash', 'help', 'hex', 'id', 'input', 'int', 'isinstance', 'issubclass', 'iter', 'len', 'license', 'list', 'locals', 'map', 'max', 'memoryview', 'min', 'next', 'object', 'oct', 'open', 'ord', 'pow', 'print', 'property', 'quit', 'range', 'repr', 'reversed', 'round', 'set', 'setattr', 'slice', 'sorted', 'staticmethod', 'str', 'sum', 'super', 'tuple', 'type', 'vars', 'zip']
+对于这些类型的查询其关键字不用加引号。但help时除外
+
+===== Lists =====
+>>> dir(list)
+['__add__', '__class__', '__contains__', '__delattr__', '__delitem__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__getitem__', '__gt__', '__hash__', '__iadd__', '__imul__', '__init__', '__iter__', '__le__', '__len__', '__lt__', '__mul__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__reversed__', '__rmul__', '__setattr__', '__setitem__', '__sizeof__', '__str__', '__subclasshook__',** 'append', 'count', 'extend', 'index', 'insert', 'pop', 'remove', 'reverse', 'sort'**]
+>>> 
+
+==== 5.1.2 Using Lists as Queues ====
+It is also possible to use a list as a queue, where the first element added is the first element retrieved (“first-in,
+first-out”); however, lists are not efficient for this purpose. While appends and pops from the end of list are fast,
+doing inserts or pops from the beginning of a list is slow (because all of the other elements have to be shifted by
+one).
+To implement a queue, use **collections.deque **which was designed to have fast appends and pops from both
+ends. For example:
+>>> **from collections import deque**
+>>> queue = deque(["Eric", "John", "Michael"])
+>>> queue.append("Terry")
+# Terry arrives
+>>> queue.append("Graham")
+# Graham arrives
+>>> queue.**popleft()**
+# The first to arrive now leaves
+’Eric’
+>>> queue.popleft()
+# The second to arrive now leaves
+’John’
+>>> queue
+# Remaining queue in order of arrival
+deque([’Michael’, ’Terry’, ’Graham’])
+
+==== sum的用法 ====
+>>> sum([123,345,456])
+924
+>>> sum('123')
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+TypeError: unsupported operand type(s) for +: 'int' and 'str'
+>>> **sum(12,23)   //传给函数的这两个参数不会自动转换为tuple，而是当作两个不可遍历的参数**
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+TypeError: 'int' object is not iterable
+>>> sum((12,23))
+35
+>>> 
+
+===== 5.1.3 List Comprehensions(列表推导式) =====
+List comprehensions provide a concise way to** create lists from sequences**. Common applications are to make
+lists where each element is the result of some **operations applied to each member of the sequence**, or to create a
+subsequence of those elements that satisfy a certain condition.
+A list comprehension consists of brackets containing an expression followed by a __for__ clause, then zero or more
+__for __or __if __clauses. The result will be **a list** resulting from evaluating the expression in the context of the __for __and
+__if__ clauses which follow it. If the expression would evaluate to a tuple, it must be** parenthesized**.
+>>> [x, x**2 for x in vec] # error - parens required for tuples
+File "<stdin>", line 1, in ?
+[x, x**2 for x in vec]
+^
+SyntaxError: invalid syntax
+>>> [(x, x**2) for x in vec]
+
+==== 嵌套列表 ====
+>>> mat = [
+...
+[1, 2, 3],
+...
+[4, 5, 6],
+...
+[7, 8, 9],
+...
+]
+Now, if you wanted to swap rows and columns, you could use a list comprehension:
+>>> print(row[i] for row in mat] for i in [0, 1, 2)
+1, 4, 7], [2, 5, 8], [3, 6, 9]
+Special care has to be taken for the nested list comprehension:
+	To avoid apprehension when nesting list comprehensions, **read from right to left.**
+
+
+===== 矩阵转秩 =====
+>>> mat = [
+...     [1,2,3],
+...     [4,5,6],
+...     [7,8,9],
+...     ]
+>>> mat
+1, 2, 3], [4, 5, 6], [7, 8, 9
+>>> print(row[i] for row in mat] for i in [0,1,2)   //嵌套的列表推导
+1, 4, 7], [2, 5, 8], [3, 6, 9
+>>> for i in range(3):
+...     for row in mat:
+...             print(row[i], end='')
+...     print()
+... 
+147
+258
+369
+>>> zip(*mat)    //对于类似于转秩的运算，可以使用内置的zip函数
+<zip object at 0xb70eea6c>
+>>> list(zip(***mat**))	
+**[(1, 4, 7), (2, 5, 8), (3, 6, 9)]**
+
+>>> print(*mat)   //将列表解开后得到的是各个独立的列表项
+**[1, 2, 3] [4, 5, 6] [7, 8, 9]**
+>>> 
+
+>>> help(zip)
+Help on class zip in module builtins:
+
+class zip(object)
+ |  zip(iter1 [,iter2 [...]]) --> zip object
+ |  
+ |  Return a zip object whose .__next__() method** returns a tuple** where
+ |  the **i-th element comes from the i-th iterable argument.**  The .__next__()
+ |  method continues until the shortest iterable in the argument sequence
+ |  is exhausted and then it raises StopIteration.
+ |  
+zip函数的功能是返回一个tuple其第I个的元素来自各个可迭代参数的第I个元素，直到最短的一个可迭代参数为止。
+
+===== del语句 =====
+There is a way to remove an item from a list given its index instead of its value: the del statement. This differs
+from the pop() method which returns a value. The del statement can also be used to remove slices from a list
+or clear the entire list (which we did earlier by assignment of an empty list to the slice). For example:
+
+del can also be used to delete entire variables:
+>>> del a
+Referencing the name a hereafter is an error (at least until another value is assigned to it). We’ll find other uses
+for del later.
+
+===== Tuples and Sequences =====
+As you see, on output tuples are always enclosed in parentheses, so that nested tuples are interpreted correctly;
+they may be input with or without surrounding parentheses, although often parentheses are necessary anyway (if
+the tuple is part of a larger expression).
+
+>>> sigleton = ('test')
+>>> sigleton
+'test'
+>>> type(sigleton)
+<class **'str'**>			//可见单个元素的元组不能用__(item)__的形式生成
+>>> sigleton = 'test',	//这个是正确的
+>>> type(sigleton)
+<class **'tuple'**>
+>>> 
+>>> single=('test',)	//这种定义是正确的
+>>> single
+**('test',)**
+>>> type(single)
+<class 'tuple'>
+>>> 
+
+The statement t = 12345, 54321, ’hello!’ is an example of **tuple packing(元组封装)**: the values 12345, 54321
+and ’hello!’ are packed together in a tuple. The reverse operation is also possible:
+>>> x, y, z = t
+This is called, appropriately enough, **sequence unpacking(序列解封) **and works for **any sequence** on the right-hand side.
+Sequence unpacking requires that there are as **many variables on the left side of the equals sign as there are**
+**elements in the sequence.** Note that **multiple assignment is really just a combination of tuple packing and sequence**
+**unpacking.**
+
+===== set集合 =====
+**Curly braces(花括号)** or the **set()** function can be used to create sets. Note: To create an empty set you have to use
+**set(), not {}**; the latter creates an empty dictionary, a data structure that we discuss in the next section.
+
+>>> std = [[1,2,3],4,5]			//嵌套的列表是不能迭代的
+>>> set(std)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+TypeError: unhashable type: 'list'
+>>> 
+
+===== package导入 =====
+When importing the package, Python searches through the directories on sys.path looking for the package
+subdirectory.
+The __init__.py files are required to make Python treat the directories as containing packages; this is done to
+prevent directories with a common name, such as string, from unintentionally hiding valid modules that occur
+later on the module search path. In the simplest case, __init__.py can just be an empty file, but it can also
+execute** initialization code **for the package or set the __all__ variable, described later.
+
+Note that when using __from package import item__, the item can be either a submodule (or subpackage) of
+the package, or some other name defined in the package, like a function, class or variable(这些有可能在包的__init__.py中定义). The import statement first tests whether the item is** defined in the package**; if not, it assumes it is a module and attempts to load it. If it
+fails to find it, an ImportError exception is raised.
+
+Contrarily, when using syntax like__ import item.subitem.subsubitem__, each item except for the last must
+be a package; the last item can be a module or a package but can’t be a class or function or variable defined in the
+previous item.
+也就是说import只能导入包或模块，from....import.....还可以导入到函数、变量级别
+
+You can also write relative imports, with the__ from module import name__ form of import statement. These
+imports use leading dots to indicate the current and parent packages involved in the relative import. From the
+surround module for example, you might use:
+**from . import echo**
+**from .. import formats**
+**from ..filters import equalizer**
+Note that relative imports are based on the name of the current module. Since the name of the main module is
+always "__main__", modules intended for use as the main module of a Python application must always use
+**absolute imports**.
+
+
+

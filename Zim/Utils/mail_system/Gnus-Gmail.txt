@@ -1,0 +1,97 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-22T16:52:11+08:00
+
+====== Gnus-Gmail ======
+Created Sunday 22 May 2011
+http://www.emacswiki.org/emacs/GnusGmail
+
+
+===== Accessing Gmail via Imap =====
+
+Firstly, don’t forget to **enable IMAP** in your Gmail account (settings->forwarding POP/IMAP). Settings to tell gnus to use Gmail’s IMAP as a (secondary) select method are as follows:
+
+__(add-to-list 'gnus-secondary-select-methods '(nnimap "gmail"__
+__                                  (nnimap-address "imap.gmail.com")__
+__                                  (nnimap-server-port 993)__
+__                                  (nnimap-stream ssl)))__
+
+with a line like the following one in your__ ~/.authinfo __
+
+__machine imap.gmail.com login username@gmail.com password secret port 993__
+如：
+geekard imap.gmail.com login geekard@gmail.com password 701178zj12912  port 993
+
+**PS:**上面只是配置了收邮件的功能，下面配置利用gmail的smtp服务器发邮件或中转邮件。gnus的配置文件为: ~/.gnus
+
+Also, if you want to take advantage of **using gmail’s SMTP server** (so gmail keeps track of your sent mail), you can use the following settings:
+
+__(setq message-send-mail-function 'smtpmail-send-it__
+__      smtpmail-starttls-credentials '(("smtp.gmail.com" 587 nil nil))__
+__      smtpmail-auth-credentials '(("smtp.gmail.com" 587 "username@gmail.com" nil))__
+__      smtpmail-default-smtp-server "smtp.gmail.com"__
+__      smtpmail-smtp-server "smtp.gmail.com"__
+__      smtpmail-smtp-service 587__
+__      smtpmail-local-domain "yourcompany.com")__
+
+NOTE: You will need** starttls**, which is used to set up the SSL encrypted connection to the GMail server. This is contained in the “gnutls-bin” package on earlier versions of debian and ubuntu. With later versions (at least Ubuntu 9.10), starttls is in its own package, and the “gnutls-bin” package is not needed. If you don’t have starttls installed, you’ll get a (rather generic) “smtpmail-send-it: Sending failed; SMTP protocol error” error message.
+
+NOTE: (Pointed out by ChristofHarper) You can also store your password in the **smtpmail-auth-credentials** line, but this means that you’ve got to be more careful when sharing config files with other people.
+
+NOTE: It seems that the above settings (which are what Google recommends) don’t work for some people. Another possibility is to use port 25, and then use **~/.authinfo** to convert it back to 587, thus circumventing some code which was getting confused about SMTP through a non-25 port. To do this, replace all occurrences of 587 with 25 in the above snippet, and add the following line to your ~/.authinfo (see GnusAuthinfo and GnusEncryptedAuthInfo):
+
+__machine smtp.gmail.com login username@gmail.com password secret port 587__
+
+If you don’t wish to store your password there, just omit the “password secret” altogether and you’ll be prompted when you send an email.
+
+===== Accessing the [Gmail] folders =====
+
+All Gmail system labels have a prefix [Gmail], it matches the default value of gnus-ignored-newsgroups, so we could set it to “^to\\.\\|^[0-9. ]+\\( \\|$\\)\\|^[\”]\”[#’()]” to work around.
+
+===== Accessing Gmail via POP =====
+
+“Retrieving mail with POP3 is supported over SSL/TLS and with StartTLS.” (from GNUS-NEWS)
+Put the following in your gnus-init-file is sufficient.
+
+__(setq mail-sources__
+__      '((pop :server "pop.gmail.com"__
+__             :port 995__
+__             :user "Leo@gmail.com"__
+__             :password "wrongpw"__
+__             :stream ssl)))__
+
+I have tested this with No Gnus 0.6 (2006-10-19) and XftGnuEmacs (2006-10-04).
+
+===== Accessing Gmail via an external mail retriever =====
+
+Note that you can also get your mail from Gmail using **fetchmail** if that’s installed on your home system. The following __.fetchmailrc__ works for me:
+
+__ poll pop.gmail.com with proto POP3 and options no dns__
+__ user 'USERNAME@gmail.com' there with password 'PASSWORD' is 'LOCALUSERNAME' here options ssl__
+
+You can then set up a cron job to run fetchmail every few minutes:
+
+__ */3 * * * * fetchmail -s >/dev/null 2>&1__
+
+– ALTERNATE: Instead of using cron, you could always add “__set daemon 300__” (without the quotes) to your .fetchmailrc to use its **built-in daemonic capabilities**. The “300” tells it to run every 300 **seconds **(five minutes). Change this number to suit your tastes.
+
+and let gnus read your mail from wherever the usual location is on your system.
+
+Another possibility: if you set up a Gmail filter by entering “in:inbox” in the “Has the words” field (you will get an error message but ignore it) you can have Gmail forward all your mail from your inbox (leaving spam behind) to some location where you can access it without changing your emacs or gnus installation.
+
+Not even the above is necessary (as of 2006-12-02), gmail has now an option for forwarding the whole inbox to another address. dida
+
+===== Storing sent mail in the server =====
+
+By default, the mail you send from Gnus is not copied to the Gmail server, so if you open the folder “Sent mail”, you won’t see it. You will only see mail sent from the web interface.
+TODO: how to store sent mail in the server? (See below.)
+A workaround can be **CCing yourself** whenever you send a mail. With this approach you’ll get a copy which is reflected on the server as well. Moreover, you’ll be the sender of these copies which makes it easy to define a view including only these messages. To use this solution, write this into your .gnus.el file:
+
+__(setq gnus-posting-styles__
+__      '((".*"__
+__	 ("CC" "username@gmail.com")__
+__         (address "username@gmail.com"))))__
+
+Actually, the problem seems to be solved if you send mail via gmail’s smtp server - at their “Recommended IMAP client settings” they say:
+“Do NOT save sent messages on the server. If your client is sending mail through Gmail’s SMTP server, your sent messages will be automatically copied to the [Gmail]/Sent Mail folder.”
+

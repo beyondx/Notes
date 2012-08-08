@@ -1,0 +1,59 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-14T10:15:59+08:00
+
+====== 示例 ======
+Created Friday 14 October 2011
+
+~/download/firefox $ __python2__
+Python 2.7.2 (default, Jun 29 2011, 11:17:09) 
+[GCC 4.6.1] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> '张俊'     #python2 会自动将字符串转换为合适的编码字节字符串
+'\xe5\xbc\xa0\xe4\xbf\x8a'    #自动转换为utf-8编码的字节字符串
+>>> u'张俊'             #显式指定字符串类型为unicode类型， 此类型字符串没有编码，保存的是字符在unicode**字符集中的代码点(序号)**
+u'\u5f20\u4fca'
+>>> '张俊'.encode('utf-8')   #python2 已经自动将其转化为utf-8类型编码，因此再次编码(python2会将该字符串当作用ascii或unicode编码过)会出现错误。
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+UnicodeDecodeError: 'ascii' codec can't decode byte 0xe5 in position 0: ordinal not in range(128)
+>>> '张俊'.decode('utf-8')       #python2 可以正常解码，返回的字符串类型类无编码的unicode类型
+u'\u5f20\u4fca'
+>>> b'张俊'                     # ‘张俊' 已被python2转换为utf-8编码，因此已为字节字符串
+'\xe5\xbc\xa0\xe4\xbf\x8a'
+>>> print '张俊'
+张俊
+>>> print u'张俊'
+张俊
+>>> print b'张俊'
+张俊
+>>> 
+
+~/download/firefox $ __python3__
+Python 3.2.2 (default, Sep  5 2011, 04:33:58) 
+[GCC 4.6.1 20110819 (prerelease)] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> '张俊'                        #python3的字符串默认为unicode格式(无编码)
+'张俊'
+>>> u'张俊'                     #由于默认为unicode格式，因此字符串不用向python2一样显式地指出其类型，否则是语法错误。
+  File "<stdin>", line 1
+    u'张俊'
+            ^
+SyntaxError: invalid syntax
+>>> type('张俊')               #python3中__文本字符串和字节字符串是严格区分__的，默认为unicode格式的文本字符串
+<class __'str'__>
+>>> '张俊'.decode('utf-8')  #因为默认的文本字符串为unicode格式，因此__文本字符串没有decode方法__
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+AttributeError: 'str' object has no attribute 'decode'
+>>> '张俊'.**encode**('utf-8')   #将文本字符串编码，转换为已编码的字节字符串类型
+b'\xe5\xbc\xa0\xe4\xbf\x8a'
+>>> type('张俊'.encode('utf-8'))
+<class __'bytes'__>
+>>> print ('张俊'.encode('utf-8'))  #对于已编码的字节字符串，文本字符串的许多特性和方法已经不能使用。
+b'\xe5\xbc\xa0\xe4\xbf\x8a'
+>>>print ('张俊'.encode('utf-8'))
+**b'\xe5\xbc\xa0\xe4\xbf\x8a'**
+>>> print ('张俊'.encode('utf-8').__decode('utf-8')__)  #必须将字节字符串解码后才能打印出来
+张俊
+q

@@ -1,0 +1,21 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-05T17:58:48+08:00
+
+====== urxvt的剪贴板支持 ======
+Created Monday 05 March 2012
+www.donneryst.com/blog/arch使用一个月经验杂谈.html
+
+urxvt的剪贴板支持，首先安装urxvt-clipboard，再简单启用perl扩展:clipboard
+
+    $ yaourt -S urxvt-clipboard
+    $ <editor> ~/.Xresources 
+
+!extensions
+URxvt.perl-ext-common:  default,...,**clipboard**,...
+
+这个剪贴板支持是这样的，不用ctrl+c，终端里选中之后自动把选中内容复制到__主区PRIMARY和剪贴板区__CLIPBOARD([[../../../Linux/X剪贴板和选择、剪切、粘贴的原理.txt|linux的剪贴板管理]]请自行wiki)。之后如果你在终端外选中别的什么字串，会覆盖主区PRIMARY，但是剪贴板区依然是终端内容，所以可以直接ctrl+v到任意窗口。
+
+urxvt还有一个特性是alt+s，可以查找上面屏幕里出现的某个字串，找到第一个以后用__上下箭头键__可以切换查看搜索到的不同位置的其它匹配字串，ESC退出搜索，虽然不能直接选中匹配项，但其实还是蛮方便的。
+
+最后再来一条，该死的缓冲行数修改：URxvt.saveLines:65535，不解释！

@@ -1,0 +1,144 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-01T14:20:30+08:00
+
+====== CTeXPackage ======
+Created Sunday 01 January 2012
+https://code.google.com/p/ctex-kit/wiki/CTeXPackage
+
+===== 安装或更新 =====
+
+=== 发布版本 ===
+
+一般用户请使用稳定的发布版本。
+常见的 TeX 发行版应该已经安装了 ctex 宏包。请检查使用的最新的发行版。如果你在安装发行版时没有选择安装全部的宏包，请使用 MiKTeX Package Manager 或 TeX Live Manager 来安装 CTAN 上面的发布版本。
+
+如果你使用的发行版没有 ctex 宏包，可以在 CTAN 的镜象服务器上找到当前的发行版本（这里使用 CTeX 网站的镜象）：
+ftp://ftp.ctex.org/CTAN/language/chinese/ctex.zip
+
+但手工安装通常需要检查 ctex 宏包的依赖项，重要的包括 CJK 宏包、CJKpunct 宏包、xeCJK 宏包、zhwinfonts.tex、zhmetrics 字体包等等。
+
+=== 开发版本 ===
+
+可以从本网站的 SVN 仓库中获取开发中的版本。开发版本可能带有一些新的特性，修正了一些新的错误，但也可能带来不稳定的情况。
+
+使用 http://code.google.com/p/ctex-kit/source/checkout 中说明的方式从仓库中获取源代码。
+
+获取源代码后，需要按照__ TDS 目录结构__重新组织源代码，然后按目录结构复制到发行版中的**本地 TEXMF 目录**。例如，在 TeX Live 系统中，本地的 TEXMF 目录一般是
+
+安装目录/texmf-local/
+
+将 ctex 源码目录下的 doc 和 test 目录内容放在 TDS 的 __TEXMF/doc/latex/ctex/ __目录下；将其他目录放在 TDS 结构的 __TEXMF/tex/latex/ctex/__ 目录下；然后运行
+
+texhash
+
+刷新文件名数据库。
+
+===== 一般配置 =====
+
+一般情况下，安装后的 ctex 宏包不需要进一步的配置即可正常使用。
+
+=== 字体依赖 ===
+
+ctex 宏包__默认使用 winfonts 选项__，如果不使用其他选项修改字体配置，则需要操作系统中安装有中文 Windows 操作系统自带的四种 TrueType 字体：宋体、黑体、仿宋体、楷体。字体文件名为 sinsun.ttc, sinhei.ttf, simfang.ttf, simkai.ttf，字体名随不同 Windows 版本可能会有区别。
+
+* 英文 Windows 操作系统中只有宋体和黑体，需要自行安装仿宋和楷体才能使用。 
+* 非 Windows 操作系统如果需要使用此选项，参看页面 UnixFonts 中的说明。 
+
+如果使用 adobefonts 选项（目前仅支持 xelatex），则需要操作系统中安装有 Adobe 公司的四款 __OpenType__ 字体：Adobe 宋体 Std，Adobe 黑体 Std，Adobe 仿宋 Std，Adobe 楷体 Std。
+
+=== 中文相关配置 ===
+
+尽管 ctex 宏包本身不需要配置，但在特定环境中可能需要对系统字体做简单配置。这里对 Linux 下的 TeX Live 进行简单说明（严格地说这是 TeX Live 的论题）。
+
+TeX Live（这里描述 TeX Live 2010）安装在 Linux 系统上时，需要设置 TeX Live 的 __texmf.cnf __配置文件中的 OSFONTDIR 变量，才能使相关程序找到系统中的字体，特别是中文字体。用 pdflatex 或 latex + dvipdfmx 编译时需要这一设置以找到操作系统中的中文字体。XeLaTeX 编译__不需要__这种设置。
+
+=== 可能改变兼容性的配置 ===
+
+请有经验的用户仔细浏览过 ctex 宏包的源代码后再考虑下面的内容。
+
+本地修改配置文件可能改变 ctex 宏包的兼容性，字体等格式上的改变应该__做成独立的文件__另外使用。因此，如果需要安装用于某特定操作系统的字体，或是让章节标题的格式变化，不应该使用 ctex 宏包的配置文件达到此目的。例如，可以编写 myfontset.sty 文件设置用户 Linux 的字体：
+
+% myfontset.sty
+\ProvidesPackage{myfontset}[2011/01/01 ver 1.0 My local font settings of ctex]
+\setCJKmainfont[ItalicFont={AR PL KaitiM GB}]{AR PL SungtiL GB}% 文鼎宋体和楷书
+\setCJKsansfont{WenQuanYi Zen Hei}% 文泉驿的黑体
+\setCJKmonofont{WenQuanYi Zen Hei}
+\endinput
+
+然后在文档中设置 ctex 宏包的** nofonts **选项，以 \usepackage{myfontset} 使用此配置。
+
+ctex 宏包提供了两个额外的配置文件：
+
+    __ctex.cfg __中的代码将在 ctex 宏包末尾执行。可以使用此配置文件增加任意自定义配置，但建议只使用它解决错误。例如某些版本的 ctex 宏包中因 xunicode 造成的符号冲突问题。 
+
+   __ ctexopts.cfg__ 中的代码将在 ctex 宏包的开头（选项定义后面）执行。请只使用此配置文件改变 ctex 宏包的缺省选项。例如，可以使用：
+
+    \ExecuteOptions{adobefonts}
+    \ExecuteOptions{fntef}
+
+将 XeTeX 下默认的字体选项更改为 Adobe 的字体配置，并调用 CJKfntef 宏包。
+
+===== 使用 =====
+
+关于 ctex 宏包的详细使用说明请参考宏包所附的 PDF 文档。这里只对个别兼容性问题做一说明。
+
+=== 源文件编码 ===
+
+* 使用 CCT 方式处理汉字支持 GBK 文件编码。 
+* 使用 CJK 方式处理汉字（latex 或 pdflatex 编译自动选择），支持 GBK 和 UTF-8 两种文件编码。缺省的编码是 GBK。可以使用宏包选项 GBK 和 UTF8 进行选择；也可以使用 ctexutf8 等宏包名。 
+* 使用 xeCJK 方式处理汉字（xelatex 编译__自动选择__），可以使用 GBK 和 UTF-8 两种文件编码，但只有 UTF-8 编码是原生支持的。如果需要使用 GBK 编码，需要在源文档前面增加 XeTeX 原语：
+
+    \XeTeXinputencoding "GBK"
+
+===== 基本测试文件 =====
+
+XeTeX (xeCJK) 模式: (__推荐__使用的模式)
+
+% 使用 UTF-8 编码
+\documentclass{ctexart}
+\begin{document}
+你好 CTeX 文档类
+\end{document}
+
+用 xelatex 编译时会__自动使用__ XeTeX 相关配置。
+
+传统 CJK 模式:
+
+% 默认使用 GBK 编码，如需要 UTF-8 编码需加 UTF8 选项
+\documentclass{ctexart}
+\begin{document}
+你好~CTeX~文档类
+\end{document}
+
+传统 CCT 模式: (不建议使用，仅为个别历史文档保留)
+
+\documentclass[cct]{ctexart}
+\begin{document}
+你好 CTeX 文档类
+\end{document}
+
+===== 复杂的测试 =====
+
+测试使用 XeTeX (xeCJK) 版本:
+
+cd ~/texmf/tex/latex/ctex/test
+xelatex test-xetex.tex
+
+检查输出信息是否有异常，生成的 test-xetex.pdf 内容是否正确。
+
+测试使用 CJK 版本:
+
+cd ~/texmf/tex/latex/ctex/test
+pdflatex test-cjk.tex
+
+检查输出信息是否有异常，生成的 test-cjk.pdf 内容是否正确。
+
+great work!
+Comment by song.opp...@gmail.com, Jan 17, 2010
+
+xetex下使用xecjk，修改字体配置应该在~/texmf/__tex/latex/ctex/fontset/xecjk-adobefonts.def__ 和xecjk-winfonts.def中修改吧？是不是需要更新一下当前的文档了？
+Comment by project member LeoLiu....@gmail.com, Jan 13, 2011
+
+最好不要修改字体配置文件，这会造成不兼容。个人的字体配置在单独的包中写就行了。
+Comment by xiaohany...@gmail.com, May 29, 2011

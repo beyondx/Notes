@@ -1,0 +1,250 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-29T20:11:17+08:00
+
+====== 如何应用GPG加密使您的信息安全保障无忧 ======
+Created Thursday 29 December 2011
+
+http://xjsunjie.blog.51cto.com/999372/656687
+
+GPG作为一个开源并且免费的__加密和数字签名__软件已经存在多年。它不但可以为企业、个人之间的重要信息提供加密保护，还可以为出版的软件、内核等电子产品进行数字签名，防止产品被篡改，最大程度地保障信息安全。
+
+加密和数字签名作为保护信息机密性、完整性和不可抵赖性的重要手段在各种信息通信场合得到广泛的应用。目前，已有不少商业加密和数字签名产品，比如**商业软件PGP**（Pretty Good Privacy）。
+
+另外，在开放源代码库中也有一些免费的加密和数字签名软件，其中最被认可的是GPG（GNU Privacy Guard）。GPG是一个完全免费、源代码公开，并且与PGP完全兼容的软件产品。今天，GPG已经拥有众多的企业和个人用户。
+
+在我国，由于信息安全及隐私保护意识还比较薄弱，PGP或GPG在商业和个人用户中的使用并不普遍。随着信息安全及隐私带来的问题甚至诉讼的增加，更多企业和个人开始把眼光投向安全问题的解决。
+
+但是，由于非专业用户对签名和加密等概念的畏难情绪，GPG的应用还多局限于IT技术人员。本文将对Linux环境下如何应用GPG进行讲解，为企业和个人用户应用GPG提供帮助。
+
+===== 建立GPG环境 =====
+GPG软件作为用于加密和数字签名的开放源码工具，许多Linux发行版本都自带了该软件。在默认安装的情况下，gpg会作为一个基本命令事先安装好。
+如果选用的Linux发行版默认没有安装GPG，可以通过tar包或RPM包进行安装，可从http://www.gnupg.org/download/下载安装包。安装过程比较简单，这里省略了。
+
+判断是否安装有GPG的方法也很简单。直接在命令行下输入“gpg -h”命令，如果系统已经安装有GPG，就会显示关于GPG用法的信息。
+确定Linux系统中已经安装了GPG后，就可以开始下面加密和签名的工作了。
+
+===== 生成密钥 =====
+
+用户应用GPG，首先要有一对自己的密钥。所以，第一步就是产生一对密钥。gpg命令通过大量参数提供所需要的几乎所有操作。其中，参数“-gen-key”就是用来产生一对密钥的。在安装了GPG的Linux系统上可以运行以下命令：
+
+#gpg --gen-key
+
+如果想对产生密钥的操作进行一些个性化设置，还可以加上其它参数。比如，要指定生成密钥存放的位置，可以运行以下命令：
+
+#gpg --gen-key --homedir /mygnupg
+
+命令开始运行后，首先，会看到版本和路径信息如下：
+gpg (GnuPG) 1.2.1; Copyright (C) 2002 Free Software Foundation, Inc.
+This program comes with ABSOLUTELY NO WARRANTY.
+This is free software, and you are welcome to redistribute it
+under certain conditions. See the file COPYING for details.
+gpg: /home/terry/.gnupg: directory created
+gpg: new configuration file `/home/terry/.gnupg/gpg.conf' created
+gpg: keyblock resource `/home/terry/.gnupg/secring.gpg': file open error
+gpg: keyring `/home/terry/.gnupg/pubring.gpg' created
+随后需要回答一系列问题，以帮助产生一对密钥。首先遇到的问题是要求选择密钥使用的算法：
+Please select what kind of key you want:
+(1) DSA and ElGamal (default)
+(2) DSA (sign only)
+(5) RSA (sign only)
+Your selection? 1
+其中，__DSA是数字签名算法__，RSA和ElGamal是两种不同原理的非对称密钥算法。通常可以选择“1”，这样生成的密钥可以__同时用作签名和加密__两种用途。
+接着，会要求选择密钥的长度：
+DSA keypair will have 1024 bits.
+About to generate a new ELG-E keypair.
+minimum keysize is  768 bits
+default keysize is 1024 bits
+highest suggested keysize is 2048 bits
+What keysize do you want? (1024) 2048
+Requested keysize is 2048 bits
+这里的密钥长度有768、1024和2048位三种。显然，密钥越长越安全，但太长又会影响使用的速度。所以，可以根据不同的需要选择适合的长度。笔者的应用更重视安全性，所以选择了最长的2048位密钥。
+另外，还需要设定密钥过期的时间：
+Please specify how long the key should be valid.
+0 = key does not expire
+  = key expires in n days
+w = key expires in n weeks
+m = key expires in n months
+y = key expires in n years
+Key is valid for? (0) 1y
+Key expires at Sat 10 Sep 2005 01:48:07 PM CST
+Is this correct (y/n)? y
+原则上，密钥使用的频率越高，密钥有效的时间越长，被攻击的可能性就越大。所以，要根据应用的实际情况综合考虑，确定一个适当的时间长度。需要注意的是，密钥要定期更换，建议绝对不要永远使用同一对密钥。
+最后，需要输入一些个人信息，包括真实姓名、电子邮件地址等，__用来识别密钥__，最好是如实填写。比如：
+Real name: Terry Yu
+Email address: terry@mykms.org
+Comment: for test
+You selected this USER-ID:
+"Terry Yu (for test) "
+Change (N)ame, (C)omment, (E)mail or (O)kay/(Q)uit? o
+然后，必须输入一个密码。密码用来保护密钥，没有这个密码，任何人都不能看到密钥本身的内容。密码是在密钥文件泄露后惟一的保密措施，它的最大敌人是暴力破解和字典攻击。所以，一定要选择一个强壮的密码，来有效地对抗这些攻击。
+密码确定以后，系统开始运算：
+We need to generate a lot of random bytes.
+It is a good idea to perform some other action
+(type on the keyboard, move the mouse, utilize the disks)
+during the prime generation;
+this gives the random number generator a better
+chance to gain enough entropy.
+..+++++.+++++.+++++.+++++..++++++++++.++++++++++++++
+这时需要随便地敲击键盘或是移动鼠标，以产生一些随机数，协助密钥的顺利生成。注意，如果没有以上动作，很可能最终不能产生密钥。
+系统运算完成后，会出现类似以下的信息：
+gpg: /home/terry/.gnupg/trustdb.gpg: trustdb created
+public and secret key created and signed.
+key marked as ultimately trusted.
+pub  1024D/6AE573B5 2004-09-29 Terry Yu (for test)
+     Key fingerprint = 0D58 408E 344F BB7B AB95  D000 82B7 8324 6AE5 73B5
+sub  2048g/94BF182C 2004-09-29 [expires: 2005-09-29]
+pub  1024D/7234E374 2004-09-10 Terry Yu (for test)
+     Key fingerprint = A58F D71A 28BA 499D 805B  588E 82FB CD0F 7234 E374
+sub  2048g/4907EA0A 2004-09-10 [expires: 2005-09-10]
+以上信息表示已经成功地为“Terry
+Yu”生成并签名了一对密钥，密钥过期时间为“2005-09-10”。在生成密钥的同时，默认用户目录的__.gnupg目录__中也存放了与该用户相关的
+GPG配置及密钥存储文件。这些文件控制了用户的GPG环境，用户不能直接修改这些文件，所有改动都将通过“gpg”命令实现。
+
+===== 查看密钥 =====
+密匙生成后，可以随时用以下命令查看。
+查看所有密钥：
+#gpg -list-key
+查看所有公钥：
+gpg -list-public-key
+查看所有私钥：
+gpg -list-secret-key
+列出所有签名：
+gpg -list-sig
+
+===== 导出公钥 =====
+在非对称加密体系中，**私钥是由用户保管，而公钥是对外公开**的。用户在生成密钥对后，需要把其中的公钥导出到一个文件中，然后将其分发给其它用户。
+导出公钥的方法很简单，通过gpg命令的“-export”参数就可完成。为了使导出文件是ASCⅡ编码的，还需要加上参数“-a”。比如，导出Terry Yu ASCⅡ编码的公钥文件，可以使用以下命令：
+#gpg --export -a terry@mykms.org > terry.asc
+该命令最终生成ASCⅡ编码的公钥文件terry.asc
+
+
+===== 分发公钥 =====
+这个包含公钥信息的文件需要对外分发，可以通过各种方式将terry.acs文件分发给所有与用户有信息通信需求的人。
+最简单的分发方式是，将该文件__放到互联网上供人下载__。这种方式需要注意的问题是，所发布公钥文件的网站一定要是一个可以信赖的站点。实际应用中，类似的做法很普遍。比如，Red Hat的公钥就是在它的官方网站上发布的，任何人都可以下载获得，并用来验证Red Hat所发布软件的签名的正确性。
+
+===== 导入公钥 =====
+作为用户，也会收到别人的GPG公钥，它们可能来自网站、电子邮件、FTP和目录服务等，__只要信任其来源__，就可以将其导入自己的GPG环境，之后才可以与相应的人员进行基于GPG的各种应用。导入公钥的过程可以分为以下三步：
+
+=== 1．导入 ===
+比如，Terry收到朋友Brian的公钥文件brian.gpg，可以使用以下命令导入文件：
+#gpg --import terry.gpg
+
+=== 2．核对“指纹” ===
+公钥是可以伪造的。James可以伪造一个Brian的公钥，然后想办法让Terry得到。如果Terry对收到的公钥不加验证，那么他发给Brian的加密邮件就可能被James解密。GPG的架构中__并没有一个PKI这样的证书管理系统__，__GPG的公钥信任是通过“Truth Web”实现__的。
+
+生成Terry__公钥的“指纹”__：
+#gpg --fingerprint terry@mykms.org
+pub  1024D/7234E374 2004-09-10 Terry
+Yu (for test)
+     Key fingerprint = A58F D71A 28BA
+499D 805B  588E 82FB CD0F 7234 E374
+sub  2048g/4907EA0A 2004-09-10 [expires: 2005-09-10]
+这个“指纹”是惟一的。可以通过与对方__核对“指纹”是否一致__，来确定这个公钥是否可信和合法。
+
+=== 3．签名 ===
+在成功导入，并确定这个公钥是可以相任之后，要立即__对这个公钥进行签名__。这样，就可以验证来自对方邮件的真实性了。
+对公钥进行签名可以使用如下命令：
+#gpg __--sign-key__ brian@mykms.org
+或者
+#gpg__ --edit-key__ name
+#command > sign
+检查对方邮件，比如Brian的签名：
+#gpg --check-sigs brian@mykms.org
+现在，有了Brian签名的公钥，通过这个公钥就可以和Brain进行非对称加密通信了。
+
+
+===== 应用GPG =====
+GPG使用的是非对称的密钥体系，用户拥有一对密钥，包括一个公钥和一个私钥。公钥对外公布，私钥则由自己保存。__使用公钥加密的数据可以用私钥解密，同样，使用私钥加密的数据可以用公钥解密__。
+
+非对称的密钥可以用来加密和做数字签名。当用户关心信息**保密性**时，使用加密功能；当用户关注**信息完整性及不可抵赖性**时，使用数字签名功能；当用户需要同时关注信息的机密性、完整性及不可抵赖性时，可以将加密和数学签名__混合使用__。简单了解这些密码学概念后，就可以开始真正的应用实践了。
+
+==== 对文件进行加密和数字签名 ====
+KDE中提供了图形化的加密操作方法。比如，在KDE中对一个文件加密，只需在KDE文件管理器Konqueror中选中该文件，单击右键选择“Actions”中的“Encrypt File”就可以加密文件。加密后的文件以__.asc__结尾。
+对于图形方式的加密操作不多做介绍，下面将重点放在命令行操作方式上，介绍命令行下的各种文件加密和签名的操作方法。
+
+1．对文件进行数字签名
+#gpg --clearsign policy.txt
+You need a passphrase to unlock the secret key for
+user: "test (test) "
+1024-bit DSA key, ID ADD93830, created 2004-07-01
+运行以上命令，生成一个名为report.txt.asc的文件，该文件中除了原文件信息外还包含数字签名信息。
+
+2．验证文件的数字签名
+#gpg --verify policy.txt.asc
+gpg: Signature made 2004年11月04日 星期四 15时58分07秒 UTC using DSA key ID ADD93830
+gpg: Good signature from "test (test) "
+以上命令运行的结果显示该签名是正确的。
+
+3．用指定的公钥对文件加密
+#gpg --encrypt -r terry@mykms.org report.txt
+gpg: checking the trustdb
+gpg: checking at depth 0 signed=0 ot(-/q/n/m/f/u)=0/0/0/0/0/1
+gpg: next trustdb check due at 2005-09-10
+运行以上命令，使用对方的公钥加密report.txt文件，生成加密文件report.txt.gpg。如果使用编辑软件打开该加密文件，会发现它包含的是一些不可理解的字符和乱码。
+
+4．用私钥对加密文件解密
+#gpg --decrypt report.txt.gpg >report.txt
+You need a passphrase to unlock the secret key for
+user: "test1 (unclassfication) "
+2048-bit ELG-E key, ID 33735683, created 2004-09-29
+(main key ID 79EB3D97)
+gpg: encrypted with 2048-bit ELG-E key, ID 33735683,
+created 2004-09-29
+      "test1 (unclassfication) "
+以上命令要求输入对应私钥的保护口令才能成功解密，解密后的文件内容被输出到report.txt文件中。
+
+5．用公钥同时进行文件签名和加密
+#gpg -se -r test@yahoo.com.cn  report.txt
+You need a passphrase to unlock the secret key for
+user: "test (test) "
+1024-bit DSA key, ID ADD93830, created 2004-07-01
+以上命令要求输入对应私钥的保护口令，输入正确的口令后，签名和加密成功完成。
+这些都是应用GPG签名和加密文件的一些常用命令，更详细的用法可以参考GPG的帮助文件。
+
+==== 对电子邮件进行加密和数字签名 ====
+实际上，GPG应用最多的地方是在电子邮件的加密和数字签名上。许多__电子邮件客户端软件__都支持PGP/GPG方式的加密及数字签名。这里以Kmail为例，介绍如何设置Kmail，并利用Kmail发送加密及数字签名的电子邮件。
+Kmail
+是KDE环境中的电子邮件客户端，类似于Windows下的Outlook
+Express。在选单中选择“Settings→Configure-Kmail→Identites”，选定一个身份，单击“Modify”进行编
+辑。选择其中的“Advanced”标签页，可以看到类似图2的界面。
+
+其中，“OpenPGP Key”项是该身份所对应的PGP或GPG密钥，可以单击“Change”按钮从GPG环境中选择对应的密钥对。
+保存后，GPG的设置完成。试写一封邮件，如图3所示。图中工具栏中凹下去的“钢笔尖”图标表示此邮件使用了数字签名，紧靠旁边的锁形图标表示加密，如果两个图标都凹下去则表示同时使用了加密和数字签名。
+
+图3 使用数字签名的电子邮件
+发送邮件时，Kmail会要求给出对应密钥的保护口令，如图4所示。
+
+图4 要求输入密钥保护口令
+正确输入保护口令后，会弹出一个确认窗口，如图5。
+
+图5 确认窗口
+确认内容无误后，单击“OK”按钮，一封带有数字签名的电子邮件就成功发出。发送加密邮件，以及发送同时加密和数字签名的邮件，方法都是类似的。
+
+==== 软件包签名验证 ====
+对于Red Hat等Linux发行商来说，他们常常会利用GPG对**发布的软件包进行签名**。用户可以通过验证软件包的签名来确保得到的软件包没有损坏，或者是被他人动过手脚。
+
+验证一个下载软件包的GPG签名可以按照以下步骤来进行：
+1．从网上下载或其它方式得到软件发行商的公钥，并将其导入自己的GPG环境中。
+2．通过对比“电子指纹”来__确认公钥__，并对此公钥进行签名。
+3．使用以下命令来验证软件包的GPG签名：
+#__gpg --verify singaturefile.tar.gz taballpackage.gz__
+如果该软件是RPM格式的，还可以使用如下命令来验证：
+#rpm -Kv your.rpm
+
+===== 密钥管理 =====
+前面介绍了GPG在加密和签名两方面的应用，在应用过程中用户要认真地对待密钥管理问题。GPG的密钥采用的是信任机制，并没有一个中心的PKI可以帮助发布和验证GPG用户的公钥。为了防止公钥欺骗，保证公钥的不可否认性（Non-repudiation），需要有一种机制来进行管理。下面是一些有益的建议，可供参考。
+
+◆ 备份好私钥
+一旦私钥丢失或损坏，则无法打开以前加密的文件。并且，即使知道私钥被他人滥用，也无法使自己的公钥过期。有了私钥的备份，就能有效地回避此类风险。
+◆ 建立有过期保护的公钥机制
+万一私钥丢失不能人工收回公钥时，公钥也可以在预定时间后自动过期。
+◆ 为私钥加上强口令保护
+这样，即使私钥文件泄漏，还有口令保护。保护口令一定要有足够的复杂度，才能有效地对抗暴力破解。
+◆ 多重机制
+在紧急情况下恢复密钥要有多重控制。
+◆ 使用版本控制软件
+使用版本控制软件来收集和维护自己的公钥库。版本控制软件可以有效地记录历史变更情况，保证公钥库的有条不紊。
+
+===== 小结 =====
+GPG作为一个开源并且免费的加密和数字签名软件已经存在多年。它不但可以为企业、个人之间的重要信息提供加密保护，还可以为出版的软件、内核等电子产品进行数字签名，防止产品被篡改，最大程度地保障信息安全。对于Linux用户来说，对信息安全的要求相对更高，GPG更值得在Linux用户中推广和应用。

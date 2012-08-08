@@ -1,0 +1,135 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-13T20:57:18+08:00
+
+====== How to build GNU cross-compilers ======
+Created Friday 13 January 2012
+
+http://rtime.felk.cvut.cz/hw/index.php/How_to_build_GNU_cross-compilers
+
+Toolchain preparation and kernel build information
+by Pavel Píša
+Debian PowerPC GCC build log
+Debian GCC-4.3 build logs
+
+
+===== Kernel headers install =====
+
+mkdir src
+cd src
+git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git
+
+mkdir -p build/{arm,powerpc,i386,x86_64}/linux
+cd build/powerpc/linux
+
+Copy and adapt File:How to build GNU cross-compilers-GNUmakefile.txt to __override ARCH__ and select kernel source directory
+
+Run
+
+**make headers_install**
+
+The header-files for building GCC nd GLIB are prepared in** /usr/include **directory. Copy files found there to the directory [[/usr/powerpc-linux-gnu/sys-include]]
+
+===== Glibc =====
+
+The required files are glibc-2.7ds1.tar.bz2 glibc-linuxthreads-20071023.tar.bz2 __glibc-libidn__-2.7.tar.bz2 __glibc-ports-2.7.tar.bz2__
+--------------------------------------------------
+glibc-libidn这个包加上了对国际化域名(IDN)的支持到Glibc中。许多程序支持IDN需要全的libidn 库，而不是这个附加库。
+---------------------------------------------------
+
+mkdir -p src
+cd src
+tar -xjf ../glibc-2.7ds1.tar.bz2
+tar -xjf ../glibc-linuxthreads-20071023.tar.bz2
+tar -xjf ../glibc-libidn-2.7.tar.bz2
+( cd glibc-2.7 ; mv glibc-libidn-2.7 libidn )
+tar -xjf ../glibc-ports-2.7.tar.bz2
+( cd glibc-2.7 ; mv glibc-ports-2.7 ports )
+ln -s glibc-2.7 glibc
+#将后三个包直接解压到glibc目录中即可。
+
+===== Prepare directory to build PowerPC version of GLIBC =====
+
+mkdir -p build/powerpc-linux/glibc
+
+If there is no previous install of GLIBC, use next dummy build __to install headers__. They are required to build GCC later
+
+libc_cv_ppc_machine=yes \
+libc_cv_mabi_ibmlongdouble=yes \
+libc_cv_mlong_double_128=yes \
+libc_cv_forced_unwind=yes \
+libc_cv_c_cleanup=yes \
+CC=gcc \
+../../../src/glibc/configure --prefix=/usr \
+       --build=x86_64-linux-gnu \
+       __--host__=powerpc-linux-gnu \
+       __--prefix__=/usr \
+       --without-cvs \
+       --enable-add-ons=**libidn,nptl** \   #nptl包含在linuxthreads中。
+       --enable-profile \
+       --without-selinux \
+       --with-headers=/usr/powerpc-linux-gnu/sys-include \
+       --enable-kernel=2.6.26 \
+       --enable-hacker-mode \
+       --without-cvs --disable-sanity-checks
+
+make __DESTDIR__=/usr-pkg/glibc-linux-powerpc-2.7-1 \
+      inst_includedir=/usr-pkg/glibc-linux-powerpc-2.7-1/include \
+      install-headers
+
+===== Build binutils =====
+
+../../../binutils/configure \
+       --prefix=/usr \
+       --disable-nls \
+       --build=x86_64-linux-gnu \
+       --host=x86_64-linux-gnu \
+       --target=powerpc-linux-gnu \
+       --enable-targets=powerpc64-linux-gnu
+
+make && make DESTDIR=/usr-pkg/binutils-powerpc-linux-gnu_2.18-2_amd64 install
+
+===== Build GCC =====
+
+../../../gcc-4.3/configure -v \
+        --enable-languages=c,c++ \
+        --prefix=/usr \
+        __--enable-shared__ \
+        --with-system-zlib \
+        --without-included-gettext \
+        __--enable-threads=posix__ \
+        --disable-nls \
+        --enable-clocale=gnu \
+        --enable-libstdcxx-debug \
+        --enable-objc-gc \
+        --enable-mpfr \
+        --enable-softfloat \
+        --enable-tls \
+        --enable-secureplt \
+        __--enable-targets__=powerpc-linux,powerpc64-linux \
+        __--with-cpu__=default32 \
+        --with-long-double-128 \
+        --enable-checking=release \
+        --build=x86_64-linux-gnu \
+        --host=x86_64-linux-gnu \
+        __--target__=powerpc-linux-gnu \
+        --enable-version-specific-runtime-libs \
+        --disable-libgomp \
+        --disable-libmudflap
+
+===== Finally build GLIBC =====
+
+../../../src/glibc/configure \
+       --build=x86_64-linux-gnu \
+       --host=powerpc-linux-gnu \
+       __--prefix__=/usr \
+       --without-cvs \
+       --enable-add-ons=libidn,nptl \
+       --enable-profile \
+       --without-selinux \
+       __--with-headers__=/usr/powerpc-linux-gnu/sys-include \
+       --enable-kernel=2.6.20
+
+make
+
+make __install_root__=/usr-pkg/glibc-2.7-powerpc install

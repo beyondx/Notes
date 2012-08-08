@@ -1,0 +1,1127 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-22T19:14:44+08:00
+
+====== Gmail on Home Linux Box using Postfix and Fetchmail ======
+Created Sunday 22 May 2011
+
+http://souptonuts.sourceforge.net/postfix_tutorial.html
+Mike Chirico (mchirico@users.sourceforge.net) or (mchirico@comcast.net)
+Copyright (c) 2005 (GNU Free Documentation License)
+Last Updated: Sun Oct 12 08:54:21 EDT 2008
+[http://souptonuts.sourceforge.net/postfix_tutorial.html]
+
+Do you have a Gmail account? Then, you'll want to read this step by step tutorial for configuring and installing the latest version of Postfix with **SASL authentication and TLS encryption** necessary for connecting and relaying Gmail to **smtp.gmail.com**. Plus, I'll walk you through configuring **fetchmail (with STARTTLS)**, which will grab (fetch) Gmail to your local system. But it does not stop there. You'll learn how to forward mail to other computers you have in the house, plus how to automatically backup copies of email.
+
+===== Quick Background =====
+
+Postfix is a mail server,or **MTA** (Mail Transfer Agent). It accepts messages and delivers them. In contrast, fetchmail is a **remote-mail retrieval system**, providing home users like you (and me), who don't have corporate accounts, the ability to **pull down mail from an ISP**, or in this case Gmail, to our local Linux box. All examples are done and tested with the **fake domain name** "squeezel", which is my 4 year olds word for the concatenation of "squeeze" and "wheezel" (weasel). You should choose a unique, fake, domain name, or one that you do not anticipate going to on the Internet.
+
+==== Safety First: fetchmail with STARTTLS and sslcertck, Postfix with smtp_tls_per_site ====
+
+It is very important to setup fetchmail with some type of **encryption**. Otherwise, your Gmail password will be broadcast over the Internet every time the fetchmail daemon tries to pickup mail, which could be every 90 seconds. Fetchmail should also perform **strict certificate **checking with **sslcertck to prevent man-in-the-middle attacks**. Likewise, Postfix should be configured with strict certificate checking with **smtp_tls_per_site**, before establishing an encrypted connection to **smtp.gmail.com**. With both fetchmail and Postfix, it is not enough to establish an **encrypted connection**, you must also perform **strict certificate** checking to prevent man-in-the-middle attacks.
+
+
+==== Getting Postfix Source: Latest Version, More Toys ====
+
+=== 1. Downloading Postfix Source ===
+
+Get the latest version of Postfix. As of this writing, the latest version is 2.2.10, which was released on April 4, 2006. You can find out what version you have with the following command:
+
+  __$ postconf mail_version__
+   mail_version = 2.2.10
+
+From the Postfix Home Page download the latest version.
+
+NcFTP is a popular alternative to ftp. If you don't have it, ftp or wget will do. This example is done with postfix-2.2.10 - Again, check for updates.
+
+    $ ncftpget ftp://mirrors.loonybin.net/pub/postfix/official/postfix-2.2.10.tar.gz
+    $ ncftpget ftp://mirrors.loonybin.net/pub/postfix/official/postfix-2.2.10.tar.gz.sig
+    $ ncftpget ftp://mirrors.loonybin.net/pub/postfix/wietse.pgp
+
+
+Next, **import the pgp key**.
+
+    __$ gpg --import wietse.pgp__
+    gpg: key C12BCD99: public key "Wietse Venema <wietse@porcupine.org>" imported
+    gpg: key D5327CB9: public key "wietse venema <wietse@porcupine.org>" imported
+    gpg: Total number processed: 2
+    gpg:               imported: 2  (RSA: 2)
+
+Verify that the source is valid
+
+    __$ gpg --verify postfix-2.2.10.tar.gz.sig postfix-2.2.10.tar.gz__
+
+Extract the files:
+
+    __$ tar -xzf postfix-2.2.10.tar.gz__
+
+
+===== 2. Compiling Postfix with TLS and SASL support =====
+
+Since you're connecting to Google's Gmail, you'll need to compile Postfix with **TLS (for encryption) and SASL (for authentication)**.
+
+==== 2.1 First Upgrade OpenSSL and SASL ====
+
+Special note: some older versions of Red Hat 8,9.0 may not have an updated version of openssl. Check to see what version you have with the following command. But, you probably do NOT want to move to the 0.9.8n versions. Instead, stick with 0.9.7i. However, the Fedora Core 5 distribution seems work fine with 0.9.8a.
+
+  __  $ openssl version__
+    OpenSSL 0.9.7i 14 Oct 2005
+
+If you need to upgrade openssl, find out where the current "openssl" directory is located. The **default settings** for openssl put it in "/usr/local/ssl", but Red Hat and Fedora users will find it in "/usr/share/ssl". Since my computers are Red Hat 9.0 and Fedora Core 2 and 3, I'll put the executable in "/usr/bin/openssl" and the related directories in "/usr/share/ssl". Therefore, I'll compile it with the following settings:
+
+    __$ ./config --prefix=/usr  --openssldir=/usr/share/ssl__
+    $ make
+    $ make test
+    $ make install
+
+==== 2.2 Upgrading Cyrus SASL ====
+
+You may have authentication problems without the latest upgrade. I had the following error in my "/var/log/maillog" with the default Fedora 3 install; however, the cyrus-sasl package from source fixed the problem.
+
+    Authentication failed: cannot SASL authenticate to server smtp.gmail.com[64.233.163.109]: no mechanism available
+
+You can get the latest "cyrus-sasl" package from "http://ftp.andrew.cmu.edu/pub/cyrus-mail/". Yes, that was "http://" in front of the "ftp.andrew...". It is no longer an ftp site. Make sure you search for the latest package. As of this writing, the following is the latest.
+
+    $ wget http://ftp.andrew.cmu.edu/pub/cyrus-mail/cyrus-sasl-2.1.21.tar.gz
+    $ wget http://ftp.andrew.cmu.edu/pub/cyrus-mail/cyrus-sasl-2.1.21.tar.gz.sig
+    __$ gpg --verify cyrus-sasl-2.1.21.tar.gz.sig cyrus-sasl-2.1.21.tar.gz__
+    $ tar -xzf cyrus-sasl-2.1.21.tar.gz
+    $ cd cyrus-sasl-2.1.21
+    $ ./configure
+    $ make
+    $ make install  
+    $ ln -s /usr/local/lib/sasl2 /usr/lib/sasl2
+
+Again, you will probably want to upgrade these two packages, as they provide new tools for creating certificates. Also, some older versions may cause problems when Postfix is compiled, since there is an outdated "ssh.h" file.
+
+When compiling with gcc (GCC) 4.0.1 20050727 on Fedora Core 4, you may notice the following error:
+
+client.c:64: error: static declaration of 'global_callbacks' follows non-static declaration
+saslint.h:112: error: previous declaration of 'global_callbacks' was here
+
+This can be corrected by commenting out the offending line (saslint.h, line 122). GCC 4.0.1 performs advanced checking, exposing problems like this in the source.
+
+  /* extern sasl_global_callbacks_t global_callbacks; */
+
+==== 2.3 Add Postfix User (postfix) and Group (postdrop) ====
+
+So at this stage you've upgraded openssl and sasl, correct? If you have authentication failures, then, upgrade those packages. I had problems with Fedora Core 3 "RPM" installs, so I had to upgrade.
+
+Next, you will **add "postfix" as a user**. Normally, you don't want this user to have a home directory ("-M"), or login capability ("-s /sbin/nologin"), so these two commands can be used:
+
+    __# useradd -M -s /sbin/nologin postfix__
+    __# groupadd postdrop__
+
+==== 2.4 Make Options ====
+
+You do not need to add "postfix" to the group "postdrop"; it lives alone.
+Now you are ready to run make. If you need to re-run make, you should issue the "make tidy" command to clean up the old files.
+
+Choose "Option 1" if you **don't** have MySQL. Postfix can work with MySQL tables, so it may be something you want to try later, after you get Gmail working.
+
+  To Clean Up Everything if Needed
+    __$ make tidy__
+
+
+  **Option 1: TLS and SASL2. You need at least this for Gmail.**
+
+    $ make makefiles CCARGS="-DUSE_TLS -DUSE_SASL_AUTH -DUSE_CYRUS_SASL -I/usr/include/sasl" \
+          AUXLIBS="-lssl -lcrypto -lsasl2"
+
+
+ ** Option 2: TLS SASL2 and MySQL.**
+
+    $ make makefiles CCARGS="-DUSE_TLS -DUSE_SASL_AUTH -DUSE_CYRUS_SASL -I/usr/include/sasl  -DHAS_MYSQL -I/usr/local/include/mysql" \
+          AUXLIBS="-lssl -lcrypto  -L/usr/local/lib/mysql -lmysqlclient -lz -lm -lsasl2"
+
+  Or, if MySQL libs are in "/usr/lib/mysql", then, something like the following.
+
+    $ make makefiles CCARGS="-DUSE_TLS -DUSE_SASL_AUTH -DUSE_CYRUS_SASL -I/usr/include/sasl  -DHAS_MYSQL -I/usr/include/mysql" \
+          AUXLIBS="-lssl -lcrypto  -L/usr/lib/mysql -lmysqlclient -lz -lm -lsasl2"
+
+
+    $ make
+    $ make install
+
+
+  Special Note: Reference SASL_README if you have problems running make. Option 1 worked for FC4 and FC5. 
+  Also, the -DUSE_CYRUS_SASL option is needed to prevent the following problem: "warning: unsupported SASL server implementation: cyrus".
+  Reference the RELEASE_NOTES.
+
+   If you get the following error:
+
+         /usr/lib/libdb.so: undefined reference to `pthread_condattr_setpshared'
+         /usr/lib/libdb.so: undefined reference to `pthread_mutexattr_destroy'
+         /usr/lib/libdb.so: undefined reference to `pthread_mutexattr_setpshared'
+         /usr/lib/libdb.so: undefined reference to `pthread_mutexattr_init'
+         /usr/lib/libdb.so: undefined reference to `pthread_mutex_trylock'
+
+   Add** -lpthread **to the make configuration.
+
+    $ make makefiles CCARGS="-DUSE_TLS -DUSE_SASL_AUTH -I/usr/include/sasl" \
+          AUXLIBS="-lssl -lcrypto -lsasl2 -lpthread"
+   
+
+==== 2.5 Install Questions ====
+
+After the "make install", you will be asked questions on **where to place files**. Unless you need to do otherwise, **take the defaults**. This will make it easy to follow the directions later.
+
+There are questions prompted when running make install
+
+        **Warning**: if you use this script to install Postfix locally,
+        this script will replace existing sendmail or Postfix programs.
+        Make backups if you want to be able to recover.
+    
+        Before installing files, this script prompts you for **some definitions**.
+        Most definitions will be remembered, so you have to specify them
+        only once. All definitions should have a reasonable default value.
+    
+    Please specify the prefix for installed file names. Specify this ONLY
+    if you are building ready-to-install packages for distribution to other
+    machines.
+    install_root: [/] 
+    
+    Please specify a directory for **scratch files** while installing Postfix. You
+    must have write permission in this directory.
+    tempdir: [/home/src/postfix/postfix-2.2.10] 
+    
+    Please specify the final destination directory for installed Postfix
+    configuration files.
+    config_directory: [/etc/postfix] 
+
+ ... [SNIP] ...
+
+    pages. You can no longer specify "no" here.
+    manpage_directory: [/usr/local/man] 
+    
+    Please specify the destination directory for the Postfix README
+    files. Specify "no" if you do not want to install these files.
+    readme_directory: [no] 
+
+==== 2.6 What Libraries are Linked in? ====
+
+Once you are done, as a check to see if **ssl **has been compiled into postfix, you can "ldd" the "postfix" file as follows, which will show linked libraries.
+
+    $ **ldd /usr/sbin/postfix**
+        linux-gate.so.1 =>  (0x00b83000)
+       ** libssl.so.6** => /lib/libssl.so.6 (0x00375000)
+       ** libcrypto.so.6** => /lib/libcrypto.so.6 (0x00190000)
+        **libmysqlclient.so.15** => /usr/lib/mysql/libmysqlclient.so.15 (0x003bc000)
+        libz.so.1 => /usr/lib/libz.so.1 (0x00d03000)
+        libm.so.6 => /lib/libm.so.6 (0x00cd6000)
+       ** libsasl2.so.2** => /usr/lib/libsasl2.so.2 (0x00639000)
+        libpcre.so.0 => /lib/libpcre.so.0 (0x00756000)
+        libdb-4.3.so => /lib/libdb-4.3.so (0x04576000)
+        libnsl.so.1 => /lib/libnsl.so.1 (0x00101000)
+        libresolv.so.2 => /lib/libresolv.so.2 (0x00118000)
+        libc.so.6 => /lib/libc.so.6 (0x00ba1000)
+        libgssapi_krb5.so.2 => /usr/lib/libgssapi_krb5.so.2 (0x002c7000)
+        libkrb5.so.3 => /usr/lib/libkrb5.so.3 (0x002e8000)
+        libcom_err.so.2 => /lib/libcom_err.so.2 (0x0012d000)
+        libk5crypto.so.3 => /usr/lib/libk5crypto.so.3 (0x00169000)
+        libdl.so.2 => /lib/libdl.so.2 (0x00cfd000)
+        libcrypt.so.1 => /lib/libcrypt.so.1 (0x039c3000)
+        /lib/ld-linux.so.2 (0x00b84000)
+        libpthread.so.0 => /lib/libpthread.so.0 (0x00d5a000)
+        libkrb5support.so.0 => /usr/lib/libkrb5support.so.0 (0x002e2000)
+
+The second line with "libssl.so" shows that I have "ssl", or the **Secure Sockets Layer** installed, which is needed for TLS. This is for encryption. By the way, if you take a look at rfc2246, you'll get a history of **how TLS evolved from SSL**.
+
+Also a few lines further down note the entry "**libsasl2.so.2**", which is the **Simple Authentication and Security Layer**.
+
+In my version, did I choose MySQL? The best way to tell is with the "**postconf -m**" option. But, yes, you can see "libmysqlclient", "libz" and "libm" linked in, which goes with the MySQL install.
+
+==== 2.7 Accessible Shared Libraries ====
+
+By the way, if you get odd MySQL errors during the "make install", and your mysql libraries live in "/usr/local/lib/mysql", you may need to add an entry in your "/etc/ld.so.conf" file to include "/usr/local/lib/mysql" as follows:
+
+     **$ cat /etc/ld.so.conf**
+     ...
+     /usr/local/lib/mysql
+
+After adding this line, you must run the "ldconfig" command, then all those odd mysql libraries will be found. It's a good technique if you install a lot of software from source.
+
+    **$ ldconfig**
+
+At this stage there are still some postfix configuration settings. We'll get back to them, but first, it makes sense to generate the certificates.
+
+
+===== 3. Generating Certificates =====
+
+Again, before getting started, make sure you have the latest version of **openssl**. As of this writing, this is the latest version. See the steps above if you decide to upgrade. But, it's strongly suggested that you stay with the 0.9.7 line at this time, unless your distribution has moved 0.9.8. For example, Fedora Core 5 uses (OpenSSL 0.9.8a 11 Oct 2005), which seems to work fine.
+
+    __$ openssl version__
+    OpenSSL 0.9.7i 14 Oct 2005
+
+
+==== 3.1 Creating Your Own CA ====
+
+You can get **signed certificates** from Thawte and VeriSign, but you don't have to for your home system. Instead, you will become your own "Cerificate Authority", and sign your own SSL certs.
+
+Below is the command to create your own CA. Hit return for the first prompt to create the CA. It will then prompt you for a password, and prompt to confirm. Remember the password. Also, it's important that the "**Organization Name**" matches when you create the "**server**" certificate. I show my answers in bold, so you can see how they will match when creating and signing certificates.
+
+    __$ /usr/local/ssl/misc/CA.pl -newca__
+      CA certificate filename (or enter to create)
+
+      Making CA certificate ...
+      Generating a 1024 bit RSA private key
+      .......++++++
+      ...................++++++
+      writing new private key to './demoCA/private/cakey.pem'
+      Enter PEM pass phrase: password123
+      Verifying - Enter PEM pass phrase: password123
+      -----
+      You are about to be asked to enter information that will be incorporated
+      into your certificate request.
+      What you are about to enter is what is called a **Distinguished Name or a DN**.
+      There are quite a few fields but you can leave some blank
+      For some fields there will be a default value,
+      If you enter '.', the field will be left blank.
+      -----
+      Country Name (2 letter code) [US]:**US**
+      State or Province Name (full name) [Pennsylvania]:Pennsylvania
+      Locality Name (eg, city) []:Elkins Park
+      Organization Name (eg, company) []:**Chirico_Widgets**
+
+     ...
+
+If, after doing the above command, you find that you want to **extend the key **(say you didn't change the "default_days = 3650", or you did and want to change it back), you can issue the following commands:
+
+    __$ openssl x509 -in demoCA/cacert.pem -days 1024 -out cacert.pem -signkey demoCA/private/cakey.pem__
+    $ cp cacert.pem demoCA
+
+Or, you could hard code values in "/usr/openssl.cnf", if you find that you're doing this over and over for testing. However, as you can see from the above command, it is easy enough to change the values.
+
+===== 3.2 Generate the Server Certificate =====
+
+This is the **server cert request** that will be signed by the CA Authority. Note, below that the "**-nodes**" option is used so that the certificate will not require a pass phrase each time the secure daemon is started. I have also added my fake domain name "squeezel.squeezel.com".
+
+    $ openssl req -new -nodes \
+      -subj '/CN=squeezel.squeezel.com/O=Chirico_Widgets/C=US/ST=Pennsylvania/L=Elkins Park/emailAddress=mchirico@comcast.net' \
+       -keyout FOO-key.pem -out FOO-req.pem -days 3650
+
+Note above that "**/0=Chirico_Widgets**" must match the name given in the the origional CA. For example, "/0=Widgets co." will not work. It must be exact.
+
+==== 3.3 Sign the Server Certificate ====
+
+The following steps will sign the certificate.
+
+    __$ openssl ca -out FOO-cert.pem -infiles FOO-req.pem__
+
+=== 3.4 Copy Signed Certificates to /etc/postfix/certs ===
+
+The next step copies over all the required certificates to where Postfix can find them. In addition, the correct rights are enforced on each file.
+
+   __$ cp demoCA/cacert.pem FOO-key.pem FOO-cert.pem /etc/postfix__
+   $ chmod 644 /etc/postfix/FOO-cert.pem /etc/postfix/cacert.pem
+   $ chmod 400 /etc/postfix/FOO-key.pem
+
+If you need to generate additional certificates, say you have several servers, this is described in (section 4.12.2).
+
+
+===== 4. Configuring Postfix =====
+
+The file "**/etc/postfix/main.cf**" and "**/etc/postfix/master.cf**" are the two basic Postfix configuration files.
+
+Postfix configuration is particular to the **hostname** of your computer. You can have a **fake hostname**, like "squeezel.squeezel.com". Pick a name and set it up as follows. (You can actually use "squeezel.squeezel.com" if you want, since it's not a real domain name, though you might want to use something more descriptive. The point is that it doesn't have to be registered to you, but does have to be unique.)
+
+=== 4.1 Configure the Hostname ===
+
+The computer that these examples are taken from is "squeezel.squeezel.com", and it exists on IP address 192.168.1.81. The short name is just squeezel. Another computer, on IP address "192.168.1.155" is "tape.squeezel.com".
+
+     /etc/hosts
+
+    # Do not remove the following line, or various programs
+    # that require network functionality will fail.
+    127.0.0.1       localhost.localdomain           localhost
+    192.168.1.81    squeezel.squeezel.com           squeezel
+    192.168.1.155   tape.squeezel.com               tape
+
+You may also want to edit "/etc/sysconfig/network" and add or check the following.
+
+    __HOSTNAME=squeezel.squeezel.com__
+
+Finally, to put all changes into effect now, run the following command with root privileges.
+
+   __$ hostname squeezel.squeezel.com__
+
+Some of the settings in the postfix "main.cf" file depend upon the hostname.
+
+4.2 main.cf
+
+The following settings can be added to the **end of **the "**/etc/postfix/main.cf**" file. Postfix reads this file from top to bottom, taking the last values assigned in this file.
+
+    ##   Add these lines to the bottom on main.cf
+    ##
+    ##
+
+
+    ## TLS Settings
+    #
+    # For no logs set = 0
+    smtp_tls_loglevel = 1
+    # 
+    # smtp_enforce_tls = yes
+    # Above is commented because doing it site by site below
+    smtp_tls_per_site = hash:/etc/postfix/tls_per_site
+    #
+    smtp_tls_CAfile = /etc/postfix/cacert.pem
+    smtp_tls_cert_file = /etc/postfix/FOO-cert.pem
+    smtp_tls_key_file = /etc/postfix/FOO-key.pem
+    smtp_tls_session_cache_database = btree:/var/run/smtp_tls_session_cache
+    smtp_use_tls = yes
+    smtpd_tls_CAfile = /etc/postfix/cacert.pem
+    smtpd_tls_cert_file = /etc/postfix/FOO-cert.pem
+    smtpd_tls_key_file = /etc/postfix/FOO-key.pem
+    smtpd_tls_received_header = yes
+    smtpd_tls_session_cache_database = btree:/var/run/smtpd_tls_session_cache
+    smtpd_use_tls = yes
+    tls_random_source = dev:/dev/urandom
+
+    ##  SASL Settings
+    # This is going in to THIS server
+    smtpd_sasl_auth_enable = no
+    # We need this
+    smtp_sasl_auth_enable = yes
+    smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd
+    smtpd_sasl_local_domain = $myhostname
+    smtp_sasl_security_options = noanonymous
+    #smtp_sasl_security_options =
+    smtp_sasl_tls_security_options = noanonymous
+    smtpd_sasl_application_name = smtpd
+
+
+    ## Gmail Relay
+    relayhost = [smtp.gmail.com]:587
+ 
+    ## Good for Testing
+    # sender_bcc_maps = hash:/etc/postfix/bcc_table
+
+    # Disable DNS Lookups
+    disable_dns_lookups = yes
+    #
+    # Great New feature Address Mapping 
+    #  for example may mchirico@localhost to mchirico@gmail.com
+    smtp_generic_maps = hash:/etc/postfix/generic
+    #
+    # 
+    transport_maps = hash:/etc/postfix/transport
+
+The TLS settings are pretty standard, and the above code is taken from the documentation, which is worth a read. Note the "*.pem" files would appear to be listed twice; however, notice the difference between "smtp" and "smtpd". One is for client connectivity and the other is for connecting to this server.
+
+4.3 sasl_passwd
+
+In the above "main.cf" file, there are several hashed files, or Berkeley DB files which will have to be created. Look again at the recommended entries in "main.cf", and you will notice "hash:" in front of these values. For example "hash:/etc/postfix/sasl_passwd".
+
+Below is a sample sasl_passwd file. This will login to smtp.gmail.com with username mchirico, using the password pa33w0r8. As of Aug 2008, I noticed that gmail is only accepting connections on port 587. For further information on this setting reference SOHO_README.
+
+    # Contents of sasl_passwd
+    #
+    [smtp.gmail.com]:587              mchirico@gmail.com:pa33w0r8
+
+Next, this file must be converted to hash format, with the following command.
+
+    $ postmap /etc/postfix/sasl_passwd  
+
+The "postmap" command must be run anytime "sasl_passwd" is changed, because this creates the "sasl_passwd.db" that postfix reads.
+
+After you have done the above command, run this simple "hash" key test.
+
+    $ postmap -q [smtp.gmail.com]:587 sasl_passwd
+      mchirico@gmail.com:pa33w0r8
+
+You'll need to protect your password so that only the postfix group and root can read it by changing the access rights as follows:
+
+    $ chown root.postfix sasl_passwd*
+    $ chmod 0640 sasl_passwd*
+
+4.4 generic
+
+The file "/etc/postfix/generic" contains the following entries. Again, my account on squeezel.squeezel.com is chirico, but the gmail account is mchirico.
+
+    chirico@squeezel.squeezel.com         mchirico@gmail.com
+
+Don't forget to run postmap on this file.
+
+    $ postmap /etc/postfix/generic
+
+4.5 transport
+
+    # Contents of /etc/postfix/transport
+    #
+    # This sends mail to Gmail
+    gmail.com               smtp:[smtp.gmail.com]:587
+    # 
+    # Except mail going to the tape and closet server
+    tape.squeezel.com        relay:[tape.squeezel.com]
+    closet.squeezel.com      relay:[closet.squeezel.com]
+
+The transport file sends all email to Gmail or "smtp.gmail.com", except for internal mail on my network, which is relayed to the appropriate servers. Sending email to "root@tape" does not send it out to the Google's smtp. Note that the return address is "chirico@squeezel.squeezel.com" because of the following entry in master.cf (see section 4.7).
+
+4.6 smtp_tls_per_site
+
+You want certificate verification for "smtp.gmail.com" before giving out your password. You want to make sure you're setting up an encrypted connection with the real "smtp.gmail.com". This protects you from man-in-the-middle attacks. Below, note only "closet" and "tape" must have valid certificates. If they do not have valid certificates, mail will not get delivered; it will be deferred. However, mail will be delivered to "livingroom.squeezel.com" without a valid certificate.
+
+    # Contents of /etc/postfix/tls_per_site
+    #  After changes run:
+    #    postmap /etc/postfix/tls_per_site
+    smtp.gmail.com         MUST
+    closet.squeezel.com    MUST
+    tape.squeezel.com      MUST
+    livingroom.squeezel.com MAY
+
+4.7 master.cf
+
+This file musted by owned by root. Whenever changes are made to this file, postfix should be reloaded with "postfix reload" command.
+
+   smtp      unix  -       -       n       -       -       smtp
+   relay     unix  -       -       n       -       -       smtp
+        -o smtp_generic_maps=
+
+Note the empty "smtp_generic_maps=" with nothing after the equals sign. This means anything relayed, anything going to "tape.squeezel.com" or "closet.squeezel.com" will not have an address translation. Only email going out to Gmail. What about mail from "squeezel.squeezel.com" to itself? No address translation either, which is a feature of "smtp_generic_maps".
+
+4.8 Postfix setup - utilizing "postconf -n"
+
+To see if all the change went into effect, here is the output of the "postconf -n" command.
+
+    [root@squeezel ~]# postconf -n                                                                       
+    command_directory = /usr/sbin
+    config_directory = /etc/postfix
+    daemon_directory = /usr/libexec/postfix
+    debug_peer_level = 2
+    disable_dns_lookups = yes
+    html_directory = no
+    mail_owner = postfix
+    mailq_path = /usr/bin/mailq
+    manpage_directory = /usr/local/man
+    newaliases_path = /usr/bin/newaliases
+    queue_directory = /var/spool/postfix
+    readme_directory = no
+    relayhost = [smtp.gmail.com]:587
+    sample_directory = /etc/postfix
+    sendmail_path = /usr/sbin/sendmail
+    setgid_group = postdrop
+    smtp_generic_maps = hash:/etc/postfix/generic
+    smtp_sasl_auth_enable = yes
+    smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd
+    smtp_sasl_security_options = noanonymous
+    smtp_sasl_tls_security_options = noanonymous
+    smtp_tls_CAfile = /etc/postfix/cacert.pem
+    smtp_tls_cert_file = /etc/postfix/FOO-cert.pem
+    smtp_tls_key_file = /etc/postfix/FOO-key.pem
+    smtp_tls_loglevel = 1
+    smtp_tls_per_site = hash:/etc/postfix/tls_per_site
+    smtp_tls_session_cache_database = btree:/var/run/smtp_tls_session_cache
+    smtp_use_tls = yes
+    smtpd_enforce_tls = no
+    smtpd_sasl_application_name = smtpd
+    smtpd_sasl_auth_enable = no
+    smtpd_sasl_local_domain = $myhostname
+    smtpd_tls_CAfile = /etc/postfix/cacert.pem
+    smtpd_tls_ask_ccert = yes
+    smtpd_tls_cert_file = /etc/postfix/FOO-cert.pem
+    smtpd_tls_key_file = /etc/postfix/FOO-key.pem
+    smtpd_tls_received_header = yes
+    smtpd_tls_session_cache_database = btree:/var/run/smtpd_tls_session_cache
+    smtpd_use_tls = yes
+    tls_random_source = dev:/dev/urandom
+    transport_maps = hash:/etc/postfix/transport
+    unknown_local_recipient_reject_code = 550
+
+4.9 Starting Postfix, and Common Postfix Commands
+
+A this point start postfix.
+
+   $ postfix start
+
+You want postfix to start automatically for run levels 3 and 5. I have the following postfix file in "/etc/init.d". Download and copy this file using the steps below.
+
+   $ cd /etc/init.d
+   $ wget http://sourceforge.net/direct-dl/mchirico/souptonuts/postfix
+   $ chmod 0755 postfix
+   $ ln -s /etc/init.d/postfix /etc/rc3.d/S80postfix
+   $ ln -s /etc/init.d/postfix /etc/rc3.d/K80postfix
+   $ ln -s /etc/init.d/postfix /etc/rc5.d/S80postfix
+   $ ln -s /etc/init.d/postfix /etc/rc5.d/K80postfix
+
+
+4.10 Common Postfix Commands
+
+Below are some common postfix commands
+
+    $ /etc/init.d/postfix restart   # restarts postfix needed for inet_interfaces changes
+    $ postfix reload                # reloads most changes in main.cf
+    $ postfix check                 # checks postfix configuration
+    $ postconf -n                   # dumps setting that went into effect
+    $ postconf -m                   # shows the map types: mysql, hash, regexp ...
+    $ postmap <filename>      # creates a map file for transports, sender_canonical etc.
+    $ postqueue -p                  # checks the queue
+    $ postsuper -d ALL              # deletes all messages in the queue
+    $ postsuper -d AC8231EDA2D      # deletes message AC8231EDA2D
+    $ postconf mail_version         # this tells you what version of Postfix you are using
+
+4.11 MySQL
+
+Instead of using the hash type, you can leverage MySQL. Below is a sample "smtp_generic_maps" configuration for converting addresses. The text below is the "/etc/postfix/generic_mysql" file. Note, that is contains the MySQL username, password for MySQL, and the database "dbname" in this file. The comments show how this table was created in MySQL.
+
+    #  The entry in main.cf is                                                                                                 
+    #    smtp_generic_maps = mysql:/etc/postfix/generic_mysql                                                              
+    #                                                                                                                      
+    # This is the MySQL table definition                                                                                   
+    # create table smtpg_maps (                                                                                            
+    #  pkey int NOT NULL auto_increment,                                                                                   
+    #  address varchar(50),                                                                                                
+    #  smtp_address varchar(50),                                                                                           
+    #  timeEnter timestamp(14),                                                                                            
+    #  PRIMARY KEY (pkey));                                                                                                
+    #                                                                                                                      
+    #  insert into smtpg_maps (address,smtp_address) values ('chirico@squeezel.squeezel.com','mchirico@gmail.com');      
+    #  insert into smtpg_maps (address,smtp_address) values ('lpayne@squeezel.squeezel.com','payne.lisa@gmail.com');     
+    #  insert into smtpg_maps (address,smtp_address) values ('root@squeezel.squeezel.com','mike.chirico@gmail.com');         
+    #                                                                                                                      
+    # Test this with                                                                                                       
+    #  $ postmap -q "root@squeezel.squeezel.com" mysql:/etc/postfix/generic_mysql                                          
+    #                                                                                                                      
+    hosts = localhost                                                                                                      
+    user = mysqlmail                                                                                                       
+    password = S0m3paSSw0r9                                                                                                
+    dbname = mail                                                                                                          
+    query = SELECT smtp_address  FROM smtpg_maps WHERE address = '%s'                                                      
+
+
+
+
+4.12 Additional Items
+
+If you are using Fedora Core, which defaults to sendmail, you may need to make a few configuration changes. For example, you may be picking up the incorrect version of sendmail.
+
+     $  alternatives --config mta
+
+      There are 2 programs which provide 'mta'.
+
+      Selection    Command
+      -----------------------------------------------
+      *+ 1           /usr/sbin/sendmail.sendmail
+      2           /usr/sbin/sendmail.postfix
+
+      Enter to keep the current selection[+], or type selection number:
+
+Above you will want to select 2. If you now do an "ls" on sendmail, you will now see the following results.
+
+     $ ls -l /usr/sbin/sendmail
+      lrwxrwxrwx  1 root root 21 Jan 13 20:53 /usr/sbin/sendmail -> /etc/alternatives/mta
+
+     $ ls -l /etc/alternatives/mta
+      lrwxrwxrwx  1 root root 26 Apr 28 10:34 /etc/alternatives/mta -> /usr/sbin/sendmail.postfix
+
+     $ ls -l /usr/sbin/sendmail
+      lrwxrwxrwx  1 root root 21 Jan 13 20:53 /usr/sbin/sendmail -> /etc/alternatives/mta
+      [root@squeezel ~]# ls -l /etc/alternatives/mta
+      lrwxrwxrwx  1 root root 26 Apr 28 10:23 /etc/alternatives/mta -> /usr/sbin/sendmail.postfix
+
+Now try sending email. The "correct" sendmail will build a report that you can view with mutt or you email package. Below is an example test.
+
+    $ sendmail -bv zmchirico@yahoo.com
+
+4.12.1 Backups with bcc
+
+Any mail sent out from "gmchirico@squeezel.squeezel.com" can be blind copied to another server. In this case the server is "chirico@tape".
+
+    Contents in /etc/postfix/main.cf
+      sender_bcc_maps = hash:/etc/postfix/bcc_table
+
+Remember to "postmap bcc_table" after editing the bcc_table file.
+
+    Contents of  /etc/postfix/bcc_table
+     gmchirico@squeezel.squeezel.com chirico@tape
+
+If you want to get copies of everything coming in and going out, then, use the "always_bcc" option. I normally create a special user for this "allmail", that way I can go forward email easily, if needed.
+
+    Setting in /etc/postfix/main.cf 
+     always_bcc = allmail
+
+It's not completely a blind copy, since it will show up when users on the system do a "sendmail -bv" test. Also note, there is a limit on the size file /var/spool/mail/allmail which is set by default as "mailbox_size_limit = 51200000", or 51 Megs. You can increase this option in "main.cf" or turn is off by setting this parameter to zero.
+
+4.12.2 Generating Additional Server Certificates (closet.squeezel.com, livingroom.squeezel.com)
+
+The following commands will generate and sign, with the CA, additional certificates for my servers "closet.squeezel.com", and "livingroom.squeezel.com". You must "cd" to the directly that contains "demoCA". Note below, only /CN=livingroom.squeezel.com changes. All other options must match. All of these commands are executed on "squeezel.squeezel.com", since it contains the CA.
+
+    $ openssl req -new -nodes \
+    -subj '/CN=livingroom.squeezel.com/O=Chirico_Widgets/C=US/ST=Pennsylvania/L=Elkins Park/emailAddress=mchirico@comcast.net' \
+    -keyout living_FOO-key.pem -out living_FOO-req.pem -days 3650
+
+Now, sign the certificate.
+
+    $ openssl ca -out living_FOO-cert.pem -infiles living_FOO-req.pem
+    openssl ca -out living_FOO-cert.pem -infiles living_FOO-req.pem
+    Using configuration from /usr/openssl.cnf
+    Enter pass phrase for ./demoCA/private/cakey.pem:password123
+
+    DEBUG[load_index]: unique_subject = "yes"
+    Check that the request matches the signature
+    Signature ok
+    Certificate Details:
+        Serial Number:
+            90:95:88:9c:58:ff:91:0e
+        Validity
+            Not Before: Jun  5 20:15:20 2005 GMT
+            Not After : Jun  5 20:15:20 2006 GMT
+        Subject:
+            countryName               = US
+            stateOrProvinceName       = Pennsylvania
+            organizationName          = Chirico_Widgets
+            commonName                = livingroom.squeezel.com
+            emailAddress              = mchirico@comcast.net
+        X509v3 extensions:
+            X509v3 Basic Constraints:
+                CA:FALSE
+            Netscape Comment:
+                OpenSSL Generated Certificate
+            X509v3 Subject Key Identifier:
+                FB:E5:1A:FC:05:F8:83:44:EB:CC:F8:59:F2:A3:47:A8:90:E5:5D:28
+            X509v3 Authority Key Identifier:
+                keyid:EA:DC:CD:A1:7F:78:F9:9E:43:B9:CF:01:04:BB:98:4D:19:51:46:93
+                DirName:/C=US/ST=Pennsylvania/L=Elkins Park/O=Chirico_Widgets/OU=Development/CN=squeezel.squeezel.com/emailAddress=mchirico@comcast.net
+                serial:90:95:88:9C:58:FF:91:09
+
+     Certificate is to be certified until Jun  5 20:15:20 2006 GMT (365 days)
+     Sign the certificate? [y/n]:y
+     y
+
+
+     1 out of 1 certificate requests certified, commit? [y/n]y
+     y
+     Write out database with 1 new entries
+     Data Base Updated
+
+Similiar steps would be performed when creating a certificate for the computer "closet.squeezel.com". Note, only the /CN changes "closet.squeezel.com".
+
+    $ openssl req -new -nodes \
+    -subj '/CN=closet.squeezel.com/O=Chirico_Widgets/C=US/ST=Pennsylvania/L=Elkins Park/emailAddress=mchirico@comcast.net' \
+    -keyout closet_FOO-key.pem -out closet_FOO-req.pem -days 3650
+
+The closet certificate is signed.
+
+    $ openssl ca -out closet_FOO-cert.pem -infiles closet_FOO-req.pem
+
+Since creating the server certificates above are done on "squeezel.squeezel.com" the appropriate files will have to be copied. The steps below copy the needed certificates to "closet.squeezel.com".
+
+    $ scp closet_FOO-cert.pem root@closet:/etc/postfix/.
+    $ scp closet_FOO-key.pem root@closet:/etc/postfix/.
+    $ scp demoCA/cacert.pem  root@closet:/etc/postfix/.
+    $ ssh root@closet 'chmod 644 /etc/postfix/closet_FOO-cert.pem /etc/postfix/cacert.pem'
+    $ ssh root@closet 'chmod 400 /etc/postfix/closet_FOO-key.pem'
+    $ ssh root@closet 'chown root.root /etc/postfix/*.pem'
+
+On "closet.squeezel.com" the file "main.cf" entries should reference the needed certificates as follows:
+
+    # Part of main.cf on closet.squeezel.com
+    ## TLS Settings
+    #
+    smtp_tls_CAfile = /etc/postfix/cacert.pem
+    smtp_tls_cert_file = /etc/postfix/closet_FOO-cert.pem
+    smtp_tls_key_file = /etc/postfix/closet_FOO-key.pem
+    smtp_tls_session_cache_database = btree:/var/run/smtp_tls_session_cache
+    smtp_use_tls = yes
+    smtpd_tls_CAfile = /etc/postfix/cacert.pem
+    smtpd_tls_cert_file = /etc/postfix/closet_FOO-cert.pem
+    smtpd_tls_key_file = /etc/postfix/closet_FOO-key.pem
+    smtpd_tls_received_header = yes
+    smtpd_tls_session_cache_database = btree:/var/run/smtpd_tls_session_cache
+    smtpd_use_tls = yes
+    tls_random_source = dev:/dev/urandom
+
+4.12.3 Logging TLS
+
+If you look at the results from postconf -n, I have the following in "main.cf".
+
+    smtp_tls_loglevel = 1
+
+Setting this to a higher number, increases the logging for each message sent. Zero turns off logging. Below is a sample log message that indicates everything is working. Note the verified Thawte certificate.
+
+  Jun  8 09:33:47 squeezel postfix/smtp[548]: setting up TLS connection to smtp.gmail.com
+  Jun  8 09:33:47 squeezel postfix/smtp[548]: Verified: subject_CN=smtp.gmail.com, issuer=Thawte Server CA
+  Jun  8 09:33:47 squeezel postfix/smtp[548]: TLS connection established to smtp.gmail.com: TLSv1 with cipher DES-CBC3-SH\A (168/168 bits)
+
+4.12.4 prng_exch
+
+By default, "prng_exch" is stored in "/etc/postfix" and caches the seed for the pseudo random number generator. For users running the tripwire feature in cfengine, (Reference TIP 165 and TIP 166) in Linux Tips you may notice that this file changes. This is normal and good. However, if this bothers you, the location can be changed. By default it is set to the following:
+
+    tls_random_exchange_name = ${config_directory}/prng_exch
+
+4.12.5 Common Error
+
+Test the address routing with the following command. Normally, a report is emailed verifying delivery. However, if you get the "public/pickup" error shown below, then, postfix isn't running.
+
+     $ sendmail -bv mchirico@users.sourceforge.net 
+     postfix/postdrop[5371]: warning: unable to look up public/pickup: No such file or directory
+
+Check the mail logs "/var/log/maillog". Also make sure another no other program is running on port 25. Perhaps sendmail is running on port 25? Is there a "/etc/init.d/sendmail" file?
+
+
+====== Fetchmail ======
+
+===== Why Fetchmail? =====
+
+Fetchmail pulls the email down from Google's Gmail, since for a home user with a fake domain and changing IP address their email server will not forward the email.
+
+===== 5. Safety First: Configure fetchmail with STARTTLS =====
+
+Again, it is very important to setup fetchmail with some type of encryption. **STARTTLS** encryption works well, since you have already installed the necessary openssl files. You just need to pickup the necessary keys, and put them in the proper format.
+
+==== 5.1 Google Gmail Certificates ====
+
+    __$ openssl s_client -connect pop.gmail.com:995 -showcerts__
+
+The command above will return the certificate from Google's Gmail as follows:
+
+CONNECTED(00000003)
+depth=0 /C=US/ST=California/L=Mountain View/O=Google Inc./CN=pop.gmail.com
+verify error:num=20:unable to get local issuer certificate
+verify return:1
+depth=0 /C=US/ST=California/L=Mountain View/O=Google Inc./CN=pop.gmail.com
+verify error:num=27:certificate not trusted
+verify return:1
+depth=0 /C=US/ST=California/L=Mountain View/O=Google Inc./CN=pop.gmail.com
+verify error:num=21:unable to verify the first certificate
+verify return:1
+---
+Certificate chain
+ 0 s:/C=US/ST=California/L=Mountain View/O=Google Inc./CN=pop.gmail.com
+   i:/C=US/O=Equifax/OU=Equifax Secure Certificate Authority
+-----BEGIN CERTIFICATE-----
+MIIC3TCCAkagAwIBAgIDBZIAMA0GCSqGSIb3DQEBBQUAME4xCzAJBgNVBAYTAlVT
+MRAwDgYDVQQKEwdFcXVpZmF4MS0wKwYDVQQLEyRFcXVpZmF4IFNlY3VyZSBDZXJ0
+aWZpY2F0ZSBBdXRob3JpdHkwHhcNMDUxMTE1MjEyMjQ0WhcNMDcxMTE2MjEyMjQ0
+WjBoMQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMN
+TW91bnRhaW4gVmlldzEUMBIGA1UEChMLR29vZ2xlIEluYy4xFjAUBgNVBAMTDXBv
+cC5nbWFpbC5jb20wgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBAMP8LCYiLGJ/
+RihwcOi1V/zHVTw0Gfu+mI141Vjuuj2DtQoav8emwlXbu8gZoKP9GeMWpX1Vo9qN
+4gkslIToHmDnIwGjcaEAfpdhSR9g54Kf5Y7BEXVyco6mTIlpe9vsbV0dmB1FvLP2
+1N09dkUJfi7V0fjb8mcn3QYu6+6QNoxPAgMBAAGjga4wgaswDgYDVR0PAQH/BAQD
+AgTwMB0GA1UdDgQWBBTdASsopgao1m8hcEg0cDZhucltljA6BgNVHR8EMzAxMC+g
+LaArhilodHRwOi8vY3JsLmdlb3RydXN0LmNvbS9jcmxzL3NlY3VyZWNhLmNybDAf
+BgNVHSMEGDAWgBRI5mj5K9KylddH2CMgEE8zmJCf1DAdBgNVHSUEFjAUBggrBgEF
+BQcDAQYIKwYBBQUHAwIwDQYJKoZIhvcNAQEFBQADgYEAln3/pVqYnUXA1TVGzOqX
+LFhohGxpuNkr1UJnQmYxmZeB07uPBYRX8c0JXEKs29TmAHRsLhmp8kF36F11Dxgi
+Xm/Y8I9zgWHoMj7SL3Ve/u8K8K7XcUyUuaWmldLQAREafpFy+f+KYHGuAVh8hjy6
+XyPlMCqj+PNp8QXjgOcgO68=
+-----END CERTIFICATE-----
+---
+Server certificate
+subject=/C=US/ST=California/L=Mountain View/O=Google Inc./CN=pop.gmail.com
+issuer=/C=US/O=Equifax/OU=Equifax Secure Certificate Authority
+---
+No client certificate CA names sent
+---
+SSL handshake has read 891 bytes and written 338 bytes
+---
+New, TLSv1/SSLv3, Cipher is DES-CBC3-SHA
+Server public key is 1024 bit
+SSL-Session:
+    Protocol  : TLSv1
+    Cipher    : DES-CBC3-SHA
+    Session-ID: 923A27BC992B3D88466B65C3F2F94C70B3F481496C5FB1FF194D11E2C8E29420
+    Session-ID-ctx: 
+    Master-Key: 83BFD67993E2F74AD7726DCEFE96C4EC9A0DD05FA3594817B8D8B3D123021A54CC30EEA76FEB76FED93DFA56CC203134
+    Key-Arg   : None
+    Start Time: 1141583185
+    Timeout   : 300 (sec)
+    Verify return code: 21 (unable to verify the first certificate)
+---
++OK Gpop ready. i17pf3432638wxd
+
+==== 5.2 Extract Certificate ====
+
+Next, you need to **copy the certificate part,** which is everything between the "BEGIN CERTIFICATE" part and "END CERTIFICATE" part, and save this to a file.
+
+    -----BEGIN CERTIFICATE-----
+    MIIC3TCCAkagAwIBAgIDBZIAMA0GCSqGSIb3DQEBBQUAME4xCzAJBgNVBAYTAlVT
+    MRAwDgYDVQQKEwdFcXVpZmF4MS0wKwYDVQQLEyRFcXVpZmF4IFNlY3VyZSBDZXJ0
+    ...
+    -----BEGIN CERTIFICATE-----       
+
+However, notice above that the CA for this certificate is Equifax, which means you need that certificate as well. This is a very common certificate. Normally you can cut and paste them from "/usr/share/ssl/cert.pem".
+
+If you look closely at that file you'll see the certificate. Or, you can copy it from below.
+
+5.3 Certificate of the CA - Equifax
+
+Equifax Secure CA
+=================
+MD5 Fingerprint: 67:CB:9D:C0:13:24:8A:82:9B:B2:17:1E:D1:1B:EC:D4
+PEM Data:
+-----BEGIN CERTIFICATE-----
+MIIDIDCCAomgAwIBAgIENd70zzANBgkqhkiG9w0BAQUFADBOMQswCQYDVQQGEwJV
+UzEQMA4GA1UEChMHRXF1aWZheDEtMCsGA1UECxMkRXF1aWZheCBTZWN1cmUgQ2Vy
+dGlmaWNhdGUgQXV0aG9yaXR5MB4XDTk4MDgyMjE2NDE1MVoXDTE4MDgyMjE2NDE1
+MVowTjELMAkGA1UEBhMCVVMxEDAOBgNVBAoTB0VxdWlmYXgxLTArBgNVBAsTJEVx
+dWlmYXggU2VjdXJlIENlcnRpZmljYXRlIEF1dGhvcml0eTCBnzANBgkqhkiG9w0B
+AQEFAAOBjQAwgYkCgYEAwV2xWGcIYu6gmi0fCG2RFGiYCh7+2gRvE4RiIcPRfM6f
+BeC4AfBONOziipUEZKzxa1NfBbPLZ4C/QgKO/t0BCezhABRP/PvwDN1Dulsr4R+A
+cJkVV5MW8Q+XarfCaCMczE1ZMKxRHjuvK9buY0V7xdlfUNLjUA86iOe/FP3gx7kC
+AwEAAaOCAQkwggEFMHAGA1UdHwRpMGcwZaBjoGGkXzBdMQswCQYDVQQGEwJVUzEQ
+MA4GA1UEChMHRXF1aWZheDEtMCsGA1UECxMkRXF1aWZheCBTZWN1cmUgQ2VydGlm
+aWNhdGUgQXV0aG9yaXR5MQ0wCwYDVQQDEwRDUkwxMBoGA1UdEAQTMBGBDzIwMTgw
+ODIyMTY0MTUxWjALBgNVHQ8EBAMCAQYwHwYDVR0jBBgwFoAUSOZo+SvSspXXR9gj
+IBBPM5iQn9QwHQYDVR0OBBYEFEjmaPkr0rKV10fYIyAQTzOYkJ/UMAwGA1UdEwQF
+MAMBAf8wGgYJKoZIhvZ9B0EABA0wCxsFVjMuMGMDAgbAMA0GCSqGSIb3DQEBBQUA
+A4GBAFjOKer89961zgK5F7WF0bnj4JXMJTENAKaSbn+2kmOeUJXRmm/kEd5jhW6Y
+7qj/WsjTVbJmcVfewCHrPSqnI0kBBIZCe/zuf6IWUrVnZ9NA2zsmWLIodz2uFHdh
+1voqZiegDfqnc1zqcPGUIWVEX/r87yloqaKHee9570+sB3c4
+-----END CERTIFICATE-----
+
+To recap you should have the two certificates saved to separate files. In my case I've labeled them googlepop.pem and equifax.pem
+
+5.4 Rehash or Creating Symlinks
+
+Once you have created these files, you will need to run the "c_rehash" command to create the necessary sym-links. I've copied the files in "/home/chirico/certs/.certs". Then, shown below the running the "c_rehash" command.
+
+    [chirico@squeezel certs]$ c_rehash .certs
+    Doing .certs
+    googlepop.pem => 34ceaf75.0
+    thawte.pem => ddc328ff.0
+
+5.5 Checking the Certificate
+
+It's possible to check the certificates as with the "openssl s_client" command as follows:
+
+    $ openssl s_client -connect pop.gmail.com:995 -CApath /home/chirico/certs/.certs/
+CONNECTED(00000003)
+depth=1 /C=US/O=Equifax/OU=Equifax Secure Certificate Authority
+verify return:1
+depth=0 /C=US/ST=California/L=Mountain View/O=Google Inc./CN=pop.gmail.com
+verify return:1
+---
+Certificate chain
+ 0 s:/C=US/ST=California/L=Mountain View/O=Google Inc./CN=pop.gmail.com
+   i:/C=US/O=Equifax/OU=Equifax Secure Certificate Authority
+---
+Server certificate
+-----BEGIN CERTIFICATE-----
+MIIC3TCCAkagAwIBAgIDBZIAMA0GCSqGSIb3DQEBBQUAME4xCzAJBgNVBAYTAlVT
+MRAwDgYDVQQKEwdFcXVpZmF4MS0wKwYDVQQLEyRFcXVpZmF4IFNlY3VyZSBDZXJ0
+aWZpY2F0ZSBBdXRob3JpdHkwHhcNMDUxMTE1MjEyMjQ0WhcNMDcxMTE2MjEyMjQ0
+WjBoMQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMN
+TW91bnRhaW4gVmlldzEUMBIGA1UEChMLR29vZ2xlIEluYy4xFjAUBgNVBAMTDXBv
+cC5nbWFpbC5jb20wgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBAMP8LCYiLGJ/
+RihwcOi1V/zHVTw0Gfu+mI141Vjuuj2DtQoav8emwlXbu8gZoKP9GeMWpX1Vo9qN
+4gkslIToHmDnIwGjcaEAfpdhSR9g54Kf5Y7BEXVyco6mTIlpe9vsbV0dmB1FvLP2
+1N09dkUJfi7V0fjb8mcn3QYu6+6QNoxPAgMBAAGjga4wgaswDgYDVR0PAQH/BAQD
+AgTwMB0GA1UdDgQWBBTdASsopgao1m8hcEg0cDZhucltljA6BgNVHR8EMzAxMC+g
+LaArhilodHRwOi8vY3JsLmdlb3RydXN0LmNvbS9jcmxzL3NlY3VyZWNhLmNybDAf
+BgNVHSMEGDAWgBRI5mj5K9KylddH2CMgEE8zmJCf1DAdBgNVHSUEFjAUBggrBgEF
+BQcDAQYIKwYBBQUHAwIwDQYJKoZIhvcNAQEFBQADgYEAln3/pVqYnUXA1TVGzOqX
+LFhohGxpuNkr1UJnQmYxmZeB07uPBYRX8c0JXEKs29TmAHRsLhmp8kF36F11Dxgi
+Xm/Y8I9zgWHoMj7SL3Ve/u8K8K7XcUyUuaWmldLQAREafpFy+f+KYHGuAVh8hjy6
+XyPlMCqj+PNp8QXjgOcgO68=
+-----END CERTIFICATE-----
+subject=/C=US/ST=California/L=Mountain View/O=Google Inc./CN=pop.gmail.com
+issuer=/C=US/O=Equifax/OU=Equifax Secure Certificate Authority
+---
+No client certificate CA names sent
+---
+SSL handshake has read 891 bytes and written 338 bytes
+---
+New, TLSv1/SSLv3, Cipher is DES-CBC3-SHA
+Server public key is 1024 bit
+SSL-Session:
+    Protocol  : TLSv1
+    Cipher    : DES-CBC3-SHA
+    Session-ID: D2A04F4F4AF96B0E7A3AF19408DA101041DE391552A0F39E14FEDB5863A49274
+    Session-ID-ctx: 
+    Master-Key: 9BBCB461B2B753FC8B5EF68B5C6F3E5BDF8CF25988ECE1445D61CD71B9EEBAD9DC046159DA7289A065022E19F6B46898
+    Key-Arg   : None
+    Start Time: 1134602638
+    Timeout   : 300 (sec)
+    Verify return code: 0 (ok)
+---
++OK Gpop h7pf1040470wxd ready.
+
+As you can see above, the "verify return code: 0 (ok)" indicates the certificate was verified. If instead, you get the following: "Verify return code: 21 (unable to verify the first certificate)". Then, the certificate has not been verified.
+
+5.6 The Fetchmail config .fetchmailrc
+
+Note that the fetchmail option sslcertck, seen below in the ".fetchmailrc" file, causes fetchmail to strictly check the server certificate against a set of local trusted certificates.
+
+Below is a sample ".fetchmailrc" file, the file that should be stored in your home directory.
+
+    # 
+    #
+    # Sample /home/chirico/.fetchmailrc file for Gmail
+    #
+    # Check mail every 90 seconds
+    set daemon 90
+    set syslog
+    set postmaster chirico
+    #set bouncemail
+    #
+    # Google Gmail  is mchirico but on computer it is chirico
+    #  To keep mail on the server use the you would put keep at the end.
+    # user 'mchirico@gmail.com' with pass "pa33w0r8"  is 'chirico' here options ssl sslcertck  sslcertpath '/home/chirico/certs/.certs' keep    
+    #
+    poll pop.gmail.com with proto POP3 and options no dns 
+         user 'mchirico@gmail.com' with pass "pa33w0r8"  is 'chirico' here options ssl sslcertck  sslcertpath '/home/chirico/certs/.certs' 
+         smtphost localhost    
+    # You would use this to by-pass Postfix
+    # mda '/usr/bin/procmail -d %T'
+
+These are some common fetchmail command. Normally you would want to start fetchmail with the "-v" option, and take a look at the "/var/log/maillog" files for any problems.
+
+Quick note: smtphost localhost in ".fetchmailrc" tells fetchmail to deliver the email to the local smtp server, which is your postfix server. Make sure smtpd_enforce_tls is left unset, or is set to no, in the "/etc/postfix/main.cf" file. Otherwise, you may see the following error in "/var/log/maillog" when fetchmail is started with the "-v" option.
+
+    #  Sample error message in /var/log/maillog caused when smtpd_enforce_tls is
+    #  set to yes in the Postfix main.cf and smtphost localhost option
+    #  is used to .fetchmailrc. 
+    #
+    #   smtpd_enforce_tls should be left unset or set to no in Postfix's
+    #   main.cf
+    #
+    Jun  9 16:40:45 squeezel fetchmail[11995]: SMTP< 530 Must issue a STARTTLS command first                        
+    Jun  9 16:40:45 squeezel fetchmail[11995]: SMTP error: 530 Must issue a STARTTLS command first                     
+    Jun  9 16:40:45 squeezel postfix/smtpd[12756]: connect from localhost.localdomain[127.0.0.1]                       
+    Jun  9 16:40:45 squeezel fetchmail[11995]: SMTP< 220 squeezel.squeezel.com ESMTP Postfix                        
+    Jun  9 16:40:45 squeezel fetchmail[11995]: SMTP> HELO localhost                                                 
+    Jun  9 16:40:45 squeezel fetchmail[11995]: SMTP< 250 squeezel.squeezel.com                                      
+    Jun  9 16:40:45 squeezel fetchmail[11995]: SMTP> MAIL FROM:<FETCHMAIL-DAEMON@squeezel.squeezel.com>       
+    Jun  9 16:40:45 squeezel fetchmail[11995]: SMTP< 530 Must issue a STARTTLS command first                        
+    Jun  9 16:40:45 squeezel fetchmail[11995]: SMTP> QUIT                                                           
+    Jun  9 16:40:45 squeezel fetchmail[11995]: SMTP< 221 Bye                                                        
+    Jun  9 16:40:45 squeezel postfix/smtpd[12756]: disconnect from localhost.localdomain[127.0.0.1]                    
+    Jun  9 16:40:45 squeezel fetchmail[11995]: SMTP> RSET                                                           
+    Jun  9 16:40:45 squeezel fetchmail[11995]: SMTP< 530 Must issue a STARTTLS command first                        
+
+5.7 Fetchmail Commands
+
+Below are some of the more common fetchmail commands.
+
+    $ fetchmail -q    # quits fetchmail daemon
+    $ fetchmail -v    # start fetchmail daemon in verbose mode
+    $ fetchmail -c    # checks for email only
+    $ fetchmail -S localhost # delivers mail to you Postfix server
+
+
+Trouble Shooting
+
+You can simulate a TLS mail client session with the openssl. A successful session is shown below using this command. This assumes that "/usr/share/ssl/certs/" contains certificates. One note, I had some trouble using this command with openssl version 0.9.8a (unknown protocol:s23_clnt.c), so I went back to version 0.9.7i.
+
+   $ openssl s_client -starttls smtp -CApath /usr/share/ssl/certs/ -connect smtp.gmail.com:25
+
+     CONNECTED(00000003)
+     ---
+     Certificate chain
+      0 s:/C=US/ST=California/L=Mountain View/O=Google Inc/CN=smtp.gmail.com
+        i:/C=ZA/ST=Western Cape/L=Cape Town/O=Thawte Consulting cc/OU=Certification Services Division/CN=Thawte Premium Server CA/emailAddress=premium-server@thawte.com
+     ---
+     Server certificate
+     -----BEGIN CERTIFICATE-----
+     MIIDVjCCAr+gAwIBAgIDP97OMA0GCSqGSIb3DQEBBAUAMIHOMQswCQYDVQQGEwJa
+     QTEVMBMGA1UECBMMV2VzdGVybiBDYXBlMRIwEAYDVQQHEwlDYXBlIFRvd24xHTAb
+     BgNVBAoTFFRoYXd0ZSBDb25zdWx0aW5nIGNjMSgwJgYDVQQLEx9DZXJ0aWZpY2F0
+     aW9uIFNlcnZpY2VzIERpdmlzaW9uMSEwHwYDVQQDExhUaGF3dGUgUHJlbWl1bSBT
+     ZXJ2ZXIgQ0ExKDAmBgkqhkiG9w0BCQEWGXByZW1pdW0tc2VydmVyQHRoYXd0ZS5j
+     b20wHhcNMDUwOTA1MDg1OTAyWhcNMDYwOTA1MDg1OTAyWjBoMQswCQYDVQQGEwJV
+     UzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTW91bnRhaW4gVmlldzET
+     MBEGA1UEChMKR29vZ2xlIEluYzEXMBUGA1UEAxMOc210cC5nbWFpbC5jb20wgZ8w
+     DQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBAMm+APV2IPBnnqOb5w15LPrpNaCfIDZm
+     3Z41dg/rmhs7szXCx5oWvW6idYerguXQuw1B0XWKbYLJ9Lbz/kX2k9NpyeNmz0J7
+     pLLBPoa0djthKfMQzgviWRmvad97JaFWFLxUGabISziA/0s3LB1VWMPX+IcxM0hs
+     pSzdSzjkoI8LAgMBAAGjgaYwgaMwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUF
+     BwMCMEAGA1UdHwQ5MDcwNaAzoDGGL2h0dHA6Ly9jcmwudGhhd3RlLmNvbS9UaGF3
+     dGVQcmVtaXVtU2VydmVyQ0EuY3JsMDIGCCsGAQUFBwEBBCYwJDAiBggrBgEFBQcw
+     AYYWaHR0cDovL29jc3AudGhhd3RlLmNvbTAMBgNVHRMBAf8EAjAAMA0GCSqGSIb3
+     DQEBBAUAA4GBACvK1QfluQ26oqabKWaQUauwJQio6t/nRUmaN/cfB3EVeZihxELb
+     +5a2aD/ljSUNLwEZb/OrG2eXGgnmwGrjERfLJurqYBXQuRwByAQ2lavucv4lgQmU
+     Qumc3IhN67fNinoOoMa+/KZAYaoBPI8n6t/JR1/q30/rCZ64xKfnqYRf
+     -----END CERTIFICATE-----
+     subject=/C=US/ST=California/L=Mountain View/O=Google Inc/CN=smtp.gmail.com
+     issuer=/C=ZA/ST=Western Cape/L=Cape Town/O=Thawte Consulting cc/OU=Certification Services Division/CN=Thawte Premium Server CA/emailAddress=premium-server@thawte.com
+     ---
+     No client certificate CA names sent
+     ---
+     SSL handshake has read 1187 bytes and written 369 bytes
+     ---
+     New, TLSv1/SSLv3, Cipher is DES-CBC3-SHA
+     Server public key is 1024 bit
+     SSL-Session:
+         Protocol  : TLSv1
+         Cipher    : DES-CBC3-SHA
+         Session-ID: DBA9FEE390894FB77566EE9975F8DE14252F8A82007F8367E0999BFBDEF91893
+         Session-ID-ctx: 
+         Master-Key: C717F8B7598CC115180E94B17552908944F734879A09664B6E0C56D12EC730B69FF3F204446961417FBEB21EBE8A7692
+         Key-Arg   : None
+         Start Time: 1130720225
+         Timeout   : 300 (sec)
+         Verify return code: 0 (ok)
+     ---
+     depth=1 /C=ZA/ST=Western Cape/L=Cape Town/O=Thawte Consulting cc/OU=Certification Services Division/CN=Thawte Premium Server CA/emailAddress=premium-server@thawte.com
+     verify return:1
+     depth=0 /C=US/ST=California/L=Mountain View/O=Google Inc/CN=smtp.gmail.com
+     verify return:1
+     250-mx.gmail.com at your service
+     250-SIZE 20971520
+     250-8BITMIME
+     250-STARTTLS
+     250 ENHANCEDSTATUSCODES
+
+Also, take a look at saslfinger-1.0.tar.gz.
+
+Recommended Reading
+
+Postfix 2nd Instance for Sender-based Routing: Multiple Gmail and Comcast Accounts. Configure your home system to support several Gmail accounts, and additionally, Comcast and or other ISP accounts that require individual authentication rules based on the sending address. This tutorial walks you through configuring a second instance of Postfix, on a second IP address (same NIC), with sender based routing.
+
+www.postfix.com
+
+
+
+Other Tutorials
+
+Linux System Admin Tips: There are over 200 Linux tips and tricks in this article. That is over 150 pages covering topics from setting and keeping the correct time on your computer, permanently deleting documents with shred, making files "immutable" so that root cannot change or delete, setting up more than one IP address on a single NIC, monitering users and processes, setting log rotate to monthly with 12 months of backups in compressed format, creating passwords for Apache using the htpasswd command, common Perl commands, using cfengine, adding users to groups, finding out which commands are aliased, query program text segment size and data segment size, trusted X11 forwarding, getting information on the hard drive including the current temperature, using Gnuplot, POVRAY and making animated GIFs, monitoring selective traffic with tcpdump and netstat, multiple examples using the find command, getting the most from Bash, plus a lot more. You can also down this article as a text document here for easy grepping.
+
+Linux Quota Tutorial: This tutorial walks you through implementing disk quotas for both users and groups on Linux, using a virtual filesystem, which is a filesystem created from a disk file. Since quotas work on a per-filesystem basis, this is a way to implement quotas on a sub-section, or even multiple subsections of your drive, without reformatting. This tutorial also covers quotactl, or quota's C interface, by way of an example program that can store disk usage in a SQLite database for monitoring data usage over time.
+
+Breaking Firewalls with OpenSSH and PuTTY: If the system administrator deliberately filters out all traffic except port 22 (ssh), to a single server, it is very likely that you can still gain access other computers behind the firewall. This article shows how remote Linux and Windows users can gain access to firewalled samba, mail, and http servers. In essence, it shows how openSSH and Putty can be used as a VPN solution for your home or workplace.
+
+Create a Live Linux CD - BusyBox and OpenSSH Included : These steps will show you how to create a functioning Linux system, with the latest 2.6 kernel compiled from source, and how to integrate the BusyBox utilities including the installation of DHCP. Plus, how to compile in the OpenSSH package on this CD based system. On system boot-up a filesystem will be created and the contents from the CD will be uncompressed and completely loaded into RAM -- the CD could be removed at this point for boot-up on a second computer. The remaining functioning system will have full ssh capabilities. You can take over any PC assuming, of course, you have configured the kernel with the appropriate drivers and the PC can boot from a CD. This tutorial steps you through the whole processes.
+
+SQLite Tutorial : This article explores the power and simplicity of sqlite3, first by starting with common commands and triggers, then the attach statement with the union operation is introduced in a way that allows multiple tables, in separate databases, to be combined as one virtual table, without the overhead of copying or moving data. Next, the simple sign function and the amazingly powerful trick of using this function in SQL select statements to solve complex queries with a single pass through the data is demonstrated, after making a brief mathematical case for how the sign function defines the absolute value and IF conditions.
+
+The Lemon Parser Tutorial: This article explains how to build grammars and programs using the lemon parser, which is faster than yacc. And, unlike yacc, it is thread safe.
+
+How to Compile the 2.6 kernel for Red Hat 9 and 8.0 and get Fedora Updates: This is a step by step tutorial on how to compile the 2.6 kernel from source.
+
+Virtual Filesystem: Building A Linux Filesystem From An Ordinary File. You can take a disk file, format it as ext2, ext3, or reiser filesystem and then mount it, just like a physical drive. Yes, it then possible to read and write files to this newly mounted device. You can also copy the complete filesystem, sinc\ e it is just a file, to another computer. If security is an issue, read on. This article will show you how to encrypt the filesystem, and mount it with ACL (Access Control Lists), which give you rights beyond the traditional read (r) write (w) and execute (x) for the 3 user groups file, owner and other.
+
+Working With Time: What? There are 61 seconds in a minute? We can go back in time? We still tell time by the sun?
+
+
+Errata
+
+Special thanks to the following people who pointed out needed corrections.
+
+[Wed May 4 15:34:47 EDT 2005] Martin DiViaio, who pointed out the .fetchmailrc file was setup for comcast and not gmail.
+
+[Wed Jun 29 09:09:52 EDT 2005] Max Waterman, who pointed out spelling mistakes. in 4.2 and 4.3.
+
+[Thu Nov 3 09:30:54 EST 2005] Aleksic Predrag, confirmed trouble with OpenSSL 0.9.8, and pointed out 2nd reference in article. Readers should use 0.9.7i.
+
+[Wed Dec 14 18:07:42 EST 2005] Henk Bokhoven, noted change from Thawte to Equifax.
+
+[Thu Dec 15 04:59:44 EST 2005] Henk Bokhoven, noted Patrick Koetter updated his version of saslfinger to 1.0.
+
+[Sun Mar 5 02:13:18 EST 2006] Rajeev Tandon, noted Makefile changes for Cyrus SASL version 2.1.1.
+
+[Sun Mar 5 12:46:21 EST 2006] Rajeev Tandon, noted that the openssl command in 5.1 should be changed from smtp.gmail.com to pop.gmail.com.
+
+[Sun Oct 12 08:54:21 EDT 2008] Seb Olney, noted needed port change in transport file.
+
+
+Chirico img Mike Chirico, a father of triplets (all girls) lives outside of Philadelphia, PA, USA. He has worked with Linux since 1996, has a Masters in Computer Science and Mathematics from Villanova University, and has worked in computer-related jobs from Wall Street to the University of Pennsylvania. His hero is Paul Erdos, a brilliant number theorist who was known for his open collaboration with others.
+
+
+Mike's notes page is souptonuts. For open source consulting needs, please send an email to mchirico@comcast.net. All consulting work must include a donation to SourceForge.net.
+SourceForge.net Logo
+
+
+SourceForge.net Logo 

@@ -1,0 +1,301 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-24T14:39:42+08:00
+
+====== Scripting with style ======
+Created Saturday 24 December 2011
+
+http://wiki.bash-hackers.org/scripting/style
+
+These are some__ coding guidelines__ that helped me to read and understand my own code over the years. They also will help to produce code that will be a bit__ more robust__ than "if something breaks, I know how to fix it".
+
+This is not a bible, of course. But I have seen so much ugly and terrible code (not only in shell) during all the years, that I'm 100% convinced there needs to be some code optics and style. No matter which one you use, use it through all your code (at least don't change it within the same shellscript file). Don't change your code optics with your mood.
+
+Some good code optics help you to read your own code after a while. And of course it helps others to read the code.
+
+===== Indention guidelines =====
+
+**Indention is nothing that technically influences a script, it's only for us humans.**
+
+I'm used to use the indention of __two space characters__ (though many may prefer 4 spaces, see below in the discussion section):
+
+* it's easy and fast to type
+* it's not a** hard-tab **that's displayed differently in different environments
+* it's **wide enough** to give an optic break and** small enough** to not waste too much space on the line
+
+Speaking of hard-tabs: Avoid them if possible. They only make trouble. I can imagine one case where they're useful: Indenting here-documents.
+
+===== Breaking up lines =====
+
+Whenever you need to break lines of long code, you should follow one of these two ways:
+
+* Indention using command width:
+
+activate some_very_long_option \
+             some_other_option
+
+* Indention using two spaces:
+
+activate some_very_long_option \
+   some_other_option
+
+Personally, with some exceptions, I prefer __the first form__ because the optic impression of "this belongs together" is better.
+
+===== Breaking compound commands =====
+
+Compound commands form the structures that make a shell script different from a stupid enumeration of commands. Usually they contain **a kind of "head" and a "body" that contains command lists**. This kind of compound command is relatively easy to indent.
+
+I'm used to (not all points apply to all compound commands, just pick the basic idea):
+
+* put the introducing keyword and the initial command list or parameters on one line ("head")
+* put the "body-introducing" keyword on the same line
+* the command list of the "body" on separate lines, indented by two spaces
+* put the closing keyword on a separated line, indented like the initial introducing keyword
+
+What?! Well, here again:
+
+HEAD_KEYWORD parameters; BODY_BEGIN
+    BODY_COMMANDS
+BODY_END
+
+=== if/then/elif/else ===
+
+This construct is a bit special, because it has keywords (elif, else) "in the middle". The optical nice way is to indent them like the if:
+
+if ...__; then__
+   ...
+elif ...; then
+  ...
+else
+  ...
+fi
+
+=== for ===
+
+for f in /etc/*__; do__
+  ...
+done
+
+=== while/until ===
+
+while [[ $answer != [YyNn] ]]__; do__
+  ...
+done
+
+=== The case construct ===
+
+The case construct might need a bit more discussion here, since the structure is a bit more complex.
+
+In general it's the same: Every new "layer" gets a new indention level:
+
+case $input in
+  __hello)__
+    echo "You said hello"
+  __;;__
+  bye)
+    echo "You said bye"
+    if foo; then
+      bar
+    fi
+  ;;
+  *)
+    echo "You said something weird..."
+  ;;
+esac
+
+Some notes:
+
+* if not 100% needed, the optional left parenthesis on the pattern is not written
+* the patterns (hello)) and the corresponding __action terminator (;;) __are__ indented at the same level__
+* the action command lists are indented one more level (and continue to have their own indention, if needed)
+* though optional, the very last action terminator is given
+
+===== Syntax and coding guidelines =====
+
+===== Cryptic constructs =====
+
+Cryptic constructs, we all know them, we all love them. If they are not 100% needed, __avoid them__, since nobody except you may be able to decipher them.
+
+It's - just like in C - the middle between smartness, efficiency and readablity.
+
+If you need to use a cryptic construct, place a small comment that actually tells what your monster is for.
+
+===== Variable names =====
+
+Since all __reserved variables are UPPERCASE__, the safest way is to __only use lowercase variable names__. This is true for reading user input, loop counting variables, etc., ... (in the example: file)
+
+* prefer lowercase variables
+* if you use UPPERCASE names, do not use reserved variable names (see SUS for an incomplete list)
+* if you use UPPERCASE names, at best prepend the name with a __unique prefix__ (MY_ in the example below)
+
+#!/bin/bash
+
+# the prefix 'MY_'
+MY_LOG_DIRECTORY=/var/adm/
+
+for file in __"$MY_LOG_DIRECTORY"/*__; do
+  echo "Found Logfile: $file"
+done
+
+===== Variable initialization =====
+
+As in C, it's always a good idea to initialize your variables, though, the shell will initialize fresh variables itself (better: **Unset variables will generally behave like variables containing a **__nullstring__).
+
+It's no problem to pass a variable you use as environment to the script. If you blindly assume that all variables you use are empty for the first time, somebody can inject a variable content by just passing it in the environment.
+
+The solution is simple and effective: Initialize them
+
+my_input=""
+my_array=()
+my_number=0
+
+If you do that for every variable you use, then you also have a kind of documentation for them.
+注意：__本地变量的值将覆盖环境变量的值__。
+
+===== Parameter expansion =====
+
+Unless you are really sure what you're doing, __quote every parameter expansion__.
+
+There are some cases where this isn't needed from a technical point of view, e.g.
+
+* inside [[ ... ]]
+* the parameter (WORD) in **case $WORD in **....
+* variable asssignment: VAR=$WORD
+
+But quoting these is never a mistake. If you get used to quote every parameter expansion, you're safe.
+
+If you need to parse a parameter as a list of words, you can't quote, of course, like
+
+list="one two three"
+
+# you MUST NOT quote $list here
+for word in $list; do
+  ...
+done
+
+Function names
+
+Function names should be all lowercase and have a good name. The function names should be human readable ones. A function named f1 may be easy and quick to write down, but for debugging and especially for other people, it will tell nothing. Good names help to document the code without using extra comments.
+
+A more or less funny one: If not intended to do so, do not name your functions like common commands, typically new users tend to name their scripts or functions test, which collides with the UNIX test command!
+
+Unless absolutely necessary, only use alphanumeric characters and the underscore for function names. /bin/ls is a valid function name in Bash, but it only makes limited sense.
+Command substitution
+
+As noted in the article about command substitution you should use the $( ... ) form.
+
+Though, if portability is a concern, you might have to use the backquoted form ` ... `.
+
+In any case, if other expansions and word splitting are not wanted, you should quote the command substitution!
+Eval
+
+Well, like Greg says: "If eval is the answer, surely you are asking the wrong question."
+
+Avoid if, unless absolutely neccesary:
+
+    eval can be your neckshot
+    there are most likely other ways to achieve what you want
+    if possible, re-think the way your script works, if it seems you can't avoid eval with your current way
+    if you really really have to use it, then you should take care and know what you do (if you know what you do, then eval is not evil at all)
+
+Basic structure
+
+The basic structure of a script simply reads:
+
+#!SHEBANG
+
+CONFIGURATION_VARIABLES
+
+FUNCTION_DEFINITIONS
+
+MAIN_CODE
+
+The shebang
+
+If possible (I know it's not always possible!), use a shebang.
+
+Be careful with /bin/sh: The argument that "on Linux /bin/sh is a Bash" is a lie (and technically irrellevant)
+
+The shebang serves two purposes for me:
+
+    it specifies the interpreter when the script file is called directly: If you code for Bash, specify bash!
+    it documents the desired interpreter (so: use bash when you write a Bash-script, use sh when you write a general Bourne/POSIX script, ...)
+
+Configuration variables
+
+I call variables that are meant to be changed by the user "configuration variables" here.
+
+Make them easy to find (directly at the top of the script), give them useful names and maybe a short comment. As noted above, use UPPERCASE for them only when you are sure what you're doing. lowercase will be the safest.
+Function definitions
+
+Unless the code has reasons to not do, all needed function definitions should be declared before the main script code is run. This gives a far better overview and ensures that all function names are known before they are used.
+
+Since a function isn't parsed before it is executed, you usually don't even have to ensure a specific order.
+
+The portable form of the function definition should be used, without the function keyword (here using the grouping compound command):
+
+getargs() {
+  ...
+}
+
+Speaking about the command grouping in function definitions using { ...; }: If you don't have a good reason to use another compound command directly, you should always use this one.
+Behaviour and robustness
+Fail early
+
+Fail early, this sounds bad, but usually is good. Failing early means to error out as early as possible when checks indicate some error or unmet condition. Failing early means to error out before your script begins its work in a potentially broken state.
+Availability of commands
+
+If you use commands that might not be installed on the system, check for their availability and tell the user what's missing.
+
+Example:
+
+my_needed_commands="sed awk lsof who"
+
+missing_counter=0
+for needed_command in $my_needed_commands; do
+  if ! hash "$needed_command" >/dev/null 2>&1; then
+    printf "Command not found in PATH: %s\n" "$needed_command" >&2
+    ((missing_counter++))
+  fi
+done
+
+if ((missing_counter > 0)); then
+  printf "Minimum %d commands are missing in PATH, aborting\n" "$missing_counter" >&2
+  exit 1
+fi
+
+Exit meaningfully
+
+The exit code is your only way to directly communicate with the calling process without any special things to do.
+
+If your script exits, provide a meaningful exit code. That minimally means:
+
+    exit 0 (zero) if everything is okay
+    exit 1 - in general non-zero - if there was an error
+
+This, and only this, will enable the calling component to check the operation status of your script.
+
+You know: "One of the main causes of the fall of the Roman Empire was that, lacking zero, they had no way to indicate successful termination of their C programs." – Robert Firth
+Misc
+Output and optics
+
+    if the script is interactive, if it works for you and if you think this is a nice feature, you can try to save the terminal content and restore it after execution
+    output clean and understandable messages to the screen
+    if applicable, you can use colors or specific prefixes to tag error and warning messages
+        make it more easy for the user to identify those messages
+    write normal output to STDOUT and error, warning and diagnostic messages to STDERR
+        this gives the possibility to filter
+        this doesn't make the script poisoning the real output data with diagnostic messages
+        if the script gives syntax help (-? or -h or –help arguments), it should go to STDOUT, since it's expected output in this moment
+    if applicable, write a logfile that contains all the details
+        it doesn't clutter the screen then
+        the messages are saved for later and don't get lost (diagnostics)
+
+Input
+
+    never blindly assume anything. If you want the user to input a number, check the input for being a number, check for leading zeros, etc... As we all know, users are users and not programmers. They will do what they want, not what the program wants. If you have specific format or content needs, always check the input
+
+Other Coding style guidelines
+
+    http://www.opensolaris.org/os/project/shell/shellstyle/
+

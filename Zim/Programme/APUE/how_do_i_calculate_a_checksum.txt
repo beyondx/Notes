@@ -1,0 +1,49 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-05T15:12:12+08:00
+
+====== how do i calculate a checksum ======
+Created 星期日 05 六月 2011
+
+    typedef struct ip_header{
+    unsigned char headlen:4; // header len
+    unsigned char ver:4; // version
+    unsigned char tos; // type of service
+    unsigned short length; // pack3t length
+    unsigned short id; // ident
+    unsigned short offset; // frag offset
+    unsigned char ttl; // time to live
+    unsigned char proto; // protocol
+    unsigned short sum; // checksum
+    unsigned long source; // source addr
+    unsigned long dest; // dest addr
+    }IP_HEADER; /* 20 bytes */
+
+
+your question should be "how do i calculate a checksum" .... NOT "how do i convert a struct to a short".
+
+the quick answer, is that you take your entire header and divide it into 2-byte "words", along their natural 16-bit boundaries, and perform a 1's complement addition on each word for a total checksum that is itself a 2-byte "word"
+
+but before you do that, you've got a few potential problems, in that your header values do not align on the 16-bit boundaries.
+
+your first two CHARs should not be individual 8-bit values, but should be concatenated into one total 8-bit value where VERSION is the 4 MSB's and HEADER LENGTH is the 4 LSB's. -- then that 8-bit value is itself concatenated with the TOS, where VERSION/HEADER are the 8 MSBs and the TOS is the 8 LSBs.
+
+now you have your first "word"
+
+LENGTH, ID, and OFFSET are your next three "words"... but it is important to note here that the first three (3) MSB's of the OFFSET are actually flag bits. (you may already know this and be handling it properly, but its not obvious from your structure.)
+
+TTL and PROTOCOL are concatenated into the fifth "word", where TTL is the 8 MSB's and PROTOCOL is the 8 LSB's.
+
+the HEADER CHECKSUM field will eventaully be the sixth "word" --- but for purposes of calculating this checksum in the first place, you ignore this field at this time (or pretend it is all zeros)
+
+DESTINATION and SOURCE IP ADDRESSES are split into two words each for a total of four (4) words
+
+now you have a total of nine (9) 16-bit words that you will add together, in "1's complement" fashion.
+
+once you find the 1's complement sum of the 9 words, you put that 16-bit value in the checksum field.
+
+and you're done.
+
+
+a final way to check this, that you've done it correctly -- and this is what is checked at each internet "hop" -- is that the 10 words of the IP header (including the checksum), all add up to 0xFFFF when added together in 1's complement fashion.
+

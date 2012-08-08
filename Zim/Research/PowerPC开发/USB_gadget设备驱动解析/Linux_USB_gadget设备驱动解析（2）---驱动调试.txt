@@ -1,0 +1,202 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-01T20:59:38+08:00
+
+====== Linux USB gadget设备驱动解析（2）---驱动调试 ======
+Created Thursday 01 December 2011
+http://www.embedu.org/Column/Column125.htm
+
+这一节主要把在实现“linux模拟U盘功能”过程中的一些调试过程记录下来，并加以解析。
+
+===== 一、背景知识 =====
+
+===     1、USB Mass Storage类规范概述 ===
+       USB 组织在universal Serial Bus Mass Storage Class Spaceification 1.1版本中定义了__海量存储设备类__（Mass Storage Class）的规范，这个类规范包括四个
+        独立的子类规范，即：
+       1. USB Mass Storage Class Control/Bulk/Interrupt (CBI) Transport
+       2.USB Mass Storage Class Bulk-Only Transport
+       3.USB Mass Storage Class ATA Command Block
+       4.USB Mass Storage Class UFI Command Specification
+       前两个子规范定义了数据/命令/状态在USB 上的传输方法。Bulk- Only 传输规范仅仅使用Bulk 端点传送数据/命令/状态，CBI 传输规范则使用Control/Bulk/Interrupt 三种类型的端点进行数据/命令/状态传送。后两个子规范则定义了存储介质的操作命令。ATA 命令规范用于硬盘，UFI 命令规范是针对USB 移动存储。
+       Microsoft Windows 中提供对Mass Storage 协议的支持，因此USB 移动设备只需要遵循 Mass Storage 协议来组织数据和处理命令，即可实现与PC 机交换数据。而Flash 的存储单元组织形式采用FAT16 文件系统，这样，就可以直接在Windows的浏览器中通过可移动磁盘来交换数据了，Windows 负责对FAT16 文件系统的管理，USB 设备不需要干预FAT16 文件系统操作的具体细节。
+       USB（Host）唯一通过描述符了解设备的有关信息，根据这些信息，建立起通信，在这 些描述符中，规定了设备所使用的协议、端点情况等。因此，正确地提供描述符，是USB 设备正常工作的先决条件。
+       Linux-2.6.26内核中在利用USB gadget驱动实现模拟U盘时主要涉及到file_storage.c、s3c2410_udc.c等驱动文件（这些文件的具体结构，将在下一篇文章中描述）。此时我们想先从这些代码中找到USB描述描述符，从中确定使用的存储类规范，从而确定协议。确定通讯协议是我们调试的基础。
+       存储类规范是由接口描述符决定的。接口描述符各项的定义义如下：
+
+   其中，bInterfaceClass、bInterfaceSubClass、bInterfaceProtocol可以判断出设备是否是存储类，以及属于哪种存储子类和存储介质的操作命令。
+       在file_storage.c文件中，
+
+   /* USB protocol value = the transport method */
+       #define USB_PR_CBI     0x00         // Control/Bulk/Interrupt
+       #define USB_PR_CB      0x01         // Control/Bulk w/o interrupt
+       #define USB_PR_BULK        0x50           // Bulk-only
+
+   /* USB subclass value = the protocol encapsulation */
+       #define USB_SC_RBC   0x01           // Reduced Block Commands (flash)
+       #define USB_SC_8020  0x02           // SFF-8020i, MMC-2, ATAPI (CD-ROM)
+       #define USB_SC_QIC   0x03           // QIC-157 (tape)
+       #define USB_SC_UFI   0x04           // UFI (floppy)
+       #define USB_SC_8070  0x05           // SFF-8070i (removable)
+       #define USB_SC_SCSI  0x06           // Transparent SCSI
+
+      默认的情况是：
+               mod_data = {                                    // Default values
+                         .transport_parm                      = "BBB",
+                         .protocol_parm                        = "SCSI",
+                         ……
+
+    默认的赋值如下：
+        bInterfaceClass=08 表示：存储类
+        bInterfaceSubClass=0x06 表示：透明的SCSI指令
+        bInterfaceProtocol=0x50 表示：bulk-only 传输
+
+    2、Bulk－Only 传输协议
+        下面看看Bulk－Only 传输协议：（详细的规范请阅读《Universal Serial BusMass Storage ClassBulk-Only Transport》）
+        设备插入到USB 后，USB 即对设备进行搜索，并要求设备提供相应的描述符。在USBHost 得到上述描述符后，即完成了设备的配置，识别出为Bulk－Only 的Mass Storage 设备， 然后即进入Bulk－Only 传输方式。在此方式下，USB 与设备间的所有数据均通过Bulk－In和Bulk－Out 来进行传输，不再通过控制端点传输任何数据。
+        在这种传输方式下，有三种类型的数据在USB 和设备之间传送，CBW、CSW 和普通数据。CBW（Command Block Wrapper，即命令块包）是从USB Host 发送到设备的命令， 命令格式遵从接口中的bInterfaceSubClass 所指定的命令块，这里为SCSI 传输命令集。USB设备需要将SCSI 命令从CBW 中提取出来，执行相应的命令，完成以后，向Host 发出反映 当前命令执行状态的CSW（Command Status Wrapper），Host 根据CSW 来决定是否继续发 送下一个CBW 或是数据。Host 要求USB 设备执行的命令可能为发送数据，则此时需要将 特定数据传送出去，完毕后发出CSW，以使Host 进行下一步的操作。USB 设备所执行的操
+
+ 作可用下图描述：
+
+
+CBW的格式如下：
+
+
+dCBWSignature:
+        CBW的标识，固定值：43425355h (little endian)。
+    dCBWTag:
+        主机发送的一个命令块标识，设备需要原样作为dCSWTag（CSW中的一部分）再发送给Host;主要用于关联CSW到对应的CBW。
+    dCBWDataTransferLength:
+        本次CBW命令要求在命令与回应之间传输的字节数。如果为0，则不传输数据。
+    bmCBWFlags:
+        反映数据传输的方向，0 表示来自Host，1 表示发至Host；
+    bCBWLUN:
+        对于有多个LUN逻辑单元的设备，用来选择具体目标。如果没有多个LUN，则写0。
+    bCBWCBLength:
+        命令的长度，范围在0~16.
+
+CBWCB:
+        传输的具体命令，符合bInterfaceSubClass.中定义的命令规范，此处是SCSI
+    CSW命令格式如下：
+
+
+    dCSWSignature:
+        CSW的标识，固定值：53425355h (little endian)
+    dCSWTag:
+        设置这个标识和CBW中的dCBWTag一致，参照上面关于dCBWTag的解释
+    dCSWDataResidue:
+        还需要传送的数据，此数据根据dCBWDataTransferLength－本次已经传送的数据得到
+    bCSWStatus:
+        指示命令的执行状态。如果命令正确执行，bCSWStatus 返回0 即可。
+
+3、SCSI指令集
+
+Bulk-Only 的CBW 中的CBWCB 中的内容即为如下格式的命令块描述符（Command Block Descriptor）。SCSI-2 有三种字长的命令，6 字节、10字节和12字节，Microsoft Windows 环境下支持12 字节长的命令。
+
+
+    Operation Code：
+        操作代码，表示特定的命令。高3 位为Group Code，共有8 种组合，
+    即8 个组，低5 五位为Command Code，可以有32 种命令。
+    Logicol unit Number：
+        为了兼容SCSI－1 而设的，此处可以不必关心。
+    Logical block address：
+        为高位在前，低位在后的逻辑块地址，即扇区地址。第2 位为高位，第3、4、5 依次为低位。
+    Transfer length：
+        为需要从逻辑块地址处开始传输的扇区数（比如在Write 命令中）。
+    Parameter list length：
+        为需要传输的数据长度（比如在Mode Sense 命令中）；
+    Allocation length：
+        为初始程序为返回数据所分配的最大字节数，此值可以为零，表示不需要传送数据。
+        SCSI指令集的Direct Accesss 类型存储介质的传输命令有许多， Mass Storage协议只用到了其中的一些。更多的SCSI指令参见：http://en.wikipedia.org/wiki/SCSI_command
+    指令代码      指令名称            说明
+    04h          Format Unit      格式化存储单元
+    12h          Inquiry          索取器件信息
+    1Bh          Start/Stop        load/unload
+    55h          Mode select     允许Host对外部设备设置参数。
+    5Ah          Mode  Sense      向host传输参数
+    Eh  Prevent/Allow Medium Removal    写保护
+    >28h         Read（10）          Host读存储介质中的二进制数据
+    A8h         Read（12）          同上，不过比较详细一点
+    25h         Read Capacity       要求设备返回当前容量
+    23h         Read Format Capacity   查询当前容量及可用空间  
+    03h         Request  Sense        请求设备向主机返回执行结果，及状态数据
+    01h        Rexero Unit          返回零轨道
+    2Bh         Seek（10）          为设备分配到特定地址
+    1Dh         Send  Diagnostic      执行固件复位并执行诊断
+    00h        Test Unit Ready       请求设备报告是否处于Ready状态
+    2Fh         Verify               在存储中验证数据
+    2Ah         Write（10）          从主机向介质写二进制数据
+    AAh         Write（12）          同上，不过比较详细    
+    2Eh        Write and Verify      写二进制数据并验证
+
+对于不同的命令，其命令块描述符略有不同，其要求的返回内容也有所不同，根据相 应的文档，可以对每种请求作出适当的回应。比如，下面是INQUIRY 请求的命令块描述符和其返回内容的数据格式：如：INQUIRY
+    命令描述符：
+
+返回数据格式
+
+
+        Host 会依次发出INQUIRY、Read Capacity、UFI Mode Sense 请求，如果上述请求的返回结果都正确，则Host 会发出READ 命令，读取文件系统0 簇0 扇区的MBR 数据，进入文件系统识别阶段。
+
+4、利用USB View观察结果
+       可通过USB View软件查看到USB设置阶段获取到的信息。
+
+ 
+        二、出现的主要问题
+            在调试过程中遇到了一个问题。现象是：在目标板加载完驱动后，即执行完：
+            # insmod g_file_storage.ko file=/dev/mtdblock2 stall=0 removable=1
+         后，接好USB线。此时在windows端设备出有usb storage设备加入，但出现不了盘符。
+         下面记录下调试过程。
+
+三、调试过程
+      根据规范，当完成SCSI指令集中Inquiry 命令时，可以出现盘符。所以可以通过bushound软件查看通讯过程，找出原因。
+      下面是利用bushound工具在出现问题时采集到的数据。
+      Dev     Phase    Data                                                                   Info             Time       Cmd.Phase. Ofs
+
+  --- ----- --------------------------------- ---------- ----- -----------
+      26      CTL      80 06 00 01 - 00 00 12 00                                          GET DESCRIPTR         0us           1.1.0
+      26      DI       12 01 10 01 - 00 00 00 10 - 25 05 a5 a4 - 12 03 01 02 ........%....... 4.8ms                           1.2.0
+                       03 01 ..                                                                                               1.2.16
+      26      CTL      80 06 00 02 - 00 00 09 00                                          GET DESCRIPTR         14us          2.1.0
+      26      DI       09 02 20 00 - 01 01 04 c0 - 01                                     .. ......             3.9ms         2.2.0
+      26      CTL      80 06 00 02 - 00 00 20 00                                          GET DESCRIPTR         16us          3.1.0
+      26      DI       09 02 20 00 - 01 01 04 c0 - 01 09 04 00 - 00 02 08 06   .. ............. 4.9ms           3.2.0
+                       50 05 07 05 - 81 02 40 00 - 00 07 05 02 - 02 40 00 00 P.....@......@..                  3.2.16  
+      26      CTL      80 06 00 03 - 00 00 02 00                                          GET DESCRIPTR         60us          4.1.0
+      26      DI       09 02 20 00 - 01 01 04 c0 - 01                                     .. ......             3.9ms         2.2.0
+      26      DI       04 03                                                                 ..                 3.9ms         3.1.0
+      26      CTL      80 06 00 03 - 00 00 04 00                                          GET DESCRIPTR         15us          5.1.0
+      26      DI       04 03 09 04                                                             ....             3.9ms         6.1.0
+      26     CTL      80 06 03 03 - 09 04 02 00                                          GET DESCRIPTR        10us            1.2.16
+      26      DI       1a 03                                                                   ....            4.0ms           6.2.0
+      26     CTL      80 06 03 03 - 09 04 1a 00                                           GET DESCRIPTR        18us            7.1.0
+      26      DI      1a 03 33 00 - 37 00 32 00 - 30 00 34 00 - 31 00 37 00 ..3.7.2.0.4.1.7. 4.9ms             7.2.0
+                      35 00 36 00 - 37 00 37 00 - 35 00                                   5.6.7.7.5. 7.2.16
+      26     CTL      00 09 01 00 - 00 00 00 00                                           SET CONFIG         16us              8.1.0
+      26     CTL      01 0b 00 00 - 00 00 00 00                                           SET INTERFACE      60ms              9.1.0
+      26     CTL      a1 fe 00 00 - 00 00 01 00                                           CLASS               62ms              10.1.0
+      26     DI             00 .                                                                              3.9ms           10.2.0
+      26     DO        55 53 42 43 - 08 60 e0 86 - 24 00 00 00 - 80 00 06 12 USBC.`..$....... 985us           11.1.0
+                      00 00 00 24 - 00 00 00 00 - 00 00 00 00 - 00 00 00       ...$...........                11.1.16
+      26      DI      00 80 02 02 - 1f 00 00 00 - 4c 69 6e 75 - 78 20 20 20      ........Linux 1.0ms             12.1.0
+                      46 69 6c 65 - 2d 53 74 6f - 72 20 47 61 - 64 67 65 74           File-Stor Gadget        12.1.16
+                      30 33 31 32                                                       0312                  12.1.32
+      26     CTL      80 06 00 02 - 00 00 20 00                                        GET DESCRIPTR           893ms           13.1.0
+      26     DI       09 02 20 00 - 01 01 04 c0 - 01 09 04 00 - 00 02 08 06 .. ............. 4.1ms           13.2.0
+                      50 05 07 05 - 81 02 40 00 - 00 07 05 02 - 02 40 00 00 P.....@......@..                13.2.16
+      26      CTL     80 06 00 02 - 00 00 20 00                                             GET DESCRIPTR         2.7sc        14.1.0
+      26      DI      09 02 20 00 - 01 01 04 c0 - 01 09 04 00 - 00 02 08 06 .. .............  4.4ms           14.2.0
+                      50 05 07 05 - 81 02 40 00 - 00 07 05 02 - 02 40 00 00 P.....@......@..                   14.2.16
+      26      USTS 05 00 00 c0                                                              no response       2.8sc             15.1.0
+
+注意上面红色部分的代码，DO发出了55 53 42 43开始的CBW命令块，命令码是12，即Inquiry命令。要求目标返回Inquiry命令要求的数据，长度是0x24。接下来设备端通过DI返回了设备信息。按照规范，在返回完了数据后，设备端还应该通过DI向系统返回CSW的值。但实际的捕获内容并没有。所以导致不能正确出现盘符。
+    在file_storage.c中，发送数据时都会调用到start_transfer（）函数。在此函数中加入printk调试语句，观察现象。发现只要加入的调试语句，windows端就能够正常设别设备了。于是，可以猜测是因为需要在连续两次发送之间加上一些延时。在函数中加入udelay（800）后，windows系统可以正常发现设备了。具体的代码架构，将在下一遍文章中解析。
+    下面是程序正常后，用bushound捕获到的数据。
+
+
+    红色部分，可以看出设备正确的按照规范在发送完数据后，返回CSW信息。
+
+
+      四、总结做好USB gadget驱动、或者USB host驱动调试需要：
+        ·掌握一定的知识基础
+        包括：USB协议、具体的类设备规范、USB驱动程序架构、USB设备端控制器操作等。
+        ·合理利用调试工具。
+        包括：USB view 、bushound 、及一些硬件USB信号分析仪。 

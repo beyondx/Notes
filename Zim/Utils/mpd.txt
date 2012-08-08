@@ -1,0 +1,50 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-28T15:42:19+08:00
+
+====== mpd ======
+Created Saturday 28 May 2011
+http://tech.16c.cn/linux/top/20100825/52038.html
+
+MPD (Music Player Daemon) 是一个C／S结构的音乐播放器。MPD 作为一个守护程序运行于后台， 管理播放列表和音乐数据库， 占用很少的资源。
+Mpc解释：
+一个命令行下的Mpd客户端。
+安装：
+sudo pacman -S mpd mpc
+生成配置文件：
+sudo cp /etc/mpd.conf.example /etc/mpd.conf
+编辑配置文件：
+playlist_directory “/home/keke/mpd/playlists”
+db_file “/home/keke/mpd/mpd.db”
+log_file “/home/keke/mpd/mpd.log”
+error_file “/home/keke/mpd/mpd.error”
+pid_file “/home/keke/mpd/mpd.pid”
+state_file “/home/keke/mpd/mpdstate”
+user “keke”
+bind_to_address “127.0.0.1″
+filesystem_charset “UTF-8″
+id3v1_encoding “gbk”
+ audio_output {
+        type                    "alsa"
+        name                    "Sound Card"
+}   
+
+别的基本都不用动，因为我动了启动不起来了，汗自己一个。
+
+ 运行 MPD 
+ /etc/rc.d/mpd start
+ 编辑 /etc/rc.conf 添加mpd 到开机运行程序列表。 
+
+我喜欢把所以音乐添加到播放列表，然后随机听：
+mpc listall | mpc add
+mpc random on
+ 最后，绑定一下快捷键，让听音乐更自在！
+
+客户端安装过程
+
+为MPD安装一个客户端，比较流行的有以下：
+mpc - 命令行客户端(你可能只要这个而无须其它)
+ncmpc - NCurses库编写的客户端 (这个在控制台下运行非常顺手轻便) ncmpc官网
+sonata - Python GTK+的客户端 Sonata官网
+gmpc - Gnome桌面环境下的客户端gmpc官网
+

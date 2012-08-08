@@ -1,0 +1,226 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-21T16:55:47+08:00
+
+====== getaddrinfo ======
+Created Thursday 21 April 2011
+http://blog168.chinaunix.net/space.php?uid=20196318&do=blog&id=172427
+getaddrinfo使用详解 (2011-03-15 15:25)
+标签:  getaddrinfo  套接字  主机地址转换  服务端口转换  分类： Socket网络编程
+
+getaddrinfo是在gethostbyname系列函数不支持Ipv6的情况下逐渐催生的，其能够处理名字到地址以及服务到端口这两种转换，返回一个sockaddr结构的链表，这些sockaddr地址结构随后可有套接口函数（socket、bind、connect、listen等）直接调用，将协议相关性隐藏在该函数内部。应该尽量选择使用getaddrinfo函数代替之前的getxx函数族，就像应该使用inet_ntop(inet_pton)代替inet_aton, inet_addr等函数一样。
+
+ 
+
+#include <netdb.h>
+
+int getaddrinfo(const char* hostname, const char* service,
+
+    const struct addinfo* hints, struct addrinfo** result);
+
+其中hostname可以是主机名后者地址串（Ipv4点分十进制数串或者Ipv6十六进制数串）；service参数是一个服务名或者十进制端口号数串。与getaddrinfo相关的系统配置文件包括/etc/hosts、/etc/services，用于处理主机名与地址串、服务名与端口号之间的转换。
+
+ 
+
+/etc/hosts存储地址与主机名的对应关系，如下例：
+
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+
+10.0.1.73   fedora11
+
+ 
+
+/etc/services 则存储服务与端口号的对应关系，如下例：
+
+tcpmux         1/tcp        # TCP port service multiplexer
+
+tcpmux         1/udp       # TCP port service multiplexer
+
+rje             5/tcp        # Remote Job Entry
+
+rje             5/udp       # Remote Job Entry
+
+echo           7/tcp        #TCP echo
+
+echo           7/udp       #UDP echo
+
+ 
+
+如果你的应用程序需要使用主机名代替IP地址，或服务名代替端口号，你需要先把对应关系增加到对应的配置文件中，否则getaddrinfo会解析出错。
+
+ 
+
+有了getaddrinfo就可以很方便的构建服务器及客户端的应用程序，不用考虑数据尾端，地址转换等。tcp_listen根据host及service的信息获取sockaddr信息，创建套接字、绑定地址并监听。同样tcp_connect通过getaddrinfo返回的信息，连接服务器。创建udp的服务器与客户端与此类似。
+
+ 
+
+tcp_listen(const char* host, const char* serv)
+
+{
+
+    int listenfd, n;
+
+    const int on = 1;
+
+    struct addrinfo hints, *res, *ressave;
+
+   
+
+    bzero(&hints, sizeof(struct addrinfo));
+
+    hints.ai_flags = AI_PASSIVE;
+
+    hints.ai_family = AF_INET;
+
+    hints.ai_socktype = SOCK_STREAM;
+
+   
+
+    if((n = getaddrinfo(host, serv, &hints, &res)) != 0) {
+
+        printf("tcp_listen error for %s, %s: %s\n",
+
+            host, serv, gai_strerror(n));
+
+        return -1;
+
+    }
+
+   
+
+    ressave = res;
+
+    do {
+
+        listenfd = socket(res->ai_family, res->ai_socktype,
+
+                res->ai_protocol);
+
+        if(listenfd < 0) {
+
+            continue;
+
+        }
+
+       
+
+        setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+
+        if(bind(listenfd, res->ai_addr, res->ai_addrlen) == 0) {
+
+            break;
+
+        }
+
+       
+
+        close(listenfd);
+
+    }while((res = res->ai_next) != NULL);
+
+   
+
+    if(res == NULL) {
+
+        printf("tcp_listen error for %s, %s: %s\n",
+
+            host, serv, gai_strerror(n));
+
+        return -1;
+
+    }
+
+   
+
+    listen(listenfd, BACK_LOG);
+
+   
+
+    freeaddrinfo(ressave);
+
+    return(listenfd);
+
+}
+
+ 
+
+int tcp_connect(const char* host, const char* serv)
+
+{
+
+    int sockfd, n;
+
+    struct addrinfo hints, *res, *ressave;
+
+   
+
+    bzero(&hints, sizeof(struct addrinfo));
+
+    hints.ai_family = AF_INET;
+
+    hints.ai_socktype = SOCK_STREAM;
+
+   
+
+    if((n = getaddrinfo(host, serv, &hints, &res)) != 0) {
+
+        printf("tcp_connect error for %s, %s: %s\n",
+
+            host, serv, gai_strerror(n));
+
+        return -1;
+
+    }
+
+   
+
+    ressave = res;
+
+    do {
+
+        sockfd = socket(res->ai_family, res->ai_socktype,
+
+                res->ai_protocol);
+
+        if(sockfd < 0) {
+
+            continue;
+
+        }
+
+       
+
+        if(connect(sockfd, res->ai_addr, res->ai_addrlen) == 0) {
+
+            break;
+
+        }
+
+       
+
+        close(sockfd);
+
+    }while((res = res->ai_next) != NULL);
+
+   
+
+    if(res == NULL) {
+
+        printf("tcp_connect error for %s, %s: %s\n",
+
+            host, serv, gai_strerror(n));
+
+        return -1;
+
+    }
+
+   
+
+    freeaddrinfo(ressave);
+
+    return(sockfd);
+
+}
+
+
+

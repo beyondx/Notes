@@ -1,0 +1,41 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-13T17:18:36+08:00
+
+====== 在apache下配置mod wsgi ======
+Created Thursday 13 October 2011
+http://healich.iteye.com/blog/727620
+
+在apache下配置mod_wsgi
+
+    Apache http Server: http://httpd.apache.org/
+    modwsgi: http://code.google.com/p/modwsgi/, http://code.google.com/p/modwsgi/wiki/InstallationInstructions
+    WSGI: http://www.python.org/dev/peps/pep-0333/ 
+
+在安装好apache之后，还需要下载mod_wsgi.mod_wsgi是用于apache支持python wsgi协议的扩展，当前版本是3.3，有windows下支持不同python版本的二进制文件下载。
+
+首先需要使apache httpd服务器加载wsgi_module扩展。将下载的mod_wsgi.so置于apache serverr安装目录的modules文件下，在httpd.conf文件中添加如下一行：
+
+    LoadModule wsgi_module modules/mod_wsgi.so  
+
+使用**WSGIScriptAlias**指令来指定wsgi application的启动脚本。在httpd.conf中添加如下一行，这里使用默认的DocumentRoot:
+
+    WSGIScriptAlias /test "/path/to/docRoot/test.wsgi"  
+
+在**/test路径**下访问测试程序，wsgi脚本文件为**test.wsgi**
+
+    def application(environ, start_response):  
+        status = '200 OK'   
+        output = 'Hello World!'  
+      
+        response_headers = [('Content-type', 'text/plain'),  
+                            ('Content-Length', str(len(output)))]  
+        start_response(status, response_headers)  
+      
+        return [output]  
+
+
+
+重启apache sever之后，可以通过http://localhost/test%E6%9D%A5%E8%AE%BF%E9%97%AE%E6%B5%8B%E8%AF%95%E7%A8%8B%E5%BA%8F%E4%BA%86%E3%80%82%E5%A6%82%E6%9E%9C%E6%98%BE%E7%A4%BA%E2%80%9CHello World!”则表明mod_wsgi安装成功。
+
+

@@ -1,0 +1,232 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-31T19:36:07+08:00
+
+====== 漫谈QWidget及其派生类(二) ======
+Created Monday 31 October 2011
+
+    上一部分漫谈QWidget及其派生类(一) 介绍了QWidget及其派生类,分：窗口、普通控件两种类型(其实有个Qt::SubWindow没有提，不过本系列中也没有介绍它的打算，因为我不熟)。
+
+本文接下来试图看看 QLayout 与窗口的几何尺寸控制。
+
+注意：本文只是试图解释，QLayout其实没有任何神秘的东西，它所有的功能离开它你也都可以做。但这并不是鼓励大家不使用QLayout。
+
+始终记住一点：要改变一个Widget的大小，只有__move()、resize()、setGeometry()__这3个东西可用，当然，对于带装饰器的__顶级窗口__，你还可以通过鼠标等改变大小或移动窗口位置(但这个不在本文讨论范围内)。
+
+===== 几何尺寸 =====
+{{../../Qt学习之路/Qt学习之路(15)/1.png}}
+
+
+一个QWidget 或其派生类
+ 
+* 放置到什么位置？
+* 需要占多大的地盘？
+
+对于一个窗口(Window)来说，还要区分：
+
+* 带窗口装饰器后的位置和大小
+* 不带装饰器(客户区域？绘图区域？)的位置和大小
+
+看起来还蛮复杂的哈，列个表看看。
+
+frameGeometry() 		几何尺寸(位置+大小)	
+-----------------------------------------------------------------------------------------------------	
+x()													对于窗口，包含窗口装饰器
+y()
+pos()					只包含位置信息(左上角坐标)
+move					只移动位置
+----------------------------------------------------------------------------------------------------
+geometry()				几何尺寸(位置+大小) 			不包含窗口装饰器
+-----------------------------------------------------------------
+width()					只包含大小信息
+height()
+rect()
+size()					
+--------------------------------------------------------------------------------------------------------
+setGeometry()			改变 位置+大小
+resize()					只改变大小
+
+关键记住一点：要程序内改变一个Widget的大小，只有move、resize、setGeometry这3个东西可用。不要被QLayout干扰，它一点都不神秘，它也只能老老实实去调用这类函数。
+
+===== 例子 =====
+
+用个例子看看吧，如果
+
+    在一个 400X400 的Widget上，放置很多其他Widget(比如64个 45X45 的按钮)
+
+#include <QtGui/QApplication>
+#include <QtGui/QPushButton>
+
+int main(int argc, char *argv[])
+{
+    QApplication a(argc, argv);
+    QWidget widget;
+    widget.setGeometry(100, 100, 400, 400);
+    for (int i=0; i<8; ++i) {
+        for (int j=0; j<8; ++j) {
+            QPushButton * btn = new QPushButton(QString("(%1,%2)").arg(i).arg(j), &widget);
+            btn->setGeometry(i*50, j*50, 45, 45);
+        }
+    }
+    widget.show();
+    return a.exec();
+}
+
+只需要挨个设置一下几何尺寸，似乎也不复杂嘛。是吧？困难是什么呢？
+
+    如果我们用鼠标拖动来改变窗口Widget的大小(有装饰器，可以拖动)，它上面的这些__按钮却不会动__(我们前面的很黑体字提到的哈)。界面将很难看。
+
+其实这也不是大问题，我们只需要在子类化QWidget，覆盖(override)它的resizeEvent()函数
+
+void Widget::resizeEvent(QResizeEvent *)
+{
+}
+
+在这儿**重新设置**它上面的按钮的位置和大小就行了。
+
+考虑一个问题，我们如何知道一个widget用多大的大小合适呢？
+
+这是个大问题，单一的widget还好解决，比如一个按钮，你可以根据文字、按钮样式等等计算一个大小。可是对于复合的widget：比如我们例子中的widget中有64个按钮，如果再将这样的64个widget放于另外一个widget中，会怎么样？
+
+没有什么好办法，仍然是需要我们**一个一个进行计算**。其实不是太难，但是操作特别繁杂。
+
+ 再考虑一个问题，如果我们改变一个按钮上的文字，按钮的**最佳尺寸**要变化，如何处理？
+
+只能是按钮通知其parent(通过**LayoutRequest**事件)，而后parent重新排布子控件，以获得最佳显示效果。
+
+接下来，我们看看 QLayout 是如何解决这三个问题的。
+
+===== QLayout =====
+
+layout 做哪些事情呢？
+
+初始放置  		将子widget一个一个放置到父widget上		layout 计算各个子widget大小，并调用setGeometry() 来设置
+
+响应父widget变化	父widget大小变化时，子widget**相应变化**		layout 通过监听父widget的**QResizeEvent**事件来实现
+
+响应子widget变化	子widget的最佳大小变化时(比如给按钮设置新的Text)	让父对象的layout 重新计算几何尺寸
+
+===== QResizeEvent =====
+
+当一个widget的大小变化后，会生成QResizeEvent事件(这时widget所关联Layout就开始重新计算喽...)。
+
+我们知道，事件都是通过__QWidget::event()__派发的：
+
+bool QWidget::event(QEvent *event)
+{
+    switch (event->type()) {
+    case QEvent::MouseMove:
+        mouseMoveEvent((QMouseEvent*)event);
+        break;
+...
+    case QEvent::Move:
+        moveEvent((QMoveEvent*)event);
+        break;
+    case QEvent::Resize:
+        resizeEvent((QResizeEvent*)event);
+        break;
+...
+
+但是，Qt对QLayout有特殊照顾，在事件到达接收者的event()函数之前，__先送到__了接收者对应的layout中：
+
+bool QApplicationPrivate::notify_helper(QObject *receiver, QEvent * e)
+{
+...
+    if (receiver->isWidgetType()) {
+        QWidget *widget = static_cast<QWidget *>(receiver);
+        if (QLayout *layout=widget->d_func()->layout) {
+            **layout->widgetEvent(e);**
+        }
+    }
+    bool consumed = receiver->event(e);
+...
+
+而后layout开始工作
+
+void QLayout::widgetEvent(QEvent *e)
+{
+    switch (e->type()) {
+    case QEvent::Resize:
+        if (d->activated) {
+            QResizeEvent *r = (QResizeEvent *)e;
+            d->doResize(r->size());
+        } else {
+            activate();
+        }
+        break;
+...
+
+恩，注意看上面代码：如果reciever是widget而且有layout，该事件先送到layout的widgetEvent()中。然后才会通过event()派发到达大家熟悉的resizeEvent()等函数。
+
+===== QEvent::LayoutRequest =====
+
+前面的resize比较容易理解，如果**子widget**的大小想变化，如何通知layout呢？
+
+通过void QWidget::updateGeometry ()函数。
+
+void QWidgetPrivate::updateGeometry_helper(bool forceUpdate)
+{
+...
+        if (!q->isWindow() && !q->isHidden() && (parent = q->parentWidget())) {
+            if (parent->d_func()->layout)
+                parent->d_func()->layou**QEvent::LayoutRequest**t->**invalidate();**
+            else if (parent->isVisible())
+                QApplication::postEvent(parent, new QEvent(**QEvent::LayoutRequest**));
+        }
+
+看看这段代码，如果parent有layout布局，直接让布局无效(强制Layout重新计算大小)。
+
+而如果parent没有布局呢？恩，思想也比较简单：它给父widget发送 LayoutRequest 事件。注意：如果我们不使用布局的话，面对这种情况，我们就要**自己处理**这个事件喽。
+
+===== sizeHint等 =====
+
+这个其实似乎是最有趣的，QLayout如果知道它负责控制的各个widget该有多大的大小呢？
+
+QWidget::sizePolicy()	\QWidget::sizeHint()\QWidget::minimumSizeHint()
+
+这3个东西为layout提供一些大小信息, 对于自定义widget，子类化时你可能需要提供这些信息
+
+熟悉这3个东西，以及各个QLayout派生类的使用，不然，你可能会抱怨——QLayout太难用了
+{{../../Qt学习之路/Qt学习之路(15)/2.png}}
+
+===== “混用”会如何？ =====
+
+比如：前面的例子，我们64个按钮，如果32个使用QGridLayout进行管理，32个不用layout进行管理。结果会怎么样？
+
+其实不会怎么样。QGridLayout 负责对它管理的widget调用setGeometry，而你负责对自己管理的调用setGeometry。想怎么放就怎么放。(但是你要注意：最好别让它们重合，不然...)
+
+===== QMainWindow =====
+
+QMainWindow 上面放置很多的Widget：
+
+菜单栏	QMenuBar
+工具栏	QToolBar
+状态栏	QStatusBar
+停靠窗口 QDockWidget
+中心窗体	...
+
+这些全是QWidget的派生类
+
+其实没有什么神秘的，一堆widget放置到了QMainWindow中，而且还会__自动随着__QMainWindow变化。你很容易想到它默认就已经设置了一个QLayout！
+
+class QMainWindowLayout : public QLayout
+{
+    Q_OBJECT
+...
+
+这是一个私有类，你不必关心细节，但是可以考虑：平时如何使用QLayout的？是不是要将你的widget加入到layout中？？
+
+在QMainWindow中，QMenuBar、QToolBar等等都__已经__加入到了它的layout中，而且layout中为你__留了__一个位置，就是中心窗体。
+
+在QMainWindow，QMainWindowLayout管理的这些子widget布满了几乎整个窗体。所以：有人抱怨
+
+* 为什么在 MainWindow::paintEvent() 中画的东西总是不成功？ 不是不成功，是被上面的菜单栏、中心窗体等挡住了。
+* 为什么MainWindow::mousePressEvent()中收不到鼠标事件？？ 同上...
+* 为什么new QPushButton(this)创建的按钮总是在左上方？ 既没有加入到layout中，又没有手动调用setGeometry()或move()，当然如此了
+* ...
+
+    当然还有更隐蔽的，信号槽不起作用？ 见http://hi.baidu.com/cyclone
+
+参考
+
+    http://doc.qt.nokia.com/4.7/application-windows.html#window-geometry

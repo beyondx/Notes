@@ -1,0 +1,109 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-09-24T11:36:57+08:00
+
+====== 网页常用字体 ======
+Created Saturday 24 September 2011
+http://www.webjx.com/css/divcss-19285.html
+在Web编码中，CSS默认应用的Web字体是有限的，虽然在新版本的CSS3，我们可以通过新增的@font-face属性来引入特殊的浏览器加载字体，但多数情况下，考虑各个因素的影响我们还是在尽量充分利用这些默认调用的字体实现CSS的编写，这里整理了19个Web安全字体，让你无需任何顾虑的情况下畅快使用。
+
+===== 1,  Arial =====
+微软公司的网页核心字体之一，__最常用__的sans serif字体，当字号很小时不容易阅读。但是，大写的“I”和小写的“l”是无法区别的，你可以考虑用Tahoma字体来替代。（苹果系统没有这种字体，但有一种对应于Arial的字体叫Helvetica，它是MAC机上与Arial 字体最相似的WEB字体,是别一种非衬线字体.它是一种性能优良的打印字体,但在屏幕上表现不是很好，说道Helvetica字体，昨天发现了很多有意思的站点，主要是纪念Helvetica字体诞生50年而设的。）
+{{./arial.png}}
+
+CSS写法：font-family: Arial, Helvetica, sans-serif;
+
+===== 2, Arial Black =====
+{{./arial-balck.png}}
+
+CSS写法：font-family: ‘Arial Black’, Gadget, sans-serif;
+
+===== 3, Arial Narrow =====
+{{./arial-narrow.png}}
+
+CSS写法：font-family: ‘Arial Narrow’, sans-serif;
+
+===== 4, Verdana =====
+
+微软公司的网页核心字体之一，微软公司专门为屏幕显示而开发的。应用广泛。易于阅读。是__显示器中最清晰__的字体，即使字号很小，也很容易阅读。半肥猫比较喜欢采用10PX的Verdana来做英文正文字体，也推荐大家使用，但字号最好介于10~14像素之间，超出这个范围就不好看了。
+{{./verdana.png}}
+CSS写法：font-family: Verdana, Geneva, sans-serif;
+
+===== 5,  Georgia =====
+微软公司的网页核心字体之一，可用性好。可读性比Times New Roman强。是网站设计中，__浏览效果最好的serif字体__，因为它是专为网上阅读设计的。）
+{{./georgia.png}}
+CSS写法：font-family: Georgia, serif;
+
+===== 6,  Times New Roman =====
+微软公司的网页核心字体之一，可能是最常用的**serif字体**，是网站浏览器__默认的字体__，12pt以上的字体容易阅读，但小字号的字体易读性差。（苹果系统没有这个字体，有一个对应于Times New Roman的字体叫Times）
+{{./times-new-roman.png}}
+CSS写法：font-family: 'Times New Roman', Times, serif;
+
+===== 7, Trebuchet MS =====
+微软公司的网页核心字体之一，与Arial相似，半肥猫觉得：Trebuchet MS比Arial看起来优雅、古典一点。可以用来做标题，但小字号阅读起来会很困难（低于13PIX阅读起来就很累了，不太推荐用来做正文字体）。在苹果系统上也可以用Helvetica做替代。
+{{./trebuchet-ms.png}}
+CSS写法：font-family: 'Trebuchet MS', Helvetica, sans-serif;
+
+===== 8 , Courier New =====
+微软公司的网页核心字体之一，__老式打印机字体__，有一种独特的机械工整感觉。呈现计算机编码时，还会用到这种字体。12 pt的Courier New字体曾是美国国务院的公文标准字体，但于2004年1月停用，改使用14 pt的Times New Roman，因为其具“现代性”和“易读性”。
+{{./courier-new.png}}
+CSS写法：font-family: 'Courier New', Courier, monospace;
+
+===== 9,  Impact =====
+微软公司的网页核心字体之一，Impact是1965年发表的一个**无衬线字体**，其特粗的笔画、紧缩的间距。半肥猫觉得：字体较为粗犷，适合使用在标题上，而不常用在内文。
+{{./impact.png}}
+CSS写法：font-family: Impact, Charcoal, sans-serif;
+
+===== 10,  Comic Sans MS =====
+微软公司的网页核心字体之一，手写体。这是一种争议很大的字体，讲实话，半肥猫也不喜欢这个字体，一点美感都没有，不过在一大堆规规矩矩的字体里面，有这么一个随意性比较的字体，可以变换一下口味，也算不错吧，建议不要用在正规的金融、政府、商业机构站点。
+{{./comic-sans-ms.png}}
+CSS写法：font-family: 'Comic Sans MS', cursive;
+
+===== 11,  Tahoma =====
+Tahoma是一个十分常见的**无衬线字体**，Tahoma和Verdana师出同为名设计师马修·卡特的作品，由微软在1999年推出，被采用为Windows 2000、Windows XP、Windows Server 2003等系统的**默认字型**。半肥猫觉得：它的字体结构和Verdana很相似，其字符间距较小，用来作为标题，效果好过Arial（Tahoma的大写I 和小写l比Arial容易识别），但如果作为正文，他的字号不能小于13PIX，否则很多笔画粘连到一起，不利于阅读。
+{{./tahoma.png}}
+CSS写法：font-family: Tahoma, Geneva, sans-serif;
+
+===== 12,  Courier =====
+Courier是一个**等宽字体的粗衬线字体**，主要是依据打字机所打印出来的字型来设计。原来Courier New的字体是IBM公司在1950年代设计给打印机使用的字体，后来这个字型成为整个__打字机制造业的标准__。Courier New是Courier的变体，比Courier更具机械味道。
+{{./courier-new.png}}
+CSS写法：font-family: Courier, monospace;
+
+===== 13,  Lucida Sans Unicode =====
+是一种OpenType型的无衬线字体 。1993年制作并随微软公司的Windows NT 3.1操作系统发布。有较大的x字高，具有很好的可读性，被广泛用于显示、出版等各种用途。它支持Unicode2.0版本的基本字符，包括拉丁字母，希腊字母，西里尔字母，希伯来字母，以及国际音标字符。该字体是首个 Unicode代码的字体， 该字体从Windows 98开始一直作为系统预装字体发行。后来发布的 Lucida Grande字体作为苹果公司Mac OS X系统的默认字体发布。
+
+CSS写法：font-family: 'Lucida Sans Unicode', 'Lucida Grande', sans-serif;
+
+===== 14, Lucida Console =====
+同Lucida Sans Unicode类似。
+{{./lucida-console.png}}
+CSS写法：font-family: 'Lucida Console', Monaco, monospace;
+
+===== 15,  Garamond =====
+Garamond（加拉蒙德）是一类**西文衬线字体**的总称，自16世纪40年代开始至今，有很多家公司和很多设计师参与到Garamond字体设计，如： Adobe Garamond, Monotype Garamond, Sioncini Garamond，和 Stempel Garamond等等。半肥猫觉得：字体给人端庄典雅，有些古典的感觉，在博物馆和历史性悠久的项目中使用，应该可以获得不错的效果。
+{{./garamond.png}}
+CSS写法：font-family: Garamond, serif;
+
+===== 16 ,  MS Sans Serif =====
+微软系统自带字体。__屏幕显示的像素字体__。非衬线字体。
+{{./ms-sans-serif.png}}
+CSS写法：font-family: 'MS Sans Serif', Geneva, sans-serif;
+
+===== 17 ,  MS Serif =====
+微软系统自带字体。屏幕显示的像素字体。衬线字体。
+CSS写法：font-family: 'MS Serif', 'New York', sans-serif;
+
+===== 18, Palatino Linotype =====
+{{./palatino-linotype.png}}
+CSS写法：font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+
+===== 19, Symbol =====
+{{./symbol.png}}
+CSS写法：font-family: Symbol, sans-serif;
+
+===== 20, Bookman Old Style =====
+{{./bookman-old-style.png}}
+
+CSS写法：font-family: 'Bookman Old Style', serif;
+
+本文参考了WEB安全字体，希望在Web编写过程中这些核心的Web字体能对你有用。

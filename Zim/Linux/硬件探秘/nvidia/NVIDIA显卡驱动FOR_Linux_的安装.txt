@@ -1,0 +1,101 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-21T18:33:14+08:00
+
+====== NVIDIA显卡驱动FOR Linux 的安装 ======
+Created Monday 21 November 2011
+
+http://www.linuxidc.com/Linux/2007-12/9469.htm
+
+随着3D图形显示芯片的激烈市场竞争，S3、3Dfx、Matrox 、Trident等一些老牌3D显示芯片生产厂商已经渐渐退出了市场。nVIDIA、ATi、Intel三家生产厂商占有95%以上的市场份额。在Linux安装3D显卡的驱动是有一定难度的。升级Linux驱动程序需要做一系列的决定，包括正确识别处理器配置状况，查明驱动程序工作在什么样的Linux内核当中。在Linux中使用的图形显示系统是X－Window，但是由于与常见的MS Windows系统有很大的差异，所以在使用时，即使有时面对的是很小的问题，却不知才能如何解决，比如无法驱动显卡，显示器参数错误，花屏，图形界面无法启动等。这里首先向大家讲述，X－Window的概述，如何安装主流3D显卡的驱动程序，相关的配置文件，以及参数调整等内容。本文应用环境是RedHat Linux 9.0。
+
+  一、X－Window和显卡配置文件的概述
+
+  XFree86是X Window系统的一种开放源代码的实现。它提供了一种对**鼠标、键盘、显卡和窗口图形环境**的Client-Server接口。所以客户端程序可以运行在不同的主机上，由一台服务器提供X Window的Server服务。X Client将希望显示的图形发送到X Server，X Server将图形显示在显示器上，同时为X Client提供鼠标键盘的输入服务。可以将X的Server和Client分别运行在两台计算机上，使用startx命令可以启动X－Window，在同一台计算机上同时运行的Server和Client，通常运行startx后，首先启动的是XFree86，它是Linux平台最常用的X的Server端，然后，又运行X的Client程序，如startkde（KDE的启动程序）或gnome-session（GNOME的启动程序），他们利用**X协议**连接本机的X Server，将图形显示出来。X－Window的 C/S结构还拥有网络特性这是微软操作系统没有的,以将X的Server和Client分别运行在两台计算机上，甚至可以安装一些软件，让Windows作为X Server，让Linux作为Client，将KDE或GNOME等桌面环境显示到Windows主机上来。图1是X－Window工作原理图。
+
+Linux的X Server程序就是XFree86，它的任务是驱动显示卡、显示器、鼠标、键盘等设备，为X Client提供**显示服务、输入服务**等。XFree86的主要文件是：
+/usr/X11R6                   XFree86文件所在的主要目录
+/usr/X11R6/bin                XFree86的可执行程序文件
+/usr/X11R6/lib/modules/drivers         XFree86自带的驱动程序所在的目录
+/etc/X11         X的配置文件及启动脚本所在目录
+/etc/X11/XF86Config 或 XF86Config－4   XFree86的启动配置文件
+
+  XFree86自带了一些设备的驱动，具体位置在 /usr/X11R6/lib/modules/drivers，如果你的显示卡太新无法使用X－Window，你可以考虑升级XFree86。
+
+
+**两个组织**：由于下面笔者安装Linux显卡驱动时要涉及两个组织XFree86 和XOrg。这里简单介绍一下：
+
+XFree86是对 X11 的一个开放源码的实现。最初它开发运行在 Intel x86 PC 上，因此得名。现在，它可以运行在主要的硬件架构和操作系统上，包括 Linux、OS/2，Darwin，Mac OS X 和 Windows。最新版本：2005年3月16日发布的4.5.0 。
+
+XOrg基金会的X11开源实现 （XOrg Foundation Open Source Public Implementation of X11） 它是X Window System的官方参考实现。当前的发布版本是X11R6.8.2，发布于2005年2月10日。它是开放源代码的自由软件。这个项目由X.Org基金会运作，存放于freedesktop.org的主机上。由于在XFree86 4.4最终版本采用**新许可证问题上的分歧**，Xorg服务器的第一个版本X11R6.7.0从XFree86 4.4 RC2派生出来，并加入了X11R6.6的一些改动。最新版本：X11R6.8.2。
+
+在Linux中使用以上两个组织的驱动都可以实现3D加速，本文以前者为准。
+
+  其它术语：
+
+  什么是 DRI?
+
+   Direct Rendering Infrastructure (dri.sourceforge.net)，也被称为 DRI，中文名称**直接着色基础结构**。它是一个安全且有效率地直接对显示硬件存取的方法。它包含对 X server、一些 client 函数库、以及内核的变更。DRI 的第一个主要目的就是提供高效能的 OpenGL 支持。
+
+二、安装前准备工作
+
+  因为安装驱动程序可能需要配合核心来编译，所以会使用到内核源代码，此外，也需要编译器 ( compiler ) 的帮助，因此，先确定您的 Linux 系统当中已经下列软件的存在 ：kernel-source 、kernel 、gcc 、make、qt。 打开一个终端，使用命令检查：
+
+# rpm -qa | grep gcc；rpm -qa | grep qt；
+rpm -qa | grep make；rpm -qa | grep kernel
+
+三、nVIDIA显卡安装
+
+  当前主流3D显卡市场上，nVIDIA公司已经是寡头称雄排名第一，nVIDIA出品的Linux驱动安装软件工具包将自动检查计算机的各种细节，并能自动安装好各种驱动程序。这里介绍一下驱动安装、升级的简单过程。XFree86自带的驱动程序只包括了nVIDIA **2D加速**，如果需要获取更好的3D加速效果，需要安装nVIDIA专用驱动软件工具包。3D 硬件加速在需要绘制三度空间对象的时候是非常宝贵的，例如游戏、3D CAD、以及 3D 成像。 首先测试安装3D驱动程序前的**显卡速度**，打开一个桌面终端运行见图2.
+
+#glxgears
+
+图2 显卡性能测试界面
+
+  glxgears是一个测试你的Linux是否可以顺利运行2D、3D的测试软件，这个程序弹出一个窗口，里面有三个转动的齿轮。屏幕将显示出**每五秒钟转动多少栅**，所以这是一个合理的性能测试。窗户是可以放缩的，栅数多少极大程度上依赖于窗口的大小。如果你的显示卡够好，而且你的驱动程序也配合得很好，那齿轮就跑得越快。有些极品显卡（SLI 6800 Ultra）执行glxgears之后，快到连齿轮都看不清。这里请记录下FPS数字（每秒的帧速度）以鉴别3D加速效果。
+
+  由于nVIDIA公司的产品线非常长，所以需要根据你使用的**显卡芯片型号**选择合适的驱动程序（官方Linux驱动网址：http://www.nVIDIA.com/object/unix.html）。最新版本的驱动程序是：7676。适合的显卡芯片：第四代GeForce显卡芯片到 GeForce 6800 Ultra。另外还要中央处理器型号选择驱动类型，使用LGA775 64位Intel Pentium4 、Pentium D  、CeleronD 中央处理器和Turion64、64位Sempron 、Athlon64 的AMD中央处理器使用Linux AMD64/EM64T驱动程序：IAnVIDIA-Linux-x86_64-1.0-7676-pkg2.run ，其他X86处理器使用IA32驱动程序。本文以后者为例，下载链接：http://download.nVIDIA.com/XFree86/Linux-x86/1.0-7676/nVIDIA-Linux-x86-1.0-7676-pkg1.run  ；但是如果你使用教老的显卡芯片比如：RIVA TNT、RIVA TNT2/TNT2 Pro 、RIVA TNT2 Ultra、Vanta/Vanta LT 、RIVA TNT2 Model 64/Model 64 Pro、Aladdin TNT2 、GeForce 256  、 GeForce DDR 、Quadro 、GeForce2 GTS/GeForce2 Pro  、GeForce2 Ti 、 GeForce2 Ultra 、 Quadro2 Pro 。请使用旧版本驱动程序：如4363。
+
+1.安装过程：
+
+ 1.__关闭SElinux__
+
+ 使用Fedora Core 3 、Fedora Core 4 Linux或Red Had Enterprise Linux 4 的用户要首先关闭SElinux，方法是修改/etc/selinux/config文件中的SELINUX="" 为 disabled ，然后重启服务器。
+
+2.切换到命令行工作环境安装
+
+使用命令或组合键“Ctrl＋shift＋Backspace”退出X-window，进入命令行：
+
+#init 3
+
+#./nVIDIA-Linux-x86-1.0-7676-pkg1.run
+
+    系统会自动连接到WWW.nVIDIA.COM 网站检查驱动程序是否需要更新，如果需要会自动进行更新并且安装，见图－3。
+
+图3 nVIDIA显卡驱动安装界面
+
+3.修改配置文件
+
+ 修改配置文件：/etc/X11/xorg.conf把**“Driver "nv"”**（或者Driver "vesa"、 Driver "fbdev")修改为**Driver "nVIDIA"**；在Section "Module" 字段：刪掉 Load   "dri" 和 Load       "GLCore"，加入__Load       "glx"__。
+
+4.测试
+
+   使用命令“startx”重新启动X-windw。然后运行
+
+#glxinfo | grep rendering
+
+direct rendering: Yes   #OpenGl已经打开
+
+另外可以使用glxinfo查看AGP总线、GPU型号等信息。下面还要使用glxgears查看安装3D驱动程序后的FPS数字（每秒的帧速度）以鉴别3D加速效果。
+
+5.使用**nVIDIA－settins**工具
+
+ 7676版本的nVIDIA驱动集成了一个图形化的显卡设置工具，使用方法是在X-window运行见图4：
+
+#nVIDIA－settings
+
+图4 nVIDIA设置工具界面
+
+  具体如何设置请请教游戏玩家笔者就不赘述了。设置结束后要保存设置否则下次系统启动时，会失效。方法是编辑/etc/X11/xinit/xinitrc玩家加入一行：
+
+  nVIDIA－settins －1

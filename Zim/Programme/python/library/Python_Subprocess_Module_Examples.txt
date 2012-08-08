@@ -1,0 +1,38 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-05T22:29:27+08:00
+
+====== Python Subprocess Module Examples ======
+Created Thursday 05 January 2012
+
+http://www.moosechips.com/2010/07/python-subprocess-module-examples/
+
+Some examples using the subprocess python module.
+
+Make a system call three different ways:
+
+#! /usr/bin/env python
+import subprocess
+# Use a sequence of args
+return_code = subprocess.call(["echo", "hello sequence"])
+ 
+# Set shell=true so we can use a simple string for the command
+return_code = subprocess.call("echo hello string", shell=True)
+ 
+# subprocess.call() is equivalent to using subprocess.Popen() and wait()
+proc = subprocess.Popen("echo hello popen", shell=True)
+return_code = proc.wait() # wait for process to finish so we can get the return code
+
+Control stderr and stdout:
+
+#! /usr/bin/env python
+import subprocess
+# Put stderr and stdout into pipes
+proc = subprocess.Popen("echo hello stdout; echo hello stderr >&2", \
+        shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+return_code = proc.wait()
+# Read from pipes
+for line in proc.stdout:
+    print("stdout: " + line.rstrip())
+for line in proc.stderr:
+    print("stderr: " + line.rstrip())

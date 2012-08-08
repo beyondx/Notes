@@ -1,0 +1,42 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T19:43:41+08:00
+
+====== USB ======
+Created Sunday 27 March 2011
+
+1、用命令__lsusb__查看
+geekard@geekard-laptop:~$ lsusb 
+Bus 002 Device 002: ID 0957:0006 Agilent Technologies, Inc. 
+Bus 002 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub 
+Bus 001 Device 005: ID 0e8d:0002 MediaTek Inc. 
+Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub 
+geekard@geekard-laptop:~$ 
+2、查看/sys/bus/usb/drivers/usb目录下的文件，usb*表示root hub，其它为插入的设备。
+注意设备目录下的speed文件，单位为Mb。
+3、查看/proc/scsi/下的文件，linux 将光驱、U盘当作scsi设备看待。scsi7 : SCSI emulation for USB Mass Storage devices
+geekard@geekard-laptop:~$ cat /proc/scsi/scsi 
+Attached devices: 
+Host: scsi0 Channel: 00 Id: 00 Lun: 00 
+  Vendor: TSSTcorp Model: CD/DVDW TS-L632D Rev: HH17 
+  Type:   CD-ROM                           ANSI  SCSI revision: 05 
+Host: scsi2 Channel: 00 Id: 00 Lun: 00 
+  Vendor: ATA      Model: ST9120822AS      Rev: 3.BH 
+  Type:   Direct-Access                    ANSI  SCSI revision: 05 
+Host: scsi8 Channel: 00 Id: 00 Lun: 00 
+  Vendor: MEDIATEK Model:  FLASH DISK      Rev: 6235 
+  Type:   Direct-Access                    ANSI  SCSI revision: 00 
+Host: scsi8 Channel: 00 Id: 00 Lun: 01 
+  Vendor: MEDIATEK Model:  FLASH DISK      Rev: 6235 
+  Type:   Direct-Access                    ANSI  SCSI revision: 00 
+geekard@geekard-laptop:~$ 
+
+geekard@geekard-laptop:~$ cat /proc/scsi/usb-storage/8 
+   Host scsi8: usb-storage 
+       Vendor: MediaTek Inc 
+      Product: MT6235 
+Serial Number: 531785300023100 
+     Protocol: Transparent SCSI 
+    Transport: Bulk 
+       Quirks: 
+geekard@geekard-laptop:~$ 

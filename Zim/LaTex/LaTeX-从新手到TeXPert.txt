@@ -1,0 +1,338 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-09-07T22:09:28+08:00
+
+====== LaTeX-从新手到TeXPert ======
+Created Wednesday 07 September 2011
+http://latex.yo2.cn/articles/latex_from_beginner_to_texpert_zh.html
+原文: LaTeX: From beginner to TeXPert, 也可参见这里.
+
+本文是介绍TeX排版系统, 但你阅读下面的信息后, 你将能够:
+
+    下载和安装LaTeX(包括Windows, linux, 或者Mac系统)
+    使用LaTeX创建简单的文档
+    安装新的LaTeX宏包
+    在LaTeX文档中插入表格和图像
+    使用LaTeX的交互引用, 脚注和基本的参考文献用法
+    在LaTeX文档中插入数学公式
+
+这些主题已经覆盖写文档的基本任务. 然而, 注意到, 但使用LaTeX系统的时候, 你可以很容易创建看起来非常专业的文档, 并且LaTeX是全面和可扩展的. 还有许多在这篇基础引导性文章没有提及的功能. 幸运的是, LaTeX的文档非常丰富. 如果你对碰到什么问题, 可以向你的老朋友Google寻求帮助.
+
+===== 什么是LaTeX? =====
+
+LaTeX是一个排版系统, 它允许作者创建一个高质量的文档, 而不用过多关心格式, 分页, 对象的位置和其它一些将作者从写作上分心的格式设置. LaTeX的发音为 “lay-tech”, 它是原始排版系统TeX (”tech”)的一个扩展. 你可以在Wikipedia上找到 TeX 和 LaTeX 的历史.
+
+LaTeX在一个专业领域被广泛的使用. 在数学, 物理, 经济, 统计和其它一些学术和专业领域, 它们的文档需要经常使用LaTeX来排版数学符号, 因为LaTeX能简单而高质量地支持数学符号.一些出版公司也使用基础TeX的系统来排版文档.
+
+===== LaTeX 是怎样工作的? =====
+
+LaTeX与传统的字处理软件有下列两个基本的不同:
+* 一般地, 使用容易学的LaTeX的标记语言来写LaTeX文档, 而不是使用图形界面来确定格式[1].
+* 在输入文本之后需用LaTeX编译生成文档, 而不像其它字处理软件, 它可以使用下面的文档的总长度, 表格的数目等信息来优化表格, 图形, 断页等.
+
+下面是一个非常基本的LaTeX文档的例子:
+
+\documentclass{article}
+\author{Your Name}
+\title{Test Document}
+\begin{document}
+\maketitle
+This is a test document
+\end{document}
+
+使用任何一个LaTeX发行版, 保存上面的文本到一个后缀为 ".tex" 的文件, 然后用LaTeX来编译就可以生成一个文档了.
+
+LaTeX被设置成在不同的系统可得到同样的输出. 因此, 如果你发布上面的文本, 其他人可以使用某个LaTeX发行版的 , 而不用关注他的操作系统, 都将得到完全一样的结果. LaTeX可以输出各种格式的文件, 但最流行的是PDF格式.
+
+===== 如何得到LaTeX软件 =====
+
+从技术上来说, 你只需要LaTeX引擎(一些二进制的文件和库)就可以将简单的文本tex文件转化为优美的PDF文件. LaTeX可以以命令行形式被使用, 因而*nix和Dos的支持者将觉得这非常好. 然而使用一个LaTeX前端编辑器将使得操作跟简单. 大多数的LaTeX前端编辑器本质上都是文本编辑器, 但还有下面的功能:
+
+* 编译LaTeX文档, 而不是使用命令行.
+* 让LaTeX语言跟容易的书写(命令补全, 创建模板化表格等).
+
+这这篇文档中, 我假设你已经有了一个LaTeX引擎和一个前端编辑器. 每个操作系统下你都有很多的LaTeX引擎和一个前端编辑器供选择. 我将描述最流行和最容易安装的开源的工具的安装. 不同发行版间的唯一区别是应用时的一些配置和用法不同, 你也可以自由地选择其它的发行版.
+
+===== 关于文件格式的一点注记 =====
+
+LaTeX 可以生成多种格式的输出文件, 包括 PDF 和 DVI (与设备独立的格式) 文件. 生存文件的格式依赖于是否使用PdfLaTeX或另一个程序来编译文件. 编辑器默认会创建 PDF 文件, 主要到改变相应的设置会影响输出文件的格式.
+
+====== LaTeX 基础知识 ======
+
+==== LaTeX 命令 ====
+
+LaTeX 命令通常是以一个反斜杠(backslash)开头, 和具有形式\command[options]{argument. 例如,
+
+    \section{Introduction}
+
+将定义一个叫 “Introduction” 的新的小节. 符号“%” 定义一个注记, 这一行它后面的字符都将被认为是注记, 而被 LaTeX 忽略. 如果你需要在文档中输入字符“%” , 使用命令: \%.
+
+在 LaTeX** 使用引号的方式**有点不同. 为了插入一个引号, 使用标准的 "文本" , 就是两次字符 ` (位于键盘的左上方).
+
+==== 导言区(preamble) ====
+
+文档中, 行 “\begin{document}” 之前的部分称为导言区. 一个典型的导言区可以像这样:
+
+    \documentclass{article}
+    \usepackage{graphicx}
+    \title{Test}
+    \author{Test}
+    \date{}
+
+在上面的例子中:
+
+    \documentclass{article} 告诉 LaTeX , 这个文件是的类型是文章 (article). 其它类型有: 书本(book), 信 ( letter) 和 演示文稿 ( slides) .
+    \usepackage{graphicx} 告诉 LaTeX 使用 graphicx 宏包 , 它允许用户在文档中包含许多类型的图像. 将会在后面介绍宏包的用法.
+    \title{} and \author{}显然就是定义文章的标题和作者.
+    \date{} 告诉 LaTeX 留下一行生成日期. \date{April 2006}将会生成日期 “April 2006″ . 如果只使用 \date{} 将告诉 LaTeX 使用今天的日期.
+
+命令\documentclass{} 有一些参数. 例如, \documentclass[11pt,twocolumn]{article} 将文档的主体为设为两栏格式. 注意参数之间用逗号隔开. 其它的一些参数包括:
+
+* oneside 或 twoside - 改变边界, 设置成单页或双页文档
+* landscape - 将文档的格式从 portrait 改为 landscape.
+* titlepage 或 notitlepage - 定义是否使用分离的标题页面, 或者标题, 作者和日题出现在文章的顶部.
+ 
+
+==== 文档的主体(The document body) ====
+
+导言区后边, 也就是 \begin{document} 和 \end{document} 之间的部分是文档的主体. 大多数的 LaTeX 文档只是一个简单的纯文本. 为了开始一个新的段落, 输入__两个回车__. LaTeX 会自动忽略一个空白的行. 为了强制断行, 使用\\ .
+
+==== 文档的结构 (Document structure) ====
+
+定义一个文档的结构可使用命令 \section{}. LaTeX 是__基于结构的文档__. 结构的标记有:
+
+    \section{Name}
+    \subsection{Name}
+    \subsubsection{Name}
+    \paragraph{Name}
+
+为了插入一个**没有标号的小节**, 使用命令 \section*{Name}. 章节的会自动的连续的编号.
+
+命令 \paragraph{}不是必须的, 除非你想为一个段落插入一个标题. 例子:
+
+    1 Section command
+
+    Section star command
+    this section is not numbered
+
+    2 Section command
+    Test here the the numbering continuous normally
+
+    2.1 Subsection command
+    Test here
+
+    Paragraph command this paragraph have a title.
+
+===== 环境(Environments) =====
+
+环境是一块特殊的文本. 例如, itemize 和 enumerate 环境相应地创建项目和编号列表. 下面的标记:
+
+    \begin{itemize}
+    \item First thing
+    \item Second thing
+    \item Third thing
+    \end{itemize}
+
+    \begin{enumerate}
+    \item First numbered thing
+    \item Second numbered thing
+    \end{enumerate}
+
+将生成一个项目列表和接下来的一个编号列表.
+
+注意到环境都是以 \begin{environmentname} 开头和以 \end{environmentname} 结尾. 它们可以被嵌套, 所以一个项目列表可能包含另一个项目列表或者编号列表等.
+
+另外一下经常被使用的环境有:
+
+    引用环境 (Quote): \begin{quote}…\end{quote} 创建一小节缩进的引用的文本
+    Verbatim环境: \begin{verbatim} … \end{verbatim} 类似于HTML中的 **pre** . 在 verbatim 环境中, 文本将显示为__等宽格式的字体__和特殊字符将被忽略. 当书写源代码的时候, Verbatim 环境非常有用.
+    Description 环境: \begin{description} \item[First item] text \end{description} 生成一个列表和或项目, 它有一个粗体的名字和之后悬挂缩进的文本
+
+===== 改变字体的样式 (Modifying text styles) =====
+
+LaTeX 背后一个基本的思想是解决作者的格式问题. 然后, 有时还是需要手动得设置指定字体样式.
+
+* 插入粗体 (bold text), 使用 \textbf{text here}
+* 插入斜体 (italic text), 使用 \emph{text here}
+* 插入但等宽字体 (monospace text), 使用 \texttt{text here} (" tt " 代表打字机 (teletype)
+    为了在句子中使用 verbatim 文本, 使用 \verb | your text here | . 注意可以使用任意的分界符, 例如\verb+your text here+ 将显示同样的效果.
+
+===== 宏包(Packages) =====
+
+使用宏包可以扩展 LaTeX 的 功能. 宏包的安装主要分为下面两步:
+
+* 用 LaTeX 运行 .ins 文件来生成 .sty 和 .cls 文件
+* 将两个新创建的文件拷贝到适当的目录下, 然后更新 LaTeX 数据库
+
+但是, 也有一些例外. 文件类型 .sty 和 .cls 分别代表 样式 (style) 和 类 (class). 如果一个宏包不是 .ins 格式而是 .sty 和 .cls 文件, 则不需要用LaTeX处理, 直接跳到第二步. 另外, 当用LaTeX处理 .ins 文件时候, 通常会生成一个 .dtx 文件. 这个文件可以通过LaTeX来创建这个__宏包的手册__.
+
+注意: 用 LaTeX 处理宏包文件, 只需要用你的LaTeX前端编辑器打开, 然后按通常处理一个 tex 文件编译.
+
+
+接下来, 介绍两个流行的宏包: graphicx 和 gemetry . 这些宏包已经在 gwTeX 和 MikTeX 上默认安装了, 而不需要另外下载安装它们.
+
+===== graphicx 宏包 =====
+
+graphicx 宏包用于在 LaTeX 文档插入图像. 为了使用它, 首先在文档的导言区加上命令 \usepackage{graphicx}. 然后使用下面的命令插入图形.
+
+    \includegraphics[options]{filename.png}
+
+graphicx 宏包支持许多文件类型, 包括 PDF, PNG 和 JPG. 注意此时需要__用 PdfLaTeX 编译你的文档__. 它的主要参数有:
+
+    width=Xin
+    height=Xin
+    scale=X (Where x is between **0 and 1**)
+
+===== geometry宏包 =====
+
+用 LaTeX 处理格式化的文档是非常简单的, 但你需要改变它的默认格式的时候就变得有点复杂了. 使用 geometry 宏包就改变你文档的某些设置, 包括边距等. 下边是一个将四周边距改为 1 in 的例子 :
+
+    \usepackage[margin=1in]{geometry}
+
+===== 图形和表格 =====
+
+图形和表格都是 LaTeX 中的__环境__, 然而它们有一些特殊的属性, 例如命令 \caption{}, 这将生成图形和表格的标题. 它们被称为__浮动__对象, 因为它们在最终编译生成文档中的位置依赖当前 LaTeX 样式的算法.
+
+==== 图形 (Figures) ====
+
+为了插入一个图形, 使用
+
+    \begin{figure}[hbtp]
+    \caption{Figure name}
+    \begin{center}
+    \includegraphics{filename.pdf}
+    \end{center}
+    \label{your-reference-key}
+    \end{figure}
+
+在上面的代码中,
+
+* \begin{figure} 只是告诉 LaTeX 现在开始一个图形 (figure) 环境
+* [hbtp] 决定 LaTeX 如何放置这个图形 (当前位置here (h), 底部bottom (b), 顶部top(t), 页面page(p)). LaTeX 首先会尝试在将图形插入到当前位置 (tex 文件中的**插入点**), 如果没有足够的空间或者其它审美考虑, 它将尝试把图形先放在**当前页面**的底部, 然后是顶部, 最后是一个特殊页面来放置这个浮动对象. 如果强制图形只出现在原来的位置, 使用命令 \begin{figure}[h], 而忽略其它参数 b, p 和 t
+* \caption{Figure name}生成图形的名称
+* \begin{center} 只是告诉 LaTeX 将图形放置在页面的中间. 不要忘记在结束 figure 环境前结束 centering 环境.
+* \includegraphics{…} 指定你要插入图形文件的位置
+* \label{your-reference-key} 是一个标签, 它将允许你在文本中引用这个图形. 例如, 你的图形标签为 "fig1" , 当你需要引用它时输入 \ref{fig1}
+
+===== 表格 (Tables) =====
+
+LaTeX 中一个浮动表格由__两个环境__组成: 表格, 在文本中浮动的实体, 和 tabular (制表的内容). 例如,
+
+    \begin{table}[hbtp]
+    \caption{This table is an example}
+    \begin{center}
+    \begin{tabular}{c|cc}
+    First row, first column & First row second column & First row, third column \\ \hline
+    Second row, first column & Second row, second column & Second row, third column \\
+    Third row, first column & Third row, second column & Third row, third column \\
+    \multicolumn{3}{c}{…}
+    \end{tabular}
+    \end{center}
+    \label{exampletable}
+    \end{table}
+
+除了代码 \begin{tabular} … \end{tabular} 之间的内容外它的意思跟前面图形环境的描述是一样的. 下面我们来看 tabular 环境是怎样工作的:
+
+* \begin{tabular}{c|cc} 告诉 LaTeX 开始一个新的包含3个居中列的 tabular 环境. 第一个"c"之后的竖线 (”|”) 告诉 LaTeX 第一列有一个垂直的边线. 使用{lcrr}能创建 4 列, 第一列左对其, 第二列居中, 第三列和第四列右对齐
+* 表格单元用符号 “&”分离, 表格行用符号“\\”分离.
+* \hline 生成一条水平线
+* \multicolumn{3}{c}{Text here} 创建一个有 3 列的行, 居中格式, 并且包含文本 “Text here”
+
+创建和插入表格还有一些跟复杂的参数, 但是上面的例子应该已经包含90%的应用了.[2]
+
+===== 注释 (Annotations) =====
+
+LaTeX 能够自动创建一些重要的注释, 例如脚注, 交叉引用, 表格的目录和参考文献. 注意到下面的命令需要 LaTeX 自动对正文元素进行计数, 从而需要 LaTeX 需要运行两次才能显示效果.
+
+==== 脚注(Footnotes) ====
+
+为了插入一个脚注, 只需要输入 \footnote{Footnote text here}. LaTeX 自动插入一个脚注数目和文本.[3]
+
+==== 交叉引用 (Cross references) ====
+
+为了引用一个表格或图形的标签, 使用 \ref{your-reference-key} 其中 “your-reference-key” 是表格或图形环境中命令 \label{your-reference-key} 的参数.
+
+==== 表格的目录 (Table of contents) ====
+
+为了插入一个表格目录, 在文档的开始的地方使用 \tableofcontents . (你必须运行 LaTeX 两次来获得表格目录和正确的引用.)
+
+==== 参考文献(Bibliography) ====
+
+为了创建一个参考文献列表, 在你文档的最后, 使用
+
+    \begin{thebibliography}{99}
+    ….
+    \bibitem{key1} Disarray, General. 2006. “\LaTeX{}: From beginner to \TeX pert.” \emph{General Disarray Blog}. Available online at \textt{http://generaldisarray.wordpress.com}. ….
+    \end{thebibliography}
+
+你必须手动输入参考文献的项目. 在正文中引用一个项目, 使用 \cite{key}, 参数{99}告诉 LaTeX 这是一个最多 99 个项目的参考文献. LaTeX 必须知道这个参数才能正确地调整参考文献项目左边的编号.
+
+一个跟有效的创建参考文献的方法是使用__ BibTeX__, 它允许你维护一个引用项目的数据库, 当需要引用它们时调用这个数据库. 也有一些图形化的工具来管理的你引用数据库, 所以你需要要努力去对引用加代码, 而只是将它们改成不同的格式. 然而 BibTeX 在编译的时候变得比较复杂, 作为一个介绍, 你可以看在这个页面.
+
+===== 插入数学公式 (Inserting mathematics) =====
+
+在 LaTeX 插入数学公式的方法有几种. 最通常用的方法是内联记号(inline notation) 和 displaymath 环境 (displaymath environment).
+
+==== 内联 记号(Inline) ====
+
+在一个段落中插入数学符号, 而有不影响其它文本的格式, 将数学公式用 $ 符号括起来. 例如, , $a^2+b^2=c^2$ 是我们熟悉的公式.
+
+==== Display math ====
+
+displaymath 环境让你数学符号__单独占一行__. 代码
+
+    \[
+    a^2+b^2=c^2
+    \]
+
+将创建一个段落分割和一个居中的方程.
+
+==== Equation ====
+
+equation 环境可以用来数学公式的编号和引用标记, 例如,
+
+    \begin{equation}
+    a^2+b^2=c^2
+    **\label{pythag}**
+    \end{equation}
+
+就像 displaymath 生成同样的方程, 但是它还会在右边生成一个编号, 并且你可以使用 \ref{pythag}来引用这个方程.
+
+==== Equation array ====
+
+eqnarray 环境能够允许你输入多行的公式, 并设定对齐点. 例如,
+
+    \begin{eqnarray}
+    a&=&b+c\\
+    d&=&e+f
+    \end{eqnarray}
+
+==== 数学记号 (Mathematical notation) ====
+
+有一些命令来插入一些特殊的**数学算子和符号**. 它们可以在网上很容易的找到, 如果你不能想出一个有效的命令, Google查找一下. 下面有一些经常用的命令:
+
+* 希腊字母: 一般来说, 它就是拼写的单词. 例如 \beta, \gamma 和 \epsilon. 大写则使用 \Gamma.
+* 特殊符号 (Misc symbols): \leftarrow (使用 \Leftarrow 得到一个双向肩头), \rightarrow, etc., \leftrightarrow (<==>, if and only if), <, >, \leq (less than or equal to), \geq (greater than or equal to)
+* 指数和分量 (Indexing and exponents): 下标使用下划线 (x_i) 和 上标使用 “^” (a^2). 为了使用 “i sub j comma k” 你只需要输入 “i_{j,k}” 来告诉 LaTeX “j,k”都是下标. 在LaTeX 中括号通常表示一组内容, 而它本身并不会在文档中出现.
+* 另外的一些算子: \sum{1/x} or \sum_{i=1}^{\infty}{x_i}, \prod (the product), \coprod (the coproduct), \sin, \log, \max, etc.
+* 修饰符号 (Decorations): \hat{x}, \tilde{x} , \overline{x}, \underline{x}, \overrightarrow{x}, \overbrace{x}, \underbrace{x}, \vec{x}
+* 分数 (Fractions): \frac{a}{b} puts a over b.
+* 括号 (Brackets): For brackets use “(”, “[” or \lbrace and \rbrace for “{” and “}”. However, if the notation that your typing is not inline, use \left( <math here> \right) or \left\lbrace <math here> \right\rbrace.
+* 矩阵 (Matrices) : 为了输入一个矩阵, 在display 或者 equation 环境下, 使用
+
+    \left[ \begin{array}{ccc}
+    a & b & c \\
+    d & e & f
+    \end{array}\right]
+
+注意array 环境的使用跟前面提到的表格环境很相似.
+
+===== 进一步的参考 (For further reference) =====
+
+上面的介绍只是 LaTeX 的一部分功能, 还有很多没有介绍, 推荐一个非常好的文档 The Not-So-Short Introduction to LaTeX (pdf).
+
+===== 注记(Notes) =====
+
+[1] 尽管LaTeX是用命令工作, 但例如 Scientific Word 是在图形界面上操作, 和 LyX 是一个非常好的开源, 基于 LaTeX 的 what-you-see-is-what-you-mean 的字处理系统, 它采用图形化界面但也允许使用LaTeX命令. 关于Lyx的介绍可一参见这里: LyX 和 LaTeX CJK 的配合, LyX和xetex中文的配置方法.
+[2] OpenOffice 可是使用 Calc2LaTeX 来将 Calc spreadsheets转化为 LaTeX 表格tables. MS Office 用户可尝试工具 Excel2LaTeX. 这些工具都是跨平台的 .LaTeX使用excel2latex插入表格
+[3] 为了创建一个贡献(attribution)脚注, 第一个脚注将用星号作标记, 使用 \thanks{text here}命令.

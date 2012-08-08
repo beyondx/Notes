@@ -1,0 +1,503 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-06T16:47:00+08:00
+
+====== task struct ======
+Created Tuesday 06 December 2011
+http://blog.csdn.net/ccccdddxxx/article/details/6635794
+
+下面为最新的3.0内核的定义
+task_struct在linux的定义如下：
+struct task_struct {
+	volatile long **state;**	/* -1 unrunnable, 0 runnable, >0 stopped */
+	void *stack;
+	atomic_t usage;
+	unsigned int flags;	/* per process flags, defined below */
+	unsigned int ptrace;
+	int on_rq;
+
+	int **prio, static_prio, normal_prio;**
+	unsigned int** rt_priority;**
+	const struct sched_class** *sched_class;**
+	struct sched_entity se;
+	struct sched_rt_entity rt;
+
+
+	unsigned int** policy;**
+	cpumask_t cpus_allowed;
+	struct list_head __tasks;__
+	struct mm_struct ***mm, *active_mm;**
+
+/* __task state__ */
+	int exit_state;
+	int exit_code, exit_signal;
+	int pdeath_signal;  /*  The signal sent when the parent dies  */
+	unsigned int group_stop;	/* GROUP_STOP_*, siglock protected */
+	/* ??? */
+	unsigned int personality;
+	unsigned did_exec:1;
+	unsigned in_execve:1;	/* Tell the LSMs that the process is doing an
+				* execve */
+	unsigned in_iowait:1;
+
+
+	/* Revert to** default priority/policy** when forking */
+	unsigned sched_reset_on_fork:1;
+	unsigned sched_contributes_to_load:1;
+
+	pid_t __pid;__
+	pid_t tgid;
+
+	/* 
+	* pointers to (original) parent process, youngest child, younger sibling,
+	* older sibling, respectively.  (p->father can be replaced with 
+	* p->real_parent->pid)
+	 */
+	struct task_struct *real_parent; /* real parent process */
+	struct task_struct __*parent;__ /* recipient of SIGCHLD, wait4() reports */
+	/*
+	* children/sibling forms the list of my natural children
+	 */
+	struct list_head __children;__	/* list of my children */
+	struct list_head __sibling;__	/* **linkage in my parent's children list** */
+        #注意：&current->children对应的双向链表的成员为sibling。所以：
+	list_for_each(list, &current->children) {
+		task = list_entry(list, struct task_struct, __sibling__);
+		.....
+	}
+	struct task_struct __*group_leader__;	/* threadgroup leader */
+
+	/*
+	* ptraced is the list of tasks this task is using ptrace on.
+	* This includes both natural children and PTRACE_ATTACH targets.
+	* p->ptrace_entry is p's link on the p->parent->ptraced list.
+	 */
+	struct list_head **ptraced;**
+	struct list_head ptrace_entry;
+
+	/* PID/PID hash table linkage. */
+	struct pid_link __pids[PIDTYPE_MAX];__
+	struct list_head thread_group;
+
+	struct completion *vfork_done;		/* for vfork() */
+	int __user *set_child_tid;		/* CLONE_CHILD_SETTID */
+	int __user *clear_child_tid;		/* CLONE_CHILD_CLEARTID */
+
+	cputime_t **utime, stime, utimescaled, stimescaled;**
+	cputime_t gtime;
+
+	unsigned long nvcsw, nivcsw; /* context switch counts */
+	struct timespec __start_time; __		/* monotonic time */
+	struct timespec __real_start_time;__	/* boot based time */
+/* mm fault and swap info: this can arguably be seen as either mm-specific or thread-specific */
+	unsigned long min_flt, maj_flt;
+
+	struct task_cputime cputime_expires;
+	struct list_head cpu_timers[3];
+
+/* process credentials */
+	const struct cred __rcu *real_cred; /* objective and real subjective task
+					* credentials (COW) */
+	const struct cred __rcu *cred;	/* effective (overridable) subjective task
+					* credentials (COW) */
+	struct cred *replacement_session_keyring; /* for KEYCTL_SESSION_TO_PARENT */
+
+	char comm[TASK_COMM_LEN]; /* executable name excluding path
+				     - access with [gs]et_task_comm (which lock
+				       it with task_lock())
+				     - initialized normally by setup_new_exec */
+/* file system info */
+	int link_count, total_link_count;
+#ifdef CONFIG_SYSVIPC
+/* ipc stuff */
+	struct sysv_sem **sysvsem**;
+#endif
+#ifdef CONFIG_DETECT_HUNG_TASK
+/*__ hung task detection__ */
+	unsigned long last_switch_count;
+#endif
+/* CPU-specific state of this task */
+	struct thread_struct thread;
+/* filesystem information */
+	struct fs_struct __*fs;__
+/* open file information */
+	struct files_struct __*files;__
+/* namespaces */
+	struct nsproxy *nsproxy;
+/* __signal handlers__ */
+	struct signal_struct *signal;
+	struct sighand_struct *sighand;
+
+	sigset_t blocked, real_blocked;
+	sigset_t saved_sigmask;	/* restored if set_restore_sigmask() was used */
+	struct sigpending pending;
+
+	unsigned long sas_ss_sp;
+	size_t sas_ss_size;
+	int (*notifier)(void *priv);
+	void *notifier_data;
+	sigset_t *notifier_mask;
+	struct audit_context *audit_context;
+#ifdef CONFIG_AUDITSYSCALL
+	uid_t loginuid;
+	unsigned int sessionid;
+#endif
+	seccomp_t seccomp;
+
+/* Thread group tracking */
+   	u32 parent_exec_id;
+   	u32 self_exec_id;
+/* Protection of (de-)allocation: mm, files, fs, tty, keyrings, mems_allowed,
+* mempolicy */
+	spinlock_t alloc_lock;
+
+#ifdef CONFIG_GENERIC_HARDIRQS
+	/* IRQ handler threads */
+	struct irqaction *irqaction;
+#endif
+
+	/* Protection of the PI data structures: */
+	raw_spinlock_t pi_lock;
+
+#ifdef CONFIG_RT_MUTEXES
+	/* PI waiters blocked on a rt_mutex held by this task */
+	struct plist_head pi_waiters;
+	/* Deadlock detection and priority inheritance handling */
+	struct rt_mutex_waiter *pi_blocked_on;
+#endif
+
+#ifdef CONFIG_DEBUG_MUTEXES
+	/* mutex deadlock detection */
+	struct mutex_waiter *blocked_on;
+#endif
+#ifdef CONFIG_TRACE_IRQFLAGS
+	unsigned int irq_events;
+	unsigned long hardirq_enable_ip;
+	unsigned long hardirq_disable_ip;
+	unsigned int hardirq_enable_event;
+	unsigned int hardirq_disable_event;
+	int hardirqs_enabled;
+	int hardirq_context;
+	unsigned long softirq_disable_ip;
+	unsigned long softirq_enable_ip;
+	unsigned int softirq_disable_event;
+	unsigned int softirq_enable_event;
+	int softirqs_enabled;
+	int softirq_context;
+#endif
+#ifdef CONFIG_LOCKDEP
+# define MAX_LOCK_DEPTH 48UL
+	u64 curr_chain_key;
+	int lockdep_depth;
+	unsigned int lockdep_recursion;
+	struct held_lock held_locks[MAX_LOCK_DEPTH];
+	gfp_t lockdep_reclaim_gfp;
+#endif
+
+/* journalling filesystem info */
+	void *journal_info;
+
+/* stacked block device info */
+	struct bio_list __*bio_list;__
+
+#ifdef CONFIG_BLOCK
+/* stack plugging */
+	struct blk_plug *plug;
+#endif
+
+/* VM state */
+	struct reclaim_state *reclaim_state;
+
+	struct backing_dev_info *backing_dev_info;
+
+	struct io_context *io_context;
+
+	unsigned long ptrace_message;
+	siginfo_t *last_siginfo; /* For ptrace use.  */
+	struct task_io_accounting ioac;
+#if defined(CONFIG_TASK_XACCT)
+	u64 acct_rss_mem1;	/* accumulated rss usage */
+	u64 acct_vm_mem1;	/* accumulated virtual memory usage */
+	cputime_t acct_timexpd;	/* stime + utime since last update */
+#endif
+#ifdef CONFIG_CPUSETS
+	nodemask_t mems_allowed;	/* Protected by alloc_lock */
+	int mems_allowed_change_disable;
+	int cpuset_mem_spread_rotor;
+	int cpuset_slab_spread_rotor;
+#endif
+#ifdef CONFIG_CGROUPS
+	/* Control Group info protected by css_set_lock */
+	struct css_set __rcu *cgroups;
+	/* cg_list protected by css_set_lock and tsk->alloc_lock */
+	struct list_head cg_list;
+#endif
+#ifdef CONFIG_FUTEX
+	struct robust_list_head __user *robust_list;
+#ifdef CONFIG_COMPAT
+	struct compat_robust_list_head __user *compat_robust_list;
+#endif
+	struct list_head pi_state_list;
+	struct futex_pi_state *pi_state_cache;
+#endif
+#ifdef CONFIG_PERF_EVENTS
+	struct perf_event_context *perf_event_ctxp[perf_nr_task_contexts];
+	struct mutex perf_event_mutex;
+	struct list_head perf_event_list;
+#endif
+#ifdef CONFIG_NUMA
+	struct mempolicy *mempolicy;	/* Protected by alloc_lock */
+	short il_next;
+	short pref_node_fork;
+#endif
+	atomic_t fs_excl;	/* holding fs exclusive resources */
+	struct rcu_head rcu;
+
+	/*
+	* cache last used pipe for splice
+	 */
+	struct pipe_inode_info *splice_pipe;
+#ifdef	CONFIG_TASK_DELAY_ACCT
+	struct task_delay_info *delays;
+#endif
+#ifdef CONFIG_FAULT_INJECTION
+	int make_it_fail;
+#endif
+	struct prop_local_single dirties;
+#ifdef CONFIG_LATENCYTOP
+	int latency_record_count;
+	struct latency_record latency_record[LT_SAVECOUNT];
+#endif
+	/*
+	* time slack values; these are used to round up poll() and
+	* select() etc timeout values. These are in nanoseconds.
+	 */
+	unsigned long timer_slack_ns;
+	unsigned long default_timer_slack_ns;
+
+	struct list_head	*scm_work_list;
+#ifdef CONFIG_FUNCTION_GRAPH_TRACER
+	/* Index of current stored address in ret_stack */
+	int curr_ret_stack;
+	/* Stack of return addresses for return function tracing */
+	struct ftrace_ret_stack	*ret_stack;
+	/* time stamp for last schedule */
+	unsigned long long ftrace_timestamp;
+	/*
+	* Number of functions that haven't been traced
+	* because of depth overrun.
+	 */
+	atomic_t trace_overrun;
+	/* Pause for the tracing */
+	atomic_t tracing_graph_pause;
+#endif
+#ifdef CONFIG_TRACING
+	/* state flags for use by tracers */
+	unsigned long trace;
+	/* bitmask and counter of trace recursion */
+	unsigned long trace_recursion;
+#endif /* CONFIG_TRACING */
+#ifdef CONFIG_CGROUP_MEM_RES_CTLR /* memcg uses this to do batch job */
+	struct memcg_batch_info {
+		int do_batch;	/* incremented when batch uncharge started */
+		struct mem_cgroup *memcg; /* target memcg of uncharge */
+		unsigned long nr_pages;	/* uncharged usage */
+		unsigned long memsw_nr_pages; /* uncharged mem+swap usage */
+	} memcg_batch;
+#endif
+#ifdef CONFIG_HAVE_HW_BREAKPOINT
+	atomic_t ptrace_bp_refcnt;
+#endif
+}
+
+
+__#注意：__以下描述都是针对于2.4内核，很多成员和函数都已经修改
+
+===== 1. 调度数据成员 =====
+(1) volatile long states;
+表示进程的**当前状态**:
+? TASK_RUNNING:正在运行或在就绪队列run-queue中准备运行的进程，实际参与进程调度。
+? TASK_INTERRUPTIBLE:处于等待队列中的进程，待资源有效时唤醒，也可由其它进程通过信号(signal)或定时中断唤醒后进入就绪队列run-queue。
+? TASK_UNINTERRUPTIBLE:处于等待队列中的进程，待资源有效时唤醒，不可由其它进程通过信号(signal)或定时中断唤醒。
+? TASK_ZOMBIE:表示进程结束但尚未消亡的一种状态(僵死状态)。此时，进程已经结束运行且释放大部分资源，但尚未释放进程控制块。
+?TASK_STOPPED:进程被暂停，通过其它进程的信号才能唤醒。导致这种状态的原因有二，或者是对收到SIGSTOP、SIGSTP、SIGTTIN或SIGTTOU信号的反应，或者是受其它进程的ptrace系统调用的控制而暂时将CPU交给控制进程。
+? TASK_SWAPPING: 进程页面被交换出内存的进程。
+(2) unsigned long flags;
+__进程标志__:这些信息同时也被存在**进程会计记录**中。
+?PF_ALIGNWARN 打印“对齐”警告信息。
+?PF_PTRACED 被__ptrace系统调用监控__。
+?PF_TRACESYS **正在跟踪。**
+?PF_FORKNOEXEC **进程刚创建，但还没执行exec。**
+?PF_SUPERPRIV **超级用户特权。**
+?PF_DUMPCORE **dumped core。**
+?PF_SIGNALED **进程被信号(signal)杀出。**
+?PF_STARTING **进程正被创建。**
+?PF_EXITING **进程开始关闭。**
+?PF_USEDFPU 该进程使用FPU(SMP only)。
+?PF_DTRACE delayed trace (used on m68k)。
+(3) long priority;
+进程优先级。 Priority的值给出进程每次获取CPU后可使用的时间(按jiffies计)。优先级可通过系统调用sys_setpriorty改变(在kernel/sys.c中)。
+(4) unsigned long rt_priority;
+rt_priority 给出__实时进程的优先级__，rt_priority+1000给出进程每次获取CPU后可使用的时间(同样按jiffies计)。实时进程的优先级可通过系统 调用sys_sched_setscheduler()改变(见kernel/sched.c)。
+(5) long counter;  //时间片计数器
+在 轮转法调度时表示__进程当前还可运行多久__。在进程开始运行是被赋为priority的值，以后每隔一个tick(时钟中断)递减1，减到0时引起新一轮调 度。重新调度将从run_queue队列选出counter值最大的就绪进程并给予CPU使用权，因此counter起到了进程的动态优先级的作用 (priority则是静态优先级)。
+(6) unsigned long policy;
+该进程的__进程调度策略__，可以通过系统调用sys_sched_setscheduler()更改(见kernel/sched.c)。调度策略有:
+?SCHED_OTHER 0 非实时进程，基于优先权的轮转法(round robin)。
+?SCHED_FIFO 1 实时进程，用先进先出算法。
+?SCHED_RR 2 实时进程，用基于优先权的轮转法。
+
+===== 2. 信号处理 =====
+(1) unsigned long signal;
+进程接__收到的信号__。每位表示一种信号，共32种。置位有效。
+(2) unsigned long blocked;
+进程所能接受信号的__位掩码__。置位表示屏蔽，复位表示不屏蔽。
+(3) struct signal_struct *sig;
+因 为signal和blocked都是32位的变量，Linux最多只能接受32种信号。对每种信号，各进程可以由PCB的sig属性选择使用自定义的__处理函数__，或是系统的缺省处理函数。指派各种信息处理函数的结构定义在include/linux/sched.h中。__对信号的检查安排在系统调用结束后，以 及“慢速型”中断服务程序结束后__(IRQ#_interrupt()，参见9。5节“启动内核”)。
+
+===== 3. 进程队列指针 =====
+(1) struct task_struct *next_task，*prev_task;
+所有进程(以PCB的形式)组成一个__双向链表__。next_task和就是链表的前后指针。链表的头和尾都是__init_task__(即0号进程)。
+(2) struct task_struct *next_run，*prev_run;
+由正在运行或是可以运行的，其进程状态均为TASK_RUNNING的进程所组成的一个双向循环链表，即__run_queue就绪队列__。该链表的前后向指针用next_run和prev_run，链表的头和尾都是init_task(即0号进程)。
+(3) struct task_struct *p_opptr，*p_pptr;和struct task_struct *p_cptr，*p_ysptr，*p_osptr;
+以上分别是指向原始父进程(original parent)、父进程(parent)、子进程(youngest child)及新老兄弟进程(younger sibling，older sibling)的指针。
+
+#正常情况下real_parent与parent是一样的，只有当该进程被ptrace系统调用追踪时两者才不同。 笑嘻嘻笑嘻嘻信息
+	struct task_struct __*real_parent; __/* real parent process */
+	struct task_struct __*parent;__ /* recipient of SIGCHLD, wait4() reports */
+	/*
+	* children/sibling forms the list of my natural children
+	 */
+	struct list_head __children;__	/* list of my children */
+	struct list_head __sibling;__	/* **linkage in my parent's children list** */
+
+
+===== 4. 进程标识 =====
+(1) unsigned short uid，gid;
+uid和gid是运行进程的用户标识和用户组标识。
+(2) int** groups**[NGROUPS];
+与多数现代UNIX操作系统一样，Linux允许进程同时拥有一组用户组号。在进程访问文件时，这些组号可用于__合法性检查__。
+(3) unsigned short euid，egid;
+euid 和egid又称为有效的uid和gid。出于系统安全的权限的考虑，运行程序时要检查euid和egid的合法性。通常，uid等于euid，gid等于 egid。有时候，系统会赋予一般用户暂时拥有root的uid和gid(作为用户进程的euid和egid)，以便于进行运作。
+(4) unsigned short fsuid，fsgid;
+fsuid 和fsgid称为**文件系统的uid和gid**，用于文件系统操作时的合法性检查，是Linux独特的标识类型。它们一般分别和euid和egid一致，但在 NFS文件系统中NFS服务器需要作为一个特殊的进程访问文件，这时只修改客户进程的fsuid和fsgid。
+(5) unsigned short __suid，sgid;__
+suid和sgid是根据POSIX标准引入的，在系统调用改变uid和gid时，用于保留真正的uid和gid。
+(6) int pid，pgrp，session;
+进程标识号、进程的组织号及session标识号，相关系统调用(见程序kernel/sys.c)有sys_setpgid、sys_getpgid、sys_setpgrp、sys_getpgrp、sys_getsid及sys_setsid几种。
+(7) int __leader;__
+是否是session的主管，布尔量。
+
+===== 5. 时间数据成员 =====
+(1) unsigned long timeout;
+用于__软件定时__，指出进程间隔多久被重新唤醒。**采用tick为单位**。
+(2) unsigned long it_real_value，it_real_iner;
+用 于itimer(interval timer)软件定时。**采用jiffies为单位**，每个tick使it_real_value减到0时向进程发信号__SIGALRM__，并重新置初值。初值由 it_real_incr保存。具体代码见kernel/itimer.c中的函数it_real_fn()。
+(3) struct timer_list real_timer;
+一种定时器结构(Linux共有两种定时器结构，另一种称作old_timer)。数据结构的定义在include/linux/timer.h中，相关操作函数见kernel/sched.c中add_timer()和del_timer()等。
+(4) unsigned long it_virt_value，it_virt_incr;
+关 于进程__用户态__执行时间的itimer软件定时。采用jiffies为单位。进程在用户态运行时，每个tick使it_virt_value减1，减到0时 向进程发信号**SIGVTALRM**，并重新置初值。初值由it_virt_incr保存。具体代码见kernel/sched.c中的函数 do_it_virt()。
+(5) unsigned long it_prof_value，it_prof_incr;
+同样是 itimer软件定时。采用jiffies为单位。__不管__进程在用户态或内核态运行，每个tick使it_prof_value减1，减到0时向进程发信号 SIGPROF，并重新置初值。初值由it_prof_incr保存。 具体代码见kernel/sched.c中的函数do_it_prof。
+(6) long __utime，stime，cutime，cstime，start_time;__
+以上分别为进程在用户态的运行时间、进程在内核态的运行时间、所有层次子进程在用户态的运行时间总和、所有层次子进程在核心态的运行时间总和，以及创建该进程的时间。
+
+===== 6. 信号量数据成员 =====
+(1) struct sem_undo *semundo;
+进程每操作一次信号量，都生成一个对此次操作的undo操作，它由sem_undo结构描述。这些属于同一进程的undo操作组成的链表就由semundo 属性指示。当进程异常终止时，系统会调用undo操作。sem_undo的成员semadj指向一个数据数组，表示各次undo的量。结构定义在 include/linux/sem.h。
+(2) struct sem_queue *semsleeping;
+每一信号量集合对应一 个__sem_queue等待队列__(见include/linux/sem.h)。进程因操作该信号量集合而阻塞时，它被挂到semsleeping指示的关 于该信号量集合的sem_queue队列。反过来，semsleeping。sleeper指向该进程的PCB。
+
+===== 7. 进程上下文环境 =====
+(1) struct desc_struct *ldt;
+进程关于CPU__段式__存储管理的__局部描述符表__的指针，用于仿真WINE Windows的程序。其他情况下取值NULL，进程的ldt就是arch/i386/traps.c定义的default_ldt。
+(2) struct thread_struct __tss;   //上下文切换时保存进程的CPU信息，如各寄存器的状态__
+任务状态段，其内容与INTEL CPU的TSS对应，如各种通用寄存器.CPU调度时，当前运行进程的TSS保存到PCB的tss，新选中进程的tss内容复制到CPU的TSS。结构定义在include/linux/tasks.h中。
+(3) unsigned long saved_kernel_stack;
+为MS-DOS的仿真程序(或叫系统调用vm86)保存的堆栈指针。
+(4) unsigned long __kernel_stack_page;__
+在内核态运行时，每个进程都有一个内核堆栈，其基地址就保存在kernel_stack_page中。
+
+===== 8. 文件系统数据成员 =====
+(1) struct fs_struct __*fs;__
+fs 保存了进程本身与VFS的关系消息，其中root指向根目录结点，pwd指向当前目录结点，umask给出新建文件的访问模式(可由系统调用umask更 改)，count是Linux保留的属性，如下页图所示。结构定义在include/linux/sched.h中。
+(2) struct files_struct __*files;__
+files包含了进程当前所打开的文件(struct file *fd[NR_OPEN])。在Linux中，一个进程最多只能同时打开NR_OPEN个文件。而且，前三项分别预先设置为标准输入、标准输出和出错消息输出文件。
+(3) int link_count;
+文件链(link)的数目。
+
+===== 9. 内存数据成员 =====
+(1) struct mm_struct *mm;
+在linux 中，采用__按需分页__的策略解决进程的内存需求。task_struct的数据成员mm指向关于**存储管理**的mm_struct结构。其中包含了一个**虚拟内存队列 mmap**，指向由若干__vm_area_struct__描述的虚存块。同时，为了加快访问速度，mm中的mmap_avl维护了一个AVL树。在树中，所有的 vm_area_struct虚存块均由左指针指向相邻的低虚存块，右指针指向相邻的高虚存块。 结构定义在include/linux/sched.h中。
+
+===== 10. 页面管理 =====
+(1) int swappable:1;
+进程占用的内存页面__是否可换出__。swappable为1表示可换出。对该标志的复位和置位均在do_fork()函数中执行(见kerenl/fork.c)。
+(2) unsigned long __swap_address;  __
+虚存地址比swap_address低的进程页面，以前已经换出或已换出过，进程下一次可换出的页面自swap_address开始。参见swap_out_process()和swap_out_pmd()(见mm/vmscan.c)。
+(3) unsigned long min_flt，maj_flt;
+该进程累计的minor__缺页次数__和major缺页次数。maj_flt基本与min_flt相同，但计数的范围比后者广(参见fs/buffer.c和 mm/page_alloc.c)。min_flt只在do_no_page()、do_wp_page()里(见mm/memory.c)计数新增的可 以写操作的页面。
+(4) unsigned long nswap;
+该进程累计换出的页面数。
+(5) unsigned long cmin_flt，cmaj_flt，cnswap;
+以本进程作为祖先的__所有层次子进程__的累计换入页面、换出页面计数。
+(6) unsigned long old_maj_flt，dec_flt;
+(7) unsigned long swap_cnt;
+下一次信号最多可换出的页数。
+
+===== 11. 支持对称多处理器方式(SMP)时的数据成员 =====
+(1) int __processor;__
+进程正在使用的CPU。
+(2) int last_processor;
+进程最后一次使用的CPU。
+(3) int lock_depth;
+上下文切换时系统内核锁的深度。
+
+===== 12. 其它数据成员 =====
+(1) unsigned short used_math;
+是否使用FPU。
+(2) char __comm[16];__
+进程正在运行的可执行文件的文件名。
+(3) struct rlimit rlim[RLIM_NLIMITS];
+结 构rlimit用于__资源管理__，定义在linux/include/linux/resource.h中，成员共有两项:rlim_cur是资源的当前最大 数目;rlim_max是资源可有的最大数目。在i386环境中，受控资源共有RLIM_NLIMITS项，即10项，定义在 linux/include/asm/resource.h中，见下表:
+(4) int__ errno;__
+最后一次出错的系统调用的错误号，0表示无错误。系统调用返回时，全程量也拥有该错误号。
+(5) long debugreg[8];
+保存INTEL CPU调试寄存器的值，在ptrace系统调用中使用。
+(6) struct exec_domain *exec_domain;
+Linux可以运行由80386平台其它UNIX操作系统生成的符合iBCS2标准的程序。关于此类程序与Linux程序差异的消息就由exec_domain结构保存。
+(7) unsigned long personality;
+Linux 可以运行由80386平台其它UNIX操作系统生成的符合iBCS2标准的程序。 Personality进一步描述进程执行的程序属于何种UNIX平台的“个性”信息。通常有PER_Linux、PER_Linux_32BIT、 PER_Linux_EM86、PER_SVR3、PER_SCOSVR3、PER_WYSEV386、PER_ISCR4、PER_BSD、 PER_XENIX和PER_MASK等，参见include/linux/personality.h。
+(8) struct linux_binfmt *binfmt;
+指向进程所属的全局执行文件格式结构，共有a。out、script、elf和java等四种。结构定义在include/linux/binfmts.h中(core_dump、load_shlib(fd)、load_binary、use_count)。
+(9) int __exit_code，exit_signal;__
+引起进程退出的返回代码exit_code，引起错误的信号名exit_signal。
+(10) int **dumpable:1;**
+布尔量，表示出错时是否可以进行memory dump。
+(11) int __did_exec:1;__
+按POSIX要求设计的布尔量，**区分**进程是正在执行老程序代码，还是在执行execve装入的新代码。
+(12) int tty_old_pgrp;
+进程显示终端所在的组标识。
+(13) struct tty_struct *tty;
+指向进程所在的__显示终端的信息__。如果进程不需要显示终端，如0号进程，则该指针为空。结构定义在include/linux/tty.h中。
+(14) struct wait_queue __*wait_chldexit;__
+在进程结束时，或发出系统调用wait4后，为了等待子进程的结束，而将自己(父进程)睡眠在该队列上。结构定义在include/linux/wait.h中。
+
+===== 13. 进程队列的全局变量 =====
+(1) **current;**
+当前正在运行的进程的指针，在SMP中则指向CPU组中正被调度的CPU的当前进程:
+#define current(0+current_set[__smp_processor_id()__])/*sched.h*/
+struct task_struct *current_set[NR_CPUS];
+(2) struct task_struct __init_task;__
+即0号进程的PCB，是进程的“根”，始终保持初值INIT_TASK。
+(3) struct task_struct ***task[NR_TASKS];**
+进 程队列数组，规定系统可同时运行的最大进程数(见kernel/sched.c)。NR_TASKS定义在include/linux/tasks.h 中，值为512。每个进程占一个数组元素(元素的下标不一定就是进程的pid)，task[0]必须指向init_task(0号进程)。可以通过 task[]数组遍历所有进程的PCB。但Linux也提供一个宏定义for_each_task()(见 include/linux/sched.h)，它通过next_task遍历所有进程的PCB:
+#define for_each_task(p) \
+for(p=&init_task;(p=p->next_task)!=&init_task;)
+(4) unsigned long volatile__ jiffies;__
+Linux的基准时间(见kernal/sched.c)。系统初始化时清0，以后每隔10ms由时钟中断服务程序do_timer()增1。
+(5) int__ need_resched;__
+重新调度标志位(见kernal/sched.c)。当需要Linux调度时置位。在系统调用返回前(或者其它情形下)，判断该标志是否置位。置位的话，马上调用schedule进行CPU调度。
+(6) unsigned long intr_count;
+记 录中断服务程序的嵌套层数(见kernal/softirq.c)。正常运行时，intr_count为0。当处理硬件中断、执行任务队列中的任务或者执 行bottom half队列中的任务时，intr_count非0。这时，内核禁止某些操作，例如不允许重新调度。

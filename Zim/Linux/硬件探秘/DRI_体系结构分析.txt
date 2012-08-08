@@ -1,0 +1,181 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-21T19:08:31+08:00
+
+====== DRI 体系结构分析 ======
+Created Monday 21 November 2011
+
+http://www.linuxgraphics.cn/xwindow/dri_hack.html
+
+
+作者: 刘鹏
+日期: 2009-09-23
+本文详细介绍了 DRI(Direct Rendering Infrastructure) 的体系结构，给出了模块图、数据流图和控制流图。
+简介
+Who develop it
+
+    Started by Jens Owen and Kevin E. Martin of Precision Insight.
+    First made widely available as part of XFree86 4.0 and is now part of the** X.Org Server**.
+    Currently maintained by Tungsten Graphics and others in the free software community.
+
+What is it
+
+An interface and a free software implementation used in the X Window System to securely allow **user applications to access the video hardware **without requiring data to be passed (slowly) through the X server.
+
+Who use it
+
+Its primary application is to provide **hardware acceleration** of the __Mesa__ implementation of OpenGL. Mesa 的硬件加速就是通过 DRI 来实现的。
+
+It has also been adapted to provide OpenGL acceleration on a** framebuffer console** without an X Server running.
+详细的综述
+
+Introduction to the Direct Rendering Infrastructure
+Architecture
+{{~/sync/notes/zim/Linux/硬件探秘/DRI_体系结构分析/dri_architecture.png}}来自参考资料4
+来自参考资料4
+
+libGL:
+
+    Present a OpenGL compatible API to the client application;
+    Implement the __GLX __API (the glue between OpenGL and X);
+    Find and load the appropriate 3D driver;
+    Dispatch the received OpenGL API calls to the 3D driver, or fallback to the X server if no 3D driver was found;
+
+3D driver:
+
+   ** Implement** the OpenGL API;
+    Transform the received vertex and texture data into the **hardware native** format;
+    Keep a backup of the graphics hardware state which is relevant to its drawing context;
+    If DMA is supported by the hardware, fill in DMA buffers with the vertex and texture data and signal the DRM module to dispatch it to the hardware;
+    Provide software fallbacks for all operations not supported in hardware.
+
+DRI extension:
+
+    Context/window setup;
+
+2D Driver:
+
+    Detect and initialize hardware;
+    Reserve on-board memory for 3D operations;
+    Synchronize 2D operations with 3D ones;
+    Identify which 3D driver and DRM module to load;
+    Communicate the current cliprect list;
+    Authorize client access to the DRM module;
+
+DRM core module
+
+    Thin **OS kernel abstraction layer** for portability
+
+DRM module:
+
+    Graphical hardware lock;
+    Allocate a pool of DMA buffers (in the AGP aperture if possible);
+    Memory map the DMA buffers to client virtual address space;
+    Dispatch the DMA buffers written by the clients;
+
+SAREA:
+
+    Store dirty hardware specific state;
+    Store cliprects.
+
+Details:
+
+    Direct Rendering Infrastructure: Architecture
+
+Data Flow Diagram2
+DRI Data Flow Diagram
+{{~/sync/notes/zim/Linux/硬件探秘/DRI_体系结构分析/dri_control_flow.png}}
+					DRI Data Flow Diagram
+
+This overview diagram shows the different paths which the data takes from the program to the graphics hardware.
+
+Starting at the left from the top.
+
+**Direct rendering program (3D):**
+
+Direct rendering (3D data) -> 3D data -> Graphics Hardware
+
+**Direct rendering program (2D):**
+
+X Protocol Encode -> Protocol Decode -> DIX -> XAA -> DDX Driver -> Graphics Hardware
+
+3D and 2D commands share the same transport / protocol arrow / stream between the indirect rendering program (client) and the X Server. It's not until the protocol is decoded in the X Server that they diverge.
+
+**Indirect rendering program (2D):**
+
+X Protocol Encode -> Protocol Decode -> DIX -> XAA -> DDX Driver -> Graphics Hardware
+
+**Indirect rendering program (3D):**
+
+X Protocol Decode -> GLX -> Mesa (including SW rasterizer) -> DDX Driver -> Graphics Hardware
+Control Flow Diagram2
+DRI Control Flow Diagram
+{{~/sync/notes/zim/Linux/硬件探秘/DRI_体系结构分析/dri_data_flow.png}}
+DRI Control Flow Diagram
+
+3D and 2D commands share the same transport / protocol arrow / stream between the indirect rendering program (client) and the X Server. It's not until the protocol is decoded in the X Server that they diverge.
+
+Indirect rendering program (3D):
+
+X Protocol Decode -> GLX -> Mesa (including SW rasterizer) -> DDX Driver -> Graphics Hardware
+
+Indirect rendering program (2D):
+
+X Protocol Encode -> Protocol Decode -> DIX -> XAA -> DDX Driver -> Graphics Hardware
+
+2D only program (2D):
+
+X Protocol Encode -> Protocol Decode -> DIX -> XAA -> DDX Driver -> Graphics Hardware
+
+RM and 2D commands share the same transport / protocol arrow / stream between the indirect rendering program (client) and the X Server. It's not until the protocol is decoded in the X Server that they diverge.
+
+Direct rendering program (2D):
+
+X Protocol Encode -> Protocol Decode -> DIX -> XAA -> DDX Driver -> Graphics Hardware
+
+Direct rendering program (RM):
+
+X Protocol Encode -> Protocol Decode -> DRI Module (-> DDX Driver) -> DRM Lib =>> SAREA & Kernel
+
+Direct rendering program (3D):
+
+Direct rendering (3D data) -> 3D data -> Graphics Hardware
+
+Resource management:
+
+SAREA & Kernel
+
+3DDRP Internals:
+
+Origins of 3D , RM , 2D & RM (x transport)
+DRI Low-Level Design Documents2
+
+Direct Rendering Infrastructure, Low Level Design Document
+
+The Direct Rendering Manager, Kernel Support for the Direct Rendering Infrastructure
+
+Hardware Locking for the Direct Rendering Infrastructure
+
+A Security Analysis of the Direct Rendering Infrastructure
+
+DRI Extensions for supporting the Direct Rendering Protocol Specification
+
+The DRM Memory manager
+
+TTMFencing - Information on fencing and flushes using TTM
+DRI OpenGL Support
+
+The DRI OpenGL support consists of several pieces:
+
+    DRM is a combination of at least two kernel modules, one of core DRM code and others providing APIs to userland to access different classes of video hardware.
+    The userland driver module contains an OpenGL driver that typically prepares buffers of commands to be sent to the hardware by the DRM and interacts with the windowing system for synchronization of access to the hardware.
+    Additional code provides access to the interface provided by the driver module. In X this is the libdri.so support module and a DRI-enabled DDX (2D driver). In the framebuffer implementation this is MiniGLX, which initializes the DRM and provides some X APIs to the userland driver despite the lack of an X Server.
+
+新进展
+
+    Work on DRI2 started at the 2007 X Developers' Summit. The new rendering infrastructure improves several shortcomings of the old design, including removing internal locks and adding proper support for offscreen rendering, so that compositing and XVideo/OpenGL applications are properly managed.
+
+SeeAlso
+
+    http://en.wikipedia.org/wiki/Direct_Rendering_Infrastructure
+    DRI Document

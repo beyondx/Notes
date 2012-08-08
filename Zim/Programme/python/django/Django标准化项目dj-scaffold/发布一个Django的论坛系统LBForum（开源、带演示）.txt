@@ -1,0 +1,73 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-23T21:40:42+08:00
+
+====== 发布一个Django的论坛系统LBForum（开源、带演示） ======
+Created Sunday 23 October 2011
+http://haoluobo.com/2010/02/%E5%8F%91%E5%B8%83%E4%B8%80%E4%B8%AAdjango%E7%9A%84%E8%AE%BA%E5%9D%9B%E7%B3%BB%E7%BB%9Flbforum%EF%BC%88%E5%BC%80%E6%BA%90%E3%80%81%E5%B8%A6%E6%BC%94%E7%A4%BA%EF%BC%89/c
+简介
+
+LBForum 用django开发的论坛系统，演示地址为：http://vik.haoluobo.com/lbforum/
+项目的地址为：http://github.com/vicalloy/LBForum
+界面部分抄的 FluxBB(一个开源的PHP论坛 http://fluxbb.org/ )。
+虽然Django写的论坛也不少，不过还真没什么好用的。
+大多Django论坛都是独立的app，而且不少还缺模板，想我这样有经验的Django用户要跑起来都觉得麻烦，其他普通用户就更别说了。
+LBForum主要注重部署的方便性和易用性，功能方面目前还比较简单。
+LBForum一开始就是以整站的形式提供，所以以LBForum做为基础项目进行二次开发是很容易的。
+同时LBForum的开发尽量遵照Django可复用app原则，因此即使需要将LBForum做为独立的app集成到其他项目也并不会太难。
+主要功能
+
+目前功能还比较简单，而且还有些小问题有待修正。
+
+    论坛分类，分版块
+    发帖，回帖
+    BBCode支持
+    置顶贴
+    使用django admin提供论坛管理功能
+
+用开发服务器把LBForum跑起来
+
+    先把代码down下来。LBForum托管在github上，http://github.com/vicalloy/LBForum 。如果你没有安装git，你可以直接用界面右上方的download
+    source功能下载代码。
+    运行\scripts\create_lbforum_env.py初始化lbforum的python虚拟环境。该脚本会自动创建一个python的虚拟环境并使用easy_install安装对应的依赖包，同时将一些依赖包解压到对应的目录中。
+    注：django使用的是svn版本，所以机器上必须要安装有SVN，不然脚本会运行失败。如果因为由于svn的问题导致脚本运行失败，可以运行lbforum_env.bat进入lbforum环境，手动安装django的svn版本。
+    环境初始化好后，运行lbforum_env.bat进入lbforum环境
+    运行%mg% syncdb初始化数据库
+    运行%mg% runserver启动django开发服务器
+    进入admin，创建论坛分类和版块
+    进入版块发帖
+
+LBForum的目录结构说明
+
+|+lbforum_env/#lbforum运行的python虚拟环境，运行create_lbforum_env.py后自动创建
+|+requirements/#lbforum用的第三方库和app，运行的时候会将该目录加到python路径
+|~scripts/#工程相关脚本
+| |-create_lbforum_env.py#初始化python虚拟环境，并自动安装easy_install/django依赖库
+| |-helper.py#提供其他脚本所需的辅助函数
+| `-lbforum_env.bat*#启动lbforum运行的虚拟环境及，并为lbforum的manage.py提供快捷方式%mg%，比如初始化数据库%mg%
+syncdb
+|~sites/#站点配置/模板/静态文件
+| `~default/#默认站点
+|   |+static/#静态资源文件，如css等
+|   |+templates/#Django模板目录
+|   |+templates_plus/#Django模板目录，用户将自己重写过的目标放到该目录
+|   `-……
+|~src/#django的app目录
+| |+account/#account相关app。具体站点通常会对用户中心进行定制，所以该app在实际应用中很可能需要针对实际情况进行修改。
+| |+djangohelper/#一些django的辅助函数等，
+| |+lbforum/#lbforum的主app，论坛功能都在改app中
+| |+lbregistration/#registration app的lbforum扩展，主要去掉邮件地址认证功能
+| |+onlineuser/#显示在线用户的app（可复用的django app，可脱离lbforum单独使用）
+| `+simpleavatar/#头像功能的app（可复用的django app，可脱离lbforum单独使用，依赖djangohelper）
+|+tools/#工程用到的辅助工具，目前只有一个virtualenv的脚本
+注：
+
+    由于计划在以后做i18n，所以目前只提供英文界面
+    django的错误提示是显示在字段后面，fluxbb的错误全部都显示在表单前面。由于模板没有调好，所以目前按照fluxbb的方式显示错误，所以错误显示有些不太正常。
+    bbcode的输入框本想做成自适应大小的，不过也调得有些问题，所以现在输入框的大小固定。
+    文档… ，感觉好难写-_-，目前文档不全（项目中没有带任何的文档），日后补上。
+    应用程序的目录结构主要查看pinax
+    simpleavatar模块部分代码来自django-avatar
+    依赖包除用easy_install在线安装的外，尽量使用zip包的方式附带在项目中，减少安装依赖包的困难。
+    远程部署脚本计划使用fabric，但fabric本身安装比较麻烦，所暂未处理。
+    项目最早放在googlecode，不过感觉github的功能更强些，所以移了过去。

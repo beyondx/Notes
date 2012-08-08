@@ -1,0 +1,369 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-22T17:29:24+08:00
+
+====== Linux Kernel 2.6进程调度的分析 ======
+Created 星期三 22 六月 2011
+http://www.cnblogs.com/quan/articles/1264646.html
+
+第一章 Kernel 2.4存在的不足
+根据对2.4进程调度的分析，我们总结出看出2.4内核总的特点就是：
+        内核调度简单有效
+        内核不可抢占
+但是经过对2.4内核的分析，我们也明显看到了它的缺点：
+1.调度算法复杂度是O(n)，与系统负荷关系较大。而且调度算法在设计上也有缺陷
+，比如：
+(1) 2.4进程调度只设置了一个进程就绪队列，这样有的进程用完了自己时间片以后还要呆在就绪进程队列里面。这样这个进程虽然在这一轮调度循环里面已经无法取得CPU的使用权，但是还要参与goodness()值的计算，这样就白白浪费了时间。
+(2) 就绪进程队列是一个全局数据结构，多个CPU只有一个就绪队列runqueue，因而调度器对它的所有操作都会因全局自旋锁而导致系统各个处理机之间的等待，使得就绪队列成为一个明显的瓶颈。
+2.调度算法在内核态不可抢占。如果某个进程一旦进了内核态那么再高优先级的进程都无法剥夺，只有等进程返回内核态的时候才可以进行调度。缺乏对实时进程的支持。
+
+第二章Kernel 2.6进程调度分析
+
+一、基本思想
+Kernel2.6调度算法仍然是基于优先级的调度，它的算法复杂度为O(1)，也就是说是调度器的开销是恒定的，与系统当前的负载没有关系。
+1. 就绪队列的改进
+每个CPU有两个按优先级排序的数组：一个是active array；一个是expired array。
+
+Active array是当前CPU可能选择执行的运行进程队列，队列中的每个进程都有时间片剩下。Expired array是那些用户时间片的就绪进程队列。一旦active array里面
+某个普通进程的时间片用完了，调度器将重新计算进程的时间片、优先级，将它从active array中删除，插入到expired array中相应得优先级队列中。Active array和expired array是通过两个指向每个CPU运行队列的指针来访问的。所以当active array中所有的进程都用完时间片，只需将两个指针切换一下就可以了，这比Kernel 2.4的切换要改进了很多。
+2. 快速查找应该执行的进程
+系统中往往有很多的就绪进程，如何快速找到CPU即将运行的进程就成了关系到系统性能的一个重要因素。针对2.4的缺点，Kernel 2.6进行了重新设计：引进了一个64bit的bitmap作为进程队列的索引，用bitmap来记载某个优先级的进程队列上有无进程，如果有则为1。这样使得寻找优先级最高的任务只需要两个BSFL命令。
+3. 引进"load estimator"
+在一个负载很重的系统上有一个很好的交互感是一件很困难的事情，设计者经过研究发现一味的激励（boost）交互任务并不够，还需惩罚（punish）那些需求大于可获得CPU时间的进程。调度器通过对用户睡眠时间和运行时间的纪录来判断进程是否是交互进程，一旦被认为是交互进程，调度器会给进程很多"奖励"（bonus）。
+4. 内核可抢占
+内核可抢占可以说是2.6内核调度器优于2.4内核的一个很重要的原因。当内核进程没有访问内核的关键数据，也就是内核没有被加锁，此时内核代码是可重入的，因此更高优先级的进程可以在此时中断正在执行的进程，从而达到抢占的目的。
+5. 调度器相关的负载均衡
+负载均衡有两种策略，一种是从别的CPU上将进程迁移过来，称为"pull"；一种是将本CPU上的进程迁移出去，称为"push"。
+二、数据结构
+1. 进程优先级的划分
+Kernel 2.6将进程优先级作了以下规定：进程优先级范围是从0 ~ MAX_PRIO-1，其中实时进程的优先级的范围是0 ~ MAX_RT_PRIO-1，普通进程的优先级是MAX_RT_PRIO ~ MAX_PRIO-1。数值越小优先级越高。
+2. 就绪队列runqueue（kernel/sched.c）
+struct runqueue是2.6调度器中一个非常重要的数据结构，它主要用于存放每个CPU的就绪队列信息。限于篇幅，这里只介绍其中相对重要的部分：
+(1) prio_array_t *active, *expired, arrays[2]
+这是runqueue中最重要的部分。每个CPU的就绪队列都是一个数组，按照时间片是否用完将就绪队列分为两个部分，分别用指针active和expired来指向数组的两个下标。prio_array_t的结构如下：
+struct prio_array {
+        int nr_active;                             /*本进程组中进程个数*/
+        struct list_head queue[MAX_PRIO];          /*每个优先级的进程队列*/
+        unsigned long bitmap[BITMAP_SIZE];        /*上述进程队列的索引位图*/
+};
+数组queue[MAX_PRIO]里面存放的是优先级为i（MAX_PRIO>i>=0）的进程队列的链表头，即task_struct::runlist（通过runnlist即可找到task_struct）。
+那么调度器在执行调度的任务时是怎么找到优先级最高的进程呢？
+在结构体struct prio_array中有一个重要的数据unsigned long bitmap[BITMAP_SIZE]，这个数据是用来作为进程队列queue[MAX_PRIO]的索引位图，bitmap的每一位（bit
+）都与queue[i]对应。当queue[i]的进程队列不为空时，bitmap的相应位就为1；否则就为0。这样我们只需要通过汇编指令从进程优先级由高到低的方向找到第一个为1的位置idx即为当前就绪队列中最高的优先级（函数sched_find_first_bit()就是用来完成这一工作的），那么queue[i]->next就是我们要找的task_struct::runlist。
+
+当一个普通进程的时间片用完以后将重新计算进程的时间片和优先级，将该进程从active array中删除，添加到expired array中相应优先级的进程队列中。当Active array中没有进程时，则将active和expired指针调换一下就完成了切换工作。而在2.4内核中重新计算时间片是在所有就绪进程的时间片都用完以后才统一进行的，因而进程时间片的计算非常耗时，而在2.6中计算时间片是分散的，而且通过以上的方法来实现时间片的轮转，这也是2.6调度器一个亮点。
+另外，程序将struct runqueue定义在sched.c里面而没有定义在sched.h里面是为了让抽象调度器部分的代码，使得内核的其他部分使用调度器提供的接口即可。
+(2) spinlock_t lock
+runqueue的自旋锁，当对runqueue进行操作的时候，需要对其加锁。由于每个CPU都有一个runqueue，这样会大大减少竞争的机会。
+(3) task_t *curr
+CPU当前运行的进程。在程序中还有一个全局变量current也是CPU当前运行的进程，它在通常情况下和runqueue的curr指针是相同的，但是当调度器进行调度的时，如果已经找到最高优先级的进程，则此时做rq->curr = next;可见在进行任务切换之前，rq->curr和current的值是不同的。当唤醒一个进程的时候，很明显将唤醒进程与rq->curr的优先级进行比较更有意义。
+(4) unsigned long expired_timestamp
+此变量是用来记录active array中最早用完时间片的时间（赋值jiffies）。因此，用这个量就可以记录expired array中等时间最长的进程的等待时间。这个值的主要
+用处是用于宏EXPIRED_STARVING()（这个宏主要是用来判断expired array中的进程是否已经等待了足够长的时间，详见"进程调度的生与死"一节中"scheduler_tick()"函数的介绍）。
+(5) unsigned long nr_running, nr_switches, nr_uninterruptible,timestamp_last_tick
+
+用来记录该CPU进程相关数据。具体作用如下
+nr_running
+记录该CPU上就绪进程总数，是active array和expired array进程总数和
+nr_switches
+记录该CPU运行以来发生的进程切换次数
+nr_uninterruptible
+记录该CPU不可中断状态进程的个数
+timestamp_last_tick
+记录就绪进程队列上次发生调度的时间，用于负载均衡
+(6) struct list_head migration_queue
+这个是存放希望迁移到其他CPU上的进程队列，实际迁移的数据类型是migration_req_t，这里是通过将migration_req_t::list连接起来。详见"负载均衡"中"push"一节。
+3. 进程标识task_struct(include/linux/sched.h)
+Linux是一个多任务的操作系统，在多任务操作系统中每一个进程都由一个PCB程序控制块来标识在Linux中PCB实际上是一个名为task_struct的结构体。task_struct有上百个域，主要包括了10个方面的信息：1.进程状态；2.调度信息，如调度策略，优先级，时间片，交互值等；3.进程的通讯状况；4.进程树中的父子兄
+弟的指针；5.时间信息，如睡眠时间，上一次发生调度时间等；6.标号，决定该进程归属；7.打开的一些文件信息；8.进程上下文和内核上下文；9.处理器上下文；10.内存信息。
+由于task_struct结构体比较复杂，因此我们只注意它与进程调度相关的重要部分。
+
+(1) volatile long state
+进程所处的状态。在include/linux/sched.h中包含6种状态：
+#define TASK_RUNNING                    0
+#define TASK_INTERRUPTIBLE              1
+#define TASK_UNINTERRUPTIBLE    2
+#define TASK_STOPPED                    4
+#define TASK_ZOMBIE                     8
+#define TASK_DEAD                               16
+新增的TASK_DEAD是表示已经退出且不需父进程回收的进程的状态。
+(2) struct thread_info *thread_info
+当前进程运行的一些环境信息。其中有两个结构成员非常重要，与调度密切相关：
+__s32                   preempt_count;
+unsigned long           flags;
+preempt_count是用来表示内核能否被抢占的使能成员。如果它大于0，表示内核不能被抢占；如果等于0，则表示内核处于安全状态（即没有加锁），可以抢占。flags里面有一个TIF_NEED_RESCHED位，它和Kernel 2.4中need_resched作用一样。如果此标志位为1，则表示应该尽快启动调度器。
+(3) int prio, static_prio
+prio是进程的动态优先级，相当于Kernel2.4中用goodness()函数计算出来的结果；在Kernel2.6 中不再是由调度器统一计算，而是独立计算；prio的计算和许多因素有关，详见"进程优先级的计算"一节。static_prio则是进程的静态优先级，与nice意义相同。nice的取值仍然是-20 ~ 19，数值越小，进程优先级越高。kernel/sched.c中定义了两个宏来完成将nice转换到prio的取值区间和将prioity转换到nice取值区间。
+#define NICE_TO_PRIO(nice)      (MAX_RT_PRIO + (nice) + 20)
+#define PRIO_TO_NICE(prio)      ((prio) - MAX_RT_PRIO - 20)
+可见prioity和nice的关系是：
+priority = MAX_RT_PRIO+nice+20
+
+(4) struct list_head run_list
+前面提到过，就绪进程都是按照优先级进行排列，prio_array中的queue[MAX_PRIO]存放的是指向每个优先级队列的链头list_head；而同一优先级的进程则是通过run_list链接在一起。
+include/linux/list.h定义了一种抽象的双向链表struct list_head，通过它可以将任意类型的结构体链接到一起。task_struct也是通过这种方式链接起来的。
+(5) prio_array_t *array
+指向当前CPU的active array的指针。在进程控制块里面又加了一个指向active array的指针，看似重复，其实不然。比如说对于下面的代码（kernel/sched.c）：
+array = next->array;
+                dequeue_task(next, array);
+                recalc_task_prio(next, next->timestamp + delta);
+                enqueue_task(next, array);
+对于单处理器（UP）的情况，我们确实可以通过runqueue::active直接得到当前的active array；但是对于SMP，就不是这样了，需要引用next的thread_info，再依靠thread_info中的cpu找到next所在的处理器，找到以后再找到这个cpu上的runqueue，最后得到active。对于schedule这样频繁调用的函数，这种浪费是不能容忍的。
+(6) unsigned long sleep_avg
+进程的平均等待时间，单位是纳秒（nanosecond），在0 ~ NS_MAX_SLEEP_AVG范围内。它的实质是进程等待时间和运行时间的差值。当进程处于等待或者睡眠状态时，该
+值变大；当进程运行时，该值变小。sleep_avg是Kernel 2.6中衡量进程的一个关键指标，它既可以用来衡量进程的交互程度，也可以用来衡量进程的紧急程度。具体内容将在"平均等待时间sleep_avg"一节作详细介绍。
+(7) long interactive_credit
+表示进程交互程度，取值范围在-CREDIT_LIMIT ~ CREDIT_LIMIT+1之间。进程创建的时候值为1，以后根据不同的情况进行不同的增1、减1；如果一个进程的interactive_credit超过CREDIT_LIMIT之后，这个进程就会被认为是交互式进程，同时interactive_credit的值也就不再改变了（恒为CREDIT_LIMIT+1）。下面将在"交互进程优化"一节详细介绍。
+(8) unsigned long long timestamp
+进程发生调度的时间，单位和sleep_avg一样，也是纳秒。它负责纪录以下四种情况的时间：
+a. 进程被唤醒的时间：
+在activate_task()（kernel/sched.c）中记录（p->timestamp = now）。
+b. 进程被切换到expired array的时间：
+在schedule()（kernel/sched.c）中记录，当准备进行进程切换的时候，记录下该进程被切换到expired array的时间（prev->timestamp = now）。
+c. 进程被切换到active array的时间：
+在schedule()（kernel/sched.c）中记录，进行进程切换的开始，记录下下一个进程被切换到active array的时间（next->timestamp = now）。
+d. 负载均衡相关的赋值
+在进行负载均衡的时候，当把一个进程从其他CPU上pull过来的时候需要将该进程的timestamp设成sched_clock() - (src_rq->timestamp_last_tick - p->timestamp)，即相对于本CPU被切换下来的时间。
+(9) int activated
+表示该进程被唤醒的类别：
+actived=-1      表示该进程并非自愿sleep，其先前状态是TASK_UNINTERRUPTIBLE。在try_to_wake_up()中设置。
+actived=0               缺省值，表示进程本来就是处于就绪状态。
+actived=1               进程先前状态是TASK_INTERRUPTIBLE，但是不是由中断唤醒；这样的进程在第一次运行时有credit，以后就没有了。在activate_task()中设置。
+actived=2               进程先前状态是TASK_INTERRUPTIBLE，进程被中断唤醒。这样的进程非常像交互式进程。在activate_task()中设置。
+(10) unsigned long policy
+进程的调度策略和2.4一样，有以下几种：
+SCHED_FIFO              先进先出式调度，除非有更高优先级进程申请运行，否则该进程将保持运行至退出才让出CPU
+SCHED_RR                轮转式调度，该进程被调度下来后将被置于运行队列的末尾，以保证其他实时进程有机会运行）
+SCHED_OTHER     常规的分时调度策略
+(11) unsigned int time_slice, first_time_slice
+ime_slice是进程剩余的时间片，相当于Kernel 2.4里面counter，但是时间片不再影响进程的优先级。first_time_slice用来记录时间片是否是第一次分配（进程创建时），如果值不为0，进程退出时将时间片交还给父进程。
+三、调度策略
+1. 进程优先级
+(1) 优先级的计算
+前面已经说过，优先级由两部分构成，一是静态优先级static_prio，一是动态优先级prio。静态优先级在进程创建的时候就被赋值，并且不变（除非用系统调用改变进
+程的nice值）；而进程的动态优先级则是跟static_prio和sleep_avg有关。对于实时进程的优先级在创建的时候就确定了，而且一旦确定以后就不再改变，所以下面部分
+仅对于非实时进程而言。具体的计算由函数effecitve_prio()（kernel/sched.c）完成。
+函数将进程的sleep_avg映射成范围是-MAX_BONUS/2 ~ MAX_BONUS/2的变量bonus，而MAX_BONUS是等于 ，可见sleep_avg仅能影响的优先级范围在-5 ~ 5之间。具体的映射是由以下规则完成的：
+      那么进程的动态优先级就等于： （当然必须在MAX_RT_PRIO和MAX_PRIO-1之间）。可见，sleep_avg和bonus是一个线性关系。进程的sleep_avg越大，bonus越大，从而进程的动态优先级也就越高。
+(2) 何时计算优先级
+计算进程的动态优先级一般调用两个函数，一个是effective_prio()，一个是recalc_task_prio()。函数recalc_task_prio ()先要根据进程被唤醒前的状态（即actived）、interactive_credit等来计算进程的sleep_avg（详见"平均等待时间sleep_avg"一节），在最后调用effective_prio()来计算函数的动态优先级。总的来说，有以下几种情况需要计算进程的优先级：
+a. 创建新进程，使用函数effective_prio()（因为此时进程尚未进行调度，没有sleep_avg和interactive_credit可言）；
+b. 唤醒等待进程时，使用函数recalc_task_prio ()来计算进程动态优先级。
+c. 进程用完时间片以后，被重新插入到active array或者expired array的时候需要重新计算动态优先级，以便将进程插入到队列的相应位置。此时，使用函数effective_prio()；
+d. 其他情况，如IDLE进程初始化等时候。
+2. 进程时间片
+(1) 时间片的计算
+进程的时间片time_slice是基于进程静态优先级的，静态优先级越高（值越小），时间片就越大。计算时间片是同过函数task_timeslice()（kernel/sched.c）来完成的
+。该函数也是使用线性映射的方法，将进程优先级[MAX_RT_PRIO, MAX_PRIO-1]映射到时间片[MIN_TIMESLICE, MAX_TIMESLICE]范围内。通过优先级来计算时间片的等式为：
+timeslice = MIN_TIMESLICE + ((MAX_TIMESLICE - MIN_TIMESLICE) *(MAX_PRIO-1- (p)->static_prio) / (MAX_USER_PRIO-1))
+(2) 何时计算时间片
+当就绪进程的所有进程的时间片都是0的时候，许多操作系统（包括旧版本的Linux）是使用下面的循环来给进程队列计算时间片的：
+for (each task on the system) {
+        recalculate priority;
+        recalculate timeslice
+}
+这样的循环计算会导致以下问题：
+        循环可能会花很长时间，而且算法的复杂度O(n)；
+        计算过程中必须给进程队列和task_struct上锁，这样可能导致大量的竞争；
+        因为计算时间不可预计，所以可能给实时进程带来问题；
+
+在Kernel 2.6中时间片的计算是分散的，具体的计算既可以用task_timeslice()，也可以用其他方法。
+        a. 进程创建时，将父进程的时间片分一半给子进程，同时父进程的时间片减半。（详见"sched_fork"一节）；
+        b. 进程用完时间片以后，需要重新计算时间片，并将进程插入到相应的运行队列。（详见"scheduler_tick"一节）；
+        c. 进程退出时，根据first_timeslice的值来决定是否将子进程的时间片返还给父进程。（详见"退出调度"一节）。
+可见Kernel2.6通过分散计算时间片的办法很好解决了上面循环计算所带来的几个问题。
+3. 平均等待时间sleep_avg
+平均等待时间sleep_avg既决定了进程优先级，又影响了进程交互程度的，因此它是Kernel 2.6调度系统里面很复杂的一块。下面将跟踪调度器中sleep_avg的变化情况。
+(1) 进程创建
+当一个进程被创建的时候，父进程的sleep_avg要乘以"PARENT_PENALTY / 100"，子进程的sleep_avg要乘以"CHILD_PENALTY / 100"，PARENT_PENALTY=100，而
+CHILD_PENALTY = 95，可见创建以后子进程的sleep_avg要降低，而父进程则不变。
+(2) 进程被唤醒
+当一个进程被唤醒以后，acitvate_task()将调用函数recalc_task_prio()来计算进程的sleep_avg，参数是进程的睡眠时间，从而进一步计算进程的动态优先级。计算sleep_avg有以下几种可能（当然都需在0 ~ NS_MAX_SLEEP_AVG范围内）：
+a. MAX_SLEEP_AVG - AVG_TIMESLICE
+当用户进程（p->mm）不是由UNINTERRUPTIBLE状态唤醒（p->activated != -1），且睡眠时间大于INTERACTIVE_SLEEP(p)，则做此赋值；
+b. 不变
+当用户进程（p->mm）是由UNINTERRUPTIBLE状态唤醒（p->activated == -1），且"交互程度"不高（!HIGH_CREDIT(p)），如果原来的sleep_avg已经大于INTERACTIVE_SLEEP(p)，则不变（对非自愿睡眠的进程进行惩罚）； 否则见下面一条；
+c. INTERACTIVE_SLEEP(p)
+如果加上此次的睡眠时间后大于INTERACTIVE_SLEEP(p)，则sleep_avg赋值为INTERACTIVE_SLEEP(p)；
+d. sleep_avg+sleep_time
+如果以上条件全都不满足，则直接将本次睡眠时间加到sleep_avg上。
+(3) 进程调度过程中
+在schedule()过程中，如果发现优先级最高的程序是刚刚从TASK_INTERRUPTIBLE状态被唤醒的进程（actived>0，参见"actived"的定义），那么将调用recalc_task_prio()，运算过程与(2)相同，所不同的就是调用时的参数sleep_time是进程在就绪队列的等待时间。如果进程不是被中断唤醒的（actived=1），那么sleep_time还将受到"(ON_RUNQUEUE_WEIGHT * 128 / 100) / 128"的限制，因为该进程很可能不是交互式进程。
+(4) 进程被剥夺CPU使用权
+当进行进程切换的时候，被剥夺CPU使用权的进程的sleep_avg将会被减去进程的运行时间run_time（这里的run_time对于交互式进程也有奖励的，详见"交互式进程优先
+"一节），从而保证调度器的公平性。进程运行的时间越长，sleep_avg就越小（底限是0），进程的动态优先级也就越低，从而被调度器调度到的机会也就会越小。
+(5) 进程退出
+当一个进程退出时，如果该进程的sleep_avg比父进程要小（也就是运行时间长），那么父进程将得到惩罚。具体惩罚的规则为：
+p->parent->sleep_avg = p->parent->sleep_avg / (EXIT_WEIGHT+1) * EXIT_WEIGHT + p->sleep_avg /  (EXIT_WEIGHT + 1);
+父进程的sleep_avg将变为原来的1/( EXIT_WEIGHT+1)，再加上子进程的sleep_avg的1/( EXIT_WEIGHT+1)，可见子进程运行的越多，父进程得到的惩罚也就越大。这样也是为了保证调度器的公正性。
+4. 交互进程优化
+Kernel 2.6为了增加系统在高负载情况下的交互感受，做了以下三点优化。
+(1) interactive_credit -- 奖励sleep_avg
+interactive_credit是设置在task_struct里面用来标记进程的"交互程度"的，它在进程创建时候被置为0，以后随着不同的情况而增加，减少。增加interactive_credit有两处增1的地方，都在函数recalc_task_prio()里面。
+a. 进程所拥有的内存区域不为空(p->mm!=NULL)，即进程不是内核进程，如果不是从 TASK_UNINTERRUPTIBLE状态中被唤醒的（p->activated!=-1），且等待的时间（包括在休眠中等待时间和在就绪队列中等待时间）超过了一定限度（sleep_time>INTERACTIVE_SLEEP(p)）；此时将interactive_credit增1；
+b. 进程的等待时间大于NS_MAX_SLEEP_AVG了，这种进程很可能是交互进程，所以interactive_credit增1。减少interactive_credit只有一处地方减1，在函数schedule()里面。当进程将要被切换出CPU的时候，要计算进程的运行时间run_time，并将进程的sleep_avg进行调整，如果调整后的sleep_avg小于0（说明进程的运行时间大于等待时间），而且该进程的interactive_credit在HIGH_CREDIT(p)和LOW_CREDIT(p)之间（说明该进程非交互进程），则将interactive_credit减1作为对进程的惩罚。从上面的分析可以看出，无论interactive_credit如何增减，它都在-(CREDIT_LIMIT+1) ~ (CREDIT_LIMIT+1)范围内；而且当interactive_credit增大到CREDIT_LIMIT+1，即调度器认定该进程为交互进程以后，interactive_credit就不再变化。调度器采用宏HIGH_CREDIT()来判断一个进程是否是交互进程，如果是，则该进程将得到以下奖励：
+a. 当进程被剥夺CPU使用权时，如果发现该进程是交互进程，则将该进程的运行时间减小，run_time /= (CURRENT_BONUS(prev) ? : 1)。即sleep_avg减去的运行时间比实际的运行时间要小，从而增加进程的sleep_avg。
+b. 交互式进程在就绪队列上等待的时间也将增加到sleep_avg里面，p->sleep_avg+= sleep_time；从而增加进程的sleep_avg。
+可见，对于交互进程都是奖励sleep_avg的，从而达到提高优先级的目的。对于交互式进程，调度器并没有在时间片上进行奖励，而是在优先级上进行奖励，是因为交互式进程通常是运行时间短、睡眠时间长，而且要求响应快，而奖励优先级可以给交互进程更多的运行机会，因此，调度器对于交互进程的奖励办法是非常公平和科学的。
+
+(2) 平均等待时间sleep_avg -- 奖励动态优先级
+在"平均等待时间"一节已做详细介绍。对于交互进程来说，因为它睡眠的时间较长，所以sleep_avg要大一些。另外，经常处于TASK_INTERRUPTIBLE状态，而且是被中断唤醒的进程最有可能是交互进程，而这种进程的衡量因素也是sleep_avg。
+总之，由于交互进程一般sleep_avg较大，所以调度器通过奖励动态优先级的方式来使得进程获得更多执行的机会。
+ (3) TASK_INTERACTIVE() -- 奖励再次被插入active array
+这个宏是根据进程的动态优先级和静态优先级来判断该进程的"交互程度"。在进程时间片用完时，使用这个宏作为一个参考因素来决定是否将进程重新插入active array。它的定义是：
+(p)->prio <= (p)->static_prio - DELTA(p)
+DELTA(p) =      (SCALE(TASK_NICE(p), 40, MAX_BONUS) + INTERACTIVE_DELTA)
+SCALE(v1,v1_max,v2_max) = (v1) * (v2_max) / (v1_max)
+可以看出这个宏是将进程的动态优先级和进程的静态优先级做比较，以判断nice值为n（静态优先级）时，进程p需要多大的动态优先级才能具有"足够的交互性"。从宏的定义可以看出当进程的nice值大于12时，进程是不可能被认为是具有足够的交互性（因为nice>12时，DELTA(p)>5，而由于sleep_avg给进程带来的动态优先级上的奖励最大只有5，所以TASK_INTERACTIVE(p)永假）；当进程的nice值为-20时，进程的sleep_avg必须非常小才可能使得TASK_INTERACTIVE(p)值为假。
+
+从以上分析可以看出，这三种奖励办法一个比一个奖励力度大，奖励条件也一个比一个苛刻。而且调度器将用户的意愿放在了第一位（因为nice值是可以通过系统调用改变的），由于用户的意愿而给予的奖励（再次被插入active array）最大，而调度器所给予的奖励占的比例并不大。
+
+4. 调度器主函数schedule()（kernel/sched.c）
+schedule()是用来挑选出下一个应该执行的进程，并且完成进程切换的工作，是进程调度的主要执行者，也是操作系统Kernel很重要的一个函数，它的性能将直接决定操作系统的性能。
+(1) 函数主要流程
+两个重要数据：prev和next
+prev            当前进程，也就是即将被切换出CPU的进程
+next            下一个进程，也就是即将被切换进CPU的进程
+准备工作
+a. 做原子操作方面的检查（主要是检查内核抢占和内核锁的深度是否一致）；
+b. 关闭内核抢占（通过函数preempt_disable()，详见"内核可抢占"一节），因为此时将要对内核一系列重要数据进行操作，所以必须将内核抢占关闭；
+c. 将当前进程current赋值给prev，获取当前CPU的运行队列rq，释放prev的内核锁（因为即将对prev做一系列操作），计算prev的运行时间（如果是交互进程则给予run_time上的奖励，详见"interactive_credit"一节），给rq上自旋锁（防止其他进程访问rq）；
+d. 进行内核的数据统计（如上下文切换次数等），如果prev处于可中断状态，而且有信号等待处理，则将prev状态置为TASK_RUNNING，否则将prev从rq中删除。（这一部分的代码主要是因为在进程在转入睡眠状态时，需要主动调用schedule()函数）；
+
+e. 如果rq中就绪进程个数为0，而且系统是SMP，则进行负载均衡的操作（详见"负载均衡"一节），否则将next置为idle进程，赋值rq->expired_timestamp = 0（具体含义参见"expired_timestamp"的介绍一节），然后直接进行进程切换。
+寻找最高优先级进程
+a. 如果rq的active array中进程个数为0，则将active array和expired array进行切换。具体的过程由以下代码完成：
+array = rq->active;
+rq->active = rq->expired;
+                rq->expired = array;
+                rq->expired_timestamp = 0;
+                rq->best_expired_prio = MAX_PRIO;
+b. 用函数sched_find_first_bit()找到优先级最高的进程队列的偏移量idx，那么queue[idx]->next即为所找的next，可以通过以下三行代码快速完成：
+idx = sched_find_first_bit(array->bitmap);
+        queue = array->queue + idx;
+next = list_entry(queue->next, task_t, run_list);
+c. 如果next是从TASK_INTERRUPTIBLE状态中被唤醒的（actived>0），则将进程从就绪队列中删除，将进程在就绪队列上的等待时间也加在等待时间里面重新计算进程的prio（详见"平均等待时间"一节），再根据新的优先级将进程插入相应就绪队列。
+进程切换
+a. 如果prev!=next，则进行进程切换；
+b. 进行进程切换前的准备：将当前时间赋给next->timestamp，并且将rq->curr=next；可见此时的rq->curr与current不再相同；
+c. 进程切换，包括内存、堆栈切换等。具体过程和Kernel 2.4大致相同，在这里不再赘述；
+完成进程切换后
+完成进程切换过后，还需要进行释放prev的mm，给rq解锁，重新给current获得内核锁（注意在此时current=next=rq->curr），使能内核抢占；最后检查TIF_NEED_RESCHED位，如果已被置位，则重新开始进行调度，重复上述过程；否则调度结束。
+(2) 函数执行时机
+schedule()函数何时被调用，如何被调用也是一个非常重要的问题。在Kernel 2.4里面，schedule()函数可以通过两种方式调用：
+一种是主动调度，直接调用函数schedule()，如进程退出，或者进入睡眠状态等。
+一种是强制性调度，置位当前进程task_struct里面的need_resched。当是从内核态返回用户态的时候将检查这个位，如果发现已经被置位，会调用schedule()；有以下
+三种情况可能会置位need_resched：
+a. 时钟中断服务程序中，发现进程已经用完自己的时间片，需要被切出CPU；
+b. 当唤醒一个睡眠进程时，发现该进程比当前占有CPU的进程更有运行资格；
+c. 一个进程通过系统调用改变调度政策、nice值等。
+和主动调度相比，强制性调度有一定的调度延时。Kernel2.6的调度时机包含了Kernel 2.4的调度时机（不同的就是need_resched变成了一个bit）同时加入了一个重要的特性--内核可抢占，具体的分析见"内核可抢占"一节。
+5. 进程调度的生与死
+这一部分分析了系统调度器开始工作的时机，以及一个进程从创建到灭亡过程中和进程调度相关的信息和函数。
+(1) 系统启动时进程调度的初始化 -- sched_init()
+系统进程调度的初始化由sched_init()函数完成，它被init/main.c中函数start_kernel()调用，该函数主要完成以下工作：
+a. 对于所有的CPU，完成runqueue的初始化工作；
+b. 对于SMP，要获取第一个进程的CPU号；
+c. 调用wake_up_forked_process()（参见下面"wake_up_forked_process"一节）来唤醒当前进程；
+d. 初始化timer
+(2) 创建新进程时的调度信息改变 -- sched_fork(task_t *p)当当前进程fork出一个新进程的时候，需要改变新进程的调度信息，该函数主要的调用关系是：kenel/fork.c - do_fork()->copy_process->sched_fork()，函数主要完成：
+a. 将进程状态置为TASK_RUNNIG，但并未将它加入runqueue，主要是为了保证没有其他人运行该程序，并且信号或者其他外部事件都不能将它唤醒；
+b. 初始化进程的runlist、array、自旋锁（开子进程的自旋锁，直到fork结束，返回用户态时调用函数sched_tail来解锁），preempt_count赋1；
+c. 将子进程的first_timeslice置1，标志这是子进程第一次分配到时间片；
+d. 将父进程时间片的一半赋给子进程，同时父进程的时间片减半（这样是为了防止一个进程通过不停的fork出子进程来占有CPU）；如果父进程的时间片此时变为0，则将其时间片置为1，相当于此时父进程即将用完其时间片，调用scheduler_tick()来开始新的调度（具体见"scheduler_tick"一节）。
+(3) 初始化新进程的统计信息 -- wake_up_forked_process(task_t * p)
+该函数是每一个刚被fork出来的进程必须执行的函数，被kernel/fork.c中的do_fork
+()函数调用，函数主要完成一些fork出的新进程统计信息的初始化，主要包括：
+a. 父进程和子进程sleep_avg的变化（请参照"sleep_avg进程创建"一节）；
+b. 子进程的interactive_credit置为0，重新计算子进程的prio，设置子进程的cpu号；
+c. 如果当前进程不在任何active array中（如idle进程），则调用__activate_task(p, rq)将子进程加入到active array里面；否则将父进程的动态优先级赋给子进程，并且将子进程添加到父进程的运行队列中去。
+(4) 创建进程完毕 -- schedule_tail()
+这个函数是在fork()系统调用即将完成，返回用户态之前，经过entry.S时调用的。函数主要完成一些fork完毕需做的清理工作，如释放上文所说的自旋锁等。
+(5) 进程运行过程中 -- scheduler_tick()
+update_process_time()（被时钟中断服务程序调用）调用该函数来更新当前进程的时间片，并且根据减小后的结果进行相应的处理。函数主要完成：
+a. 完成当前进程使用的系统时间、用户时间的统计信息；
+b. 如果当前进程是实时进程，调度策略是SCHED_RR（调度策略是SCHED_FIFO的进程不需要重新分配时间片），且已经用完时间片，则重新计算时间片，将（表明该进程退出时不会把时间片交还给父进程），置位TIF_NEED_RESCHED，将进程放到进程队列的末尾；
+c. 如果不是实时进程，且用完时间片：
+a). 置位TIF_NEED_RESCHED，重新计算进程的动态优先级和时间片，将first_timeslice置0，记录rq-> expired_timestamp的值（意义参见"expired_timestamp"一节）；
+b). 根据TASK_INTERACTIVE()（宏的意义参见"TASK_INTERACTIVE"一节）判断是否交互进程，用宏EXPIRED_STARVING(rq)判断expired array是否已经饥饿，将该宏展开后为：
+(STARVATION_LIMIT && ((rq)->expired_timestamp&&(jiffies-
+(rq)->expired_timestamp >=      STARVATION_LIMIT * ((rq)->nr_running) + 1)))
+|| ((rq)->curr->static_prio > (rq)->best_expired_prio)
+可见如果EXPIRED_STARVING()的是否为真与三个因素有关：
+a. STARVATION_LIMIT为真；
+b. (rq)->expired_timestamp为真；
+c. 若(rq)->expired_timestamp >= STARVATION_LIMIT * ((rq)->nr_running) + 1)（说明expired array上的进程已经等了足够长的时间）为真，或者((rq)->curr->static_prio > (rq)->best_expired_prio)（说明当前进程的静态优先级比expired array中最高的优先级低）为真。
+c). 如果进程被认为是交互进程，而且EXPIRED_STARVING()为假，则将当前进程重新插入到active array里面（参见"TASK_INTERACTIVE"一节）；否则，将进程插入到expired array。
+d) 如果进程尚未用完时间片，该进程是交互式进程，且剩余的时间片是该进程时间片粒度的整数倍（至少1倍），则强行剥夺该进程CPU使用权，且放到active array里面运行队列的末尾（实际上是在交互式进程内部实行RR策略了）。时间片粒度的和两个因素有关：
+a. sleep_avg    sleep_avg越大，粒度越大，因为越大说明该进程是交互进程的可能性越大，交互式进程的特点就是时间片小，频率高；反之，如果是一个CPU-bound进程就应该少分片或者不分片（尽量避免cache失配），应该有高的粒度；
+b. CPU个数      CPU个数越多，运行粒度就越大。
+(6) 进程状态的相互转换（sleep和wake up）
+这里简单的介绍函数wait_for_completion()和try_to_wake_up()。
+wait_for_completion()
+该函数是标准的将用户由就绪状态转为睡眠状态的函数，主要经过以下几个步骤：
+a. 通过DECLARE_WAITQUEUE()创建一个等待队列入口；
+b. 通过函数__add_wait_queue_tail()将进程加入到等待队列；
+c. 将进程状态置为TASK_UNINTERRUPTIBLE；
+d. 调用schedule()函数进行调度；
+e. 利用循环检查进程等待条件是否满足，如果满足通过函数__remove_wait_queue()将进程从等待队列中删除；否则，继续通过schedule()进行调度。
+try_to_wake_up()
+函数调用activate_task()将进程加到就绪队列中，如果新唤醒的进程的优先级比rq->curr高（具体原因请参见"curr"一节），则置位TIF_NEED_RESCHED，最后将进程的
+状态置为TASK_RUNNING。
+(7) 进程结束，退出调度 -- sched_exit(task_t *p)
+被release_task()调用，用于处理进程销毁前调度信息的清理，包括：
+a. 根据p->first_timeslice来判断是否将时间片交还给父进程；如果first_timeslice的值为1，则说明p尚未用完fork时从父进程分来的时间片，此时应该将时间片交还父进程；否则，说明子进程已经重新分配过时间片，无须交还；
+b. 如果子进程（p）的执行时间过长（p->sleep_avg < p->parent->sleep_avg），则给予父进程一定的惩罚（稍稍减小父进程的sleep_avg）。
+ 
+6. 内核可抢占
+Kernel 2.6的一大亮点就是内核可抢占，是Kernel 2.6进程调度优于2.4的一个重要表现。
+(1) 何时可以抢占内核
+在前面我们已经讲了内核何时可以抢占：当内核进程没有访问内核的关键数据，也就是内核没有被加锁，此时内核代码是可重入的，可以抢占内核。对内核抢占加锁是通过preempt_disable()来实现的，这个宏只是简单的将preempt_count增1就实现了内核的加锁，表明此时已经进入内核的关键数据区域，内核不可被抢占。
+(2) 如何抢占内核
+中断返回内核时
+在前面介绍"preempt_count"的时候已经提到，内核能否抢占是通过操作preempt_count来实现的。注意arch/i386/kernel/entry.S里面以下程序：
+ENTRY(resume_kernel)
+        cmpl $0,TI_PRE_COUNT(%ebp)      # non-zero preempt_count ?
+        jnz restore_all
+need_resched:
+        movl TI_FLAGS(%ebp), %ecx       # need_resched set ?
+        testb $_TIF_NEED_RESCHED, %cl
+        jz restore_all
+        testl $IF_MASK,EFLAGS(%esp)     # interrupts off (exception path) ?
+        jz restore_all
+        movl $PREEMPT_ACTIVE,TI_PRE_COUNT(%ebp)
+        sti
+        call schedule
+        movl $0,TI_PRE_COUNT(%ebp)
+        cli
+jmp need_resched
+程序中可以看出，在中断或者异常返回内核空间以后，首先检查preempt_count是否为0，如果不为0，说明已经内核已经禁止被抢占；如果为0，则检查TIF_NEED_RESCHED位，如果已经被置位则检查此次是否是通过中断（通过检查堆栈中EFLAGS的IF位来检查发生此次"中断"前IF是否被置位，如果被置位说明是中断；否则说明是由异常返回内核）返回内核空间的，如果是，则调用schedule()函数进行调度。可见，抢占内核是发生在由中断返回内核空间的时候。
+解锁时
+解锁通过宏preempt_enable()来完成，此函数完成以下功能：
+a. 将当前进程的preempt_count减1
+b. 检查TIF_NEED_RESCHED位，如果是0，则返回；否则调用函数preempt_schedule()，此函数将preempt_count置为PREEMPT_ACTIVE（表明正在执行内核抢占），然后直接调用schedule()进行调度。内核代码中直接调用函数schedule()这种情况下是没有任何保护措施的，也就是说调用的代码必须清楚此时进行内核抢占是否安全。
+7. 负载均衡
+Kernel 2.6的负载均衡分为两种，一种是"pull"，一种是"push"。
+(1) pull
+当一个CPU负载轻，而另外一个CPU负载过重的时候，调度器会从负载重的CPU把进程pull过来，这个过程主要通过函数load_balance()完成。load_balance()有两种工作方式，一种是当前CPU完全空闲，idle=1，另外一种是上面仍有进程在运行，idle=0；当idle=1时，很多操作将变得很简单。当idle=0时，不管当前CPU有多忙碌，定时器都将定期启动函数rebalance_tick()，而该函数将每隔BUSY_REBALANCE_TICK时间就调用函数load_balance()来进行负载均衡。load_balance()的函数流程如下：
+1 找到最忙的CPU：取当前CPU负荷为当前负荷和历史负荷里面的最大者，取其他CPU负荷为当前负荷和历史符合里面最小者；最忙的CPU的负荷必须比当前CPU的负荷高25%，否则不进行迁移；对源、目的两个就绪队列加锁之后，再次检查源就绪队列负载是否减小，如果是则退出负载均衡；
+2 找到最忙CPU后，按照从expired队列到active队列，从高优先级到低优先级进程进行迁移，不过以下几种进程不进行迁移：
+a. 当前正在执行的进程；
+b. 通过cpus_allowed明确表示不能迁移该CPU的进程；
+c. 被原来CPU切换下来的时间小于cache_decay_ticks（说明cache仍然活跃）。
+3       进行任务迁移，主要进行以下操作
+a. 将进程从原来CPU的相应就绪队列中删除；
+b. 将进程的CPU号设置为当前进程，并将任务添加到当前CPU的active array中；
+c. 赋值timestamp；
+d. 如果新迁移过来的任务比当前CPU正在运行的程序优先级更高，则置位TIF_NEED_RESCHED。
+4 如果此时负载仍然没有平衡（通过imbalance的值来反映），则重复上述过程，直到平衡为止。
+
+当idle=1时，有两个时机调用load_balance()函数：
+        定时器每隔IDLE_REBALANCE_TICK时间启动load_balance()函数；
+        在schedule()函数里，如果发现该CPU上rq为空，则主动调用load_balance()函数进行负载均衡。idle时候调用load_balance()的流程和idle=0是一样，只不过将idle作为参数传进去，idle=1可以简化很多判断，比如每次只迁移一个进程等。
+(2) push
+主要通过migration_thread()这个核心进程来将本CPU上的rq->migration_queue "push"到别的CPU上，在Kernel 2.6里，是选择第一个允许运行的CPU。该进程是调度策略为SCHED_FIFO的实时核心进程，一般时候处于睡眠状态。
+migration_queue是通过函数set_cpus_allowed()来改变运行的CPU，该函数构造一个类型为migration_req_t的迁移队列，将其植入进程所在CPU的migration_queue。然后唤醒migration_thread这个核心进程，由它来完成进程的迁移。
+migration_thread()通过函数move_task_away()来完成实际的迁移工作，该函数主要完成以下工作：
+a. 设置进程CPU号；
+b. 将进程从原来的就绪队列里面删除，并用函数activate_task()来将进程加入目标CPU的就绪队列中；
+如果迁移的进程比目标CPU的rq->curr的优先级要高，就调用函数resched_task()来将目标CPU上的当前进程的TIF_NEED_RESCHED置为1

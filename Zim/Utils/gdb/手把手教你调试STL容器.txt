@@ -1,0 +1,218 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-11T16:24:17+08:00
+
+====== 手把手教你调试STL容器 ======
+Created Friday 11 November 2011
+本文固定链接：http://www.wuzesheng.com/?p=1686
+
+**手把手教你调试STL容器(上)**
+
+众所周知，调试(Debugging)是每个程序员所要必备的基本的技术素养，尤其是对C/C++的程序员来说。对于在linux下用C/C++开发的朋友，相信对GDB不会陌生，当程序有bug或者是出现core dump的时候，GDB是我们最好的朋友。STL是C++相较于C而言，增加的非常强有力的工具，它从某种程度上把C/C++程序员从繁琐的基本数据结构中解放了出来。不过，STL虽然用起来十分方便，但是，用GDB调试过C/C++程序的朋友都有这样痛苦的经历，在GDB状态下，要知道某个STL对象（比如容器）中的数据内容，并不是那么直接、简单。本文的主要内容就是介绍STL中大家比较常用到的容器的基本组成，帮助大家能够在调试的时候更好的驾驭它们。
+
+**1. string**
+
+string是STL中最为常用的类型，它是模板类basic_string用char类型特化后的结果，下面我们来看一下string类型的基本组成：
+
+typedef basic_string<char>    string;
+
+struct _Rep_base
+{
+    size_type     _M_length;
+    size_type     _M_capacity;
+    _Atomic_word  _M_refcount;
+};
+
+struct _Alloc_hider
+{
+    _CharT* _M_p;
+};
+
+mutable _Alloc_hider  _M_dataplus;
+_M_data() const { return  _M_dataplus._M_p; }
+_Rep* _M_rep() const { return &((reinterpret_cast<_rep *> (_M_data()))[-1]); }
+
+从上面来看，string只有一个成员_M_dataplus。但是这里需要注意的是，string类在实现的时候用了比较巧的方法，在_M_dataplus._M_p中保存了用户的数据，在_M_dataplus._M_p的第一个元素前面的位置，保存了string类本身所需要的一些信息rep。这样做的好处，一方面不增加string类的额外开销，另一方面可以保证用户在调试器(GDB)中用_M_dataplus._M_p查看数据内容的时候，不受干扰。用户可以通过reinterpret_cast<_rep *> (_M_data()))[-1])来查看rep相关的信息，也可以调用_M_rep()函数来查看。
+
+2. vector
+
+vector同样也是stl中最为常用类型，下面我们来看一下vector类型的基本组成:
+
+struct _Vector_impl
+{
+    _Tp*           _M_start;
+    _Tp*           _M_finish;
+    _Tp*           _M_end_of_storage;
+};
+
+_Vector_impl _M_impl;
+
+vector本身很简单，就是一个动态数组。它只有一个数组成员_M_impl，用户可以通过_M_impl来查看vector内容的数据成员，具体包括动态数组的超始地址_M_impl._M_start，结束地址_M_impl._M_end_of_storage，数组内容的结束地址_M_impl._M_finish
+3. list
+
+list是STL中的双向链表结构，也是大家经常用来的，下面我们一起来看一下list的基本组成：
+
+struct _List_node_base
+{
+    _List_node_base* _M_next;
+    _List_node_base* _M_prev;
+};
+
+template<typename _Tp>
+struct _List_node : public _List_node_base
+{
+    _Tp _M_data;
+};
+
+struct _List_impl
+{
+    _List_node_base _M_node;
+};
+
+_List_impl _M_impl;
+
+通过上面的代码，我们可以看出，list本身只保留了一个空结点_M_impl._M_node，用来标示list的header，新加入的第一个结点，是直接链到_M_imp._M_node._M_next上的，后面的依次类推。我们可以把_M_impl._M_node.m_next强制转型成_List_node类型，然后通过_M_data来查看具体的数据内容，即((_List_node<T> *)(_M_impl._M_node->M_next))->M_data (T是数据的类型)。
+我们知道,string和vector都是线型结构，只要知道数据的起始地址和容器大小，便可获取到所以的元素内容。但是list是非线型结构，这时候就需要iterator来帮忙了，下面我们来看下list的iterator的基本组成：
+
+template<typename _Tp>
+struct _List_iterator
+{
+     _List_node_base* _M_node;
+};
+
+从上面的代码，我们可以看出，list的iterator只是保存了一个list结点的指针，有此足矣，通过它我们便可以获取到iter里面的数据内容：((_List_node<T> *)(iter->_M_node)->M_data (T是数据的类型)
+4. deque
+
+deque是STL中提供一个队列结构，它同时兼有vector和list的基本特点，因此实现要复杂一些，下面我们来看一下它的基本组成：
+
+template<typename _Tp>
+struct _Deque_iterator
+{
+    typedef _Tp**   _Map_pointer;
+
+    _Tp* _M_cur;
+    _Tp* _M_first;
+    _Tp* _M_last;
+    _Map_pointer _M_node;
+};
+
+typedef _Deque_iterator<_tp , _Tp&, _Tp*>  iterator;
+struct _Deque_impl
+    : public _Tp_alloc_type
+{
+    _Tp**    _M_map;
+    size_t   _M_map_size;
+    iterator _M_start;
+    iterator _M_finish;
+};
+_Deque_impl _M_impl;
+
+从上面的代码，及STL的源码，我们可以了解到，deque是由多块连续buffer，通过一个中控的数组_M_map来链在一起，实现的。我们可以通过_M_map，获取到每一个块的起始地址，在每一块内的数据，地址都是连续的，可以像数组一起取出对应的数据内容。
+另外，我们还可以通过iterator来访问deque的元素，上面的代码中，iterator的_M_cur是指向当前元素的指针，_M_first是当前块的起始地址，_M_last当前块的结束地址。
+本篇是〈手把手教你调试STL容器〉的上篇，主要介绍了string, vector, list和deque这些基本的容器，下篇将介绍map/set/multimap/multiset, hash_map/hash_set/hash_multimap/hash_multiset，敬请期待！
+
+本文是《手把手教你调试STL容器》系列的下篇，阅读本文之前，请先阅读上篇《手把手教你调试STL容器(上)》。上篇中主要介绍了STL中string, vector, list, deque这些基本的容器。本篇将介绍由红黑树实现的map/set/multimap/multiset这些容器，以及由hashtable实现的hash_map/hash_set/hash_multimap/hash_multiset这些容器。
+1. 红黑树（Red black tree)
+
+我们知道, STL中的map/set/multimap/multiset，都是由红黑树实现的，因此我们要了解map/set/multimap/multiset这些容器是如何实现的，就首先要了解红黑树的基本组成：
+
+
+
+enum _Rb_tree_color { _S_red = false, _S_black = true };
+ 
+struct _Rb_tree_node_base
+{
+    typedef _Rb_tree_node_base* _Base_ptr;
+    typedef const _Rb_tree_node_base* _Const_Base_ptr;
+ 
+    _Rb_tree_color  _M_color;
+    _Base_ptr       _M_parent;
+    _Base_ptr       _M_left;
+    _Base_ptr       _M_right;
+};
+ 
+template< typename _Val>
+struct _Rb_tree_node : public _Rb_tree_node_base
+{
+    typedef _Rb_tree_node< _val>* _Link_type;
+    _Val _M_value_field;
+};
+ 
+template< typename _Key_compare,
+         bool _Is_pod_comparator = std::__is_pod< _Key_compare>::__value>
+struct _Rb_tree_impl : public _Node_allocator
+{
+    _Key_compare          _M_key_compare;
+    _Rb_tree_node_base    _M_header;
+    size_type             _M_node_count; // Keeps track of size of tree.
+};
+ 
+_Rb_tree_impl< _compare> _M_impl;
+
+从上面的代码中，我们知道，STL中红黑树中保存的基本信息包括：根结点对象_M_header和所有结点的个数_M_node_count，_M_header本身只是一个哨兵功能，它里面包含了指向它的左右子树的指针。在真实存放数据的结点中，每个结点都是_Rb_tree_node< _val>类型（_Val是数据类型），用户可以通过_M_value_field，得到存放的数据的值。
+另外，我们也知道，红黑树本身是非线形结构，因此遍历的过程，还是需要迭代器来帮忙的，下面的红黑树的迭代器的基本结构：
+
+template< typename _Tp>
+struct _Rb_tree_iterator
+{
+    typedef _Rb_tree_node_base::_Base_ptr _Base_ptr;
+    _Base_ptr _M_node;
+};
+
+从上面的定义可以看出，红黑树的迭代器本身只是保存了一个_Rb_tree_node_base的指针，我们只要按实际的数据类型，把它转型为_Rb_tree_node类型，就可以通过_M_value_field得到数据的值。
+在STL中，map/set/multimap/multiset都是由红黑树实现的，这些容器，都是在红黑树的基础上，包裹了一层，实现了相关功能，在这些容器中，都有一个这样类似的成员：
+
+
+typedef _Rb_tree< ...> _Rep_type;
+_Rep_type _M_t;
+
+从上面的代码我们可以知道，我们要想查看某个map/set/multimap/multiset里面存放的数据，只需要用_M_t，再结合前面对红黑树结构的介绍，便可以。另外，map/set/multimap/multiset的迭代器也是在红黑树迭代器基础上包裹的，这里不再做介绍。
+2. HashTable
+
+在STL中，hash_map/hash_set/hash_multimap/hash_multiset中由hashtable来实现的，虽说hash_map/hash_set/hash_multimap/hash_multise这些容器，目前还不是标准C++的内容，但是由于实际应用的需要，大家目前都把这些容器当做事实标准，而且大多数的编译器也支持。这里介绍的是GNU的stdext中的实现，下面是hashtable的基本组成：
+
+
+template < class _Val>
+struct _Hashtable_node
+{    
+    _Hashtable_node* _M_next;
+    _Val             _M_val;
+};
+ 
+template < class _Val, class _Key, class _HashFcn,
+          class _ExtractKey, class _EqualKey, class _Alloc>
+class hashtable
+{
+public:
+    typedef _Key key_type;
+    typedef _Val value_type;
+    typedef _HashFcn hasher;
+    typedef _EqualKey key_equal;
+    typedef _Hashtable_node< _Val> _Node;
+    typedef vector< _Node*, _Nodeptr_Alloc> _Vector_type;
+ 
+    hasher                _M_hash;
+    key_equal             _M_equals;
+    _ExtractKey           _M_get_key;
+    _Vector_type          _M_buckets;
+    size_type             _M_num_elements;
+};
+
+通过上面的代码，我们可以得知，hashtable是由vector+list实现的一个结构，纵向是一个vector，横向是一个list，这正是separate chain hash的实现。我们结合上篇中对vector的介绍，用_M_impl._M_start拿到hashtable中vector中数据的起始地址，然后通过下标便可得到每个横向链表的头指针。在每个横向的链表中，只要我们得到了某个结点的指针，便可以用_M_val来查看其数据值，可以用_M_next来查看下一个结点的情况。
+另外，我们也可以通过hashtable的迭代器来查看hashtable中某个结点的数据值：
+
+template < class _Val, class _Key, class _HashFcn,
+          class _ExtractKey, class _EqualKey, class _Alloc>
+struct _Hashtable_iterator
+{
+    _Node*      _M_cur;
+    _Hashtable* _M_ht;
+};
+
+上面是hashtable的迭代器的定义，通过_M_cur便可得知当前位置的内容。
+我们知道，hash_map/hash_set/hash_multimap/hash_multi_set都是在hashtable的基础上包裹实现的，在这些容器中，都有一个这样类似的成员：
+
+typedef hashtable< ...> _Ht
+_Ht _M_ht;
+
+从上面可以看出，只要我们拿到hash_map/hash_set/hash_multimap/hash_multiset这些容器的_M_ht成员，再结合前面对hashtable的介绍，我们便可以方便的查看到这些容器中的所有内容。

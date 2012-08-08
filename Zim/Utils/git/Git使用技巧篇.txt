@@ -1,0 +1,77 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-22T23:16:08+08:00
+
+====== Git使用技巧篇 ======
+Created Monday 22 August 2011
+
+上一篇介绍了Git的基本概念和一些基本命令，本篇的重点在如下三个部分：个性化定制你的Git，更酷更巧妙的使用Git，以及如何在Git Hub上开启你自己的开源项目。在所有技巧中，最重要的技巧是学会查看Git的帮助，因为Git是一个相对复杂的版本控制工具，如果你熟悉它的命令，那么给你带来的价值是不言而喻的，所以要学会掌握那根金手指─查看Git的帮助，在任何Git命令后加上'--help'就会显示该命令的帮助文档，例如 'git log --help'你就可以看到命令'git log'的所有使用方法。接下来，从打扮Git开始吧。
+
+　　Git梳妆
+
+　　我们可以利用Git的config命令或者直接编辑~/.gitconfig文件(如果没有的话创建它)来为自己打造独一无二的Git。我建议直接编辑用户目录下得.gitconfig文件，拿我本地的文件为例，一一为大家解说，完整的文件内容如下：
+
+　　[user]
+
+　　name = Phoenix
+
+　　email = phoenixtoday@gmail.com
+
+　　[alias]
+
+　　co = checkout
+
+　　ci = commit -a
+
+　　st = status
+
+　　br = branch
+
+　　oneline = log --pretty=oneline --since='2 days ago'
+
+　　onelog = log -p -1
+
+　　[color]
+
+　　status = auto
+
+　　branch = auto
+
+　　ui = auto
+
+　　该文件主要包含三个部分的内容：
+
+　　用户基本信息：可以设置你的名字和email，这样在你提交代码的时候就会显示出你的名字
+
+　　命令别名：这是.gitconfig文件中，我最喜欢的部分，它可以大大减少你敲击键盘的次数(俗话说优秀的程序员都很懒么)。在该文件中，我将co设置为checkout的别名，那么下次我只要用'git co new_branch'就可以切换到new_branch分支下了，简洁而优雅;将ci设置为commit -a的别名，-a选项表示我不需要将修改和删除的文件通过'git add'命令来加入索引，这样设置在使用'git ci -m"message"'这样的命令时，相当于连续执行了'git add 被修改和删除的文件'和'git commit -m"message"'两条命令，再一次节省了我们宝贵的时间;最酷的是最后两行，后面的章节会一一介绍。Git提供许多优雅、人性化的选项，我们如果再结合别名的设置，可以发挥你最大的想象力，真的让你自己的Git活起来
+
+　　颜色：每次看diff时是不是挺痛苦的?那么为什么不给我们的Git加上颜色呢?只需要加上那三行，就可以让红色和绿色的提示出现在你的控制台中
+
+　　Git灵动
+
+　　现在来讲讲'git log'，'git stash'，'git formate-patch'三个命令的用法和技巧：
+
+　　git log：不同于SVN，Git将代码的历史记录全部在本地克隆了一份，所以这就使得'git log'这样的命令使用起来非常的迅速，也是我最常使用的Git命令之一。在使用'git log'的时候，你可以加入很多的后缀。'-p'表示查看修改的具体内容，例如'git log -p'它不但会打印出提交的时间、版本号、人员等，还会将具体的代码修改部分打印出来;'-n'其中n表示一个数字，这表示打印出具体的几个日志，例如 'git -p -1'正如我的Git配置文件中设置的onelog别名的内容一样，就表示打印出当前最新的一次日志记录及具体修改内容;'--since="时间/日期"'，'--until="时间/日期"'表示你希望查找某个日期段的日志记录，例如'git log --since="2 days ago" --until="1 hour ago"'就表示你希望查找两天前到一小时前的日志记录，Git是足够聪明的，它可以将类似于'2 days ago'和'1 hour ago'这种表示时间的英语转化为具体的时间数字;有的时候，你不希望翻很多页才可以看到所有的日志，你只希望看到简短的说明，那么Git为你提供打印格式的定制'git --pretty=格式种类'，其中格式种类有full、short、oneline等，例如'git log pretty=oneline'就会将每条代码历史记录放在一行里，看起来简单明了
+
+　　git stash：在第一篇中，我举了一个使用branch解决紧急任务切换的问题，其实stash命令也可以很好的解决这样的问题。当你不想提交当前完成了一半的代码，但是却不得不修改一个紧急Bug，那么使用'git stash'就可以将你当前未提交到本地(和服务器)的代码推入到Git的栈中，这时候你的工作区间和上一次提交的内容是完全一样的，所以你可以放心的修 Bug，等到修完Bug，提交到服务器上后，再使用'git stash apply'将以前一半的工作应用回来。也许有的人会说，那我可不可以多次将未提交的代码压入到栈中?答案是可以的。当你多次使用'git stash'命令后，你的栈里将充满了未提交的代码，这时候你会对将哪个版本应用回来有些困惑，'git stash list'命令可以将当前的Git栈信息打印出来，你只需要将找到对应的版本号，例如使用'git stash apply stash@{1}'就可以将你指定版本号为stash@{1}的工作取出来，当你将所有的栈都应用回来的时候，可以使用'git stash clear'来将栈清空
+
+　　git format-patch：当你想给一个开源项目(例如Rails)提交一段代码的时候，或者你想给小组成员展示一段你并不想提交的代码，那么你还是需要 patch的，Git的'format-patch'命令良好的支持了这个功能。我来基本描述一下使用这个命令的步骤和方法：第一，利用branch命令创建一个分支;第二，修改你的代码;第三，在该分支上提交你的修改;第四，使用'git format-patch'命令来生成一个patch文件，例如：'git format-patch master --stdout > ~/Desktop/tmp.patch'就是将工作分支与master主干的不同，存放在'~/Desktop'文件夹下，生成一个叫做 tmp.patch的文件(另一种简单的版本是利用diff命令，例如'git diff ..master > ~/Desktop/tmp.patch')，这样就生成了patch文件。那么别人就可以使用'git apply'命令来应用patch，例如'git apply ~/Desktop/tmp.patch'就是将patch打在当前的工作分支上
+
+　　Git亲友团
+
+　　Git的使用技巧还包括利用Git包含的和附加的一些强大工具，这些工具主要包括git svn、git citool、gitk和Git的自动提示脚本：
+
+　　git svn：Git和SVN可以很方便的集成在一起，这就大大减少了从SVN向Git迁移的学习成本，这也是我特别建议大家首次接触Git的使用方式。git svn是一个Git内置的工具，你安装了Git也就安装了它，譬如说你们团队有一个SVN服务器，但是你想利用Git本地的一些强大特性，那么你依然可以安装Git，使用Git的branch功能，只不过再更新代码和提交代码的时候，使用git svn命令即可。在这里我简单的讲讲最常使用和需要注意的两个命令，其余的命令读者可以通过'git svn --help'来查看：'git svn rebase'命令取代了'svn update'用于将服务器代码更新到本地;'git svn dcommit'取代了'svn ci'，需要注意的是，本地必须用Git提交了代码之后，再使用'git svn dcommit'。只需要这样，你就可以轻松地从SVN转向Git了。
+
+　　git citool：这是我个人使用率最频繁的一个工具，上一篇文章也提到了，Git可以本地提交代码，那么你自然可以本地修改你的提交了，这个工具就是可视化界面，用于修改你本地的提交。只要在你的工作区间输入'git citool'，就会出现如下的界面
+
+　　
+Git使用技巧篇（图一）
+
+ 
+
+　　你可以用它来提交代码，可以用它来将你本地的修改追加在上一次提交的代码中，你还可以用它来修改你上次提交的信息等等。这个工具可以大大帮助你完成以前SVN不可能完成的任务
+
+　　gitk：是一个查看主干/分支情况的工具，它主要用于观察整个项目的分支状况，使用'gitk'命令就会出现一个图形化界面供你查看，本篇就简单的说一下，大家回去试试就知道了
+
+　　Git 的自动提示脚本：它是Shawn O. Pearce为了让Git使用起来更方便而写得Shell脚本，你可以在http://gitweb.hawaga.org.uk/ 找到一个叫做gitcompletion的脚本，下载下来，并按照该脚本中指导的方式进行配置，你就具有了Git自动提示(敲入部分Git命令，再按 Tab键)的功能，而且有了这个脚本，你也可以看到你当前工作在哪个branch下。惟一的不足是，它只支持Linux、Unix、Mac操作系统(推荐大家都用Mac进行开发)

@@ -1,0 +1,23 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-28T11:02:53+08:00
+
+====== script ======
+Created Monday 28 November 2011
+
+Have you ever wondered how you can easily **capture a console session** on Linux (and probably most other Unix-like OSes) without the need for special video recording software?
+
+Here's how: you can use the **script**(1) command (part of the **bsdutils** package).
+
+* Start the **script **command. Without parameters the sessions will be logged to a file called** typescript**. You can also supply a filename on the command line: **script mysession.log**.
+* Type whatever you want to record...
+* End the recording session with **exit** or **CTRL-d**.
+* You can now view the file with__ less -r mysession.log__ (it contains line feeds, escape sequences etc., so a simple text viewer will probably display garbage). You can even print it with __lpr__(1). Or simply display it on the terminal with __cat mysession.log__.
+
+An even cooler feature is that you can** replay a script** with the correct timing information:
+
+    First you have to also record the timing information using the -t switch: __script -t 2>mysession.timing mysession.log__.
+    You can then replay the script:__ scriptreplay mysession.timing mysession.log__.
+
+See the script(1) and scriptreplay(1) manpages for more details.
+PS: script真的很强大, 可以准确的记录你在终端中输入、输出的一切，甚至有些交互性命令如vim、alsamixter都工作的很好(只要使用的是**ncurse**的gui都可以很好的工作)。

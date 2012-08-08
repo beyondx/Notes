@@ -1,0 +1,208 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-04T14:36:51+08:00
+
+====== Socket数据发送中信号SIGPIPE及相关errno的研究 ======
+Created 星期六 04 六月 2011
+Socket数据发送中信号SIGPIPE及相关errno的研究
+好久没做过C开发了，最近重操旧业。
+听说另外一个项目组socket开发遇到问题，发送端和接受端数据大小不一致。建议他们采用writen的重发机制，以避免信号中断错误。采用后还是有问题。PM让我帮忙研究下。
+UNP n年以前看过，很久没做过底层开发，手边也没有UNP vol1这本书，所以做了个测试程序，研究下实际可能发生的情况了。
+ 
+测试环境：AS3和redhat 9(缺省没有nc)
+ 
+先下载unp源码:
+wget http://www.unpbook.com/unpv13e.tar.gz
+tar xzvf *.tar.gz;
+configure;make lib.
+然后参考str_cli.c和tcpcli01.c，写了测试代码client.c
+ 
+ 
+#include    "unp.h"
+
+#define MAXBUF 40960
+void processSignal(int signo)
+{
+    printf("Signal is %d\n", signo);
+    signal(signo, processSignal);
+}
+void
+str_cli(FILE *fp, int sockfd)
+{
+    char    sendline[MAXBUF], recvline[MAXBUF];
+
+    while (1) {
+
+        memset(sendline, 'a', sizeof(sendline));
+        printf("Begin send %d data\n", MAXBUF);
+        Writen(sockfd, sendline, sizeof(sendline));
+        sleep(5);
+
+    }
+}
+
+int
+main(int argc, char **argv)
+{
+    int                    sockfd;
+    struct sockaddr_in    servaddr;
+
+    signal(SIGPIPE, SIG_IGN);
+    //signal(SIGPIPE, processSignal);
+
+    if (argc != 2)
+        err_quit("usage: tcpcli [port]");
+
+    sockfd = Socket(AF_INET, SOCK_STREAM, 0);
+
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_port = htons(atoi(argv[1]));
+    Inet_pton(AF_INET, "127.0.0.1", &servaddr.sin_addr);
+
+    Connect(sockfd, (SA *) &servaddr, sizeof(servaddr));
+
+    str_cli(stdin, sockfd);        /* do it all */
+
+    exit(0);
+}
+
+ 
+
+为了方便观察错误输出，lib/writen.c也做了修改，加了些日志：
+
+ 
+
+/* include writen */
+#include    "unp.h"
+
+ssize_t                        /* Write "n" bytes to a descriptor. */
+writen(int fd, const void *vptr, size_t n)
+{
+    size_t        nleft;
+    ssize_t        nwritten;
+    const char    *ptr;
+
+    ptr = vptr;
+    nleft = n;
+    while (nleft > 0) {
+        printf("Begin Writen %d\n", nleft);
+        if ( (nwritten = write(fd, ptr, nleft)) <= 0) {
+            if (nwritten < 0 && errno == EINTR) {
+                printf("intterupt\n");
+                nwritten = 0;        /* and call write() again */
+            }
+            else
+                return(-1);            /* error */
+        }
+
+        nleft -= nwritten;
+        ptr += nwritten;
+        printf("Already write %d, left %d, errno=%d\n", nwritten, nleft, errno);
+    }
+    return(n);
+}
+/* end writen */
+
+void
+Writen(int fd, void *ptr, size_t nbytes)
+{
+    if (writen(fd, ptr, nbytes) != nbytes)
+        err_sys("writen error");
+}
+
+ 
+
+client.c放在tcpclieserv目录下，修改了Makefile，增加了client.c的编译目标
+
+ 
+
+
+client: client.c
+                ${CC} ${CFLAGS} -o $@ $< ${LIBS}
+
+ 
+
+接着就可以开始测试了。
+测试1 忽略SIGPIPE信号，writen之前，对方关闭接受进程
+
+本机服务端：
+nc -l -p 30000
+ 
+本机客户端:
+./client 30000
+Begin send 40960 data
+Begin Writen 40960
+Already write 40960, left 0, errno=0
+Begin send 40960 data
+Begin Writen 40960
+Already write 40960, left 0, errno=0
+执行到上步停止服务端,client会继续显示:
+Begin send 40960 data
+Begin Writen 40960
+writen error: Broken pipe(32)
+结论:可见write之前，对方socket中断，发送端write会返回-1,errno号为EPIPE(32)
+测试2 catch SIGPIPE信号，writen之前，对方关闭接受进程
+
+修改客户端代码，catch sigpipe信号
+
+        //signal(SIGPIPE, SIG_IGN);
+
+        signal(SIGPIPE, processSignal);
+
+本机服务端：
+nc -l -p 30000
+ 
+本机客户端:
+make client
+./client 30000
+Begin send 40960 data
+Begin Writen 40960
+Already write 40960, left 0, errno=0
+Begin send 40960 data
+Begin Writen 40960
+Already write 40960, left 0, errno=0
+执行到上步停止服务端,client会继续显示:
+Begin send 40960 data
+Begin Writen 40960
+Signal is 13
+writen error: Broken pipe(32)
+结论:可见write之前，对方socket中断，发送端write时，会先调用SIGPIPE响应函数，然后write返回-1,errno号为EPIPE(32)
+ 
+测试3 writen过程中，对方关闭接受进程
+
+为了方便操作，加大1次write的数据量，修改MAXBUF为4096000
+
+本机服务端：
+nc -l -p 30000
+ 
+本机客户端:
+make client
+./client 30000
+Begin send 4096000 data
+Begin Writen 4096000
+执行到上步停止服务端,client会继续显示:
+Already write 589821, left 3506179, errno=0
+Begin Writen 3506179
+writen error: Connection reset by peer(104)
+
+结论:可见socket write中，对方socket中断，发送端write会先返回已经发送的字节数,再次write时返回-1,errno号为ECONNRESET(104)
+
+为什么以上测试，都是对方已经中断socket后，发送端再次write，结果会有所不同呢。从后来找到的UNP5.12,5.13能找到答案
+
+The client's call to readline may happen before the server's RST is received by the client, or it may happen after. If the readline happens before the RST is received, as we've shown in our example, the result is an unexpected EOF in the client. But if the RST arrives first, the result is an ECONNRESET ("Connection reset by peer") error return from readline.
+
+以上解释了测试3的现象，write时，收到RST.
+
+What happens if the client ignores the error return from readline and writes more data to the server? This can happen, for example, if the client needs to perform two writes to the server before reading anything back, with the first write eliciting the RST.
+
+The rule that applies is: When a process writes to a socket that has received an RST, the SIGPIPE signal is sent to the process. The default action of this signal is to terminate the process, so the process must catch the signal to avoid being involuntarily terminated.
+
+If the process either catches the signal and returns from the signal handler, or ignores the signal, the write operation returns EPIPE.
+
+以上解释了测试1，2的现象,write一个已经接受到RST的socket，系统内核会发送SIGPIPE给发送进程，如果进程catch/ignore这个信号，write都返回EPIPE错误.
+
+因此,UNP建议应用根据需要处理SIGPIPE信号，至少不要用系统缺省的处理方式处理这个信号，系统缺省的处理方式是退出进程，这样你的应用就很难查处处理进程为什么退出。
+
+ 原文地址 http://blog.chinaunix.net/u/31357/showart_242605.html
+

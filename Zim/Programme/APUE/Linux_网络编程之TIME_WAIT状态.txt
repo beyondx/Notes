@@ -1,0 +1,26 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-03T21:32:39+08:00
+
+====== Linux 网络编程之TIME WAIT状态 ======
+Created 星期五 03 六月 2011
+http://blog.csdn.net/feiyinzilgd/archive/2010/09/19/5894446.aspx
+{{./TIME_WAIT.jpg}}
+刚刚开始看TCP socket的4次握手终止流程图的时候,对于最后的TIME_WAIT状态不是很理解.现在在回过头来研究,发现TIME_WAIT状态是一个很微妙状态.之所以设计TIME_WAIT状态的原因有2个原因:
+
+* 使得TCP的全双工连接能够可靠的终止.
+* 使得连接终止后网络上任然残余的发送给该连接的数据被丢弃而不至于被新连接接收.
+
+在具体详解这两个原因之前,我们需要理解MSL(maxinum segment lifetime)这个概念.
+
+每一个TCP 都必须有一个MSL值.这个值一般是2分钟,但也不是固定的,不同的系统不一样.无论是否出错或者连接被断开,总之,一个数据包在网路上能停留的最大时间是MSL.也就是说MSL是数据包的生命周期时间.操作这个时间,该数据包将会被丢弃而不被发送.而TIME_WAIT状态持续的时间是MSL的两倍,也就是2MSL时间.
+
+    TCP的全双工连接能够被可靠终止
+
+TCP的可靠终止需要经过4次握手终止.如上图所示:首先,client 主动close,导致FIN发送给server,server接收到FIN后,给client回复一个ACK,之后,server会关闭和client的连接,即向client发送一个FIN,client接收到FIN之后,会发送一个ACK给server.此时client就进入TIME_WAIT状态.如果server没有收到ACK,server会重新发送一个FIN信息给client,client会重发ACK,server然后继续等待client发送一个ACK.这样保证了双方的可靠终止.2端都知道对方已经终止了.那么,在这个TIME_WAIT时间中,可以重发ACK,如果client没有收到FIN信息,则TCP会向server发送一个RST信息,这个信息会被server解释成error.
+
+    连接终止后网络上任然残留的发送到该连接的数据被丢弃而不至于被新连接接收.
+
+举个例子:
+
+在10.12.24.48 port:21和206.8.16.32 port:23(不必关心哪一端是server哪一端是client)之间建立了一个TCP连接A.然后此链接A被close掉了.然后此时又在10.12.24.48 port:21和206.8.16.32 port:23(不必关心哪一端是server哪一端是client)之间建立了一个新的TCP连接B.很可能A和B连接是有不同的应用程序建立的.那么,当我们close掉A之后,网络上很有可能还有属于A连接两端的数据m正在网路上被传送.而此时A被close掉了,重新建立了B连接,由于A和B连接的地址和端口都是一样的.这样,m数据就会被最终发送到B连接的两端.这样就造成了混乱,B接收到了原本数据A的数据.处于TIME_WAIT状态的连接会禁止新的同样的连接(如A,B)连接被建立.除非等到TIME_WAIT状态结束,也就是2MSL时间之后.其中,一个MSL时间是为了网络上的正在被发送到该链接的数据被丢弃,另一个MSL使得应答信息被丢弃.这样,2MSL之后,保证重新建立的所得到的数据绝对不会是发往就连接的数据.

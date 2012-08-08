@@ -1,0 +1,162 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-05T14:51:25+08:00
+
+====== Python Essential Reference 4th – 第12章 – 读书笔记 ======
+Created 星期二 05 七月 2011
+
+1、有一些函数是不需要import的，因为他们存在于__buildin__模块下，这个模块是被默认引入的。在Python 3之后，更名为__buildins__，加了个s。
+
+2、这些不需要import的称为内置函数。
+
+3、一些内置函数/对象：
+
+ascii(c)：只在Python 3 可用！返回c对应的ascii字符，非ascii字符转化为对应的转义字符。
+basestring：Python 2 中Byte字符串和Unicode字符串的父类。
+bin(x)：返回整数x的二进制表示。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> bin(1)
+'0b1'
+>>> bin(100)
+'0b1100100'
+
+bool(x)：将对象转化为布尔值。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#list非空，都为True
+>>> bool([10,20,0])
+True
+ 
+#None对象为False
+>>> bool(None)
+False
+
+bytearray：Byte String的类型。
+cmp(x, y)：比较x和y，若xy返回正数，x==y返回0.
+compile(string,filename,mode)：将字符串编译为Python对象。
+返回的是一个内部对象，只能被eval等执行。
+string：一行或者多行（\n换行）的代码
+filename：一般给”就可以
+mode：single（string为单行），exec（string为多行），eval（string为单行）
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#编译有a和b的语境到对象x
+>>> x = compile("a=10\nb=[a,a,a]",'','exec')
+ 
+#执行x对象
+>>> eval(x)
+ 
+#打印b
+>>> print b
+[10, 10, 10]
+
+4、一些内置函数：
+delattr(object,attr)：相当于del object.attr，注意是删除对象的，不是dictionary的！
+eval(expr)：如上所述，eval执行compile编译好的代码片段对象，相当于可动态载入吧。
+exec(expr)：和eval类似，但它无返回值。
+filter(function,iterable)：迭带过滤器，对迭带对象的每个元素应用function，如果返回True，则加入到返回结果中。
+如下：过滤所有x<5的。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> def func1(x):
+...     return True if x<5 else False
+...
+>>> filter(func1,xrange(1,20))
+[1, 2, 3, 4]
+
+5、一些内置函数：
+getattr(object,name)：等同object.name
+hash(object)：返回一个对应的Hash值（不是所有类型都可以，必须实现了__hash__()）
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> hash(x)
+2119161711
+
+iter(object)：返回对象objet对应的迭带器。
+len(s)：返回s的长度。
+locals()：返回当前局部的变量。
+map(function,items)：将function应用于每个items的对象上，并收集每次调用的返回结果。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#map函数和用法
+>>> def func2(x):
+...     return -x
+...
+>>> map(func2,xrange(10))
+[0, -1, -2, -3, -4, -5, -6, -7, -8, -9]
+
+6、一些内置函数：
+max(s)：返回s中最大值
+min(s)：返回s中最小值
+next(s)：返回迭带器的下一个
+object：所有对象的基类
+open(filename)：打开一个对象并返回一个file-like object。
+ord(c)：返回ascii/unicode字符对应的数字。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#ascii的数值
+>>> ord('c')
+99
+ 
+#unicode的数值
+>>> ord(u'赫')
+36203
+
+7、一些内置函数：
+
+pow(x,y,[z])：x ** y，如果有z的话，x ** y % z，不知道是不是算RSA神马的会不会给力……
+试了试，好像还挺给力……
+range/xrange：返回连续数字的数组，一般推荐xrange吧，Python 3后统一为range了。
+round(x)：将x约到最近一个10^x位。
+set(items)：创建一个set
+slice(start,stop[,step])：返回一个slice对象？？
+sorted(iterable)：将iterxx排序后返回。
+vars(object)：返回object的符号表？(其实就是返回__dict__属性)
+zip(s1,s2)：把多个seq并联，返回(x1,x2)其中x1是s1中的，x2是s2中的。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> zip(xrange(5),["a","b","c","d","e"])
+[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'd'), (4, 'e')]
+
+8、内置异常类
+BaseException：所有异常的基类。
+Exception：所有程序导致的异常的基类。
+ArithmeticError：算数异常基类，如OverflowError，ZeroDivisionError。
+EnvironmentError：环境导致的异常基类，如IOError和OSError。
+
+9、异常的捕获：
+异常带属性args和message
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+try:
+    xxxx
+except IOError as e:
+    #handle exception
+    print e.args
+    pass
+
+10、一些异常类
+EOFError：读到文件的末尾，不过只有input()和raw_input()会抛出这个异常。其他的read()和readline()一般以返回None或者空行做为反应。
+MemoryError：可恢复的内存错误？
+IOError：很常见了。带属性errno/strerror和filename。
+SystemExit：由sys.exit()函数发起，退出也可用os._exit()。
+
+11、Python中也有Warning警告。
+
+12、引入未来的模块/函数（future_builtins）
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+import future_builtins
+
+本章完。

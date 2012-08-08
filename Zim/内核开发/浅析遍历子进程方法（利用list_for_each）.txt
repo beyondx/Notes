@@ -1,0 +1,73 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-06T18:25:39+08:00
+
+====== 浅析遍历子进程方法（利用list for each） ======
+Created Tuesday 06 December 2011
+http://hi.baidu.com/linuxpad/blog/item/88e342dc4f9f911f62279837.html
+
+Linux系统中的每个进程都有一个父进程（init进程除外）；每个进程还有0个或多个子进程。在进程描述符中__parent指针__指向其父进程，还有一个名为__children__的子进程链表（父进程task_struct中的children相当于__链表的表头, __）。
+
+而我们可以使用list_for_each(/include/linux/list.h)来依次遍历访问子进程：
+
+struct task_struct *task;
+struct list_head *list;
+
+list_for_each(list, &current->children) {
+
+      task = list_entry(list, struct task_struct, __sibling__);  注意：至于为何是sibling而不是children，内核中注释如下：
+				//struct list_head __children;__	/* list of my children */
+				//struct list_head __sibling;__	/* **linkage in my parent's children list** */
+}
+
+其中task即为某个子进程的地址。
+
+我们查看源文件找到list_for_each的定义：
+
+#define list_for_each(pos, head) \
+
+    for (pos = (__head)->next__; prefetch(pos->next), pos != (head); \  //说明children是子进程描述符__链表的表头，且概念表是双向循环链表。__
+
+            pos = pos->next)
+
+从上可以看出list_for_each其实就是一个for循环，在网上看到prefetch()是一个预抓取的函数，我并不理解它（哪位大牛知道的讲下哦），不过这个对for（）并没有多大的影响。for()实现的就是一个children链表的遍历，而由children的地址如何取到task_struct的地址呢，它是由list_entry宏来实现的。
+
+我们先给出所需函数或宏的源代码
+
+list_entry(/include/linux/list.h)
+
+#define list_entry(ptr, type, member) \
+
+    container_of(ptr, type, member)
+
+---------------------------------------------------
+
+container_of(include/linux/kernel.h)
+
+#define container_of(ptr, type, member) ({          \
+
+    const __typeof__( ((type *)0)->member ) *__mptr = (ptr);    \
+
+    (type *)( (char *)__mptr - offsetof(type,member) );})
+
+-------------------------------------------
+
+offsetof(/include/linux/stddef.h)
+
+#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+
+对于list_entry宏来说ptr在这里为指向children链表的指针，type为task_struct结构体的类型，member为链表成员的变量名，即sibling。
+
+container_of()思路为先求出结构体成员member(即children)在结构体(即task_struct)中的偏移量，然后再根据member的地址(即ptr)来求出结构体(即task_struct)的地址。
+
+哇哈哈 下面是我觉得最经典的地方((type *)0)->member，他将地址0强制转换为type类型的指针，然后再指向成员member，此时((type *)0)->member的地址即为member成员相对于结构体的位移。
+
+其中typeof()相当于C的sizeof()，(char *)__mptr这个强制转换用来计算偏移字节量，size_t被定义为unsigned int 类型。
+
+哈哈 这样这个过程就不难理解了吧
+
+PS：网上找到的list_entry宏定义的另一个版本（有人说是老版本kernel里面的），其实是一样的，大家自己理解吧。^_^
+
+#define list_entry(ptr, type, member) \
+((type *)((char *)(ptr)-(unsigned long)(&((type *)0)->member)))
+

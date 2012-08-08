@@ -1,0 +1,29 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-23T14:44:27+08:00
+
+====== procmail ======
+Created Monday 23 May 2011
+
+  MAILDIR=$HOME/Mail
+  # set the following to yes for debugging 
+  VERBOSE=no
+  # to enable logging
+  #LOGFILE=$HOME/.procmaillog 
+  FORMAIL=/usr/bin/formail
+
+  #gmail
+  :0:
+* ^TOgeekard@gmail\.com
+  $MAILDIR/gmail/
+
+  #qq
+  :0:
+* ^TOgeekard@qq\.com
+  $MAILDIR/qq/
+
+  
+  # Accept all the rest to your default mailbox
+  :0:
+  $MAILDIR/others/
+

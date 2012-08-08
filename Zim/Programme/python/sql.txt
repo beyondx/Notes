@@ -1,0 +1,7 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-09T21:22:17+08:00
+
+====== sql ======
+Created Sunday 09 October 2011
+

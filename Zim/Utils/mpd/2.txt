@@ -1,0 +1,655 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-28T16:11:54+08:00
+
+====== Music Player Daemon ======
+Created Saturday 28 May 2011
+
+**MPD** (music player daemon) is an audio player that has a server-client architecture. MPD runs in the background as a **daemon**, manages playlists and a music database, and uses very few resources. In order to interface with it, you need a **separate client**. More information can be found on their website.
+Please have a look at the official page for setup and troubleshooting instructions, the main developer called our wiki page in its current state "full of symptom killers", hence the official pages should contain better instructions.
+
+===== Installing mpd =====
+Install with pacman:
+**# pacman -S mpd**
+
+===== Daemon Setup: Starting at Boot =====
+
+General information about MPD configuration may be found at http://mpd.wikia.com/wiki/Configuration.
+
+==== Sound setup ====
+
+To make audio output actually work ensure that you have setup **audio card** and **mixer** correctly. See **ALSA**, and **PulseAudio** if you are using Gnome 3. Do not forget to unmute the required channels in **alsamixer**, raise the volume and save changes with alsactl store. Run **mpd with /usr/bin/mpd --stdout --no-daemon --verbose** if that still doesn't work.
+
+Make sure your card can do **hardware mixing** (most of them can, including onboard audio). Or else this could cause problems with **multiple sound playback**. For example, this can prevent Mplayer from playing back sound while the mpd daemon is running, returning an audio error message stating the device is busy.
+
+===== Timeline of MPD's behavior on a typical working setup when started as a daemon =====
+
+    MPD is started on boot by** /etc/rc.conf**, by including it in the **DAEMONS** array. (Or, this can be done manually each session by running /etc/rc.d/mpd start with root privileges).
+    Since MPD is now started as root, it first reads the **/etc/mpd.conf** file.
+    MPD reads the** user variable** in the /etc/mpd.conf file, and changes from root to this user.
+    MPD then reads the contents of the /etc/mpd.conf file and configures itself accordingly. 
+
+Notice that MPD changes the running user **from root to the one **named in the /etc/mpd.conf file. This way, uses of ~ in the configuration file point correctly to the home user's directory, and not root's directory. It may be worthwhile to change all uses of ~ to /home/username to avoid any confusion over this aspect of MPD's behavior.
+__A clean configuration file__
+
+    As root, check if /etc/mpd.conf exists and delete the file if it does. This is safe. 
+MPD comes with an example configuration file, available at** /usr/share/mpd/mpd.conf.example**. This file holds an abundance of information on MPD configuration, and holds default mixer values you can simply uncomment.
+    As root, copy this example file to **/etc/mpd.conf**. 
+**# cp /usr/share/mpd/mpd.conf.example /etc/mpd.conf**
+(/usr/share/mpd/mpd.conf.example is good for userspace setup)
+Since MPD is being set up to run as **a daemon at boot**, never put this file in the user's directory like some tutorials suggest, since it will not be read. Moreover, if you previously created a .mpdconf file in your home, remove it now (to set up MPD to run with user privileges alone, pleaser refer to the section Music_Player_Daemon#Alternative_Setup:_Starting_as_a_User). This is important to prevent conflicts. The presence of the configuration file in /etc, like is the case here, is what will enable MPD to run as a daemon at boot. Otherwise, a script would be needed to run MPD after the user has logged (like kdm or ~/.fluxbox/startup) or it would require a manual move each time. For a single music collection, the method used here is simply better, even while the collection is shared to multiple users. Also, don't be afraid about root privileges: even while MPD runs as a daemon, it never completely runs as root since it automatically drops its root privileges after execution.
+
+===== Edit mpd.conf =====
+
+The default arch install keeps the setup in /var and uses "mpd" as default user, instead of cluttering up ~/. Edit /etc/mpd.conf to reflect as such.
+
+==== File: /etc/mpd.conf ====
+
+music_directory       "/home/user/music"         # Your music dir.
+playlist_directory    "/var/lib/mpd/playlists"
+db_file               "/var/lib/mpd/mpd.db"
+log_file              "/var/log/mpd/mpd.log"
+pid_file              "/var/run/mpd/mpd.pid"
+state_file            "/var/lib/mpd/mpdstate"
+user                  "mpd"
+# Binding to address and port causing problems in mpd-0.14.2 best to leave
+# commented.
+# bind_to_address       "127.0.0.1"
+# port                  "6600"
+
+    If your music collection is contained under multiple directories, you can **make symbolic links** under /var/lib/mpd then set 'music_directory' to the directory holding the symbolic links. Remember to **set permissions accordingly** on the directories being linked. 
+
+    To change the volume of audio from mpd independent of other programs, uncomment or add the switch in mpd.conf: 
+
+File: /etc/mpd.conf
+**mixer_type			"software"**
+
+    Lastly, if you are running pulseaudio under Gnome 3, the default setting of "alsa" for the audio output will not work. Make the modification from: 
+
+File: /etc/mpd.conf
+
+**audio_output {**
+**        type                    "alsa"**
+**        name                    "Sound Card"**
+**}**
+
+to
+File: /etc/mpd.conf
+
+**audio_output {**
+**        type                    "pulseaudio"**
+**        name                    "Sound Card"**
+**}**
+
+
+===== Create files =====
+
+    As root, create the directories and files you specified in /etc/mpd.conf. 
+
+**# mkdir -p /var/lib/mpd/playlists /var/run/mpd**
+**# touch /var/lib/mpd/{mpd.db,mpdstate} && touch /var/run/mpd/mpd.pid**
+
+    You then need to change the file's permissions so that the daemon can modify them. 
+
+**# chown -R mpd /var/lib/mpd /var/run/mpd**
+
+===== Create database =====
+
+Creating the database is now accomplished via the update feature of the client, for example '**mpc update**'. The previous method, creating the MPD database as root (# mpd --create-db), is **deprecated**.
+
+__Alternative Setup: Starting as a User__
+
+MPD need not be started with root permissions. The only reason why MPD needs to be started as root (by being called from /etc/rc.conf) is because the default files and folders in the default configuration file points to directories owned by **root** (the /var directory). A less common, but perhaps more sensible, approach is to make MPD work with files and directories owned by a normal user. Running MPD as a normal user has several advantages:
+
+    You can easily have a single directory **~/.mpd** (or any other directory under /home/username) for all MPD configuration files
+    No read/write permission errors
+    More flexible calls to MPD by using** ~/.xinitrc **instead of including 'mpd' in the /etc/rc.conf DAEMONS array. 
+
+The following steps shows how to run MPD as a normal user. Note: this approach will not work if you want multiple users to have access to MPD.
+
+    Copy the contents of the default MPD configuration file in /usr/share/mpd/mpd.conf.example to your home directory. A good place would be "**/home/user/.mpd/mpd.conf**".
+    Follow the 'old setup instructions' from above, ignoring the first part about copying the config to /etc/mpd.conf.
+    Create all of the requisite files in "/home/user/.mpd/": 
+
+**"~/.mpd/playlists"**
+**"~/.mpd/db"**
+**"~/.mpd/mpd.log"**
+**"~/.mpd/mpd.error"**
+**"~/.mpd/mpd.pid"**
+**"~/.mpd/mpdstate"**
+
+    Let MPD start on bootup by calling it from your **~/.xinitrc **as follows: 
+
+# this starts mpd as normal user
+**mpd ~/.mpd/mpd.conf**
+
+Note: that you don't have to put a "&" at the end of the line here, since MPD will automatically daemonize itself.
+
+Lastly, delete the entry 'mpd' from your DAEMONS array in /etc/rc.conf, as you are not running it as root anymore.
+
+===== Quick setup =====
+
+The fastest way to do set up the structure is to do this:
+
+**$ mkdir -p ~/.mpd/playlists && touch ~/.mpd/database && cp /usr/share/doc/mpd/mpdconf.example ~/.mpd/mpd.conf**
+
+Then edit mpd.conf to your liking, in a manner similar to Music_Player_Daemon#Edit_mpd.conf. Beware that you must uncomment the db_file entry if you do edit mpd.conf.
+Then, to run it:
+**$ mpd ~/.mpd/mpd.conf**
+
+
+===== Multi-mpd setup =====
+
+Useful if you want to run for example an** icecast server**. If you want a second MPD daemon (e.g., with icecast output to share music over the network) to use the same music and playlist as the one above, simply copy the above configuration file and make a new file (e.g., /home/username/.mpd/config-icecast), and only change the log_file, error_file, pid_file, and state_file parameters (e.g., mpd-icecast.log, mpd-icecast.error, and so on); using the same directory paths for the music and playlist directories would ensure that this second mpd daemon would use the same music collection as your first one (e.g., creating and editing a playlist under the first daemon would affect the second daemon as well, so that you don't have to create the same playlists all over again for the second daemon). Then, call this second daemon the same way from your ~/.xinitrc above. (Just be sure to have a different port number, so as to not conflict with your first mpd daemon).
+
+
+===== Clients =====
+
+Install a client program for MPD. Popular options are:
+Console
+    mpc – Command Line Client (you'll probably want this one no matter what) 
+# pacman -S mpc
+    ncmpc – NCurses Client (this one is very handy for running in a console) 
+# pacman -S ncmpc
+    ncmpcpp – Clone of ncmpc with some new features written in C++ 
+# pacman -S ncmpcpp
+    pms – NCurses Client (highly configurable and accessible) 
+Install pmus from the AUR.
+Graphical
+    ario – GTK+ Client with a Rhythmbox like library browser 
+# pacman -S ario
+    gmpc – GNOME Client 
+# pacman -S gmpc
+    QMPDClient – Client written with Qt 4.x. 
+# pacman -S qmpdclient
+    sonata – Python GTK+ Client 
+# pacman -S sonata
+    dmpc – Dmenu-based MPC client with a playlist manager and state-saving on playlist changes 
+Install dmpc from the AUR.
+
+
+===== Sonata & Ario =====
+
+The easiest way, if you don't care about having to have a program window open all the time, is using Sonata or Ario which are graphical frontends to MPD. They have built-in support for Last.fm scrobbling in their preferences. A downside of this is that Sonata doesn't cache your songs if for some reason you don't happen to have an Internet connection at the time of playing.
+lastfmsubmitd
+
+lastfmsubmitd is a daemon which is available in the "community" repository. To install it, first edit /etc/lastfmsubmitd.conf and add both lastfmsubmitd and lastmp to the DAEMONS array in /etc/rc.conf.
+Last.fm playback with lastfmproxy
+
+lastfmproxy is a python script that streams a last.fm music stream to another media player. To setup, install lastfmproxy from the AUR and then edit /usr/share/lastfmproxy/config.py. If you plan to only stream to MPD on the same host, just edit the login info.
+Note: Since it installs to a read only directory but it requires read/write access for features like saving previously listened to stations, it would be wise to copy /usr/share/lastfmproxy to your home directory.
+
+Start lastfmproxy with lastfmproxy and visit http://localhost:1881/ in your web browser. To add a last.fm station navigate to http://localhost:1881/ followed by the lastfm:// url. Example: http://localhost:1881/lastfm://globaltags/punk . Navigate back to http://localhost:1881/ and download the m3u file by selecting the Start Listening link. Simply add it to your music library path.
+Never play on start
+
+This feature has recently been added to mpd git by Martin Kellerman, see commits b57330cf75bcb339e3f268f1019c63e40d305145 and 2fb40fe728ac07574808c40034fc0f3d2254d49d.
+mpd-git Method
+
+This is the best method currently available, but is only currently (April 2011) enabled in the git version. Install mpd-git from the AUR, then add restore_paused "yes" to your mpd.conf file.
+
+If you have issues with connecting your client to mpd-git, see Music Player Daemon#Other issues when attempting to connect to mpd with a client.
+Method 1
+
+If you don't want MPD to always play on your system start, but yet you want to preserve the other state information, add the following lines to your /etc/rc.d/mpd file:
+
+   ...
+   stat_busy "Starting Music Player Daemon"
+
+   # always start in paused state
+   awk '/^state_file[ \t]+"[^"]+"$/ {
+       match($0, "\".+\"")
+       sfile = substr($0, RSTART + 1, RLENGTH - 2)
+   } /^user[ \t]+"[^"]+"$/ {
+       match($0, "\".+\"")
+       user = substr($0, RSTART + 1, RLENGTH - 2)
+   } END {
+       if (sfile == "")
+               exit;
+       if (user != "")
+               sub(/^~/, "/home/" user, sfile)
+       system("sed -i \x27s|^\\(state:[ \\t]\\{1,\\}\\)play$|\\1pause|\x27 \x27" sfile "\x27")
+   }' /etc/mpd.conf
+
+   /usr/bin/mpd /etc/mpd.conf &> /dev/null
+   ...
+
+This will change the player status to "paused", if it was stopped while playing. Next, you want this file to be preserved, so MPD updates won't erase this edit. Add (or edit) this line to your /etc/pacman.conf:
+
+NoUpgrade = etc/rc.d/mpd
+
+Method 2
+
+Another simpler method, would be to add mpd to your rc.conf deamons array and add mpc stop or mpc pause to /etc/rc.local.shutdown and to /etc/rc.local. (Remember you must have mpc installed to use this method).
+
+Adding only the order in /etc/rc.local cannot assure that mpd will play absolutely nothing, since there may be a delay before the stop command is executed. On the other hand, if you only add the order to /etc/rc.local.shutdown, that will assure that mpd won't play at all, as long as you properly shutdown your system. Even though they are redundant, adding it to /etc/rc.local would serve as a safety for those, presumably, rare occasions when you do not shutdown the system properly.
+Method 3
+
+The general idea between this method is to ask mdp to pause music when user logs out so that during next restart, mdp will stick to that "pause" state. Sending such command can be achieve using mpc, the command line interface to MPD:
+
+pacman -S mpc
+
+GDM users can then add the next line to /etc/gdm/PostSession/Default (be sure to add it before "exit 0"):
+
+/usr/bin/mpc pause
+
+Non-GDM users can use their own login manager's method to launch the line at logout.
+MPD & ALSA
+
+Sometimes, when you use other audio output, e.g: some web pages containing Flash applets, MPD cannot reproduce anything anymore (until you restart). The error looks something like: (if you search the file /var/log/mpd/mpd.error)
+
+Error opening alsa device "hw:0,0": Device or resource busy
+
+And here is the solution (dmix saving our life again). Apply these lines in your /etc/mpd.conf:
+
+audio_output {
+        type                    "alsa"
+        name                    "Sound Card"
+        options                 "dev=dmixer"
+        device                  "plug:dmix"
+}
+
+And then restart with /etc/rc.d/mpd restart.
+
+Searching on Internet I found the reason for why that happens in Gentoo's wiki:
+
+    The sound card does not support hardware mixing (uses dmix plugin)
+    An application does not work with ALSA with it's default settings 
+
+For a detailed description, it is recommended to take a look at this link. There you can find an example asound.conf which worked for me right out of the box.
+High CPU usage with ALSA
+
+When using MPD with ALSA, users may experience MPD taking up lots of CPU (around 20-30%). This is caused by most sound cards supporting 48kHz and most music being 44kHz, thus forcing MPD to resample it. This operation takes lots of CPU cycles and results into high usage.
+
+For most users the problem should be solved by telling MPD not to use resampling by adding auto_resample "no" into audio_output-part of /etc/mpd.conf. This will degrade quality slightly, however.
+
+Example from mpd.conf:
+
+audio_output {
+   type			"alsa"
+   name			"My ALSA Device"
+   auto_resample		"no"
+}
+
+Although it may not give as drastic a speedup, enabling mmap may speed things up:
+
+audio_output {
+   type			"alsa"
+   name			"My ALSA Device"
+   use_mmap		"yes"
+}
+
+Some users might also want to tell dmix to use 44kHz as well. More info about tuning performance of your MPD can be found from: MPD wiki
+Example configuration: Output with 44.1 KHz at e. g. 16 bit depth, multiple programs at once
+
+Why these formats? Because they are standard CDA, because ALSA on its own allows more than one program "to sound" only with dmix — whose resampling algorithm is inferior — and because dmix by default resamples anything lower to 48 KHz (or whatever higher format is playing at the time). Also, some get clicking sounds if at least mpd.conf is not changed this way.
+
+What's the downside? These settings cause everything (if necessary) to be resampled to this format, such as material from DVD or TV which usually is at 48 KHz. But there is no known way to have ALSA dynamically change the format, and particularly if you listen to far more CDs than anything else the occasional 48 → 44.1 isn't too great a loss.
+
+The following assumes that there are not already other settings which conflict resp. overwrite it. This applies especially to the current user's potential ~/.asoundrc — which MPD as its own user ignores, therefore the following should go to /etc/asound.conf:
+File: /etc/asound.conf
+
+defaults.pcm.dmix.rate 44100 # Force 44.1 KHz
+defaults.pcm.dmix.format S16_LE # Force 16 bits
+
+File: /etc/mpd.conf
+
+audio_output {
+        type                    "alsa" # Use the ALSA output plugin.
+	name			"HDA Intel" # Can be called anything or nothing tmk, but must be present.
+        options                 "dev=dmixer"
+        device                  "plug:dmix" # Both lines cause MPD to output to dmix.
+	format	        	"44100:16:2" # the actual format
+	auto_resample		"no" # This bypasses ALSA's own algorithms, which generally are inferior. See below how to choose a different one.
+	use_mmap		"yes" # Minor speed improvement, should work with all modern cards.
+}
+
+samplerate_converter		"0" # MPD's best, most CPU intensive algorithm. See 'man mpd.conf' for others — for anything other than the poorest "internal", libsamplerate must be installed.
+
+Note: MPD gives the mp3 format a special treatment at decoding: It's always outputted as 24 bit. (The conversion as forced by the format line only comes after that.)
+
+If one wants to leave the bit depth decision to ALSA resp. MPD, comment out resp. omit the dmix.format line and change the one for mpd with format to "44100:*:2".
+Note: Crossfading between files decoded at two different bit depths (say, one mp3 and one 16 bit flac) does not work unless conversion is active.
+Control MPD with lirc
+
+There are already some clients designed for communications between lircd and MPD, however, as far as the practical use, they aren't very useful since their functions are limited.
+
+It's recommended to use mpc with irexec. mpc is a command line player which only sends the command to MPD and exits immediately, which is perfect for irexec, the command runner included in lirc. What irexec does is that it runs a specified command once received a remote control button.
+
+First of all, please setup your remotes as referred to the Lirc article.
+
+Edit your favored lirc startup configuration file, default location is ~/.lircrc.
+
+Fill the file with the following pattern:
+
+begin
+     prog = irexec
+     button = <button_name>
+     config = <command_to_run>
+     repeat = <0 or 1>
+end
+
+An useful example:
+
+## irexec
+begin
+     prog = irexec
+     button = play_pause
+     config = mpc toggle
+     repeat = 0
+end
+
+begin
+     prog = irexec
+     button = stop
+     config = mpc stop
+     repeat = 0
+end
+begin
+     prog = irexec
+     button = previous
+     config = mpc prev
+     repeat = 0
+end
+begin
+     prog = irexec
+     button = next
+     config = mpc next
+     repeat = 0
+end
+begin
+     prog = irexec
+     button = volup
+     config = mpc volume +2
+     repeat = 1
+end
+begin
+     prog = irexec
+     button = voldown
+     config = mpc volume -2
+     repeat = 1
+end
+begin
+     prog = irexec
+     button = pbc
+     config = mpc random
+     repeat = 0
+end
+begin
+     prog = irexec
+     button = pdvd
+     config = mpc update
+     repeat = 0
+end
+begin
+     prog = irexec
+     button = right
+     config = mpc seek +00:00:05
+     repeat = 0
+end
+begin
+     prog = irexec
+     button = left
+     config = mpc seek -00:00:05
+     repeat = 0
+end
+begin
+     prog = irexec
+     button = up
+     config = mpc seek +1%
+     repeat = 0
+end
+begin
+     prog = irexec
+     button = down
+     config = mpc seek -1%
+     repeat = 0
+end
+
+There are more functions for mpc, run man mpc for more info.
+Control MPD with bluetooth phone
+
+You can also control MPD (to a certain extent) using a bluetooth enabled phone. You need to do the following:
+
+    install remuco -- a wireless remote control for several Linux media players (aur)
+    transfer remuco client -- jar/jad files from /usr/share/remuco/client/ to your phone and install it
+    run remuco-mpd (as current user)
+    run remuco on your phone, define a new bluetooth remuco connection (pair first if you haven't done this previously) and explore its capabilities 
+
+More information about remuco including troubleshooting to be found at its homepage
+MPD & PulseAudio
+
+Edit /etc/mpd.conf, and uncomment the audio_output section for the type "pulse". The server and sink lines of it should be commented unless you know what you're doing.
+
+Then, add the mpd user (and yours if you haven't done so already) to the necessary pulse groups. The pulse-access group should be sufficient but you may want to add pulse-rt as well. The group "pulse" doesn't appear to be necessary.
+
+# gpasswd -a mpd pulse-access
+# gpasswd -a mpd pulse-rt
+
+Lastly, you may or may not need to copy ~/.pulse-cookie from your current (pulse working) user's dir to your mpd user's home directory. It is likely to be /var/lib/mpd if you followed the first part of this wiki. This would probably only allow your current user to listen in on MPD's pulse. You may consider running pulse system-wide if that's insufficient.
+Cue Files
+
+To make cue file support actually work, you have to work around a nasty libcue bug. Libcue copied some files directly from libcdio, making it conflict with it. Steps to do to get proper cue support:
+
+    remove libcdio temporary (pacman -Rdd libcdio)
+    install libcue (pacman -S libcue)
+    install mpd with abs or from aur.
+    reinstall libcdio (pacman -S libcdio) 
+
+At the point of writing mpd does not parse tracknumbers from cue sheets. There is a patch available (http://musicpd.org/mantis/view.php?id=3230) Once this patch is merged into mpd, i will remove this line :)
+Troubleshooting
+Autodetection failed
+
+During the start of MPD, it tries to autodetect your set-up and configure output and volume control accordingly. Though this mostly goes well, it will fail for some systems. It may help to tell MPD specifically what to use as output and mixer control. If you copied /etc/mpd.conf over from /etc/mpd.conf.example as mentioned above, you can simply uncomment:
+
+Example for alsa output type and alsa mixer:
+
+audio_output {
+	type			"alsa"
+	name			"My ALSA Device"
+	device			"hw:0,0"	# optional
+	format			"44100:16:2"	# optional
+	mixer_type		"hardware"
+	mixer_device		"default"
+	mixer_control		"PCM"
+}
+
+Note: in case of permission problems when using ESD with MPD run this as root:
+
+# chsh -s /bin/true mpd
+
+Executable permissions
+Warning: This is not good security practice and may be unnecessary.
+
+MPD needs to have +x permissions on ALL parent directories to your music collection (ie. if it's located outside of "mpd" home directory /var/lib/mpd). By default useradd sets permissions on home dir to 1700 drwx------. So if you're like me you will need to change permissions of /home/user. Example... my music collection is located /home/user/music.
+
+# chmod a+x /home/$USER
+# chmod -R a+X /home/$USER/music
+
+Alternative solution
+
+An alternative solution would be to use your group to share a selection of files, among them your music library. First remove all permissions for the group then add group permissions to read and execute home and music.
+
+# chmod -R g-rwx /home/$USER
+# chmod g+rx /home/$USER
+# chmod -R g+rX /home/$USER/music
+
+Another alternative solution
+
+Another alternative is to remount the music directory under a directory that mpd has access to. This does not entail the same security risks as modifying the permissions on one's home directory.
+
+# mkdir /var/lib/mpd/music
+# echo "/home/$USER/music /var/lib/mpd/music none bind" >> /etc/fstab
+# mount -a
+# /etc/rc.d/mpd restart
+
+And that should fix the problem. See also the forum thread.
+Avoiding timeouts
+
+To get rid of timeouts (i.e. when you paused music for long time) in gpmc and other clients uncomment and increase connection_timeout option in mpd.conf.
+
+If files and/or titles are shown in wrong encoding, uncomment and change filesystem_charset and id3v1_encoding options. Note that you cannot set encoding for ID3 v2 tags. To workaround this you may use external tag readers.
+
+If you want to use another computer to control MPD over a network, the bind_to_address option in mpd.conf will need to be set to either your IP address, or any if your IP address changes frequently. Remember to add mpd to the /etc/hosts.allow file to enable external access.
+
+Streaming
+With the latest version of MPD (0.15), built-in httpd streaming is now available.
+
+To activate this feature, you'll just need to add a new output of type httpd in mpd.conf:
+
+audio_output {
+          type   "httpd"
+          name   "What you want"
+          encoder "lame"     # vorbis or lame supported
+          port    "8000"
+          bitrate  "128"
+          format   "44100:16:2"  # change 2 to 1 for mono
+  }
+     
+
+Restart the mpd deamon and, from another computer, simply load the stream as any other url.
+
+$ mplayer http://<server's IP>:8000
+
+Note: You must open the port on your router / firewall for the stream to be connectible to from another computer.
+
+Most players (i.e. vlc or xmms2) should also be able to load the stream via their "add url..." menu option.
+
+This is a nice clean way to replace your current icecast setup with something natively supported within MPD.
+mpd hangs on first startup
+
+This is a common error that's caused by corrupt mp3 tags. Here is an experimental way to solve this issue. Requirements:
+
+    kid3
+    easytag 
+
+This method is very tedious, especially with a huge database. Just as a baseline it took 2.5h to fix a 16Gb DB.
+Easy Tag
+
+The purpose of easytag here is that easytag detects the error in the tags, but like MPD it hangs and dies. The trick here is that easy tags actually tells you what file is causing the problem on the status bar. Before starting easytag make sure to have a terminal close to be ready to kill easy tag to avoid a hang. Once you are ready, on the tree view select the directory where all your music is located. By default easytag starts to search all subdirectories for mp3 files. Once you notice that easytag stopped scanning for songs, make note of the culprit and kill easytag.
+KID3
+
+Here's where kid3 comes in handy. With kid3 go to the offending song and rewrite one of the tags. then save the file. This should force kid3 to rewrite the whole tag again fixing the problem with MPD and easy tag hanging.
+
+Repeat this procedure until your music library is done.
+Cannot connect to mpd: host "localhost" not found: Temporary failure in name resolution
+
+Cannot connect to MPD (with ncmpcpp), if you are disconnected from network. Solution is disable IPv6 or add line to /etc/hosts
+
+::1 localhost.localdomain localhost
+
+Other issues when attempting to connect to mpd with a client
+
+Some have reported being unable to access mpd with various clients, for example seeing errors like these:
+
+$ ncmpcpp
+Cannot connect to mpd: Connection closed by the server
+$ sonata
+2011-02-13 18:33:05  Connection lost while reading MPD hello
+2011-02-13 18:33:05  Not connected
+2011-02-13 18:33:05  Not connected
+
+Please see posts on ncmpcpp on the Arch Forums HERE and HERE. Also see the Arch bug report on this issue HERE.
+First fix
+
+Your first resort should be adding the following to /etc/hosts.allow.
+File: /etc/hosts.allow
+
+mod: ALL
+
+Second fix
+
+Check mpd.conf for a line like mpd.error and remove it. The mpd error file is deprecated and has been removed.
+Third fix
+Note: I'm not so sure this is a good idea. There is a warning about changing the address to bind to in the default mpd.conf. If this does not help, you might want to comment out the changes.
+
+If that doesn't help, add the following to mpd.conf:
+
+ bind_to_address "127.0.0.1"
+ port "6600"
+
+Afterwards, instruct your client to connect via 127.0.0.1. For example, add the following to the ncmpcpp config file:
+
+ mpd_host "127.0.0.1"
+ mpd_port "6600"
+
+
+Forth fix
+Note: This fix only applies to users of manually compiled mpd or the AUR package mpd-git
+
+The final possible solution is simply compiling mpd without libwrap support. Install mpd-git as usual, but edit the PKGBUILD and search for
+
+        --with-zeroconf=no 
+
+and replace it with
+
+	--with-zeroconf=no \
+        --disable-libwrap
+
+Port 6600 already in use
+
+MPD needs to bind to port 6600 and cannot start if it's already in use. The most common reason for this is that the user has started MPD once and then subsequently tried to start mpd again. In general, nothing should be done here.
+
+If port 6600 is tied up for some other reason, one can use the following command to find the offending process:
+
+# netstat -tulpan | grep 6600
+
+This will list IP:Port and the process name holding the connection (root privileges are required to see all processes).
+
+If you need to restart mpd for whatever reason, use:
+
+ $ mpd --kill
+ $ mpd 
+
+A more brute-force approach:
+
+ $ killall mpd
+ $ mpd 
+
+Note: If you typically run MPD as root, you will need to run the above commands as root.
+In the latest version of MPD, --create-db is completely deprecated. The database will be created automagically on first run and can subsequently be updated via your client (i.e. mpc update). You can now use inotify support to automatically update your music database. Add the following to
+File: mpd.conf
+
+auto_update "yes"
+
+to enable it.
+Binding to IPV6 before IPV4
+
+If on startup, you see this message:
+
+listen: bind to '0.0.0.0:6600' failed: Address already in use (continuing anyway, because binding to '[::]:6600' succeeded)
+
+MPD is attempting to bind to the ipv6 interface before binding to ipv4. If you want to use your ipv4 interface, hardcode it in mpd.conf, like so:
+
+bind_to_address "127.0.0.1"
+
+Or, you could specify several binds, for example, to have MPD listen on localhost and the external IP of your network card:
+
+bind_to_address "127.0.0.1"
+bind_to_address "192.168.1.13"
+
+Crackling sound with some audio files
+
+This is usually a playback speed problem and can be fixed by uncommenting the audio_output_format line in:
+File: /etc/mpd.conf
+
+audio_output_format "44100:16:2"
+
+This is usually a sane value for most mp3 files.
+daemon: cannot setgid for user "mpd": Operation not permitted
+
+The error is stating that the user starting the process (you) does not have permissions to become another user (mpd) which the configuration has told that process to run as.
+
+To solve the issue, simply start mpd as root.
+
+su -c "/etc/rc.d/mpd start"
+
+or
+
+sudo /etc/rc.d/mpd start
+
+External links
+
+    Official Web Site
+    Official Wiki
+    Sorted List of MPD Clients
+    MPD forum 

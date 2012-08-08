@@ -1,0 +1,137 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-31T21:00:46+08:00
+
+====== Qt 之 show,hide,setVisible,setHidden,close 等小结 ======
+Created Monday 31 October 2011
+
+不知道标题该怎么取了，文中就简单整理一下下面几个函数吧。因为不断有网友问到此类问题(包括相关问题)，所以，自己整理一下，也算学习小结了。
+
+ 
+
+这些函数分两类，一类是用来删除对象的（从内存中干掉），一类是用来隐藏窗口的(从界面上干掉)
+
+ 
+
+0		QObject::deleteLater()		delete obj;析构对象
+
+1		QWidget::setVisible(bool)	使得Widget可见或不可见
+
+2		QWidget::setHidden(bool)	1号的马甲
+
+3		QWidget::show()				1号的马甲
+
+4		QWidget::hide()				1号的马甲
+
+5		QWidget::close(bool)			视情况确定是否调用4号0号
+
+6		QDialog::done(int)			始终会调用4号，视情况调用0号
+
+7		QDialog::accept()			6号的马甲
+
+8		QDialog::reject()				6号的马甲
+
+写在前面,我们知道，
+
+* 分配到heap中的对象(通过 new)，当对其delete，才会被析构。
+* 分配在stack中的对象，当其离开作用域是被析构
+
+在 Qt 中，一般建议你使用 new 的方式创建对象。或者，你可以看看  从 Qt 的 delete 说开来
+
+注意：本文接下来的讨论，都是假定你用的 new 创建的对象。
+
+===== QObject =====
+
+从Qt类的祖宗开始吧。因为QObject__不涉及界面__啊，成员中只涉及析构问题。在从 Qt 的 delete 说开来 一文中，我们知道，
+
+obj->deleteLater();
+
+最后调用的就是：
+
+delete obj;
+
+很简单哈。所以，这个函数的谈论（略）
+
+另外：对象析构时会发射 destroyed 信号。注意，是对象析构时，这是句废话，但要记住。
+
+===== QWidget =====
+呵呵，show()、hide()、setVisible()、setHidden() 这4个函数让人看得眼花缭乱。怎么办？
+看看代码吧：
+
+    virtual void setVisible(bool visible);
+    inline void setHidden(bool hidden) { setVisible(!hidden); }
+    inline void show() { setVisible(true); }
+    inline void hide() { setVisible(false); }
+
+代码很清楚：这四个东西之中，只有 setVisible 是__独立__的，其他三个都是它的马甲！
+
+setVisible 的作用是什么呢？顾名思义，使得一个Widget可见或不可见。
+__要点__：不可见，是Widget不在界面上显示，但不代表对象被析构！
+
+**close（） **这个函数，Manual中给的其实很详细的，很透彻。但一开始想弄明白还真是不容易。
+
+首先，我们直接调用close时(或者点击__关闭按钮__调用)，它会生成** QCloseEvent **事件：（我们可以选择接受或阻止它，如果我们阻止事件，close将直接返回，什么都不做）
+看点源码：
+
+bool QWidgetPrivate::close_helper(CloseMode mode)
+{
+...
+        QCloseEvent e;
+        if (mode == CloseWithSpontaneousEvent)
+            QApplication::sendSpontaneousEvent(q, &e);
+        else
+            QApplication::sendEvent(q, &e);
+        if (!that.isNull() && !e.isAccepted()) {
+            data.is_closing = 0;
+            return false;
+        }
+...
+}
+
+其次：如果我们接受了事件(默认)，她就直接调用我们前面提到的朋友。（从界面上干掉）
+
+q->hide();
+
+再次：如果我们为它设置过标记位（关闭时删除它）：又看到老朋友不是？（从内存中干掉）
+
+        if (q->testAttribute(Qt::WA_DeleteOnClose)) {
+            q->setAttribute(Qt::WA_DeleteOnClose, false);
+            q->deleteLater();
+        }
+
+题外：close 还是其他代码，但与本主题无关，不再涉及。
+
+===== QDialog =====
+
+QDialog 和 QWidget 相比，多了 done、reject 和 accept 3个相关函数：
+
+先看看两个马甲：
+
+void QDialog::accept()
+{
+    done(Accepted);
+}
+
+void QDialog::reject()
+{
+    done(Rejected);
+}
+
+**done()  **done 做的事情和close比较类似：因为它调用了close所调用的 close_helper 函数。只不过不同于close函数，它始终会先让Widget__不可见__。然后close操作，最后根据参数发射信号
+
+void QDialog::done(int r)
+{
+    Q_D(QDialog);
+    hide();
+    setResult(r);
+
+    d->close_helper(QWidgetPrivate::CloseNoEvent);
+
+    emit finished(r);
+    if (r == Accepted)
+        emit accepted();
+    else if (r == Rejected)
+        emit rejected();
+}
+
+注意：QDilaog可能包含事件循环，事件循环由QDialog::exec() 开始，QDialog::setVisible(false)将负责退出事件循环，这儿用的是其马甲hide()。

@@ -1,0 +1,66 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-09-24T09:48:41+08:00
+
+====== XeLaTeX---完美支持中文的TeX系统 ======
+Created Saturday 24 September 2011
+http://forum.ubuntu.org.cn/viewtopic.php?f=35&t=247476&start=0
+要做毕业论文了，遂打算用LaTeX写个模板，虽然成功配置了中文环境，却始终对其编译生成的PDF文档不满意,尤其是在在中文字号的处理上。在网上搜索了一段时间，发现XeLaTeX对中文的支持很好，几乎不需要任何配置就可以轻松使用中文环境，而且支持调用外部字体，相当方便。由于 Texlive08套装集成了，所以可以直接使用了！为了更好的发挥作用，一般还需如下配置：
+新建一个zhfontcfg.sty文件（文件名无所谓了），内容如下：
+代码:
+% xetex/xelatex 字体设定宏包
+
+\ProvidesPackage{zhfontcfg}
+\usepackage[cm-default]{fontspec} %[cm-default]选项主要用来解决使用数学环境时数学符号不能正常显示的问题
+
+\usepackage{xunicode,xltxtra}
+\defaultfontfeatures{Mapping=tex-text} %如果没有它，会有一些 tex 特殊字符无法正常使用，比如连字符。
+% 中文断行
+\XeTeXlinebreaklocale "zh"
+\XeTeXlinebreakskip = 0pt plus 1pt minus 0.1pt
+%将系统字体名映射为逻辑字体名称，主要是为了维护的方便
+\newcommand\fontnamehei{文泉驿正黑}
+\newcommand\fontnamesong{SimSun}
+\newcommand\fontnamekai{AR PL KaitiM GB}
+\newcommand\fontnamemono{FreeMono}
+\newcommand\fontnameroman{Times New Roman}
+%%设置常用中文字号，方便调用
+\newcommand{\erhao}{\fontsize{22pt}{\baselineskip}\selectfont}
+\newcommand{\xiaoerhao}{\fontsize{18pt}{\baselineskip}\selectfont}
+\newcommand{\sanhao}{\fontsize{16pt}{\baselineskip}\selectfont}
+\newcommand{\xiaosanhao}{\fontsize{15pt}{\baselineskip}\selectfont}
+\newcommand{\sihao}{\fontsize{14pt}{\baselineskip}\selectfont}
+\newcommand{\xiaosihao}{\fontsize{12pt}{\baselineskip}\selectfont}
+\newcommand{\wuhao}{\fontsize{10.5pt}{\baselineskip}\selectfont}
+\newcommand{\xiaowuhao}{\fontsize{9pt}{\baselineskip}\selectfont}
+\newcommand{\liuhao}{\fontsize{7.5pt}{\baselineskip}\selectfont}
+%设置文档正文字体为宋体
+\setmainfont[BoldFont=\fontnamehei]{\fontnamesong}
+\setsansfont[BoldFont=\fontnamehei]{\fontnamekai}
+\setmonofont{\fontnamemono}
+%楷体
+\newfontinstance\KAI {\fontnamekai}
+\newcommand{\kai}[1]{{\KAI#1}}
+%黑体
+\newfontinstance\HEI{\fontnamehei}
+\newcommand{\hei}[1]{{\HEI#1}}
+%英文
+\newfontinstance\ENF{\fontnameroman}
+\newcommand{\en}[1]{\,{\ENF#1}\,}
+
+保存后，放在Xelatex文件夹下的fontspec(xelatex下的任意位置都可以)下，并sudo texhash 刷新。之后，就可以通过调用该包(\usepackage{zhfontcfg})实现应用。继续发现，开始享受吧！！
+
+几个需要说明的问题：
+1）映射逻辑字体时，请确认系统中已经安装了相应字体，如不确定，可以通过如下命令查看：
+
+代码:
+fc-list  %查看系统安装的所有字体
+__fc-list :lang=zh-cn __%查看系统安装的中文字体（注意list后面有一个空格）
+
+
+2）要添加新字体，可参考已有命令; 其中：
+
+\HEI 作用范围：{\HEI 内容}，\HEI 内容，则“内容”都会是黑体;
+\hei 作用范围： \hei{内容}
+
+目前为止，使用中文环境比较舒服了。而且，经过两天的努力，成功按照学校要求编写了学士论文的LaTeX+CJK 模板和XeLaTeX模板，并得到了精华鼓励。呵呵，以后，就用它工作了。 

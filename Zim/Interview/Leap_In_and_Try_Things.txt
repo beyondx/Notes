@@ -1,0 +1,79 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T20:45:17+08:00
+
+====== Leap In and Try Things ======
+Created Sunday 27 March 2011
+
+Leap In and Try Things: Interview with Brian Kernighan
+Referred to as K&R
+{{../An_Interview_with_Brian_Kernighan/kernighan.jpg}}{{../An_Interview_with_Brian_Kernighan/c-book.jpg.gif}}{{../An_Interview_with_Brian_Kernighan/brian_kernighan_studentssm.jpg}}{{../An_Interview_with_Brian_Kernighan/brian_kernighan_princeton.jpg}}
+Referred to as "K&R"
+
+Brian Kernighan (pronounced ker-ni-han), Professor of Computer Science at Princeton University,  co-authored The C Programming Language, which has sold millions of copies and has been translated into 27 languages.
+
+C is one of the most popular computer programming languages, and it has influenced nearly all languages in use today, including C++, C#, Java, Javascript, Perl, PHP, and Python.
+
+Before becoming a full-time professor at Princeton, you had a long and brilliant career at AT&T Bell Labs. But let’s go back further. Can you tell us about your childhood and early interests?
+Professor Brian Kernighan
+
+Professor Brian Kernighan
+
+I was born in Canada and grew up in and around Toronto.  My father was a chemical engineer, which gave me a bit of exposure to some kinds of science and engineering.  I went to the University of Toronto in a program called “Engineering Physics”, which was meant for students who were pretty good in math and science but didn’t have any idea what they wanted to do.  It was extremely tough because there was a heavy workload and a lot of material — academically, I don’t think I have ever worked as hard since.  But it was a very good foundation for all kinds of later studies, and of course the experience of just working hard full time was good (though painful at the time).  I didn’t really encounter computers until I was nearly done with my undergrad education, but when I did first start to play with computers, I found them great fun, and of course still do.
+
+What events and decisions led you to join Bell Labs?
+
+I was a grad student at Princeton, and was lucky enough to be able to spend a summer at MIT in 1966, working on Project MAC.  I met some amazing people, I worked on the state of the art time-sharing system CTSS, helping to build the next version, Multics, and I learned a lot. The Multics project included not only MIT but Bell Labs, so I at least knew of people from Bell Labs who were contributing as well.  The following summer, I got a job at Bell Labs, where I worked with Doug McIlroy, the inventor of macros (among other things) and got to know the people who were working on Multics at the Bell Labs end.  That worked out well enough that I returned for a second summer, this time working with Shen Lin, a wonderful computer scientist and applied mathematician. Shen and I worked on an interesting problem, graph partitioning, that was my PhD thesis topic.  When I finished at Princeton six months later, Bell Labs offered me a job in the same group as Doug and Shen, and I never even thought about another job — Bell Labs was an idyllic place, with great people, lots of resources, and freedom to do anything at all.
+
+You are probably best known to the world for co-authoring with Dennis Ritchie The C Programming Language, which is generally known as “Kernighan and Ritchie”, or just “K&R”. Can you tell us how you two met and came to write the book together?
+
+Dennis was one of the people who had been involved with Multics at Bell Labs.  He and I were in the same group, though I don’t think we worked on anything together for several years.  But at some point, I wrote a tutorial on how to program in B, which was the precursor language to C, and that led naturally to a tutorial on C when Dennis created that language.  After a while, it seemed like a good idea to try a book on C, and I twisted Dennis’s arm into writing it with me.  That was probably the smartest thing I ever did — Dennis is an exceptionally clear and elegant writer, and of course he knew the language better than anyone else, so the book was accurate and authoritative.
+
+When writing the book, and afterwards, did you have an idea of what a major impact C would have on the computing world?
+
+I certainly did not.  I can’t speak for Dennis, but I’ll bet that he didn’t either.
+
+What do you think made the book, and C, so successful?
+Lecturing
+
+Lecturing
+
+With C, Dennis managed to find a perfect balance between expressiveness and efficiency.  It was just right for creating systems programs like compilers, editors, and even operating systems.  C made it possible for a programmer to get close to the machine for efficiency but remain far enough away to avoid being tied to a specific machine.  It was pretty clear how any C construct would be compiled, and it was possible to write quite good C compilers for almost any reasonable architecture.  As a result, C became in effect a universal assembler: close enough to the machine to be cost effective, but far enough away that a C program could be compiled for and run well on any machine.  I think the book has been successful in large part because of the success of C, though it probably helped that the book, like the language, is rather small and simple, and made it possible for people to do useful things quickly.  And of course we were lucky in our timing, first with the appearance of comparatively cheap minicomputers like the PDP-11 and later with the arrival of the PC.
+
+While writing the book, did you experience flashes of inspiration?
+
+I don’t think there were any flashes of inspiration in book-writing, at least that I recall.  In fact, I more remember long periods of trying to figure out the right way to explain some idea, like pointers or how to do input without pointers.  It always required a lot of rewriting to find the right way to express something.
+
+You also worked with Dennis Ritchie, and Ken Thompson, on UNIX. In fact, you came up with the name. Can you tell us that story?
+
+I did not work with Ken and Dennis on Unix itself, though I was one of the first users and I’ve written some programs that became part of the core Unix tool set.  As for the name, my memory (not always to be trusted) is that people were looking for a name, and I observed that Multics was “many of everything”, while Unix was “at most one of anything”; these were very weak puns on some Latin roots.  I would have spelled it Unics just to be consistent with Multics, but someone else — no idea who — changed the spelling to the much better Unix.
+
+It seems you have a passion for programming languages. What do you think of the languages in use today? How has C influenced them?
+
+C has clearly influenced a number of languages.  C++ is the most obvious; it adds a rich set of object-oriented features but is almost compatible at the source and object level with C. Java derives syntax and quite a few basic ideas from C. AWK steals syntax directly, as do languages like Javascript and Objective-C.  Personally, I use a variety of languages, depending on what seems most appropriate for the task at hand.  For the last few years, that has meant that I’ve written a lot of AWK, a fair amount of Python and Javascript, some Java, and occasional C and C++.  At this point, these are starting to blur in my mind, and it takes a day or two to switch from one to another, just because of trivial syntactic issues and different libraries.  I like them or dislike them all more or less about the same, depending on what I find easy or unnecessarily difficult at the moment.  But I still think that if I could only use one language, I’d use C, just because I could build anything with it.
+
+What led to your decision to join Princeton? How has this experience been different from the Labs?
+At Princeton (image created by Amit Chatwani)
+
+At Princeton (image created by Amit Chatwani)
+
+Bell Labs was a wonderful place for me for over thirty years.  But that’s a long time to spend in one job.  I had done occasional teaching over the years, and in 1996 I spent a full-time semester at Harvard, where with a huge class I learned that I could handle all of the mechanical challenges of teaching, and that it was still fun.  So when Princeton made me an offer, it was not a leap into the unknown but a chance to do something that I really enjoyed, in a school that I really liked.  I’ve been here ten years now, and although I loved Bell Labs, this has turned out to be even better.  The job is different in almost every way.  I spend much of my time during the school year trying to teach well, interacting with students, advising undergraduate research, and the like.  But summers are a complete change of pace, and I can usually spend time as a working programmer somewhere; that keeps me in touch with real-world software development.  I enjoy the annual cycle.
+
+In your mind, what challenges do students face today, both internally and externally? What advice do you have for them?
+
+I was lucky — computing was a very young field and there was a lot that could be done without great resources or even much more than a good idea.  Computing is a lot more mature today, at least in some ways, so it’s probably a lot harder to find the low-hanging fruit.  But at the same time, students today have resources beyond the imagining of people of my age — an Internet that connects everyone, hardware that costs almost nothing, and free languages and tools and development environments that make it possible to create sophisticated systems by plugging together components that others have created.  So the job is perhaps harder but also easier.  My advice is to leap in and try things. If you succeed, you can have enormous influence.  If you fail, you have still learned something, and your next attempt is sure to be better for it.
+
+What suggestions or tips would you offer to graduates who are trying to figure what they want to do in life?
+With students at University of Pennsylvania, 1995
+
+With students at University of Pennsylvania, 1995
+
+Do something you really enjoy doing.  If it isn’t fun to get up in the morning and do your job or your school program, you’re in the wrong field.  Not everyone is lucky enough to have a job or an academic program that rewards them continually, so perhaps your fun will come instead from some outside activity, or friends and family.  But there has to be something that makes your life rewarding.  Be open to as many experiences as you can, to maximize your chances of finding the really rewarding things.  Dick (Richard) Hamming once told me, “Never say no.” That has to be applied with a bit of caution, of course, but the basic idea — try new things — is completely sound.
+
+What advice would you offer to someone approaching retirement?
+
+Don’t retire.  Or, more precisely, don’t stop doing things.  Keep learning and exploring.  I retired from Bell Labs 10 years ago and took up teaching; it’s been more fun that I could have imagined and it’s probably added 10 years to my life.  And if I retire from Princeton, I’ll try to find something new that has that same effect — something that keeps me active, involved, learning, and meeting new people.
+
+Shifting gears a bit, can you share your thoughts on India and its recent tremendous growth, facilitated by computers and the internet?
+
+All that technology will help, but fundamentally, it’s the people who matter.  Regrettably, I have never been to India, but I have a large number of Indian friends.  They are almost without exception smart, skilled, motivated, energetic, and really nice.  More than a billion people like that?  It’s amazing.  India is going to have a great future.

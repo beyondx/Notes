@@ -1,0 +1,29 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-03T22:01:24+08:00
+
+====== luit 转换终端编码传输(适合上BBS) ======
+Created Saturday 03 March 2012
+
+http://wubolu.iteye.com/blog/849431
+
+ubuntu10.10 终端下默认zh_CN.UTF-8输出，所以本机上查看中文都是正常输出，如下：
+wubolu@wubolu-linux:~$ uname -a
+Linux wubolu-linux 2.6.35-23-generic-pae #37-Ubuntu SMP Fri Nov 5 20:57:06 UTC 2010 i686 GNU/Linux
+wubolu@wubolu-linux:~$ ls
+examples.desktop  war3  公共的  模板  视频  图片  文档  下载  音乐  桌面
+
+===== 问题: =====
+
+root@centos :~# ls
+examples.desktop  鍏叡鐨  妯℃澘  瑙嗛  鍥剧墖  鏂囨。  涓嬭浇  闊充箰  妗岄潰
+
+在ubuntu终端上使用SSH连接其他系统的时候例如CentOS5.5等__GBK编码传输中文__时，ubuntu终端就会显示乱码。__使用luit，就可以把远程传输回来的编码转换成指定编码给ssh客户端__，使用方法如下：
+
+首先 luit -list 查看支持的中文编码，再然后终端执行__luit -encoding GBK__ 或指定其他字符集，再连接到其他系统则正常
+
+root@centos :~# ls
+examples.desktop 公共的  模板  视频  图片  文档  下载  音乐  桌面
+
+
+但现在断开连接回到ubuntu的时候又会乱码哦，可以exit或者^D退出luit。

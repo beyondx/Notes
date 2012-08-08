@@ -1,0 +1,105 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-06T15:27:28+08:00
+
+====== 谈谈 C++ 的引用 ======
+Created Saturday 06 August 2011
+
+谈谈 C++ 的引用 	作者姓名：tide
+作者主页:http://tide999.myrice.com/
+
+引用（reference）是c++的初学者比较容易迷惑的概念。下面我们比较详细地讨论引用。
+
+===== 一、引用的概念 =====
+
+引用引入了对象的一个同义词。定义引用的表示方法与定义指针相似，只是用&代替了*。
+例如： Point pt1(10,10);
+Point &pt2=pt1; 定义了pt2为pt1的引用。通过这样的定义，**pt1和pt2表示同一对象**。
+需要特别强调的是__引用并不产生对象的副本__，仅仅是对象的同义词。因此，当下面的语句执行后：
+pt1.offset（2，2）；
+pt1和pt2都具有（12，12）的值。
+__引用必须在定义时马上被初始化__，因为它必须是某个东西的同义词。你不能先定义一个引用后才
+初始化它。例如下面语句是非法的：
+Point &pt3；
+pt3=pt1；
+那么既然引用只是某个东西的同义词，它有什么用途呢？
+下面讨论引用的两个主要用途：作为函数参数以及从函数中返回左值。
+
+===== 二、引用参数 =====
+
+==== 1、传递可变参数 ====
+传统的c中，函数在调用时参数是通过值来传递的，这就是说函数的参数不具备返回值的能力。
+所以在传统的c中，如果需要函数的参数具有返回值的能力，往往是通过指针来实现的。比如，实现
+两整数变量值交换的c程序如下：
+void swapint(int *a,int *b)
+{
+int temp;
+temp=*a;
+a=*b;
+*b=temp;
+}
+
+使用引用机制后，以上程序的c++版本为：
+void swapint(int &a,int &b)
+{
+int temp;
+temp=a;
+a=b;
+b=temp;
+}
+调用该函数的c++方法为：swapint（x,y); c++自动把x,y的地址作为参数传递给swapint函数。
+
+==== 2、给函数传递大型对象 ====
+
+当大型对象被传递给函数时，使用引用参数可使参数传递效率得到提高，因为引用并不产生对象的
+副本，也就是参数传递时，__对象无须复制__。下面的例子定义了一个有限整数集合的类：
+const maxCard=100;
+Class Set
+{
+int elems[maxCard]; // 集和中的元素，maxCard 表示集合中元素个数的最大值。
+int card; // 集合中元素的个数。
+public:
+Set () {card=0;} //构造函数
+__friend Set operator * (Set ,Set ) ; __//重载运算符号*，用于计算集合的交集 用对象作为传值参数
+// friend Set operator * (Set & ,Set & ) 重载运算符号*，用于计算集合的交集 用对象的引用作为传值参数
+...
+}
+先考虑集合交集的实现
+Set operator *( Set Set1,Set Set2)
+{
+Set res;
+for(int i=0;i<Set1.card;++i)
+for(int j=0;j>Set2.card;++j)
+if(Set1.elems[i]==Set2.elems[j])
+{
+res.elems[res.card++]=Set1.elems[i];
+break;
+}
+return res;
+}
+由于重载运算符不能对指针单独操作，我们必须把运算数声明为 Set 类型而不是 Set * 。
+
+
+每次使用*做交集运算时，整个集合都被复制，这样效率很低。我们可以用引用来避免这种情况。
+Set operator *( Set &Set1,Set &Set2)
+{ Set res;
+for(int i=0;i<Set1.card;++i)
+for(int j=0;j>Set2.card;++j)
+if(Set1.elems[i]==Set2.elems[j])
+{
+res.elems[res.card++]=Set1.elems[i];
+break;
+}
+return res;
+}
+
+==== 三、引用返回值 ====
+
+__如果一个函数返回了引用，那么该函数的调用也可以被赋值。__这里有一函数，它拥有两个引用参数并返回一个双精度数的引用：
+double &max(double &d1,double &d2)
+{
+return d1>d2?d1:d2;
+}
+
+由于max()函数返回一个对双精度数的引用，那么我们就可以用max() 来对其中较大的双精度数加1：
+max(x,y)+=1.0;

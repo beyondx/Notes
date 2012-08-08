@@ -1,0 +1,14 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-15T23:52:14+08:00
+
+====== mysql ======
+Created Saturday 15 October 2011
+
+===== 查看mysql表 =====
+show databases;			查看所有的数据库
+use database-name;  		使用指定的数据库
+show tables:   				查看表
+use table;				用表
+describe table-name;		看表指定表的结构
+

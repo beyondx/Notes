@@ -1,0 +1,49 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-09T19:27:11+08:00
+
+====== pyflakes ======
+Created Monday 09 January 2012
+http://www.plope.com/Members/chrism/flymake-mode
+
+I found something useful! I found something useful!
+
+Flymake is an on-the-fly syntax checker for Emacs. Essentially every so often it runs your buffer through a language-specific__ syntax checker__ and __highlights code errors__ and __warnings__ in a different color. I can hear "real" IDE people laughing at me now, but for better or worse, I will probably use Emacs until I die; not because I like it particularly, but because it's the only thing my fingers know how to use, thus searching for better tools is pointless.
+
+Out of the box, Flymake__ can't __analyze Python code, but it helpfully has a plugin system. It allows you to plug in, for example, __pylint or pyflakes__ or probably any other checker. I use pyflakes regularly. 
+whine[wain]n.闹声, 抱怨, 牢骚 v.哭诉, 发牢骚 
+Pyflakes is excellent, it basically __just whines when you're using a name that hasn't been defined __(an indictment of your lack of testing for that code path) or __you've imported a name twice__, or __you're not using a name that you've imported.__
+
+http://developer.51cto.com/art/201003/190888.htm
+Python CST 和AST 类似，都是语法分析所获得的中间结果。他们的不同之处在于，CST直接对应语法分析的匹配的过程，是直接生成的，含有大量冗余信息。而AST省略了中间的冗余信息，直接对应实际的语义，也就是分析的结果。
+
+Importantly, it walks the Python AST rather than trying to import things (which other checkers seem to tend to try to do), so it's fast and using it has no side effects. I tend to__ use pyflakes as a before-checkin sanity check__ to make sure I haven't forgotten to remove an import, so it made sense to try to fit it into my editor.
+
+Here's what I did to get it working. As I said, it's all cargo-culted, consistent with the rest of my Emacs configuration.
+
+* I downloaded flymake.el and put it in a directory in my emacs load-path. I'm not even sure I needed to do this, I think it ships with Emacs now. Who knows, it works.
+* I made sure I could invoke pyflakes as "pyflakes" (I put the pyflakes executable on my PATH).
+	pyflakes是一个可执行程序，同时还有相应的python模块
+* I added some (more) inscrutable stuff to my .emacs file
+
+The stuff I added to the .emacs file:
+
+  (when (load "flymake" t) 
+         (defun flymake-pyflakes-init () 
+           (let* ((temp-file (flymake-init-create-temp-buffer-copy 
+                              'flymake-create-temp-inplace)) 
+              (local-file (file-relative-name 
+                           temp-file 
+                           (file-name-directory buffer-file-name)))) 
+             (list "pyflakes" (list local-file)))) 
+
+         (add-to-list '__flymake-allowed-file-name-masks __
+                  '("\\.py\\'" flymake-pyflakes-init))) 
+
+   (add-hook 'find-file-hook 'flymake-find-file-hook)
+
+The first stanza tells flymake to** use pyflakes on .py files when in flymake-mode**. The second tells emacs to always use flymake as a __minor mode__ when loading buffers so I don't have to type "M-x flymake-mode" to get syntax checking when I load a buffer.
+
+And now! It works. I don't know how it works but it does. The below picture proves it (I import traceback but I don't use it).
+
+And thus verify come the inane checkins for things I'm working on now that read "remove unused import".

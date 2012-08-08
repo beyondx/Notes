@@ -1,0 +1,108 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-27T10:56:04+08:00
+
+====== 2 ======
+Created Friday 27 May 2011
+
+virtualbox 自带的网络配置模式要么选择host-only，要么bridge，对于经常使用virtualbox的同学一定想要像vmware一样的nat配置，既可以让host访问guest，又可以让guest访问外部网络
+
+　　下面是安装步骤
+
+　　1. 建立桥接网络
+
+　　apt-get install bridge-utils
+
+　　修改/etc/network/interfaces
+
+　　增加以下内容：
+
+　　####################################################
+
+　　# VirtualBox NAT bridge
+
+　　auto vnet0
+
+　　iface vnet0 inet static
+
+　　address 172.16.0.1
+
+　　netmask 255.255.255.0
+
+　　bridge_ports none
+
+　　bridge_maxwait 0
+
+　　bridge_fd 1
+
+　　up iptables -t nat -I POSTROUTING -s 172.16.0.0/24 -j MASQUERADE
+
+　　down iptables -t nat -D POSTROUTING -s 172.16.0.0/24 -j MASQUERADE
+
+　　####################################################
+
+　　up网卡
+
+　　sudo ifup vnet0
+
+　　2. 启用ip 转发
+
+　　修改/etc/sysctl.conf 去掉这行的注释
+
+　　# Uncomment the next line to enable packet forwarding for IPv4
+
+　　net.ipv4.ip_forward=1
+
+　　运行下面命令使其生效
+
+　　sysctl -p
+
+　　3. 为虚拟机搭建dhcp服务器和dns服务器
+
+　　apt-get install dnsmasq
+
+　　修改/etc/dnsmasq.conf
+
+　　去掉下面的注释
+
+　　# Include a another lot of configuration options.
+
+　　#conf-file=/etc/dnsmasq.more.conf
+
+　　conf-dir=/etc/dnsmasq.d
+
+　　在/etc/dnsmasq.d/目录下面增加一个名为virtualbox的文件，内容为：
+
+　　#######################################
+
+　　interface=vnet0
+
+　　dhcp-range=172.16.0.2,172.16.0.254,1h
+
+　　dhcp-option=option:dns-server,172.16.0.1,208.67.222.222,208.67.220.220
+
+　　dhcp-option=option:domain-name,precision-m65
+
+　　#         mac地址          , 主机名, 分配的ip
+
+　　dhcp-host=08:08:27:00:00:02,vmxp,172.16.0.20 # Windows XP
+
+　　dhcp-host=08:08:27:00:00:03,vmubuntu,172.16.0.30 # Ubuntu
+
+　　#######################################
+
+　　4.修改virtualbox 虚拟机配置
+
+　　a. 打开虚拟机配置
+
+　　b. 选择网络
+
+　　c. 选择Attached to： "Bridged Adapter"
+
+　　Name：  "vnet0"
+
+　　Advanced-> Mac Address：080827000002 #对应3步中virtualbox给虚拟机分配的mac地址，注意去掉冒号
+
+　　d. 应用生效
+
+　　启动虚拟机，看看是不是分配了正确的地址，上面配置在ubuntu 10.04 LTS上测试通过，其他发行版类似

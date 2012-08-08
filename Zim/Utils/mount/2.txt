@@ -1,0 +1,188 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-01T15:32:17+08:00
+
+====== 2 ======
+Created Tuesday 01 November 2011
+
+mount [-lhV]
+mount -a [-fFnrsvw] [-t vfstype] [-O optlist]
+mount [-fnrsvw] [-o options [,...]] device | dir
+mount [-fnrsvw] [-t vfstype] [-o options] device dir
+
+[功能]
+挂载文件系统。
+
+[描述]
+所有的文件在unix系统中用树状的方式组织， mount命令用于把从device上面发现的文件系统挂载到这个树状组织中，这样就可以访问设备中的文件系统了。
+标准的格式是： mount -t type device dir
+这样会把设备上指定格式(type)的文件系统挂到dir目录上面。
+
+一些常用的操作：
+*打印帮助信息：
+mount -h
+
+*打印版本信息：
+mount -V
+
+*列出所有被挂载的文件系统：
+mount [-l] [-t type]
+这里，-l列出所有被挂载的指定类型的文件系统。
+
+*将文件系统中的一部分重新挂载到另一个目录:
+mount __--bind __olddir newdir
+这个功能在2.4的内核中支持，也可在fstab中添加：
+              /olddir  /newdir  none  bind
+进行这步后**同样的内容可以在两个地方被访问**。也可remount单个的文件。据说这只能够挂一种文件系统，即不能挂载olddir中的__子文件系统__.
+
+*把__整个的文件系统__（包括submount）中的内容挂载到另一个目录：
+mount --rbind olddir newdir
+注意，文件系统上面的挂载选项将会保持和原来挂载点上面的选项一样,并且不能通过和--bind/--rbind一起的-o选项来改变。
+
+*内核2.5以后的版本支持把被挂在的树挂载到另一个位置:
+mount --move olddir newdir
+
+内核2.6以后的版本支持给mount以及子mount进行标记，标记为：shared,private,slave或者unbindable.shared提供mount的镜像功能，这样当在任何一个镜像中进行mount或者umount的时候都会传递给其他的镜像，在其他的镜像中反应出来。slave的mount会从它的master接收传递过来的变化但是反过来的方向的传播却不行。private的mount不会做任何传递。unbindable是一个private的mount，并且它不能够通过bind的操作来进行克隆。具体可以参见内核源代码中的文档：Documentation/sharedsubtree.txt.
+标记的操作类似如下：
+              mount --make-shared mountpoint
+              mount --make-slave mountpoint
+              mount --make-private mountpoint
+              mount --make-unbindable mountpoint
+下面的操作可以递归地改变给定的mountpoint下面的所有mount:
+              mount --make-rshared mountpoint
+              mount --make-rslave mountpoint
+              mount --make-rprivate mountpoint
+              "mount --make-runbindable mountpoint"
+proc文件系统没有与之相关的设备，当挂载它的时候可以在指定设备的地方指定任何的关键字例如proc，最好不要指定none,因为umount的时候‘none busy’这个提示很让人迷惑。
+
+大多数设备都是通过文件名字来指定的类似/dev/sda1,但是也有其他的可能。例如在挂载nfs文件系统的时候设备的文件名称看起来可能会类似：knuth.cwi.nl:/dir,可以使用卷标或者UUID（参考-L和-U选项）来标记一个块设备文件。
+文件/etc/fstab里面的每一行用来描述设备如何挂载(例如使用什么选项等等).这个文件的使用有如下几种方法：
+1)如下的命令：
+              mount -a [-t type] [-O optlist]
+会把fstab中指定的没有noauto关键字的所有文件系统都挂载上，（一般它都在启动脚本中被调用）如果加一个-F选项会让mount进行fork,导致并行地挂载每个文件系统。
+2)当挂载fstab中指定的文件系统的时候，只指定设备或者只指定挂载点就够了。
+3)一般来说，只有超级用户才能够挂载文件系统。然而，如果fstab中的某一行如果包含了user选项的时候，任何用户就可以挂载相应的文件系统了。
+例如：
+假设/etc/fstab中有如下行：
+/dev/cdrom  /cd  iso9660  ro,user,noauto,unhide
+任何用户都可以用如下的命令挂载他的CDROM上面的iso9660文件系统：
+mount /dev/cdrom
+或者
+mount /cd
+更多的细节参考fstab(5).只有mount了一个文件系统的用户才能够umount它。如果想要任何人都能够umount，那么使用users选项来替代user.owner选项和user类似，不过，它要求user必须是相应的设备文件的拥有者。group选项也类似，不过，user必须属于相应的设备文件的组的成员。
+mount和umount程序维护当前挂载的文件系统，可以在/etc/mtab中看到。如果运行了没有任何选项的mount，那么这个列表中的内容会被打印出来。
+当proc文件系统被挂载的时候(对应/proc目录)，文件/etc/mtab和/proc/mounts中的内容很类似。前者包含的信息更多，甚至包含了mount时的选项,但是却不是特别的实时更新的，可以参考-n选项。当你有许多挂载的东西的时候，将/etc/mtab替换为指向/proc/mounts的链接将会快很多，但是也会丢失也些信息，以及使用loop设备的时候会有很多不方便的地方，同时使用user选项也会失败。
+
+[举例]
+*打印帮助信息：
+mount -h
+
+*打印版本信息：
+mount -V
+
+*挂载当前机器上面的一个盘分区到指定的挂载点dir：
+#mount -t vfat /dev/sda2 /mnt
+这里，假设我的磁盘第二个分区中是vfat文件系统，实际"-t vfat"可以省略，因为一般linux会自动识别的。这个命令会把相应分区挂到/mnt中去，通过访问/mnt目录就可实现访问/dev/sda2对应的分区。sda是SATA磁盘设备名称，如果磁盘有分区，就另有sda1,sda2...，如果有第二个磁盘那么就sdb。如果是ide硬盘，一般是hda,hdb等。
+
+*指定gb2312字符集的挂载：
+#mount -t vfat -o iocharset=gb2312 /dev/sda7 /mnt/win
+这样的挂载的时候，指定使用gb2312字符集，这样就可能没有乱码了。其他常用的字符包括cp936,utf8等等(ntfs的一般用utf8挂载)。必须是超级用户才能执行。
+
+*挂载自己制作的文件系统：
+1)制作镜像文件：
+#dd if=/dev/zero of=/root/filesys_ebook bs=10M count=35
+这里，将会制作一个全0的350M的镜像文件。
+2)格式化镜像文件：
+#mkfs.ext3 /root/filesys_ebook
+这样会把刚才制作的镜像文件格式化为ext3格式的文件系统。至此，镜像文件filesys_ebook就是一个独立的ext3文件系统的镜像了。
+3)挂载镜像文件系统：
+#mount -o loop /root/filesys_ebook /mnt
+这样，就把自己制作的镜像文件系统挂载到/mnt下面了，可以向里面写入数据了。
+
+*挂nfs系统：
+$sudo mount -t nfs ip:path mountPoint
+这里ip:path例如10.1.14.122:/home/quietheart,mountPoint就是你的本地目录,有时候挂载不上去可以试试：mount -t nfs -o nolock ......
+
+*利用mount 挂载光盘镜像
+sudo mount -o loop image.iso /mnt
+这样就把镜像image.iso挂到/mnt目录下面了。
+
+*开机自动挂载文件系统：
+修改/etc/fstab,添加如下行：
+/dev/sda5       /mnt    vfat    defaults,rw,umask=0000  0       0
+
+*查看当前挂载的所有文件系统：
+$mount
+输入之后，输出如下：
+/dev/sda8 on / type ext3 (rw,relatime,errors=remount-ro)
+tmpfs on /lib/init/rw type tmpfs (rw,nosuid,mode=0755)
+/proc on /proc type proc (rw,noexec,nosuid,nodev)
+sysfs on /sys type sysfs (rw,noexec,nosuid,nodev)
+varrun on /var/run type tmpfs (rw,nosuid,mode=0755)
+varlock on /var/lock type tmpfs (rw,noexec,nosuid,nodev,mode=1777)
+udev on /dev type tmpfs (rw,mode=0755)
+tmpfs on /dev/shm type tmpfs (rw,nosuid,nodev)
+devpts on /dev/pts type devpts (rw,noexec,nosuid,gid=5,mode=620)
+fusectl on /sys/fs/fuse/connections type fusectl (rw)
+lrm on /lib/modules/2.6.27-7-generic/volatile type tmpfs (rw,mode=755)
+/dev/sda6 on /boot type ext3 (rw,relatime)
+/dev/sda9 on /home type ext3 (rw,relatime)
+/dev/sda5 on /mnt type vfat (rw,umask=0000)
+securityfs on /sys/kernel/security type securityfs (rw)
+rpc_pipefs on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw)
+nfsd on /proc/fs/nfsd type nfsd (rw)
+binfmt_misc on /proc/sys/fs/binfmt_misc type binfmt_misc (rw,noexec,nosuid,nodev)
+gvfs-fuse-daemon on /home/quietheart/.gvfs type fuse.gvfs-fuse-daemon (rw,nosuid,nodev,user=quietheart)
+/dev/loop0 on /home/quietheart/桌面/tmp/K1_ROM1_v0.1.3_image/tmpMnt type ext3 (rw)
+这里,显示了各个挂载的系统的详细情况。
+
+*列出指定类型的被挂载的文件系统：
+mount -l -t tmpfs
+这里，-l可以省略。这样会列出所有挂载的tmpfs的文件系统。
+
+**卸载文件系统
+*卸载文件系统1：
+$sudo umount /dev/sda2
+这里会卸载挂在/dev/sda2上面的文件系统。
+
+*卸载文件系统2:
+$sudo umount /mnt
+这里根据安装点卸载相应的文件系统。
+具体参见umount的文档。
+**
+
+*将文件系统中的一部分绑定挂载:
+mount --bind olddir newdir
+这里，olddir是一个已经挂载的挂载点中的某个子目录。这样操作之后，对于这个olddir，可以从挂载点的olddir进行访问，也可以从newdir进行访问，如果卸载了olddir的挂载点，newdir仍旧可以访问原来olddir的内容,想要恢复newdir原来的内容，那么就umount newdir.
+
+*将文件系统中的某个单个文件帮定挂载：
+mount --bind oldfile newfile
+这里，oldfile是一个已经挂载的挂载点中的某个文件。这样操作之后，对于这个oldfile，可以从挂载点的oldfile进行访问，也可以从newfile进行访问，如果卸载了oldfile的挂载点，newfile仍旧可以访问原来oldfile的内容,想要恢复newfile原来的内容，那么就umount newfile.
+
+*将__挂载点位置移动__：
+mount --move olddir newdir
+这里，原来的挂载点是olddir,我想要把挂载点更换到newdir的话，就用这个命令，这样旧有的挂载点就没有了。另外我实践插入sd卡的时候，一般linux会自动在/media/下创建一个disk目录，然后挂载上去，当卸载的时候会自动删除这个目录；但是如果使用move的话这个目录会遗留下来。
+
+*挂载临时文件系统：
+mount -t tmpfs __tmpfs__ tmpfsTest/
+这里，tmpfs是一个在内存中开辟空间的一种文件系统。这里的第2个tmpfs处实际可以是__任意字符串__。例如："mount -t tmpfs tmphahaha tmpfsTest/"之后，我用mount |grep Test,会输出：
+tmphahaha on /home/quietheart/test/tmpfsTest type tmpfs (rw)
+
+
+[其他]
+杂乱：
+mount的-n选项表示挂载之后不写文件/etc/mtab。
+mount的--move表示移动挂载点。
+
+
+**常见问题：
+*挂载磁盘之后无法写挂载之后的文件分区：
+$sudo mount -o rw,umask=0000 /dev/sda5 /mnt
+这里假设将/dev/sda5挂到/mnt上面。
+
+*挂载/etc/fstab 下面不含"noauto"选项的文件系统：
+#mount -a
+
+问题:
+重复挂载同一个目录会怎么样？
+remount 

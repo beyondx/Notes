@@ -1,0 +1,16 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-19T18:26:43+08:00
+
+====== Emacs 的 Change Log 功能 ======
+Created Friday 19 August 2011
+很多时候，我们的程序目录里并没有像样的版本管理功能（比如自己的一些小工具），过了一段时间，你很可能会发现你不记得以前修改了一些什么、已经实现了哪些功能，甚至于，你都忘记了你的代码里还有啥小 Bug 没处理掉。
+
+Emacs 自带了一个快速日志记录功能，即 Change Log 的功能。一个 Change Log 文件按时间顺序记录了你修改程序的时间、原因，以及一些你想写下来备忘的内容。当然，Emacs 只会自动帮我们生成记录的时间、修改的文件名，其它的内容还是需要我们自己来补充。
+
+默认情况下，Emacs 会用当前目录下名为 ChangeLog 的文件来记录这些 log 信息，该文件可以记录该目录以及所有子目录的日志。
+
+用快捷键 C-x 4 a 或是命令 M-x add-change-log-entry-other-window 就可以为当前编辑的文件在 ChangeLog 文件里添加一条日志，Emacs 会自动创建时间戳和文件名，剩下的内容我们自己补全。
+
+类似于其他 Emacs 提供的功能，我们可以根据自己的喜好来设置参数，详情看 Chang Log 的官方文档。
+

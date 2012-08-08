@@ -1,0 +1,125 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-02T19:08:57+08:00
+
+====== 2.1. Invoking the Interpreter ======
+Created Monday 02 January 2012
+
+The Python interpreter is usually installed as /usr/local/bin/python on those machines where it is available; putting /usr/local/bin in your Unix shell’s search path makes it possible to start it by typing the command  python to the shell. Since the choice of the directory where the interpreter lives is an installation option, other places are possible; check with your local Python guru or system administrator. (E.g., /usr/local/python is a popular alternative location.)
+
+On Windows machines, the Python installation is usually placed in C:\Python27, though you can change this when you’re running the installer. To add this directory to your path, you can type the following command into the command prompt in a DOS box:
+
+set path=%path%;C:\python27
+
+Typing an __end-of-file__ character (Control-D on Unix, Control-Z on Windows) at the **primary prompt** causes the interpreter to exit with a __zero __exit status. If that doesn’t work, you can exit the interpreter by typing the following command: __quit() or exit() or raise SystemExit().__
+
+The interpreter’s __line-editing__ features usually aren’t very sophisticated. On Unix, whoever installed the interpreter may have enabled support for the** GNU readline library**, which adds more elaborate interactive editing and history features. Perhaps the quickest check to see whether command line editing is supported is typing Control-P to the first Python prompt you get. If it beeps, you have command line editing; see Appendix Interactive Input Editing and History Substitution for an introduction to the keys. If nothing appears to happen, or if ^P is echoed, command line editing isn’t available; you’ll only be able to use backspace to remove characters from the current line.
+
+The interpreter operates somewhat__ like the Unix shell__: when called with standard input connected to a tty device, it reads and executes commands interactively; when called with a file name argument or with a file as standard input, it reads and executes a script from that file.
+当解释器和标准输入相连时，它进入了读一行---执行---再读一行的**执行循环模式**，当遇到EOF时退出。
+
+A second way of starting the interpreter is__ python -c command [arg] ...__, which executes the statement(s) in command, analogous to the **shell’s -c option**. Since Python statements often contain spaces or other characters that are special to the shell, it is usually advised to quote command in its entirety with single quotes.
+将-c后的参数作为命令执行，command一般用字符串引用，而且中间__可以换行__(因此，可以输入语句块)。
+
+Some Python **modules are also useful as scripts(主要用于测试)**. These can be invoked using __python -m module [arg] ...__, which executes the source file for module as if you had spelled out its** full name(只要提供模块名称即可，python会自动在搜索路径中查找)** on the command line.
+一般情况下，-c/-m不同时使用。
+
+When a script file is used, it is sometimes useful to be able to run the script and **enter interactive mode afterwards**. This can be done by passing -i __before__ the script.
+将__-i选项__放在脚本参数的前面，这样解释器在执行__完__脚本中的语句时，会自动进入__交互式__模式，此时的环境是__执行脚本时__的环境。
+
+===== 2.1.1. Argument Passing =====
+
+When known to the interpreter, the script name and additional arguments thereafter are turned into **a list of strings** and assigned to the __argv__ variable in the__ sys__ module. You can access this list by executing** import sys**. The length of the list is__ at least one__; when no script and no arguments are given, sys.argv[0] is an empty string. When the script name is given as __'-'__ (meaning standard input), sys.argv[0] is set to '-'. When -c command is used, sys.argv[0] is set to '-c'. When -m module is used, sys.argv[0] is set to the** full name** of the located module. Options found after -c command or -m module __are not consumed__ by the Python interpreter’s option processing but left in __sys.argv__ for the command or module to handle.
+
+* 解释器要向脚本传递__脚本名称和附加参数__，脚本名称放在sys.argv[0]中，附加参数从sys.argv[1]开始存放。
+* 脚本名称可能为空、'-'、-c 以及module full name，脚本__名称后的所有选项或参数__都会放在sys.argv[1:]中。因此，在调用解释器时，要注意不能像通常的GUN程序那样**无序地**指定参数。
+
+===== 2.1.2. Interactive Mode =====
+When commands are** read from a tty**, the interpreter is said to be__ in interactive mode__. In this mode it prompts for the next command with **the primary prompt**, usually three greater-than signs (>>>); for continuation lines it prompts with** the secondary prompt**, by default three dots (...). The interpreter prints a welcome message stating its version number and a copyright notice before printing the first prompt:
+
+//python//
+Python 2.7 (#1, Feb 28 2010, 00:02:06)
+Type "help", "copyright", "credits" or "license" for more information.
+>>>
+
+Continuation lines are needed when entering a __multi-line construct__. As an example, take a look at this if statement:
+>>>
+
+>>> the_world_is_flat = 1
+>>> if the_world_is_flat__:__
+...    	   print "Be careful not to fall off!"   
+... 
+Be careful not to fall off!  #__交互式模式中使用一个空白行表明多行语句块缩进的结束。__
+
+===== 2.2. The Interpreter and Its Environment =====
+
+==== 2.2.1. Error Handling ====
+When an error occurs, the interpreter prints __an error message and a stack trace__. In interactive mode, it then returns to the primary prompt; when input came from a file, it exits with a nonzero exit status after printing the stack trace. (Exceptions handled by an except clause in a try statement are not errors in this context.) Some errors are unconditionally fatal and cause an exit with a nonzero exit; this applies to internal inconsistencies and some cases of running out of memory. All error messages are written to the** standard error** stream; normal output from executed commands is written to** standard output**.
+
+Typing the interrupt character (usually Control-C or DEL) to the primary or secondary prompt __cancels the input__ and returns to the primary prompt. [1] Typing an interrupt while a command is executing raises the__ KeyboardInterrupt__ exception, which may be handled by a try statement.
+
+==== 2.2.2. Executable Python Scripts ====
+
+On BSD’ish Unix systems, Python scripts can be made **directly executable**, like shell scripts, by putting the line
+
+#! /usr/bin/__env__ python
+
+(assuming that the interpreter is on the user’s PATH) at the beginning of the script and giving the file an executable mode. The #! must be the __first two __characters of the file. On some platforms, this first line must end with a Unix-style line ending ('\n'), not a Windows ('\r\n') line ending. Note that the hash, or pound, character, '#', is used to start a comment in Python.
+
+The script can be given an executable mode, or permission, using the chmod command:
+
+$ chmod +x myscript.py
+
+On Windows systems, there is no notion of an “executable mode”. The Python installer automatically __associates .py files with python.exe __so that a double-click on a Python file will run it as a script. The extension can also be .pyw, in that case, the console window that normally appears is suppressed.
+
+==== 2.2.3. Source Code Encoding ====
+**特别适用于使用UTF8编码但是不设置**__文档字节编码标记__**的编辑器生成的源文件。**
+
+It is possible to use encodings different than ASCII in Python source files. The best way to do it is to put one more special comment line __right after__ the #! line to define the source file encoding:
+
+__# -*- coding: encoding -*-__
+
+With that declaration, all characters in the source file will be treated as having the //encoding// encoding, and it will be possible to directly write__ Unicode string literals__ in the selected encoding. The list of possible encodings can be found in the Python Library Reference, in the section on codecs.
+目前，python__只支持字符串字面量或注释__使用Unicode编码，所有的关键字和标示符__必须使用__ASCII编码。在指定编码时，**UTF8, UTF-8, utf8, utf-8**是等价的。
+
+For example, to write **Unicode literals** including the Euro currency symbol, the ISO-8859-15 encoding can be used, with the Euro symbol having the __ordinal value__ 164. This script will print the value 8364 (the** Unicode codepoint **corresponding to the Euro symbol) and then exit:
+
+# -*- coding: iso-8859-15 -*-
+
+currency = u"€"
+print ord(currency)
+
+If your editor supports saving files as UTF-8 with a__ UTF-8 byte order mark__ (aka **BOM**), you can use that instead of an encoding declaration. IDLE supports this capability if Options/General/Default Source Encoding/UTF-8 is set. Notice that this signature is not understood in older Python releases (2.2 and earlier), and also not understood by the operating system for script files with #! lines (only used on Unix systems).
+
+By using UTF-8 (either through the signature or an encoding declaration), characters of most languages in the world can be used simultaneously in** string literals and comments**. Using non-ASCII characters in __identifiers__ is not supported. To display all these characters properly, your editor must recognize that the file is UTF-8, and it must use a __font__ that supports all the characters in the file.
+
+==== 2.2.4. The Interactive Startup File ====
+When you use Python interactively, it is frequently handy to have some **standard commands **executed every time the interpreter is started. You can do this by setting an environment variable named __PYTHONSTARTUP__ to the **name of a file** containing your start-up commands. This is similar to the .profile feature of the Unix shells.
+非交互式脚本启动时__不会读取__这个环境变量指定的文件中的语句，但是可以通过如下的代码__明确地执行__它们。由于解释器是一条条执行启动文件中的初始化语句因此可能在文件的开头需要**导入相应的模块**。
+
+This file is __only read__ in interactive sessions, not when Python reads commands from a script, and not when /dev/tty is given as the explicit source of commands (which otherwise behaves like an interactive session). It is executed in __the same namespace__ where interactive commands are executed, so that objects that it defines or imports can be used without qualification in the interactive session. You can also change the prompts __sys.ps1__ and __sys.ps2__ in this file (必须在文件的开头导入sys module).
+
+If you want to read an additional start-up file from the current directory, you can program this in the global start-up file using code like if os.path.isfile('.pythonrc.py'): __execfile__('.pythonrc.py'). 
+如果还需要读取其它的初始化文件，则可以在PYTHONSTARTUP文件中指定并用内置命令execfile执行它们。
+
+If you want to use the startup file in a script(在**脚本文件里**明确使用启动文件，__适用于非交互式脚本__), you must do this explicitly in the script:
+
+import os
+filename = os.environ.get('PYTHONSTARTUP')
+if filename and os.path.isfile(filename):
+    execfile(filename)
+
+==== 2.2.5. The Customization Modules ====
+Python provides __two hooks__ to let you customize it: sitecustomize and usercustomize. To see how it works, you need first to find the location of your **user site-packages directory**. Start Python and run this code:
+>>>
+
+>>> import site
+>>> site.getusersitepackages()
+'/home/user/.local/lib/python3.2/site-packages'
+
+Now you can create a file named **usercustomize.py** in that directory and put anything you want in it. It will affect every invocation of Python, unless it is started with the __-s__ option to disable the automatic import.
+
+sitecustomize works in the same way(使用的是site.getsitepackages), but is typically created by an administrator of the computer in the __global site-packages__ directory, and is imported before usercustomize. See the documentation of the site module for more details.
+
+Footnotes
+[1]	A problem with the GNU Readline package may prevent this.

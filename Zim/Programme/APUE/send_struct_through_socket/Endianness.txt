@@ -1,0 +1,56 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-05T00:18:26+08:00
+
+====== Endianness ======
+Created 星期日 05 六月 2011
+
+Hi everyone,
+
+I'm fighting with socket programming now and I've encountered a problem, which I don't know how to solve in a portable way. The task is simple : I need to send the array of 16 bytes over the network, receive it in a client application and parse it. I know, there are functions like htonl, htons and so one to use with uint16 and uint32. But what should I do with the chunks of data greater than that?
+
+Thank you.
+
+--------
+you say an array of 16 bytes. That doesnt really help. Endianness only matters fro things larger than a byte
+
+if its really raw bytes then just send them, you will receive them just the same
+
+It its really a struct you want to send it
+
+ struct msg
+ {
+     int foo;
+     int bar;
+ .....
+
+Then you need to work through the buffer pulling that values you want.
+
+When you send you must assemble a packet into a standard order
+
+ int off = 0;
+ *(int*)&buff[off] = htonl(foo);
+ off += sizeof(int);
+ *(int*)&buff[off] = htonl(bar);
+ ...
+
+when u receive
+
+ int foo = ntohl((int)buff[off]);
+ off += sizeof(int);
+ int bar = ntohl((int)buff[off]);
+ ....
+
+edit : I see you want to send an IPv6 address, they are always in network byte order - so you can just stream it raw
+-----------------
+Endianness is a property of multibyte variables such as 16- and 32-but integers; it has to do with whether the high-order or low-order byte goes first. If the client application is processing the array as individual bytes, it doesn't have to worry about endianness, as the order of the bits within the bytes is the same.
+
+----------------
+htons, htonl, etc., are for dealing with a single data item (e.g. an int) that's larger than one byte. An array of bytes where each one is used as a single data item itself (e.g., a string) doesn't need to be translated between host and network byte order at all.
+
+------------------
+Bytes themselves don't have endianness any more in that any single byte transmitted by a computer will have the same value in a different receiving computer. Endianness only has relevance these days to multibyte data types such as ints.
+
+In your particular case it boils down to knowing what the receiver will do with your 16 bytes. If it will treat each of the 16 entries in the array as discrete single byte values then you can just send them without worrying about endiannes. If, on the other hand, the receiver will treat your 16 byte array as four 32 bit integers then you'll need to run each integer through hton() prior to sending.
+
+Does that help?

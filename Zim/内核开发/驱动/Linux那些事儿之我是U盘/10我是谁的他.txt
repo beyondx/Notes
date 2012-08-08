@@ -1,0 +1,108 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-01T11:32:31+08:00
+
+====== 10我是谁的他 ======
+Created Sunday 01 July 2012
+
+probe,disconnect,id_table,这三个咚咚中首先要登场亮相的是id_table,它是干嘛用的呢?
+
+我们说过,__一个device只能绑定一个driver__,但driver并非只能支持一种设备,道理很简单,比如我有两块U盘,那么我可以一起都插入,但是我只需要加载一个模块,usb-storage,没听说过插入两块U盘就得加载两次驱动程序的,除非这两块U盘本身就得使用不同的驱动程序.也正是因为一个模块可以被多个设备共用,才会有模块计数这么一个说法.
+
+ok,既__然一个driver可以支持多个device__,那么当发现一个device的时候,如何知道哪个driver才是她的Mr.Right呢?或反之，注册一个driver时如何找到它支持的设备呢？
+
+这就是id_table的用处,让__每一个__struct usb_driver准备一张表(这张表是必须到，参见[[../8总线,设备,和驱动(上).txt]]),里边注明该driver支持哪些设备,这总可以了吧.如果你这个设备属于这张表里的,那么ok,**绑定吧**,如果不属于这张表里的,那么不好意思,您请便.哪凉快上哪去.
+
+来自struct usb_driver中的id_table,
+
+const struct usb_device_id *id_table;
+
+实际上是一个指针,一个struct usb_device_id结构体的指针,当然赋了值以后就是代表一个**数组名**了,正如我们在定义struct usb_driver usb_storage_driver中所赋的值那样,.id_table=storage_usb_ids,那好,我们来看一下usb_device_id这究竟是怎样一个结构体.
+
+struct usb_device_id来自include/linux/mod_devicetable.h,
+
+     40 /*
+     41  * **Device table entry** for "new style" __table-driven USB drivers__.
+     42  * User mode code can read these tables to choose which modules to load.
+     43  * Declare the table as a MODULE_DEVICE_TABLE.
+     44  *
+     45  * A __probe()__ parameter will point to a matching entry from this table.
+     46  * Use the __driver_info__ field for each match to hold information tied
+     47  * to that match:  device quirks, etc.
+     48  *
+     49  * Terminate the driver's table with an all-zeroes entry.
+     50  * Use the flag values to control which fields are compared.
+     51  */
+     52
+     53 /**
+     54  * struct usb_device_id - __identifies USB devices for probing and hotplugging__
+     55  * @match_flags: **Bit mask** controlling of the other fields are used to match
+     56  *      against new devices.  Any field except for driver_info may be used,
+     57  *      although some only make sense in conjunction with other fields.
+     58  *      This is usually set by a **USB_DEVICE_*()** macro, which sets all
+     59  *      other fields in this structure except for driver_info.
+     60  * @idVendor: __USB vendor ID__ for a device; numbers are assigned
+     61  *      by the USB forum to its members.
+     62  * @idProduct: Vendor-assigned __product ID__.
+     63  * @bcdDevice_lo: Low end of range of vendor-assigned **product version numbers**.
+     64  *      This is also used to identify individual product versions, for
+     65  *      a range consisting of a single device.
+     66  * @bcdDevice_hi: High end of version number range.  The range of product
+     67  *      versions is inclusive.
+     68  * @bDeviceClass: __Class of device__; numbers are assigned
+     69  *      by the USB forum.  Products may choose to implement classes,
+     70  *      or be vendor-specific.  Device classes specify behavior of all
+     71  *      the interfaces on a devices.
+     72  * @bDeviceSubClass: Subclass of device; associated with bDeviceClass.
+     73  * @bDeviceProtocol: Protocol of device; associated with bDeviceClass.
+     74  * @bInterfaceClass: __Class of interface__; numbers are assigned
+     75  *      by the USB forum.  Products may choose to implement classes,
+     76  *      or be vendor-specific.  Interface classes specify behavior only
+     77  *      of a given interface; other interfaces may support other classes.
+     78  * @bInterfaceSubClass: Subclass of interface; associated with bInterfaceClass.
+     79  * @bInterfaceProtocol: Protocol of interface; associated with bInterfaceClass.
+     80  * @__driver_info:__ **Holds information used by the driver**.  Usually it holds
+     81  *      a pointer to a descriptor understood by the driver, or perhaps
+     82  *      device flags.
+     83  *
+     84  * In most cases, drivers will create a table of device IDs by using
+     85  * USB_DEVICE(), or similar macros designed for that purpose.
+     86  * They will then export it to userspace using MODULE_DEVICE_TABLE(),
+     87  * and provide it to the USB core through their usb_driver structure.
+     88  *
+     89  * See the usb_match_id() function for information about how matches are
+     90  * performed.  Briefly, you will normally use one of several macros to help
+     91  * construct these entries.  Each entry you provide will either identify
+     92  * one or more specific products, or will identify a class of products
+     93  * which have agreed to behave the same.  You should put the more specific
+     94  * matches towards the beginning of your table, so that driver_info can
+     95  * record quirks of specific products.
+     96  */
+     97 struct usb_device_id {
+     98         /* which fields to match against? */
+     99         __u16           match_flags;
+    100
+    101         /* Used for product specific matches; range is inclusive */
+    102         __u16           idVendor;
+    103         __u16           idProduct;
+    104         __u16           bcdDevice_lo;
+    105         __u16           bcdDevice_hi;
+    106
+    107         /* Used for device class matches */
+    108         __u8            bDeviceClass;
+    109         __u8            bDeviceSubClass;
+    110         __u8            bDeviceProtocol;
+    111
+    112         /* Used for interface class matches */
+    113         __u8            bInterfaceClass;
+    114         __u8            bInterfaceSubClass;
+    115         __u8            bInterfaceProtocol;
+    116
+    117         /* not matched against */
+    118         kernel_ulong_t  driver_info;
+    119 };
+实际上这个结构体对每一个usb设备来说,就相当于是她的身份证,记录了她的一些基本信息,通常我们的身份证上会记录我们的姓名,性别,出生年月,户口地址等等,而usb设备她也有她需要记录的信息,以区分她和别的usb设备,比如Vendor-厂家,Product-产品,以及其他一些比如产品编号,产品的类别,遵循的协议,这些都会在__usb的规范__里边找到对应的冬冬.暂且先不细说.
+
+于是我们知道,__一个usb_driver会把它的这张id表去和每一个usb设备的实际情况进行比较,如果该设备的实际情况和这张表里的某一个id相同,准确地说,只有这许多特征都吻合,才能够把一个usb device和这个usb driver进行绑定__,这些特征哪怕差一点也不行.
+
+那么usb设备的实际情况是什么时候建立起来的?嗯,在介绍.probe指针之前有必要先谈一谈另一个数据结构了,她就是struct usb_device.

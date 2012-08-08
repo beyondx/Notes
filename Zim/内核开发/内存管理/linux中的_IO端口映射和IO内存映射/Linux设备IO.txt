@@ -1,0 +1,168 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-29T15:17:41+08:00
+
+====== Linux设备IO ======
+Created Wednesday 29 February 2012
+
+http://ackerman.iteye.com/blog/939378
+
+===== 一、外设的访问 =====
+几乎每一种外部设备都是通过__读写设备上的寄存器__来进行访问的，这些寄存器分为**控制寄存器、状态寄存器和数据寄存器**，而且一个外设的__寄存器通常被连续编址__。__外部寄存器也成为"I/O端口"__。
+
+===== 二、外设的编址方式 =====
+CPU对外设IO端口物理地址的编址方式有两种：一种是**I/O映射方式**（I/O－mapped），另一种是**内存映射方式**（Memory－mapped）。而具体采用哪一种则取决于CPU的体系结构。
+
+（1）X86（I/O－mapped）
+为外设专门实现了__一个单独地地址空间__，称为**“I/O地址空间”或者“I/O端口空间”**。这是一个与CPU的RAM物理地址空间不同的地址空间，**所有外设的I/O端口均在这一空间中进行编址**。CPU通过设立__专门的I/O指令__（如X86的IN和OUT指令）来访问这一空间中的地址单元（也即I/O端口）。这就是所谓的**“I/O映射方式”**（I/O－mapped）。与RAM物理地址空间相比，I/O地址空间通常都比较小，如x86 CPU的I/O空间就只有64KB（0－0xffff）。这是“I/O映射方式”的一个主要缺点。
+
+（2）ARM（Memory－mapped）
+通常**只实现一个物理地址空间**（RAM）。在这种情况下，__外设I/O端口的物理地址就被映射到CPU的单一物理地址空间中，而成为内存的一部分__。此时，CPU可以象__访问一个内存单元那样访问外设I/O端口__，而不需要设立专门的外设I/O指令。这就是所谓的“内存映射方式”（Memory－mapped）。这种方式最简单和方便，可以使用指向**寄存器单元地址的指针**往它的里面写入数据。
+
+===== 三、linux下对I/O端口的访问 =====
+Linux将基于I/O映射方式的或内存映射方式的I/O端口通称为__“I/O区域”（I/O region）__，IO区域是__基于IO资源（Resource）来实现__的。linux对**I/O映射**和**内存映射**提供了**不同的操作函数**。对于内存映射，为了提高兼容性，linux也为这些平台__提供了I/O映射的操作函数__，他们实际上还是通过访问内存映射地址来访问的，因此，不管你的程序是使用IO映射还是IO内存映射，它都可以很好的运行到各种平台上。
+
+--------------------------------------------------
+
+前面我们提到，设备驱动程序的主要功能操作设备，更准确的说就是如__何操作设备寄存器或设备内存__。不同的计算机体系结构提供了不同的设备操作接口，主要就是 IO映射**（I/O-mapped）或 IO内存映射（Memory-Map ）**。例如X86平台，它对设备的访问就__同时提供__了IO映射方式或IO内存映射方式，这个在大学的汇编语言课程里有详细的介绍，当然还有一些平台紧提供 IO内存映射。
+
+IO映射方式是CPU提供了__独立的地址空间__给设备IO，并且使用__特定的汇编指令__操作IO端口。IO内存映射方式提供了__统一的内存编址方__式来访问设备IO，就像你访问系统内存一样。
+
+通常对于一个给定的硬件平台电路板，它的设备寄存器或内存的物理地址就是确定的了，或者是相对确定的了（它们具有自己的IO地址空间）。但对于向 Linux这样的操作系统，__驱动程序是不能直接访问设备的物理地址的__，它必须__把设备的物理地址映射到Linux内核的虚拟地址空间__，这样驱动程序才能**通过虚拟地址操作设备**。
+
+===== 1）IO区域： =====
+Linux中使用IO区域（IO Region）来管理设备IO无论它是IO映射还是IO内存映射。__IO区域是基于IO资源__（Resource）来实现的，我们首先来看看IO资源在Linux里的定义：
+
+struct resource {
+    resource_size_t start;
+    resource_size_t end;
+    const char *name;
+    unsigned long flags;
+    struct resource *parent, *sibling, *child;
+};
+
+#define IORESOURCE_IO       		 0x00000100      #外部设备的**寄存器资源**
+#define IORESOURCE_MEM       	 0x00000200      #外部设备的**RAM资源**
+#define IORESOURCE_IRQ     		 0x00000400	 #外部设备的**IRQ资源**
+#define IORESOURCE_DMA      	 0x00000800	 #外部设备的**DMA资源**
+
+extern int** request_resource**(struct resource *root, struct resource *new);
+extern int** release_resource**(struct resource *new);
+
+很明显，它是一个__树结构__。Linux里将设备的IO资源分成不同的类型，如__IO（Port）、MEM、IRQ、DMA__，同时内核提供了__IO Resource的操作函数__，用于分配、请求、释放IO资源。
+
+如果管理的IO资源有多个(例如一个设备有**多个地址连续的寄存器，大量的RAM**)，直接使用IO资源函数就显得__有些麻烦__，还好Linux可以**使用IO区域来管理这些资源**，具体来说，就是Linux定义了__一些宏__管理IO资源，定义在头文件中，如下：
+
+#define request_region(start,n,name)  __request_region(&__ioport_resource__,   (start), (n),(name))
+#define request_mem_region(start,n,name) __request_region(&__iomem_resource__,   (start), (n),(name))
+
+这两个函数都返回一个__PORT号__，我们可以使用kernel提供的通用I/O操作函数，来操作PORT 代表的资源(不用关心资源是端口映射，还是内存映射)。
+
+#define release_region(start,n)    __release_region(&**ioport_resource**, (start), (n))
+
+#define check_mem_region(start,n)    __check_region(&iomem_resource, (start), (n))
+#define release_mem_region(start,n)    __release_region(&iomem_resource, (start), (n))
+
+在实际的编程中，我们基本上是__使用这些宏来操作设备的IO资源__，即使你只有一个IO资源，这样可以保证程序的可扩展性和**跨平台的兼容性**。当然，你__必须获取到IO资源后才可以在Linux内核中操作IO设备__。因此，一般来说，你**需要在驱动的初始化函数中调用IO区域请求函数来获取IO区域**。
+
+最后要说明一点，就是这些宏操作的IO资源有两类，分别是ioport_resource和iomem_resource，他们定义在：
+
+struct resource **ioport_resource** = {
+    .name    = "PCI IO",
+    .start    = 0,
+    .end    = IO_SPACE_LIMIT,
+    .flags    = IORESOURCE_IO,
+};
+
+struct resource iomem_resource = {
+    .name    = "PCI mem",
+    .start    = 0,
+    .end    = -1,
+    .flags    = IORESOURCE_MEM,
+};
+
+===== 2）内存映射（memory-mapped） =====
+一些新的驱动程序都会**使用IO内存映射方式来访问IO设备**，因为有些平台仅仅支持IO内存映射，如__ARM平台__。
+
+通常来说，__使用IO内存就象使用系统RAM 内存一样的简单__，确实有些平台是支持这样的访问的，但还是有些平台**不能象访问内存那样直接使用IO内存地址来访问外设IO资源**（Register和RAM，即设备寄存器和RAM等。）， 因此内核提供了一__组通用的API__来支持程序的跨平台及可移植性。
+
+Linux内核提供了两种操作IO**内存映射**的__通用函数__，一组类用于读取1、2、4个字节数据，定义在头文件中：
+ioread8(p)
+ioread16(p)
+ioread32(p)
+
+iowrite8(v,p)
+iowrite16(v,p)
+iowrite32(v,p)
+
+这些是__新的IO内存映射操作函数__，我们推荐你使用这些函数。如果你浏览Linux内核，你会发现还有其他一些函数接口，它们是老的IO内存操作函 数，Linux内核会慢慢舍弃这些函数接口，因此尽量不要使用这些函数，但有必要在这里把这些函数列出来，因为确实还是有一些新的驱动仍然使用它们（参 考）:
+readb()
+readw()
+readl()
+
+writeb()
+writew()
+writel()
+
+如果你想象操作内存那样__成块的操作IO内存__，内核提供了另外的方法，它们类似于内存操作函数。推荐你**使用这些函数操作成块的IO内存**，这样你的程序可以移植到不同的平台上，它们定义在头文件中。
+
+extern void **_memcpy_fromio**(void *, const volatile void __iomem *, size_t);
+extern void **_memcpy_toio**(volatile void ____iomem__ *, const void *, size_t);
+extern void** _memset_io**(volatile void __iomem *, int, size_t);
+
+同样在使用IO内存之前，你需要向Linux内核申请IO区域：
+if (!request_mem_region(mapbase, size, DRVNAME)) {
+            ret = -EBUSY;
+            break;
+}
+
+申请完IO区域后，你还不能直接使用它们，你__必须把这个地址映射到Linux内核的虚拟地址空间中来__，这个操作是通过**ioremap**函数来实现的，请参考头文件：
+membase = ioremap(mapbase, size);
+
+通过这两步操作后，你就可以**调用IO内存函数来访问设备IO了**。
+
+注意：使用内存映射的系统，由于设备资源在RAM地址空间中的地址分配事先已经确定(也就是说，它们的__物理内存地址是确定的__)，所以__程序在操作I/O资源前，需要用ioremap() 将这些物理地址映射到自己的虚拟地址空间中。__
+
+
+===== 3）I/O 映射(I/O - mapped)： =====
+在一些平台，特别是X86平台，外设通常具有一**个独立**的地址空间（相对于内存的地址空间），叫__I/O地址空间__，__对IO地址空间的访问必须使用特定的IO指令__（如x86的IN/OUT 指令）。
+
+还有一些平台并没有独立的IO地址空间，**所有的I/O都是内存映射**（memory-mapped）的，为了提供程序的跨平台及兼容性，__Linux为那些并不支持IO地址空间的平台提供和IO(端口)映射设备使用的一致接口的操作函数__，他们实际上还是通过访问IO内存映射地址来访问的。因此，不管你的程序是使用IO映射还是IO内存映射，它都可以很好的运行到各种平台上。
+
+回到我们的主题-**IO映射**。前面我们提到，在__使用IO设备之前我们必须向Linux内核申请使用的资源__，因此通常在我们的**设备初始化函数或探测函数之中**会有如下的代码：
+if (!request_region(io_addr, IO_NUM, DRV_NAME))
+        return -ENODEV;
+
+如果**成功申请了IO端口资源**，那么我们就可以__调用IO端口访问函数来访问IO端口__了，它们通常定义在头文件中（每个平台的定义都有所不同，但类似于下表）具体请参考头文件：
+
+inb(unsigned __port__)  :读一个字节(byte)
+outb(__u8 v__, unsigned port) :写一个字节
+
+inw(unsigned port) 
+oubw(__u16 v__, unsigned port)
+
+inl(unsigned port) 
+outl(__u32 v__, unsigned port)
+
+注意：
+1.上面的函数使用__特定的IO指令__，直接操作的是独立于内存RAM地址空间的，I/O地址空间中的地址(0x0 ~ 0xffff)。
+2. 由于是特殊的I/O指令，因此__不用MMU。__
+3. 由于使用独立地址空间(称为I/O空间)，特殊的I/O指令，因此，I/O映射的操作方式__已经过时__。现在的系统一般通过__I/O端口重映射__将I/O地址空间映射到RAM地址空间，这样可以像使用普通内存单元那样操作I/O资源(也就是内存映射Memory-mapped的运行方式)。
+
+
+===== 3.1）IO端口重映射（将I/O mapped 转为 memory mapped，统一驱动接口） =====
+这里说的IO端口重映射不是ioremap的功能，ioremap是将IO**内存映射**到Linux进程的虚拟地址空间中。我们说的IO端口重映射是将IO映射(I/O mapped)映射__为IO内存映射(Memory Mapped)，这样就可以象操作IO内存一样操作IO端口了__。这样做的好处是我们可以**统一驱动程序的接口（都使用IO内存映射）**，避免为同一个设备提供不同的驱动接口。这个函数同样定义在头文件中：
+
+extern void __iomem  *ioport_map(unsigned long **port**, unsigned int nr);
+extern void ioport_unmap(void __iomem *addr);
+
+有一点要注意，在调用完IO端口重映射后，__还是需要调用ioremap函数__把它映射到Linux内核的虚拟地址空间中来。（ioport_map相当于把连续nr个port映射到一块内存区域中，返回**该区域的物理地址**。进程需要用ioremap将它们映射到自己的虚拟地址空间中）。
+
+设备IO的操作就是这些了，其实在我们的编程中只要调用几个简单的函数或宏就可以完成IO端口的操作了。这里有个问题没有说明，就是设备的访问是需要**同步的或着需要延时**等待一段时间才能进行下一步的操作。
+
+（1）因为__外设和外围总线相匹配__，而最流行的I/O总线是基于个人计算机模型的，所以即使没有独立__IO端口地址空间__的处理器，**在访问外设时也要模拟成读写I/O端口**。基于同样的原因，**linux在所有的计算机平台上都实现了I/O端口**，并且为了便于移植，内核对驱动程序隐藏了这些细节。
+
+（2）IO端口重映射是**将I/O mapped的设备资源(端口) **映射 **为memory mapped的地址**，这样就可以象操作IO内存一样操作IO端口了。这样做的好处是我们可以__统一驱动程序的接口__（__都使用IO内存映射__），避免为同一个设备提供不同的驱动接口。这个函数同样定义在头文件中：
+
+extern void __iomem *ioport_map(unsigned long port, unsigned int nr);
+extern void ioport_unmap(void __iomem *addr);

@@ -1,0 +1,222 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-13T21:02:06+08:00
+
+====== building GCC together with binutils ======
+Created Friday 13 January 2012
+
+http://gcc.gnu.org/ml/gcc-help/2006-11/msg00346.html
+
+The following paragraph in the GCC installation guide(http://gcc.gnu.org/install/) seems a bit unclear to me:
+
+"If you also intend to build binutils (either to upgrade an existing  installation or for use **in place of **the  corresponding tools of your OS), unpack the binutils distribution either in the same directory or a separate one. In the latter case, add symbolic links **to any components **of the binutils you intend to __build alongside the compiler  __(bfd, binutils, gas, gprof, ld, opcodes, ...) to the directory containing the GCC sources."
+
+What exactly is meant by "the same directory"? Say the GCC tarball is unpacked in the directory foo, yielding foo/gcc-3.x.x. Should binutils be unpacked in the same directory, so that you get
+
+foo/gcc-3.x.x
+foo/binutils-x.x
+
+**, or **in the gcc-3.x.x directory, so that you get
+
+foo/gcc-3.x.x/binutils-x.x
+
+**, or **into the gcc-3.x.x directory with one directory level stripped (e.g. with --strip-components 1 passed to tar), essentially__ "merging" the two packages in foo/gcc-3.x.x__? Whatever turns out to be The Right Way, the doc really needs to be updated for clarity.
+
+Why would you want to build gcc and binutils together in this way by the way? Isn't it possible to install them separately?
+
+
+/Ulf Magnusson
+
+
+== ==============Reply================= ==
+
+    Why would you want to build gcc and binutils together in this way by
+    the way? Isn't it possible to install them separately?
+
+The most evident reason would be on__ a system where neither gcc nor binutils is available pre-built__, but each depends on the other. That used to be a usual case, e.g. on Sun or HP systems. All systems I run on nowadays come with adequate versions of each, or pre-built versions are available for internet download, so it is possible to upgrade one at a time.
+
+== =================reply2===========================   (非常具有参考价值！！！) ==
+http://gcc.gnu.org/ml/gcc-help/2006-11/msg00348.html
+Ulf Magnusson wrote:
+
+> , or into the gcc-3.x.x directory with one directory level stripped
+> (e.g. with --strip-components 1 passed to tar), essentially "merging"
+> the two packages in foo/gcc-3.x.x? Whatever turns out to be The Right
+> Way, the doc really needs to be updated for clarity.
+
+Yes.  You want to __merge both the contents of gcc and binutils into one directory__.  If you examine the structure of the source code, you will find that they share the same "toplevel" infrastructure, and they are __designed to live in the same tree__.  In other words, **both the binutils and gcc tarballs are subsets of one larger directory tree of code**.  
+
+And in fact it's not just gcc and binutils, it's all of sourceware: gcc, __newlib__, binutils, gdb/insight, sim, cygwin, etc are all really one big tree that __share a common toplevel__, and can be built that way if you are  adventurous.  The build machinery **at the toplevel** is supposed to be able to__ build any one or all of these things__ at once, depending on what's present.
+
+When gcc still lived in __CVS__ this was much easier, as there was the "uberbaum" which was a single CVS tree that actually __contained everything__ that you could check out as one huge tree.  Now that gcc is in __SVN__ it's a little more separated, but the common toplevel files are maintained in sync in both repositories.
+
+When doing this from** release tarballs** though you will encounter some problems in that __each package will contain its own copy of some common__
+__infrastructure__, like **libiberty/ and config/**.  Due to this it can be a little difficult to actually combine the trees because what you have is two different vintages of some common things, depending on when each was released.  You want to use the newer copy whereever a conflict exists, but in some cases there will be older files that were deleted in one version but the older one still expects them, so __you really must combine the two trees__, not just select the newer of the two.  The script "**symlink-tree**" in the toplevel is meant to help with this.  Google for "combined tree build" for more information.
+
+AFAIK this tradition originated at Cygnus Solutions, and thus it is not surprising that it's still used a lot in some circles given that a great number of gcc/binutils developers used to work at Cygnus or continue to work for Redhat after they merged.
+
+> Why would you want to build gcc and binutils together in this way by
+> the way? Isn't it possible to install them separately?
+
+It can be a lot more convenient.  For example, for a cross-toolchain, the normal procedure would be:
+			
+			**configure cross-binutils**
+			**build cross-binutils**
+			**install cross-binutils**
+			**adjust PATH to make just-installed files available    #这里的PATH指向$prefix/bin而非$prefix/$target/bin**
+			**move to another build dir**
+			**configure cross-gcc**
+			**build cross-gcc**
+			**install cross-gcc**
+			**etc...**
+
+However, the build infrastructure knows that if you are **building in a combined tree**,__ to use the just-built in-tree tools where necessary__, so that nothing has to be installed.  The procedure then becomes just:
+
+						**configure combined tree**
+						**build combined tree**
+						**install combined tree**
+
+This builds everything at once, in one place, instead of as a chain of stages.  And likewise, you can add newlib/gdb/insight into this mix, so this __becomes very convenient for people that work with cross-toolchains__.（如果是交叉编译工具链时，上面的combinde tree就会有很多问题，因为我们现在还没有这些工具使用的目标系统使用的libc库）
+
+Its benefit may not be very obvious to you if all you care about is** native tools that use the existing host tools or host libc**, but for a cross situation those tools don't exist it can make things a lot easier.
+
+This especially true for targets where you'd __don't have easy access to existing libc headers__, as there is a chicken-and-egg problem of "**can't  build a fully functional gcc without libc headers" and "can't build libc without a functional gcc." ** The common way to solve this is to __drop newlib into the tree and do a combined build of both at once, which breaks the circular dependency.__  
+
+(Another way to solve it, for cases where you **aren't using newlib** and can't do a combined tree, is the way __crosstool__ does it, by first building a stripped down __C-only gcc__, using that to configure the libc enough to __get its headers__, then build __a full gcc__ using those headers, __then build the full libc__ using that gcc.)
+
+And keep in mind that__ these subdirs are always modular__, so that even if you are working in a combined tree, if you just want to remake one component (or just install one component) you can just cd into that dir and work from there.  It just gives you the flexibility to either build/install everything at once or work in specific areas.
+
+Brian
+
+== ==========================reply========= ==
+Thanks for that very clarifying post!
+Could I submit a documentation patch that expands the install guide to include some of this information, and to mention tools like symlink-tree? It's a bit on the short side right now. By the way, what's __"RDA"__ that I see mentioned in a lot of posts having to do with cross-compilation?
+
+/Ulf Magnusson
+
+== ================reply=============== ==
+"Ulf Magnusson" <ulfalizer@gmail.com> writes:
+
+> By the way, what's "RDA" that I see mentioned in a lot of posts having
+> to do with
+> cross-compilation?
+
+It's a library for the __gdb remote debug protocol__, which can be included in a program to permit it to be debugged remotely.  RDA stands for "Red Hat Debug Agent".
+
+Ian
+
+== ============reply================== ==
+http://gcc.gnu.org/ml/gcc-help/2006-11/msg00368.html
+
+Just to check that I have understood the procedure and read the** symlink-tree script **properly, would the following be the right way to combine gcc and binutils using the symlink-tree script?
+
+tar -xvjf gcc-recent.release.tar.bz2
+tar -xvjf binutils-not.so.recent.release.tar.bz2
+cd binutils-not.so.recent.release
+__./symlink-tree ../gcc-recent.release__
+configure ...
+make ...
+
+
+Oh, and shouldn't srcdir be quoted when it's assigned and used in the script, to correctly handle paths with whitespace in them?
+
+/Ulf Magnusson
+
+== ====================reply================= ==
+I guess that would work, but you might want to try a build to verify.  I have** not personally used symlink-tree**.  I think a more common approach
+that you'll find in tutorials is to create a new dir, that **consists of entirely links**:
+
+tar jxf gcc-?.?.?.tar.bz2
+tar jxf binutils-?.?.?.tar.bz2
+__mkdir combined__ && cd combined
+../gcc/symlink-tree ../binutils-?.?.?
+../gcc/symlink-tree ../gcc-?.?.?
+
+You could also do this with "cp -puR" or tar to merge the trees (if you don't care about disk space) or with "cpio -l" and hard links, as suggested in <http://gcc.gnu.org/simtest-howto.html>.
+
+> Oh, and shouldn't srcdir be quoted when it's assigned and used in the
+> script, to correctly handle paths with whitespace in them?
+
+Probably.  Although having pathnames with spaces in them will probably throw a wrench into the build in other places as well so I'd suggest avoiding it if at all possible.  I would say file a bug report for any place where an unquoted argument causes a failure due to spaces in filenames, but I don't know if the official stance is "that isn't supported" or not.
+
+Brian
+
+
+
+
+== =============================reply============== ==
+http://gcc.gnu.org/ml/gcc-help/2006-11/msg00377.html
+On 11/29/06, Brian Dessent <brian@dessent.net> wrote:
+
+        It can be a lot more convenient.  For example, for a cross-toolchain,   the normal procedure would be:
+
+        configure cross-binutils
+        build cross-binutils
+        install cross-binutils
+        adjust PATH to make just-installed files available
+        move to another build dir
+        configure cross-gcc
+        build cross-gcc
+        install cross-gcc
+
+Normal? After producing much more than__ 1000__ cross-toolchains this doesn't look in any way "normal". It looks being the situation where a newbie makes
+ones first crosstoolchain and not being the situation where the builder updates ones cross-toolchain by **rebuilding one of its components **from newer bugfixed
+sources.... I would see__ the latter case much more common among the cross-toolchain builders.__
+
+				        This especially true for targets where you'd don't have easy access to existing libc headers, as there is a chicken-and-egg problem of "can't  build a fully functional gcc without libc headers" and "can't build libc  without a functional gcc."
+
+I would call these ideas as "bolshevism" or "bullshitism" because there is no truth in them, only some blind believe to some weird ideas... For instance if
+someone tells that __there are no prebuilt C libraries__ for Linux/PPC, Linux/ARM, Linux/MIPS, Linux/SH, Linux/Sparc, Linux/m32r, Linux/am33, Linux/m68k,
+quite many really believe although some 'dissident' would give the URLs from where to download these... The prebuilt Linux libs are like UFOs, people may
+see them but they don't believe that they see them because so many tell that they really don't exist....
+
+I myself have** never had any trouble in finding these libs**... Besides of course with AIX, HP-UX, Apple's MacOS X etc. "closed" proprietary systems. And
+with something like RHEL it is quite hard to find its original prebuilt C libraries, much harder than in the SCO UnixWare 7.1.4 case I tried recently... Why RedHat
+Linux is more "closed" than SCO Unix?
+
+It could be interesting to do research on the misunderstandings people__ have about the target libraries__**.**..
+
+For all sanity one could assume people to understand that these are like PDF files in documents, one__ just copies them from a host to another and don't need to "customize" them__ for the new host... But some people really rebuild them for each new host and if the result on the new host is different from the existing, **no bells are ringing in the builders heads**... 
+
+Of course using a different GCC to compile produces a different result but when using "identical" (made from the same sources) GCCs on different hosts, what they produce should generally be identical....
+
+Or when needing tyres for a car, one can choose among Michelins, GoodYears, Continentals, Nokians (yes, Nokia was once famous for its very good rubber
+boots and car tyres made for arctic environment!), Firestones etc. __All these being "suitable"__ if not "right" for some demanding user... But even this user
+would prefer to drive with some "suitable" tyres to the shop where to find the "right" tyres instead of driving there with a "stripped car", with bare wheels
+because nothing else than the right tyres would be accepted... With Linux C libraries the situation is quite the same, one either accepts bootstraping with
+a "suitable" Linux C library or then not.
+
+In 1994 after buying a box with Linux install media and when trying to install it into an empty PC which had no opsys on it, it was really frustrating to find
+out that installing Linux required one to first purchase MS-DOS! Or ask some friend to make the boot floppies while laughing at that stupid Linux which
+doesn't even have boot floppies for it... Nowadays PCs can boot from CDs and don't require one to purchase a MS opsys earlier, but not then... But still
+old PCs cannot boot from the new Linux CDs, fortunately there are things like "Smart Boot Manager" and if one has that on a floppy, installing Linux succeeds...
+Ok, my point was to say that__ one should be prepared to some misappointments and to use some "bootstrap" stuff sometimes__, life will be much easier if one
+accepts this fact...
+
+
+
+== ======================reply============== ==
+http://gcc.gnu.org/ml/gcc-help/2006-11/msg00385.html
+
+For Brian and others who don't believe that __prebuilt glibcs for all kind of CPU architectures really do exist__, some URLs will follow, from a single archive alone
+first :
+
+ftp://ftp.sunet.se/pub/Linux/distributions/debian/pool/main/g/glibc
+ftp://ftp.sunet.se/pub/Linux/distributions/ubuntu/ubuntu/pool/main/g/glibc/
+ftp://ftp.sunet.se/pub/Linux/distributions/eldk/4.0/
+ftp://ftp.sunet.se/pub/Linux/distributions/fedora/6
+
+Debian has Linux ports for quite many CPU architectures, including ARM, MIPS, m68k,hppa, x86, ia64, x86_64, sparc, s390 and __powerpc__. Ubuntu has not for so many, ELDK has for ARM, MIPS and PPC and Fedora for x86, x86_64 and PPC. The Open SuSE 10.1 i586, x86_64 and PPC glibcs can be found for instance via :
+
+http://suse.inode.at/opensuse/distribution/SL-10.1/inst-source/suse/
+
+The Linux/FRV and Linux/AM33 toolchain distros can be found at least via :
+
+ftp://ftp.funet.fi/pub/linux/mirrors/redhat/redhat/gnupro
+
+The Linux/m32r and Linux/SH stuff can be found via :
+
+ http://www.linux-m32r.org/
+ http://www.sh-linux.org/index.html
+
+For which CPU-variation of Linux one yet cannot find a prebuilt glibc to be used during bootstraping?

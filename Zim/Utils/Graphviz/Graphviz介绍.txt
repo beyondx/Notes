@@ -1,0 +1,89 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-19T22:02:53+08:00
+
+====== Graphviz介绍 ======
+Created Sunday 19 February 2012
+http://abruzzi.iteye.com/blog/429042
+
+graphviz是贝尔实验室几个计算机牛人设计的一个__开源的图表(计算机科学中数据结构中的图)可视化项目__，主要用C语言实现，主要实现了一些__图布局算法__。通过这些算法，可以将图中的节点在画布上比较均匀的分布，缩短节点之间的边长，并且尽量的减少边的交叉。
+
+ 
+graphviz提供命令式的绘图方式，它提供__一个dot语言__用来编写绘图脚本，然后对这个脚本进行解析，分析出其中的**定点，边以及子图**，然后根据__属性__进行绘制。具体的可以看一个例子，这个例子来自官方的文档。
+
+ 
+Dot代码  收藏代码
+
+    digraph G {  
+        main -> parse -> execute;  
+        main -> init;  
+        main -> cleanup;  
+        execute -> make_string;  
+        execute -> printf  
+        init -> make_string;  
+        main -> printf;  
+        execute -> compare;  
+    }  
+
+ 
+digraph指定该图是一个有向图(directed graph)，->表示一条边，main,parse,execute等是顶点，运行出来的效果很好看，如下图：
+
+
+需要注意的是，我在这个dot脚本中__没有指定任何的关于图的位置的信息__，布局器会自动的根据图形的类型进行布局，并最终展现出来。
+
+再来看一个比较复杂，并且是程序员经常使用的功能，数据结构图：
+
+    digraph g {  
+        node [shape = record,height=.1];  
+        node0[label = "<f0> |<f1> G|<f2> "];  
+        node1[label = "<f0> |<f1> E|<f2> "];  
+        node2[label = "<f0> |<f1> B|<f2> "];  
+        node3[label = "<f0> |<f1> F|<f2> "];  
+        node4[label = "<f0> |<f1> R|<f2> "];  
+        node5[label = "<f0> |<f1> H|<f2> "];  
+        node6[label = "<f0> |<f1> Y|<f2> "];  
+        node7[label = "<f0> |<f1> A|<f2> "];  
+        node8[label = "<f0> |<f1> C|<f2> "];  
+        "node0":f2 -> "node4":f1;  
+        "node0":f0 -> "node1":f1;  
+        "node1":f0 -> "node2":f1;  
+        "node1":f2 -> "node3":f1;  
+        "node2":f2 -> "node8":f1;  
+        "node2":f0 -> "node7":f1;  
+        "node4":f2 -> "node6":f1;  
+        "node4":f0 -> "node5":f1;  
+    }  
+
+
+运行后的效果如下图所示：
+
+
+不知道其他的程序员怎样，反正我对命令行情有独钟，比较喜欢这一类的工具。最早接触的计算机系统正是一个没有图形系统的BSD，由此对命令行的，没有界面的程序都特别感兴趣。
+
+===== 相关的想法 =====
+
+自从使用了graphviz以后，一直想着把这个好东西移植到java下来，大概的思想跟graphviz类似：
+
+* 解析dot脚本，生成图的对象，这个图中包括**节点，边以及子图**等对象，这些对象上都绑定着相应的**属性**
+* 将解析出来的图对象发送给layout engine进行处理，**layout engine**可以选择__布局策略__，比如流布局等
+* 从layout engine中得到布局后的图对象，并交给**image engine**处理，得到最终结果，负责展示或者保存等
+
+dot 的语法定义比较简单，我已经用javacc构造了一个dot的分析器，现在可以从dot文件中构建出图对象出来，不过还需要进一步完善，可以看看这个BNF定义：
+
+    graph -> [strict] (digraph|graph) id '{' stmt-list '}'  
+    stmt-list -> [stmt [';'] [stmt-list] ]  
+    stmt -> attr-stmt | node-stmt | edge-stmt | subgraph | id '=' id  
+    attr-stmt -> (graph | node | edge) attr-list  
+    attr-list -> '[' [a-list] ']' [attr-list]  
+    a-list -> id '=' id [','][a-list]  
+    node-stmt -> node-id [attr-list]  
+    node-id -> id [port]  
+    port -> port-location [port-angle] | port-angle [port-location]  
+    port-location -> ':' id | ':' '(' id ',' id ')'  
+    port-angle ->'@' id  
+    edge-stmt -> (node-id | subgraph) edgeRHS [attr-list]  
+    edgeRHS -> edgeop (node-id | subgraph) [edgeRHS]  
+    subgraph -> [subgraph id] '{' stmt-list '}' | subgraph id  
+
+ 
+当然graphviz的功能不至于此，它提供一个lib，可以用来__将绘图引擎嵌入在自己的应用中__。这是一个很有意义的事，我们可以不必掌握布局部分的复杂算法，把精力放在业务逻辑部分，将最后的图对象交给这个引擎来处理即可。当然，如果你正好和我一样，想了解其神奇的布局算法，不妨翻翻它的源码，欢迎交流之至。

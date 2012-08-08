@@ -1,0 +1,126 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-22T20:48:18+08:00
+
+====== 用python来处理email内容 ======
+Created Saturday 22 October 2011
+http://hi.baidu.com/uniqcmt/blog/item/b0fe2d94697f7d16d31b70e3.html
+示例文件：
+
+X-QQ-SSF: 00010000000000F0000000000000000
+X-QQ-BUSINESS-ORIGIN: 2
+X-Originating-IP: 222.197.99.184
+X-QQ-STYLE: 
+X-QQ-mid: webmail216t1318562225t967942
+From: "=?gbk?B?1cW/oQ==?=" <geekard@qq.com>
+To: "=?gbk?B?Z2Vla2FyZA==?=" <geekard@qq.com>
+Subject: test base64
+Mime-Version: 1.0
+Content-Type: multipart/mixed;
+	boundary="----=_NextPart_4E97A9B1_087718E0_6C5F8AA5"
+Content-Transfer-Encoding: 8Bit
+Date: Fri, 14 Oct 2011 11:17:05 +0800
+X-Priority: 3
+Message-ID: <tencent_7E059DDC756685277856F354@qq.com>
+X-QQ-MIME: TCMime 1.0 by Tencent
+X-Mailer: QQMail 2.x
+X-QQ-Mailer: QQMail 2.x
+
+This is a multi-part message in MIME format.
+
+------=_NextPart_4E97A9B1_087718E0_6C5F8AA5
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_4E97A9B1_087718E0_7222C9B3";
+
+------=_NextPart_4E97A9B1_087718E0_7222C9B3
+Content-Type: text/plain;
+	charset="gbk"
+Content-Transfer-Encoding: base64
+
+1eLKx9K7uPay4srUo6ENCmhlbGxvLCB3b3JsZC4=
+
+------=_NextPart_4E97A9B1_087718E0_7222C9B3
+Content-Type: text/html;
+	charset="gbk"
+Content-Transfer-Encoding: base64
+
+1eLKx9K7uPay4srUo6E8YnI+aGVsbG8sIHdvcmxkLjxicj4=
+
+------=_NextPart_4E97A9B1_087718E0_7222C9B3--
+
+------=_NextPart_4E97A9B1_087718E0_6C5F8AA5
+Content-Type: application/octet-stream;
+	charset="gbk";
+	name="dic.txt"
+Content-Disposition: attachment; filename="dic.txt"
+Content-Transfer-Encoding: base64
+
+YmlibGlvZ3JhcGh5CmdseXBoCmdseXBoCg==
+
+------=_NextPart_4E97A9B1_087718E0_6C5F8AA5--
+
+
+　我们经常使用EMail，不光可以向别人传递消息，甚至可以将邮箱当作自己的U盘来存放重要或经常使用的文件。那么EMail的格式是什么样的？我们又怎么样利用Python来读取邮件的内容呢？
+
+首先来看**邮件的格式**：邮件的内容都是经过处理后的__文本__。这些文本可以表示以下信息：
+1、邮件头：邮件头携带有发件人(from)、发给谁(to)、邮件主题(subject)、接收日期(date)等信息。
+2、邮件body(主体)。**body有文本格式和html格式之分**，这两种格式的body，可以同时存在，也可以只存在一种。这就是为什么有些邮件既可以用html格式查看，又可以用文本格式查看的原因了。
+3、附件(attach)。发送邮件时，可以将本机的文件一起发送。附件可以有0个或多个，只要附件的总大小，不超过邮件服务器所声明的最大容量。
+
+对文本格式的body、html格式的body、附件等**内容进行编码时**，这些内容之间**相互独立**存在，之间又没有关系，编码时就将它们进行__分段分别处理__。我们将**每个段文本称为Payload**。Payload带有**多个参数和内容信息**，这些参数用来描述Payload内容的**编码格式**(Content- Transfer-Encoding)、**附件的名称**和**类型**、body的**格式类型**(Content-Type)等。Payload可以包含0或多个其它的 Payload。反过头来，我们可以认为整个邮件也是一个Payload，邮件头只是它所携带的参数信息而已。
+
+由于邮件是**以文本类型进行编码和传输**，就必然会存在对编码格式进行解码的问题。我们知道Payload的**内容**由参数(Content- Transfer-Encoding)来保存编码格式，解码时就按照这个编码格式进行解码即可。那么Payload的**参数**的编码是如何表示的呢？如邮件头 的from参数值，它其实是将__编码格式和内容放在一起__如'=?utf-8?Q?UMLChina=E6=9C=8D=E5=8A=A1?= '，前面一部分为编码格式，后面的内容为编码后的文本内容。
+
+当我们解析邮件文本，得到一个没有子Payload的原子Payload时，我们如何分辨出此Payload是何种数据呢？
+1、分辨附件。如果Payload的**参数name,所对应的value不为空时，那么我们可以认为此Payload为附件**，value为附件名称。如：**name="dic.txt"**
+2、分辨body。如果不为附件，那么根据**content-type参数对应的value**，当value等于"text/plain"时，我们就认为是文 本格式的body。当value等于"text/html"时，我们就认为时html格式的body。如果这两种都不时，我们就**默认它为html格式的 body**。
+
+我们知道以上信息后，就可以编程对邮件进行处理了。由于我们将整个邮件作为一个Payload来看待，那么我们可以__用递归的方法来处理__。
+1、首先处理邮件的头信息。
+2、将邮件当作一个Payload进行处理。
+2.1、判断Payload是否还有子Payload，如果有则,递归处理所有子Payload。
+2.2 如果Payload没有子Payload，则按照分辨原子Payload的方式处理。
+
+
+===== POP3的协议格式 =====
+简要介绍如下。在cmd下用telnet命令连接邮件服务器，可以发送以下命令对邮件服务器的邮件进行操作：telnet pop3.163.com 110
+1、登陆邮件服务器
+user "mailUserName"
+pass "mailPassword"
+2、登陆成功后，我们可以对邮件进行操作
+stat // 返回邮件的个数，和字节大小
+list [which] //得到邮件列表信息
+retr which //得到which邮件的文本内容
+dele which //将which邮件从邮件服务器删除
+3、注销
+quit //只有发送quit命令后，进行dele的邮件才删除。
+
+
+在Python中有非常丰富的module，其中就有针对POP3协议实现的module(__poplib__)，让我们可以方便的从POP3服务器 中提取邮件内容。有实现邮件格式的module(__email__)，方便我们将文本转换为Message对象，提取子Payload和对Payload的参数 和内容进行解码等工作，我们所需要做的，就是导入这些module，调用其中的方法即可。
+#导入module
+import email, poplib
+
+#建立Pop3连接
+p3 = poplib.POP3('pop3.163.com', 110)
+#登陆POP3服务器
+p3.user('yourMailName')
+p3.pass('yourMailPassword')
+#获取某一封邮件的文本msgText
+(hdr, msgText, octet) = p3.retr(mailIdx)
+
+# 将mail文本转换为Mail对象
+self.msg = email.message_from_string(string.join(msgText, '\n'))
+
+#"""将带有编码信息的文本解码"""
+result = email.Header.decode_header(text)
+
+#判断是否还有子Payload
+payLoad.is_multipart()
+#得到Payload的内容
+msgText = payLoad.get_payload(decode = tranEncoding)
+#得到Payload的子Payload
+subPayLoad = payLoad.get_payload(subPayLoadIdx)
+#得到Payload的Content-type参数、内容传输编码、附件名称
+contentTypes = payLoad['Content-Type']
+tranEncoding = payLoad['Content-Transfer-Encoding']
+attachName = payLoad.get_param("name")

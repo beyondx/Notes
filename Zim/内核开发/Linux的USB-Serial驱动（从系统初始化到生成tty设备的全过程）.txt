@@ -1,0 +1,51 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-03T14:44:23+08:00
+
+====== Linux的USB-Serial驱动（从系统初始化到生成tty设备的全过程） ======
+Created Saturday 03 December 2011
+blog.csdn.net/gorilla0123/article/details/5409592 
+
+真正做完了USB驱动，看了《Linux那些事》之后，才知道Linux的USB host驱动有多复杂。我做的还只是USB驱动中的一小部分**USB转串口**。而且还只是读代码和做小的改动，真正写这些的都是天才。
+
+    有关USB驱动的部分在我会在别的文章中逐步的介绍，这里介绍的是从Linux内核初始化到USB设备插入USB口到虚拟出tty设备的过程。先上一个原创的图，画的还挺丑的，不过应该能把过程说清楚：
+
+ {{~/sync/notes/zim/内核开发/Linux的USB-Serial驱动（从系统初始化到生成tty设备的全过程）/1.jpg}}
+
+===== usb 初始化和匹配 =====
+
+一，Linux系统初始化阶段：
+1 在usb.c中的usb_init（）函数会调用bus_register(&usb_bus_type)__注册一条USB总线__。
+
+2 在usb.c中会__在这条总线上注册一个驱动程序__：usb_generic_driver{
+                                                              generic_probe()
+                                                             ** device_id**
+                                                              }
+  在这个驱动中包含自己的probe函数和USB__设备的ID__（注意，这里是设备ID而不是接口的ID）。
+
+3 在usb_serial.c中的usb_serial_init()函数会再次调用bus_register(&usb_serial_bus_type)__注册USB转串口总线__。
+
+4 usb_serial_init()函数会调用tty_register_driver(usb_serial_tty_driver)__在该总线上向内核注册tty类的设备驱动程序__。
+
+5 option.c中的option_init()函数调用usb_register(&option_driver){
+                                                                usb_serial_probe()
+                                                              **  ids_table{0x19d2,0x0031}**
+                                                                }
+在USB总线上注册USB驱动，该驱动是__接口的驱动__。
+
+6 option.c中的option_init()函数调用usb_serial_register(&option_1port_device)在USB转串口总线上注册驱动option_1port_device（注意，这仅仅是在总线上注册，并不向内核注册）。
+
+到这里，总线跟驱动都已经注册完毕了，就等着设备过来了。
+
+===== 二 从设备插入到进入自己的probe函数——usb_serial_probe()的过程 =====
+7 当我们的USB Modem设备插入USB端口时，要调用bus_add_device()在USB总线上__添加一个USB设备__。
+8 该USB设备由于有__USB设备号__，会找到刚才注册的usb_generic_driver中的generic_probe()函数，在这个函数中经过一系列的函数调用最后会  进入usb_set_configuration()。
+9 usb_set_configuration()函数会根据HOST和Device沟通的情况，进行__总线枚举__，这个我们的设备会生成__3个interface__，该函数会依次将这三个interface添加到USB总线上。
+10 每个interface会根__据VID和PID__找到合适自己的probe函数，这里我们设备的三个接口会依次进入usb_serial_probe（）。
+
+==== 三 从进入自己的probe到虚拟出ttyUSB设备 ====
+11 在usb_serial_probe（）中，首先生成三个usb_serial_port,port1,port2,port3。接着调用device add()函数 。。。。。。。。（这段有待考证）调用tty_register_device()。
+12 tty_register_device()函数主要做了三件事：
+（1）向系统注册这**三个串口设备**。
+（2）将串口设备，**次设备号**，串口驱动usb_serial_tty_driver__绑定__到一起。
+（3）在/dev目录下生成/dev/ttyUSB1,/dev/ttyUSB2,/dev/ttyUSB3三个设备。

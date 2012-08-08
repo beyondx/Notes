@@ -1,0 +1,157 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-15T13:55:43+08:00
+
+====== containing float ======
+Created Sunday 15 May 2011
+http://www.complexspiral.com/publications/containing-floats/#fn1
+
+As powerful and useful as they are, floats can make for tricky layout tools. Chances are that you may have seen something like the situation shown in Figure 1, which is accomplished with just two div elements, each with a floated image inside it.
+{{./fig1.gif}}
+Figure 1. That's not right!
+
+This is probably not what the author had in mind, but given the styles used, it's the correct layout. Here's how we created it:
+
+div.item {border: 1px solid; padding: 5px;}
+div.item img {float: left; margin: 5px;}
+
+That's all it takes. The result seen in Figure 1 happens because __the div elements don't "stretch" to contain the floated images within them__. To look at the situation from the reverse angle, it happens because the floated images "stick out" of the bottom of the div elements.
+
+**PS:**这是因为float的元素成为块级元素且脱离了原来的文档流。
+
+This is not a bug. It's also not a flaw in CSS. It is, in fact, __the behavior that most authors will want most of the time__. It's just not what they would want in the example shown in Figure 1.
+
+===== Understanding the Problem =====
+
+So when in the name of all that's good and right would authors want floats to stick out of their containing elements? Simple: in what is historically the most common case for float use. Consider Figure 2, and the basic markup structure that produced it.
+{{./fig2.gif?width=331}}
+Figure 2. Floating an image, flowing the text.
+
+<p>
+ ...text...
+ __<img__ src="jul31-03-sm.jpg" height="200" border="0" class="picture">
+ ...text...
+__</p>__
+<p>
+ ...text...
+</p>
+
+**PS：**图片脱离了所在段落的文档流且float到__原来所在行__(因为开始img是一个行内元素)的父元素的左侧，图片被float后成为一个块级元素且其__margin-top与所在行平行__。
+
+1.行内元素inline-element的横向框参数起作用(宽度等于字符内容的总宽度而不像块元素没指定宽度时占满所在行的全部宽度)，但纵向框参数如padding, border, margin没有起到应有的像块级元素一样的隔离和突出作用，而是溢出所在的行并有可能覆盖前后行的内容。
+
+{{./10-inline-elem.png?width=500}}
+{{./1-inline-block.png?width=500}}
+{{./11-inline-elem.png?width=500}}
+
+2.float行内元素后该元素float到父元素的左侧成为一个块元素，**该块元素的margin-top与所在行平行**。
+{{./3-floated-element.png?width=500}}
+当一行容纳不下float对象时他将下移多行直到可以容纳下为止如：
+{{./8-before-float-inline-elem.png?width=500}}
+PS：本来将float的元素从第二行开始但由于容纳不下，故下移一行从第三行开始
+{{./9-after-float-inline-elem.png?width=500}}
+{{./12-float.png?width=500}}
+3.被float的元素将脱离原来的文本流。该元素前面的块级元素不受影响，但该元素后面的块级元素或所在行的其他字符将受影响。如下图所示，包含float段落的上一段落没受影响，但所在的段落文字将环绕float元素。
+
+{{./5-float-element-.png?width=500}}
+注意：float元素位于文本流上方，会受到文本流中背景的影响。
+{{./7-float-background.png?width=500}}
+
+The practice of flowing text around an image goes back a long, long time. That's why the ability was added to the Web starting with Netscape 1.1, and why CSS makes it possible using the property float.[1] But look closely at Figure 2. __The floated image is sticking out of its containing element.__ We can see this more clearly by adding borders to the paragraphs, as shown in Figure 3.
+{{./fig3.gif?width=352}}
+Figure 3. Adding borders to the paragraphs.
+
+So now we can see why it's important that __floats stick out of their containing elements__. If they didn't, then Figure 2 would have looked like Figure 4 instead.
+{{./fig4.gif}}
+Figure 4. If floats expanded their ancestor elements.
+
+That's something __designers would never have accepted.__ So, in order to keep with Web design tradition and author expectation, CSS is written to allow floated elements to stick out of the bottom of their containing elements. While this is necessary for normal text flow, i__t's a major problem when floats are used for layout purposes__.
+
+===== A Clear Solution =====
+
+__If floats are to be used in creating non-table layouts, then there needs to be a way to make their containing elements stretch around them. __At present, this requires __a bit of a structural hack__. Since we want the bottom of the containing element to be placed clear past the bottom of the float, then clear is our answer. __We need only insert a block-level element just before the end of the container, and clear it.__ Consider:
+
+<div class="item">
+ <img src="w6144.gif">
+ Widget 6144
+ <br>$39.95
+__ <hr>__
+</div>
+<div class="item">
+ <img src="w6145.gif">
+ Widget 6145
+ <br>$44.95
+ __<hr>__
+</div>
+
+Now we apply the following rules to the preceding markup, and get the result shown in Figure 5.
+
+div.item hr {**display: block; clear: left;** margin: -0.66em 0; **visibility: hidden**;}
+{{./fig5.gif}}
+Figure 5. Using a horiztonal rule to force expansion.
+
+By ensuring that __the hr elements are block-level__, part of the normal flow, and cleared, we force the divs to "stretch around" the left-floated images.
+
+**PS：**因为inline-level 元素的纵向框参数不起突出和隔离作用而是溢出所在的行，block-level的纵向margin总是起作用。
+
+The __negative top and bottom margins __have the general effect of closing up the space that the hr occupies. However, this effect is not precise, and not necessarily identical across browsers. The semi-mysterious nature of horizontal rules makes it difficult to predict exactly what will happen. The effective height of the hr might be zero, or a small positive amount, or even a negative height.
+
+Therefore, in situations where a precise clearing effect is needed, authors can __use a div instead of an hr to create a clearing effect__. For example:
+
+div.clearer {clear: left; **line-height: 0; height: 0;**}
+
+<div class="item">
+ <img src="w6144.gif">
+ Widget 6144
+ <br>$39.95
+** <div class="clearer">&nbsp;</div>**
+</div>
+PS：height是框里内容的高度，使用div块元素是因为其框参数如padding,border,margin都为0。下图中蓝色为内容所占的height，宽度为块元素的特性：占满一行。
+{{./div-margin-0.png?width=700}}
+将height设为0时会使内容溢出，但默认的overflow=visible，会使溢出区域显示。
+{{./div-height=0.png?width=800}}
+
+===== Set a Float to Fix a Float =====
+
+There is a way to avoid over-use of the structural hacks discussed so far, although they are still necessary at times. In most browsers, and as defined in CSS2.1, __a floated element will expand to contain any floated elements that descend from it. __So in our widget example, we could remove all of the "clearer" elements and instead write these styles:
+
+div.item {**float: left;** border: 1px solid; padding: 5px; **width: 60%**;}
+div.item img {float: left; margin: 5px;}
+
+Note that we've floated both the images and the "item" divs. By setting the width of the divs to be greater than 50%, we ensure that they will **never be next to each other**, but will instead stack up vertically. This has the result shown in Figure 6.
+{{./fig6.gif}}
+Figure 6. Using floats to stretch around floats.
+
+This is obviously simpler to manage, both in terms of markup and style. However, the hacks discussed thus far are still useful. Suppose you want to put some advisory text underneath the items. In order to keep the text from flowing to the right of the items(因为上面的两个div都是浮动的，接着第二个div的元素有可能会浮动到它的右边), we need to__ insert a clearing hack__. This would lead us to create markup like the following, which is illustrated in Figure 7.
+
+<div class="item">
+ <img src="w6144.gif">
+ Widget 6144
+ <br>$39.95
+</div>
+<div class="item">
+ <img src="w6145.gif">
+ Widget 6145
+ <br>$44.95
+</div>
+
+ **<div class="clearer">&nbsp;</div>**
+ <p>Widgets are sold on an "as is" basis without
+    warranty or guarantee.</p>
+
+div.clearer {clear: left; **line-height: 0; height: 0;**}
+{{./fig7.gif}}
+Figure 7. Floats and hacks get the desired layout.
+
+The clearing div effectively **pushes the normal flow downward**, forcing any following content to flow after the cleared element, and therefore after the floated divs.
+
+The potential drawback to using floats to contain floats is that you rely on browsers to consistently interpret the layout of multiple nested floated elements. The situation becomes more fragile if these floats are part of a more complicated layout, one possibly using floats, positioning, or tables. This is not to say such layouts are impossible to achieve. They may, however, involve a good deal of trial and error to avoid obscure floating and other layout bugs that may lurk inside rendering engines.
+
+===== Summary =====
+
+By understanding how floats and the normal flow relate to each other, and understanding how clearing can be used to manipulate the normal flow around floats, authors can employ floats as a very powerful layout tool. Because floats were not originally intended to be used for layout, some hacks may be necessary to make them behave as intended. **This can involve floating elements that contain floats, "clearing" elements, or a combination of both.**
+
+Looking to the future, there have been a variety of proposed enhancements to CSS that would allow an author to declare that an element should stretch to contain any floated elements within itself. These would obviously be welcome additions to CSS, but as of this writing, support for such abilities is likely to be a long time coming.
+
+    [1] The term "float" refers to the way in which an element floats to one side and down, as described in the original "Additions to HTML 2.0" document that accompanied the release of Netscape 1.1.
+

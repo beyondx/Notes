@@ -1,0 +1,69 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-05T15:55:37+08:00
+
+====== Sending struct over TCP (C-programming) ======
+Created 星期日 05 六月 2011
+
+Hi again!
+
+I have a client and server program where I want to send an entire struct from the client and then output the struct member "ID" on the server.
+
+I have done all the connecting etc and already managed to send a string through:
+
+send(socket, string, string_size, 0);
+
+So, is it possible to send a struct instead of a string through send()? Can I just replace my buffer on the server to be an empty struct of the same type and go?
+
+-----------------
+Welll... sending structs through the network is kinda hard if you are doing it properly.
+
+Carl is right - you can send a struct through a network by saying:
+
+send(socket, (char*)my_struct, sizeof(my_struct), 0);
+
+But here's the thing:
+
+    sizeof(my_struct) might change between the client and server. Compilers often do some amount of padding and alignment, so unless you define alignment explicitly (maybe using a #pragma pack()), that size may be different.
+    The other problem tends to be byte-order. Some machines are big-endian and others are little-endian, so the arrangement of the bytes might be different. In reality, unless your server or client is running on non-Intel hardware (which is probably not the case) then this problem exists more in theory than in practice.
+
+So the solution people often propose is to have a routine that **serializes the struct**. That is, it __sends the struct one data member at a time__, ensuring that the client and server only send() and recv() the exact specified number of bytes that you code into your program.
+
+-------------
+Serialization
+
+It is often necessary to send or receive complex datastructures to or from another program that may run on a different architecture or may have been designed for different version of the datastructures in question. A typical example is a program that saves its state to a file on exit and then reads it back when started.
+
+The 'send' function will typically start by writing a magic identifier and version to the file or network socket and then proceed to write all the data members one by one (i.e. in serial). If variable length arrays are encountered (e.g. strings), it will either write a length followed by the data or it will write the data followed by a special terminator. The format is often XML or binary in which case the htonl() set of macros may come in handy.
+
+The 'receive' function will be nearly identical : It will read all the items on by one. Variable length arrays are either handled by reading the count followed by the data, or by reading the data until the special terminator is reached.
+
+Since these two functions often follow the same pattern as the declaration of the data(structures), it would be nice if they could all be generated from a common definition.
+----------
+Not that it matters very much, but you should probably cast the structure to a void*, rather than a char *, since that's what send() is prototyped to take. – Mark Bessey Nov 14 '09 at 17:51
+	
+@rasher: While you mention both packing the struct and serializing, it's important to point out that serializing can murder performance if you're sending a high volume of data. Every call to send causes a fairly expensive context switch between user space and kernel space. __Packing the data is really the preferred method__. 
+------------------
+Are the client and server machines "the same"? What you are proposing will only work if the the C compilers at each end lay out the structure in memory exactly the same. There are lots of reasons why this may not be the case. For example the client and server macines might have different architectures, then the way they represent numbers in memory (big-endian, little-endian) might differ. Even if the clients machines and server machine have the same architecture two different C compilers may have different policies for how they lay out structs in memory (eg. padding between fields to align ints on word boundaries). Even the same conmpiler with different flags might give different results.
+
+Pragmatically, I'm guessing that your client and server are the same kind of machine and so what you are proposing will work, however you need to be aware that as a general rule it won't and that's why standards such as CORBA were invented, or why folks use some general representation such as XML
+---------------
+You can, if the client and the server have laid out the struct exactly the same way, meaning that the fields are all the same size, with the same padding. For instance if you have a long in your struct, that might be 32bits on one machine and 64bits on the other, in which case the struct will not be received correctly.
+
+In your case, if the client and the server are always going to be on very similar C implementations (for instance if this is just code you're using to learn some basic concepts, or if for some other reason you know your code will only ever have to run on your current version of OSX), then you can probably get away with it. Just remember that your code will not necessarily work properly on other platforms, and that there's more work to do before it's suitable for use in most real-world situations.
+
+For most client-server applications, this means that the answer is you can't do it in general. What you actually do is define the message in terms of the number of bytes sent, what order, what they mean, and so on. Then at each end, you do something platform-specific to ensure that the struct you're using has exactly the required layout. Even so, you might have to do some byte-swapping if you're sending integer members of the struct little-endian, and then you want your code to run on a big-endian machine. Data interchange formats like XML, json and Google's protocol buffers exist so that you don't have to do this fiddly stuff.
+
+[Edit: also remember of course that some struct members can never be sent over the wire. For instance if your struct has a pointer in it, then the address refers to memory on the sending machine, and is useless on the receiving end. Apologies if this is already obvious to you, but it certainly isn't obvious to everyone when they're just beginning with C].
+
+-------------
+Technically, the struct will always be received correctly assuming his protocol over the connection works correctly. The problem is not the receiving, it is the interpreting or perhaps you might call it the accessing. 
+------------
+True. I'd say if you don't actually read all the bytes into application space (because sizeof(thestruct) is smaller on the reader than the writer), then you haven't received the message. Also, I think technically it is sometimes undefined behavior to copy arbitrary bytes over a struct - you could trigger trap bits in the members. So in that case too the message is not received. But you're right, you'll receive (some of) the bytes of the message, just not understand the message itself. 
+------------------
+In general, it's a bad idea to do this, even if your client and your server turn out to lay out the structure in memory the same way.
+
+Even if you don't intend to pass more complex data structures (that would involve pointers) back and forth, I recommend that you serialize your data before you send it over the network.
+----------------------
+Send the data as text file and then decode it after receiving it. This is the best way if you want your data as its sent!!
+

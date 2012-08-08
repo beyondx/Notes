@@ -1,0 +1,62 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-19T19:36:04+08:00
+
+====== 下载及安装 ======
+Created Tuesday 19 June 2012
+我们需要下载和安装两个软件：CodeWarrior for Power Architecture, Linux Platform Edtn (Linux)及其更新、CodeWarrior 的 USB-TAP仿真器支持补丁。
+
+1. 先在freescale的网站找到处理器的页面，例如POWERQUICC系列的处理器页面如下：
+http://www.freescale.com/webapp/sps/site/homepage.jsp?code=POWERQUICC_HOME&tid=prodlib
+{{./Selection_004.png?width=692}}
+
+2. 在处理器列表中找到MPC8315E的链接，点击后跳转到MPC8315E的专题页面，如下图所示。
+http://www.freescale.com/webapp/sps/site/prod_summary.jsp?code=MPC8315E&nodeId=018rH3Jk191439
+{{./Selection_002.png}}
+
+3. 点击上面的Software&tools链接，可以看到所有的适用于MPC8315处理器的软件工具。
+{{./Selection_003.png}}
+
+4 . 如上图所示，第一个工具类型为IDE，我们需要下载第3项或第四项对应的CodeWarrior linux平台版本。单击右边的"Download"，然后输入注册的账号、
+密码即可下载。
+
+5. 将下载后的文件如CW_EPPC_8.8_Build_80229.tar解压到任意目录中，解压出的文件为目录disk1，然后进入到该目录中执行安装程序。
+  # tar -xvf CW_EPPC_8.8_Build_80229.tar
+  # cd disk1
+  #sudo [[./setuplinux.bin]]
+Linux平台的CodeWarrior安装即运行需要依赖JAVA，如果上面的安装命令出现问题(如安装字体显示为方块)，则可以使用终端界面安装：
+  #sudo ./setuplinux.bin -console
+这种安装方式是“一问一答”式的，除了安装路径可能需要自定义外，其它都可以按默认值处理。这里假设安装到/opt/freescale/CodeWarrior/EPPC_8.8目录下。
+
+6. 刚才下载的“Evaluation: CodeWarrior for Power Architecture, Linux Platform Edtn (Linux) ”的支持主页位于：
+http://www.freescale.com/webapp/sps/site/prod_summary.jsp?code=CW-POWER-NETWORKING&fpsp=1&tab=Design_Tools_Tab
+我们需要再下载一些该软件的更新补丁，在Updates and Patches列表中可以看到所有可用的更新：
+{{./Selection_005.png}}
+下载更新时需要注意该更新适用的器件和平台，可以看到上表中的大部分更新是针对PXXXX系列CPU的，我们只需下载最后一个即可。
+
+7. 将下载的文件CW_EPPC_8_8_3_Update_90619.tar解压到任何一个目录下安装，解压出来的是一个名为disk1的目录：
+     # mv disk1 disk1.ide   
+    # tar -xvf CW_EPPC_8_8_3_Update_90619.tar
+    # cd disk1
+    #sudo sudo [[./setuplinux.bin]]
+
+Linux平台的CodeWarrior安装即运行需要依赖JAVA，如果上面的安装命令出现问题(如安装字体显示为方块)，则可以使用终端界面安装：
+  #sudo ./setuplinux.bin -console
+这种安装方式是“一问一答”式的，需要注意的是安装路径必须定位到刚才IDE安装到的目录/opt/freescale/CodeWarrior/EPPC_8.8。
+
+8. 最后一个需要下载的软件是USB TAP for JTAG/COP Power Architecture的仿真器软件，该软件是以上面所安装的IDE的更新补丁形式发布的，其主页位于：
+http://www.freescale.com/webapp/sps/site/prod_summary.jsp?code=USBTAP
+{{./Selection_006.png}}
+单击“Download"标签，然后选择Updates and Patches列表。
+，{{./Selection_007.png}}
+选择第一项针对于linux平台的更新即可。
+
+9. 将下载的文件ROHS_USBTAP_Update.tar解压到任何一个目录下安装，解压出来的是一个名为disk1的目录：
+     # mv disk1 disk1.update   
+    # tar -xvf ROHS_USBTAP_Update.tar
+    # cd disk1
+    #sudo sudo [[./setuplinux.bin]]
+
+Linux平台的CodeWarrior安装即运行需要依赖JAVA，如果上面的安装命令出现问题(如安装字体显示为方块)，则可以使用终端界面安装：
+  #sudo ./setuplinux.bin -console
+这种安装方式是“一问一答”式的，需要注意的是安装路径必须定位到刚才IDE安装到的目录/opt/freescale/CodeWarrior/EPPC_8.8。

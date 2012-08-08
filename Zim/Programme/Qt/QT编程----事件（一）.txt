@@ -1,0 +1,572 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-07T19:16:04+08:00
+
+====== QT编程----事件（一） ======
+Created Wednesday 07 March 2012
+
+http://blog.csdn.net/jianchi88/article/details/7017022
+
+===== review =====
+
+.ui 生成 .h,  .cpp文件
+uic form1.ui -o **form1.h**
+uic form1.ui **-i form1.h -o form1.cpp**
+
+===== QT程序设计进阶-事件 =====
+
+Qt程序是__事件驱动__的, 程序的每个动作都是由幕后某个事件所触发. 
+
+Qt事件的类型很多, 常见的qt的事件如下:
+
+* 键盘事件: 按键按下和松开.
+* 焦点事件: 键盘焦点移动.
+* 鼠标事件: 鼠标移动,鼠标按键的按下和松开.
+* 进入和离开事件: 鼠标移入widget之内,或是移出.
+* 拖放事件: 用鼠标进行拖放.
+* 滚轮事件: 鼠标滚轮滚动.
+* __绘屏事件__: 重绘屏幕的某些部分.
+* 定时事件: 定时器到时.
+* __移动事件__: widget的位置改变.
+* __大小改变事件__: widget的大小改变.
+* 显示和隐藏事件: widget显示和隐藏.
+* __窗口事件__: 窗口是否为当前窗口.
+
+还有一些非常见的qt事件,比如socket事件,剪贴板事件,字体改变,布局改变等等.
+
+Qt 的事件和Qt中的signal不一样.__ 后者通常用来使用widget, 而前者用来实现 widget__. 
+
+比如一个按钮, 我们使用这个按钮的时候, 我们只关心他clicked()的signal, 至于这个按钮**如何接收处理鼠标事件,再发射这个信号**,我们是不用关心的. 但是如果我们要__重载一个按钮的时候,我们就要面对event了__. 比如我们可以改变它的行为,在鼠标按键按下的时候(mouse press event) 就触发clicked()的signal而不是通常在释放的( mouse release event)时候.
+
+===== 事件起源： =====
+
+基于**事件如何被产生与分发**，可以把事件分为三类：
+
+1)Spontaneous 事件
+2) Posted 事件
+3)Sent  事件
+
+1)Spontaneous 事件,__由窗口系统产生__，它们被放到**系统队列**中，通过事件循环逐个处理。
+
+本类事件通常是window system把从系统得到的消息,比如鼠标按键,键盘按键等, 放入**系统的消息队列中**. __Qt事件循环__的时候读取这些事件,__转化为QEvent__,再依次处理.
+
+2)Posted 事件，由Qt或是__应用程序产生__，它们被**Qt组成队列**，再通过事件循环处理。
+
+调用QApplication::postEvent()来产生一个posted类型事件. 
+例如：QWidget::**update()**函数,  当需要**重新绘制屏幕时**,程序调用update()函数。其实现的原理是new出一个paintEvent,调用 QApplication::postEvent(),将其放入Qt的消息队列中,等待依次被处理. 
+
+3)Sent  事件由Qt或是__应用程序产生__，但它们被**直接发送到目标对象**。
+
+调用QApplication::sendEvent()函数来产生一个sent类型事件.  sent 类型事件不会放入队列, 而是直接被派发和处理, QWidget::**repaint()**函数用的就是这种方式.
+
+当我们在main()函数的末尾调用QApplication::exec()时,程序进入了__Qt的事件循环__
+
+事件循环如下面所示：
+
+while (!exit_was_called)
+
+{
+  while(!posted_event_queue_is_empty)
+       {
+         process_next_posted_event();
+       }
+
+  while(!spontaneous_event_queue_is_empty)
+      {
+         process_next_spontaneous_event();
+      }
+
+  while(!posted_event_queue_is_empty)
+      {
+        process_next_posted_event();
+      }
+}
+
+===== 事件循环的处理流程： =====
+
+1)先处理Qt事件队列中的posted事件，直至为空 
+2)再处理系统消息队列中的spontaneous消息，直至为空 
+3)在**处理系统消息的时候会产生新的Qt posted事件**，需要对其再次进行处理 
+
+===== Notify =====
+sendEvent的事件派发不通过事件循环。调用QApplication::sendEvent的时候, __消息会立即被处理,是同步的__. 实际上QApplication::sendEvent()是通过调用QApplication::notify(), 直接进入了**事件的派发和处理环节**.所有的事件都最终通过 notify 派发到相应的对象中。
+
+bool QApplication::notify ( QObject * receiver, QEvent * event ) 
+
+它是通过调用__receiver->event__(event) 来实现的。目标接受对象的event方法会**自动接受**notify传来的event事件
+
+event() 会返回一个布尔值，来__告诉调用者事件是否被accept或ignore,__ (true表示accept)，从event()返回的布尔值却是用来与QApplication:notify()通讯的。
+
+event()函数的处理如下所示：
+
+bool QWidget::event(QEvent *event)
+
+    {
+        switch (e->type()) {
+        case QEvent::KeyPress:
+            keyPressEvent((QKeyEvent *)event);
+            if (!((QKeyEvent *)event)->isAccepted())
+                return false;
+            break;
+        case QEvent::KeyRelease:
+            keyReleaseEvent((QKeyEvent *)event);
+            if (!((QKeyEvent *)event)->isAccepted())
+                return false;
+            break;
+            ...
+        }
+        return true;
+    }
+
+Close事件有点不同，调用QCloseEvent:ignore()取消了关闭操作，而accept()告诉Qt继续执行正常的关闭操作。为了避免混乱，最好是在closeEvent()的新实现中明确地进行accept()与ignore()的调用：、
+
+ void MainWindow::closeEvent(QCloseEvent *event)
+
+    {
+        if (userReallyWantsToQuit()) {
+            event->accept();
+        } else {
+            event->ignore();
+        }
+}
+
+===== 例子：keyPressEvent =====
+
+==== 1. 在空白窗体页面，重载当前窗体类的keyPressEvent方法，实现按键事件的响应。 ====
+
+步骤一：
+
+添加头文件<qevent.h>
+
+在form.cpp中填加void   Form1::keyPressEvent（QKeyEvent *k ）
+
+并实现**根据不同的键值，执行不同的动作**。
+
+步骤二：
+
+添加头文件<qevent.h>
+
+在form.h 中为窗体类form1添加** void ** keyPressEvent（QKeyEvent *k ）声明；
+
+步骤三：
+
+重新编译工程并运行测试。
+
+void Form1::keyPressEvent( QKeyEvent *k )
+
+{
+    if(k->key() == Key_Left)
+        {
+                qDebug("Left\n");
+               ....
+        }
+    else if(k->key() == Key_Right)
+        {
+                qDebug("Right\n");
+               ...
+        }
+   else    QWidget::keyPressEvent(k);
+}
+
+==== 2. 在具备子控件的复杂窗体中，重载当前窗体类的keyPressEvent方法，实现按键事件的响应。 ====
+
+步骤一：
+
+添加头文件<qevent.h>
+
+在form.cpp中填加void   Form1::keyPressEvent（QKeyEvent *k ）
+
+并实现根据不同的键值，执行不同的动作。
+
+步骤二：
+
+添加头文件<qevent.h>
+
+在form.h 中为窗体类form1添加 void  keyPressEvent（QKeyEvent *k ）声明；
+
+步骤三：
+
+在form.cpp中，**消除子控件的焦点策略，使能方向及Tab按键功能**。
+
+步骤四：
+
+重新编译工程并运行测试。
+
+例如：
+
+pushButton1 = new QPushButton( this, "pushButton1" );
+pushButton1->setGeometry( __QRect(__ 200, 150, 111, 41 ) );
+pushButton1->**setFocusPolicy**(QWidget::NoFocus);
+
+void QWidget::setFocusPolicy ( FocusPolicy ) 
+设置这个窗口部件接收键盘焦点的方式。
+
+“focusPolicy”属性保存的是__窗口部件接收键盘焦点的策略__。 
+
+* 如果窗口部件通过tab来接收键盘焦点，这个策略就是QWidget::TabFocus；
+* 如果窗口部件通过点击来接收键盘焦点，这个策略就是QWidget::ClickFocus；
+* 如果窗口部件上述两种方式__都使用__，是QWidget::StrongFocus；
+* 如果它不接收焦点（QWidget的**默认值**），是QWidget::NoFocus。
+
+==== 3. 重载当前窗体类的event方法，实现针对性事件的处理与过滤效果。 ====
+
+步骤一：
+
+在form.cpp中填加bool  Form1::__event__（QEvent *event）
+
+并实现根据不同的键值，执行不同的动作。
+
+步骤二：
+
+在form.h 中为窗体类form1添加 __bool __ event（QEvent *event）声明；
+#include<QKeyEvent>
+步骤三：
+
+重新编译工程并运行测试。
+
+bool Form1::event(QEvent * event)
+
+{
+    if (__event->type() __== __QEvent::KeyPress__)
+    {
+        __QKeyEvent__ *keyEvent = (QKeyEvent *) event;
+        if (keyEvent->key() == Key_A)
+        {
+            qDebug("--cut  the  Key_A--\n");
+            return true;
+        }
+    }
+    return QWidget::event(event);
+}
+
+实验：
+
+1）用鼠标事件实现鼠标放在按钮上，按钮变大。
+2）用按键事件实现方向右和方向左键控制2个窗口
+3）用信号与槽机制实现鼠标点击next和back实现控制2个窗口
+
+main.cpp:
+
+    #include <qapplication.h>        
+    #include "form1.h"        
+    int main( int argc, char ** argv )        
+    {  
+        QApplication a( argc, argv );        
+        Form1 w;        
+        w.show();        
+        a.connect( &a, SIGNAL( lastWindowClosed() ), &a, SLOT( quit() ) );        
+        return a.exec();        
+    }  
+
+
+form1.cpp
+
+    #include "form1.h"        
+    #include "form2.h"        
+    #include <qvariant.h>        
+    #include <qpushbutton.h>        
+    #include <qlayout.h>        
+    #include <qtooltip.h>        
+    #include <qwhatsthis.h>        
+    #include <qimage.h>        
+    #include <qpixmap.h>  
+      
+    /* 
+     
+     *  Constructs a Form1 as a child of 'parent', with the 
+     
+     *  name 'name' and widget flags set to 'f'. 
+     
+     * 
+     
+     *  The dialog will by default be modeless, unless you set 'modal' to 
+     
+     *  TRUE to construct a modal dialog. 
+     
+     */  
+      
+    Form1::Form1( QWidget* parent, const char* name, bool modal, WFlags fl )        
+        : QDialog( parent, name, modal, fl )  
+      
+    {  
+      
+        if ( !name )        
+            setName( "Form1" );        
+        setMouseTracking (true);        
+        pushButton1_3_2 = new QPushButton( this, "pushButton1_3_2" );        
+        pushButton1_3_2->setGeometry( QRect( 210, 80, 51, 41 ) );        
+        pushButton1_3_2->setFocusPolicy(QWidget::NoFocus);  
+      
+        pushButton1_4_2 = new QPushButton( this, "pushButton1_4_2" );        
+        pushButton1_4_2->setGeometry( QRect( 140, 80, 51, 41 ) );        
+        pushButton1_4_2->setFocusPolicy(QWidget::NoFocus);  
+      
+        pushButton1 = new QPushButton( this, "pushButton1" );        
+        pushButton1->setGeometry( QRect( 70, 20, 51, 41 ) );        
+        pushButton1->setFocusPolicy(QWidget::NoFocus);  
+      
+        pushButton1_3 = new QPushButton( this, "pushButton1_3" );        
+        pushButton1_3->setGeometry( QRect( 210, 20, 51, 41 ) );        
+        pushButton1_3->setFocusPolicy(QWidget::NoFocus);  
+      
+        pushButton1_5 = new QPushButton( this, "pushButton1_5" );        
+        pushButton1_5->setGeometry( QRect( 70, 80, 51, 41 ) );        
+        pushButton1_5->setFocusPolicy(QWidget::NoFocus);  
+      
+        pushButton1_4 = new QPushButton( this, "pushButton1_4" );        
+        pushButton1_4->setGeometry( QRect( 140, 20, 51, 41 ) );        
+        pushButton1_4->setFocusPolicy(QWidget::NoFocus);  
+      
+        pushButton1_2 = new QPushButton( this, "pushButton1_2" );        
+        pushButton1_2->setGeometry( QRect( 280, 20, 51, 41 ) );        
+        pushButton1_2->setFocusPolicy(QWidget::NoFocus);  
+      
+        pushButton1_2_2 = new QPushButton( this, "pushButton1_2_2" );        
+        pushButton1_2_2->setGeometry( QRect( 280, 80, 51, 41 ) );        
+        pushButton1_2_2->setFocusPolicy(QWidget::NoFocus);  
+      
+        pushButton9 = new QPushButton( this, "pushButton9" );        
+        pushButton9->setGeometry( QRect( 340, 160, 70, 30 ) );        
+        pushButton9->setFocusPolicy(QWidget::NoFocus);  
+      
+       __ languageChange();  __
+      
+        resize( QSize(434, 204).expandedTo(minimumSizeHint()) );        
+        clearWState( WState_Polished );  
+      
+        // signals and slots connections  
+      
+        connect( pushButton9, SIGNAL( clicked() ), this, SLOT( next() ) );  
+      
+    }  
+      
+    /* 
+     
+     *  Destroys the object and frees any allocated resources 
+     
+     */  
+      
+    Form1::~Form1()  
+      
+    {  
+      
+        // no need to delete child widgets, Qt does it all for us  
+      
+    }  
+      
+    /* 
+     
+     *  Sets the strings of the subwidgets using the current 
+     
+     *  language. 
+     
+     */  
+      
+    void Form1::languageChange()  
+      
+    {  
+      
+        setCaption( tr( "Form1" ) );        
+        pushButton1_3_2->setText( tr( "7" ) );        
+        pushButton1_4_2->setText( tr( "6" ) );        
+        pushButton1->setText( tr( "1" ) );        
+        pushButton1_3->setText( tr( "3" ) );        
+        pushButton1_5->setText( tr( "5" ) );        
+        pushButton1_4->setText( tr( "2" ) );        
+        pushButton1_2->setText( tr( "4" ) );        
+        pushButton1_2_2->setText( tr( "8" ) );        
+        pushButton9->setText( tr( "next" ) );  
+      
+    }  
+      
+    void Form1::next()  
+      
+    {        
+        Form2 a;        
+        a.show();        
+        close();        
+        a.exec();        
+    }  
+      
+    void Form1::press_next()  
+      
+    {       
+        Form2 a;        
+        a.show();        
+        close();        
+        a.exec();        
+    }  
+      
+    void Form1::keyPressEvent ( QKeyEvent * e )  
+      
+    {        
+        if(e->key()==Key_Right)        
+            press_next();        
+        else        
+            QWidget::keyPressEvent (e);  
+      
+    }  
+      
+    void Form1:: mouseMoveEvent ( __QMouseEvent__ * e )  
+      
+    {  
+        if(e->x() < 260 && e->x() > 210 && e->y() > 80 && e->y() < 120)        
+           pushButton1_3_2-> resize(61,51);        
+        else if(e->x() < 120 && e->x() > 70 && e->y() > 20 && e->y() < 60)        
+           pushButton1->resize(61,51);        
+        else if(e->x() < 260 && e->x() > 210 && e->y() > 20 && e->y() < 60)        
+            pushButton1_3->resize(61,51);        
+         else        
+         {        
+            pushButton1_3_2->resize(51,41);        
+            pushButton1->resize(51,41);        
+            pushButton1_3->resize(51,41);        
+            QWidget::mouseMoveEvent(e);        
+        }        
+    }  
+
+
+form2.cpp
+
+    #include "form2.h"  
+      
+    #include "form1.h"  
+      
+    #include <qvariant.h>  
+      
+    #include <qpushbutton.h>  
+      
+    #include <qlabel.h>  
+      
+    #include <qlayout.h>  
+      
+    #include <qtooltip.h>  
+      
+    #include <qwhatsthis.h>  
+      
+    #include <qimage.h>  
+      
+    #include <qpixmap.h>  
+      
+    /* 
+     
+     *  Constructs a Form2 as a child of 'parent', with the 
+     
+     *  name 'name' and widget flags set to 'f'. 
+     
+     * 
+     
+     *  The dialog will by default be modeless, unless you set 'modal' to 
+     
+     *  TRUE to construct a modal dialog. 
+     
+     */  
+      
+    Form2::Form2( QWidget* parent, const char* name, bool modal, WFlags fl )  
+      
+        : QDialog( parent, name, modal, fl )  
+      
+    {  
+      
+        if ( !name )  
+      
+    setName( "Form2" );  
+      
+        pushButton19 = new QPushButton( this, "pushButton19" );  
+      
+        pushButton19->setGeometry( QRect( 20, 160, 71, 31 ) );  
+      
+        textLabel1 = new QLabel( this, "textLabel1" );  
+      
+        textLabel1->setGeometry( QRect( 130, 40, 171, 81 ) );  
+      
+        languageChange();  
+      
+        resize( QSize(435, 204).expandedTo(minimumSizeHint()) );  
+      
+        clearWState( WState_Polished );  
+      
+        // signals and slots connections  
+      
+        connect( pushButton19, SIGNAL( clicked() ), this, SLOT( back() ) );  
+      
+    }  
+      
+    /* 
+     
+     *  Destroys the object and frees any allocated resources 
+     
+     */  
+      
+    Form2::~Form2()  
+      
+    {  
+      
+        // no need to delete child widgets, Qt does it all for us  
+      
+    }  
+      
+    /* 
+     
+     *  Sets the strings of the subwidgets using the current 
+     
+     *  language. 
+     
+     */  
+      
+    void Form2::languageChange()  
+      
+    {  
+      
+        setCaption( tr( "Form2" ) );  
+      
+        pushButton19->setText( tr( "back" ) );  
+      
+        pushButton19->setFocusPolicy(QWidget::NoFocus);  
+      
+        textLabel1->setText( tr( "<h1>hello world</h1>" ) );  
+      
+    }  
+      
+    void Form2::back()  
+      
+    {  
+      
+        Form1 a;  
+      
+        a.show();  
+      
+        close();  
+      
+        a.exec();  
+      
+    }  
+      
+    ;  
+      
+    void Form2::press_back()  
+      
+    {  
+      
+        Form1 a;  
+      
+        a.show();  
+      
+        close();  
+      
+        a.exec();  
+      
+    }  
+      
+    void Form2::keyPressEvent ( QKeyEvent * e )  
+      
+    {  
+      
+        if(e->key()==Key_Left)  
+      
+             press_back();  
+      
+         else  
+      
+             QWidget::keyPressEvent (e);  
+      

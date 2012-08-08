@@ -1,0 +1,171 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-07T10:36:07+08:00
+
+====== C++ Standard Library ======
+Created Tuesday 07 February 2012
+http://en.wikipedia.org/wiki/C%2B%2B_standard_library
+
+In C++, the C++ Standard Library is a collection of __classes and functions,__ which are written in **the core language **and part of the C++ ISO Standard itself.[1] The C++ Standard Library provides** several generic containers**, functions to utilise and manipulate these containers, **function objects**, **generic strings** and **streams** (including interactive and file I/O), support for some language features, and everyday functions for tasks such as finding the square root of a number. The C++ Standard Library also__ incorporates 18 headers of the ISO C90 C standard library ending with ".h"__, but their use is deprecated.[2] All other headers in the C++ Standard Library **do not end in ".h"**. Features of the C++ Standard Library are declared within __the std namespace__.
+
+The C++ Standard Library is based upon conventions introduced by the __Standard Template Library (STL)__. Although the C++ Standard Library and the STL share many features, neither is a strict superset of the other. In particular, the C++ Standard Library has also been influenced[3] by the work of Alexander Stepanov and Meng Lee.[4]
+
+The C++ Standard Library underwent ISO standardization as part of the C++ ISO Standardization effort, and is undergoing further work[5] regarding standardization of expanded functionality.
+
+===== C++ Standard Library =====
+
+    fstream
+    iomanip
+    ios
+    iostream
+    sstream
+    string
+
+===== Standard Template Library =====
+
+    algorithm
+    bitset
+    functional
+    iterator
+    Sequence containers
+    Associative containers
+    Unordered associative containers
+    Container adaptors
+
+===== C standard library =====
+
+    Data types
+    Character classification
+    Strings
+    Mathematics
+    File input/output
+    Date/time
+    Localization
+    Memory allocation
+    Process control
+    Signals
+
+=====     Miscellaneous headers: =====
+
+    <assert.h>
+    <errno.h>
+    <iso646.h>
+    <setjmp.h>
+    <stdarg.h>
+
+===== Contents =====
+    1 Standard headers
+        1.1 Containers
+        1.2 General
+        1.3 Strings
+        1.4 Streams and Input/Output
+        1.5 Numerics
+        1.6 Language support
+        1.7 C standard library
+    2 See also
+    3 References
+    4 External links
+
+===== Standard headers =====
+The following files contain the declarations of the C++ Standard Library.
+
+==== Containers ====
+<array>
+    New in C++11 and TR1. Provides the container class template __std::array__, a container for **a fixed sized array**.
+<bitset>
+    Provides the specialized container class __std::bitset__, a bit array.
+<deque>
+    Provides the container class template __std::deque__, a double-ended queue.
+<forward_list>
+    New in C++11 and TR1. Provides the container class template __std::forward_list__, a singly linked list.
+<list>
+    Provides the container class template __std::list__, a doubly linked list.
+<map>
+    Provides the container **class templates** __std::map__ and __std::multimap__, sorted associative array and multimap.
+<queue>
+    Provides the container** adapter class** __std::queue__, a single-ended queue.
+<set>
+    Provides the container class templates __std::set__ and __std::multiset__, **sorted** associative containers or sets.
+<stack>
+    Provides the container adapter class__ std::stack__, a stack.
+<unordered_map>
+    New in C++11 and TR1. Provides the container class template __std::unordered_map __and __std::unordered_multimap__, hash tables.
+<unordered_set>
+    New in C++11 and TR1. Provides the container class template__ std::unordered_set__ and __std::unordered_multiset__.
+<vector>
+    Provides the container class template __std::vector__, **a dynamic array**.
+
+==== General ====
+<algorithm>
+    Provides definitions of many __container algorithms__.
+<functional>
+    Provides several function objects, designed for use with the standard algorithms.
+<iterator>
+    Provides classes and templates for working with iterators.
+<locale>
+    Provides classes and templates for working with locales.
+<memory>
+    Provides facilities for memory management in C++, including the class template __std::auto_ptr__.
+<stdexcept>
+    Contains standard exception classes such as std::logic_error and std::runtime_error, both derived from std::exception.
+<tuple>
+    New in C++11 and TR1. Provides a class template__ std::tuple__, a tuple.
+<utility>
+    Provides the template class std::pair, for working with pairs (two-member tuples) of objects.
+
+==== Strings ====
+<string>
+    Provides the C++ standard string classes and templates.
+
+==== Streams and Input/Output ====
+<fstream>
+    Provides facilities for file-based input and output. See fstream.
+<iomanip>
+    Provides facilities to __manipulate output formatting__, such as the base used when formatting integers and the precision of floating point values.
+<ios>
+    Provides several types and functions basic to the operation of iostreams.
+<iosfwd>
+    Provides forward declarations of several I/O-related class templates.
+<iostream>
+    Provides C++ input and output fundamentals. See iostream.
+<istream>
+    Provides the template class std::istream and other supporting classes for input.
+<ostream>
+    Provides the template class std::ostream and other supporting classes for output.
+__<sstream>__
+    Provides the template class std::sstream and other supporting classes for string manipulation.
+<streambuf>
+    Provides reading and writing functionality to/from certain types of **character sequences**, such as external files or strings.
+
+==== Numerics ====
+<complex>
+    Provides class template std::complex and associated functions for working with complex numbers.
+
+<numeric>
+    Provides algorithms for numerical processing
+<valarray>
+    Provides the template class std::valarray, an array class optimized for numeric processing.
+
+==== Language support ====
+<exception>
+    Provides several types and functions related to __exception handling__, including std::exception, the base class of all exceptions thrown by the Standard Library.
+<limits>
+    Provides the template class std::numeric_limits, used for describing properties of fundamental numeric types.
+<new>
+    Provides __operators new and delete__ and other functions and types composing the fundamentals of C++ memory management.
+<typeinfo>
+    Provides facilities for working with C++ run-time type information.
+
+===== C standard library =====
+Main article: C Standard Library
+
+Each header from the C Standard Library is included in the C++ Standard Library under a different name, __generated by removing the .h, and adding a 'c' at the start;__ for example, 'time.h' becomes 'ctime'. The only difference between these headers and the traditional C Standard Library headers is that where possible the functions should be placed into the std:: namespace (although few compilers actually do this). In ISO C, functions in the standard library are allowed to be implemented by macros, which is not allowed by ISO C++.
+
+===== See also =====
+
+    Apache C++ Standard Library
+    Boost C++ Libraries
+    C POSIX library
+    C standard library
+    Standard library
+    Technical Report 1

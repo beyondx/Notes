@@ -1,0 +1,67 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-28T21:25:23+08:00
+
+====== C++对象模型学习笔记（二）--默认构造函数 ======
+Created Friday 28 October 2011
+
+http://neuloner.blog.51cto.com/1479078/307497
+
+在文章开始之前，首先指出对于c++新手的两个常见的误解：
+
+   一、任何class如果没有定义default constructor，就会被合成出一个来。
+   二、编译器合成出来的default constructor会明确设定'“class内**每一个**data member的默认值”
+ 
+首先我们来讨论第一个误解。编译器并不是给任何一个__没有__user-declared constructor的class合成出default constructor，编译器只会在__需要__的时候才会给没有user-declared constructor的class合成出default constructor。那到底什么时候才是需要的呢？首先我们先看一下C++ standard中的一句话：
+
+	“对于class X, 如果没有任何user-declared constructor, 那么会有一个default constructor被暗中（implicitly）声明出来……一个被暗中声明出来的default constructor将是一个trivial(无能的) constructor”。
+
+对于这句话，首先解释一下，原话中的暗中声明出来并不代表编译器会给他合成出来，对于trivial constructor，编译器是不会给他们合成出来的，编译器会合成出来的只是那些nontrivial default construtor，而到底哪些才算是nontrivial default constructor呢？ 《Insider C++》中给出了四种情况。
+
+__ 1、一个class的成员中含有带有default constructor的member class object__
+
+ 如果一个class中含有成员对象，而且这个对象有default constructor,, 那么编译器就会给这个class合成一个default constructor, 但是这个合成动作只有在调用需要时才会产生。也就是说，在需要时才会合成。
+
+例如：   
+
+    class Foo{  
+        public Foo();  
+        ......  
+    }  
+     
+    class Bar{  
+        Foo foo;  
+        char *str  
+    }  
+     
+    void foo_bar(){  
+       Bar bar;   //bar必须在此初始化
+       if(str){}.....  
+    } 
+
+在上述代码中，line12,bar必须在此初始化，当这时时，编译器就会给Bar合成一个default constructor，在default constructor中安插代码调用Foo的default constructor，但是有一点，编译器为Bar合成的default constructor**不会对str进行初始化**，对str进行初始化，那只是程序员需要做的事情，而对于合成出的default constructor，它__只满足编译器的需求__，而不会去满足程序的需求。
+
+如果class中内含一个以上的含有default constructor的object,那在为class合成的default constructor中，会按照object的声明次序调用object 的 default constructor。
+
+__2、 class继承于带有default constructor的base class__
+
+如果一个没有任何constructor的派生类继承自一个带有default constructor的base class, 那么这个派生类的default constructor被认为是nontrivial,而对于nontrivial的default constructor, 编译器会为他合成出来。在合成出的default constructor中**调用base class**的default constuctor.
+
+如果设计者提供了多个constructor,但未提供default constuctor,那编译器__不会合成__新的default constructor,而是__会扩展__所有的现有的**非** default constructor，安插进去default constructor所必须的代码。如果此类中仍存在第一种情况，也就是说存在有menber object, 而且object含有default constructor, 那这些default constructor 也会被调用，在base class的default constructor被调用后。
+
+__3、 这个class中带有virtual function__
+
+无论一个class是声明（或继承）了一个virtual function, 还是派生自一个继承串联，其中有一个或多个virtual base class.不管上述哪种情况，由于缺乏由user声明的constructor, 编译器会详细记录合成一个default constructor的详细信息。
+
+在编译期间，会做以下的扩展工作：
+   (1) 一个virtual function table会被编译器产生出来，内含virtual functions的地址。
+   (2) 编译器会合成一个vptr, 插入每一个object中。
+注意：VFT和VPTR是编译器为每一个对象创建单独的一份。
+而合成出来的default constructor，当然会为每一个object 设定vptr的初值。
+
+__4、 带有一个virtual base class的class__
+
+以上就是对第一个误解的讨论，对于第二个误解，对于合成出的default constructor,只会做一些必要的事情，比如对base class subobject 和member class object进行初始化，而对于一些其他的nonstatic data member如整数，指针，数组等则不会进行初始化，因为那些东西对于编译器来讲并不是必要的。
+
+===== 总结： =====
+以上给大家讲述了那两个误解。希望能够对大家有所帮助。只有那四种情况，编译器才会为未声明constructor的class合成出default constructor,而且被合成出来的constructor__只会满足编译器的需要，而不会去满足程序的需要__，而他们之所以能够完成任务（满足编译器的需要），是借着调用"member object或base class的default constructor”或是“为每一个object初始化其virtual function机制(包括vtbl的创建和vptr的正确初始化)或virtual base class机制”。而对于没有存在那四种情况并且又没有user-decleared constructor的class，我们称其拥有的是implict trivial default constructor, 而实际上，它并没有被合成出来。

@@ -1,0 +1,364 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-05T15:16:44+08:00
+
+====== pexpect ======
+Created Thursday 05 January 2012
+http://www.noah.org/wiki/Pexpect
+
+pexpect
+(Redirected from Pexpect)
+
+
+Contents
+
+    1 Pexpect version 2.3
+    2 Description of Pexpect
+    3 License
+    4 Download and Installation
+    5 Project Status
+    6 Requirements for use of Pexpect
+        6.1 Python
+        6.2 pty module
+    7 Source Code
+    8 Examples
+        8.1 topip.py
+        8.2 hive.py
+        8.3 script.py
+        8.4 fix_cvs_files.py
+        8.5 ftp.py
+        8.6 monitor.py
+        8.7 passmass.py
+        8.8 python.py
+        8.9 rippy.py
+        8.10 sshls.py
+        8.11 ssh_tunnel.py
+        8.12 uptime.py
+    9 API Documentation
+        9.1 Core
+        9.2 experimental extensions
+    10 Overview
+    11 Special EOF and TIMEOUT patterns
+    12 Lists if patterns
+    13 Find the end of line -- CR/LF conventions
+    14 Beware of + and * at the end of input
+    15 Matching groups
+    16 Debugging
+    17 Exceptions
+    18 FAQ
+        18.1 Q: Isn't there already a Python Expect?
+        18.2 Q: The `before` and `after` properties sound weird.
+        18.3 Q: Why not just use Expect?
+        18.4 Q: Why not just use a pipe (popen())?
+        18.5 Q: Can I do screen scraping with this thing?
+
+===== Pexpect version 2.3 =====
+
+Download the current version here from the SourceForge site here: pexpect current
+
+===== Description of Pexpect =====
+
+Pexpect is a **pure Python module** that makes Python a better tool for__ controlling and automating other programs__. Pexpect is similar to the Don Libes `Expect` system, but Pexpect as a different interface that is easier to understand. 
+Pexpect is__ basically a pattern matching system__. It runs programs and watches output. When output matches a given pattern Pexpect can **respond** as if a human were typing responses. Pexpect can be used for** automation, testing, and screen scraping**. 
+Pexpect can be used for__ automating interactive console applications __such as ssh, ftp, passwd, telnet, etc.
+It can also be used to__ control web applications__ via `lynx`, `w3m`, or some other **text-based **web browser. Pexpect is pure Python. Unlike other Expect-like modules for Python Pexpect does not require TCL or Expect nor does it require C extensions to be compiled. It should work on any platform that supports the standard Python pty module.
+
+Send questions to: noah@noah.org Put 'pexpect' in the subject.
+License
+
+MIT style -- Free, open source, and all that good stuff.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Pexpect Copyright (c) 2010 Noah Spurrier
+
+===== Download and Installation =====
+
+Download the current version here from the SourceForge site here: pexpect current
+
+The Pexpect tarball is **a standard Python Distutil distribution**. Running the following commands should get you a working Pexpect module. Note that you have to have root access to install a site package.
+
+ wget http://pexpect.sourceforge.net/pexpect-2.3.tar.gz
+ tar xzf pexpect-2.3.tar.gz
+ cd pexpect-2.3
+ sudo python ./setup.py install
+
+===== Project Status =====
+
+Automated __pyunit tests__ reach over 80% code coverage on pexpect.py. I regularly test on Linux and BSD platforms. I try to test on Solaris and Irix.
+
+===== Requirements for use of Pexpect =====
+* **Python**
+Pexpect was written and tested with Python 2.5. It should work on earlier versions that have the pty module. I sometimes even manually test it with Python 1.5.2, but I can't easily run the PyUnit test framework against Python 1.5.2.
+* **pty module**
+Any POSIX system (UNIX) with a working pty module should be able to run Pexpect. The pty module is part of the Standard Python Library, so if you are running on a POSIX system you should have it. The pty module does not run the same on all platforms. It should be solid on Linux and BSD systems. I have taken effort to try to smooth the wrinkles out of the different platforms. To learn more about the wrinkles see Bugs and Testing.
+
+Pexpect does **not currently work on the standard Windows Python** (see the pty requirement); however, it seems to work fine using Cygwin. It is possible to build something like a pty for Windows, but it would have to use a different technique that I am still investigating. I know it's possible because Libes' Expect was ported to Windows. If you have any ideas or skills to contribute in this area then I would really appreciate some tips on how to approach this problem.
+
+===== Source Code =====
+
+You can browse the source code in SVN online here: SVN trunk
+Note that all PyUnit tests are under the tests/ directory. To run the unit tests you will need to source the test.env environment file:
+
+ source test.env
+
+then you will need to run the testall.py script under the tools/ directory:
+
+ tools/testall.py
+
+===== Examples =====
+
+Under the distribution tarball directory you should find an "examples" directory.__ This is the best way to learn to use Pexpect__. See the descriptions of Pexpect Examples.
+* topip.py
+
+This runs `netstat` on a local or remote server. It **calculates some simple statistical information** on the number of external inet connections. This can be used to detect if one IP address is taking up an excessive number of connections. It can also send an email alert if a given IP address exceeds a threshold between runs of the script. This script can be used as a drop-in Munin plugin or it can be used stand-alone from cron. I used this on a busy web server that would sometimes get hit with denial of service attacks. This made it easy to see if a script was opening many multiple connections. A typical browser would open fewer than 10 connections at once. A script might open over 100 simultaneous connections.
+* hive.py
+
+This script creates SSH connections to a list of hosts that you provide. Then you are given a command line prompt. Each shell command that you enter is** sent to all the hosts**. The response from each host is collected and printed. For example, you could connect to a dozen different machines and reboot them all at once.
+* script.py
+
+This implements a command similar to the classic BSD "script" command. This will start a subshell and log all input and output to a file. This demonstrates the interact() method of Pexpect.
+* fix_cvs_files.py
+
+This is for cleaning up binary files improperly added to CVS. This script scans the given path to find binary files; checks with CVS to see if the sticky options are set to -kb; finally if sticky options are not -kb then uses 'cvs admin' to set the -kb option.
+* ftp.py
+
+This demonstrates an FTP "bookmark". This connects to an ftp site; does a few ftp tasks; and then gives the user interactive control over the session. In this case the "bookmark" is to a directory on the OpenBSD ftp server. It puts you in the i386 packages directory. You can easily modify this for other sites. This demonstrates the interact() method of Pexpect.
+* monitor.py
+
+This runs a sequence of commands on a remote host using SSH. It runs a simple system checks such as uptime and free to monitor the state of the remote host.
+* passmass.py
+
+This will login to each given server and change the password of the given user. This demonstrates scripting logins and passwords.
+* python.py
+
+This starts the python interpreter and prints the greeting message backwards. It then gives the user iteractive control of Python. It's pretty useless!
+* rippy.py
+
+This is a wizard for mencoder. It greatly simplifies the process of ripping a DVD to Divx (mpeg4) format. It can transcode from any video file to another. It has options for resampling the audio stream; removing interlace artifacts, fitting to a target file size, etc. There are lots of options, but the process is simple and easy to use.
+* sshls.py
+
+This lists a directory on a remote machine.
+* ssh_tunnel.py
+
+This starts an SSH tunnel to a remote machine. It monitors the connection and restarts the tunnel if it goes down.
+* uptime.py
+
+This will run the uptime command and parse the output into variables. This demonstrates using a single regular expression to match the output of a command and capturing different variable in match groups. The grouping regular expression handles a wide variety of different uptime formats.
+
+===== API Documentation =====
+
+==== Core ====
+**pexpect **- This is the main module that you want.
+**pxssh** - Pexpect SSH is an extension of 'pexpect.spawn' that specializes in SSH.
+
+==== experimental extensions ====
+fdpexpect - fdpexpect extension of 'pexpect.spawn' that uses an open file descriptor. You can pass it __any file descriptor__ and use pexpect commands to match output from your fd.
+screen - This represents a virtual 'screen'.
+ANSI - This parses ANSI/VT-100 terminal escape codes.
+FSM - This is a finite state machine used by ANSI.
+
+===== Overview =====
+Pexpect can be used for __automating interactive applications__ such as ssh, ftp, mencoder, passwd, etc. The Pexpect interface was designed to be easy to use. Here is an example of Pexpect in action:
+
+   # This connects to the openbsd ftp site and
+   # downloads the recursive directory listing.
+   import pexpect
+   child = pexpect.spawn ('ftp ftp.openbsd.org')
+   child.__expect__ ('Name .*: ')
+   child.__sendline__ ('anonymous')
+   child.expect ('Password:')
+   child.sendline ('noah@example.com')
+   child.expect ('ftp> ')
+   child.sendline ('cd pub')
+   child.expect('ftp> ')
+   child.sendline ('get ls-lR.gz')
+   child.expect('ftp> ')
+   child.sendline ('bye')
+
+Obviously you could write an ftp client using Python's own ftplib module, but this is just a demonstration. You can use this technique with any application. This is especially handy if you are writing **automated test tools**.
+
+There are two important methods in Pexpect --__ expect()__ and __send()__ (or __sendline()__ which is like send() with a linefeed). The expect() method waits for the child application to** return a given string**. The string you specify is a __regular expression__, so you can match complicated patterns. The send() method writes a string to the child application. From the child's point of view it looks just like someone **typed the text from a terminal**. After each call to expect() the __before and after properties__ will be set to the text printed by child application. The before property will contain all text up to the expected string pattern. The after string will contain the text that was **matched **by the expected pattern. The __match property__ is set to the re MatchObject.
+
+An example of Pexpect in action may make things more clear. This example uses ftp to login to the OpenBSD site; list files in a directory; and then pass interactive control of the ftp session to the human user.
+
+   import pexpect
+   child = pexpect.spawn ('ftp ftp.openbsd.org')
+   child.expect ('Name .*: ')
+   child.sendline ('anonymous')
+   child.expect ('Password:')
+   child.sendline ('noah@example.com')
+   child.expect ('ftp> ')
+   child.sendline ('ls /pub/OpenBSD/')
+   child.expect ('ftp> ')  
+   __print child.before__   # Print the result of the ls command.#打印上个expect匹配前输出的内容。
+   __child.interact()  __   # Give control of the child to the user.
+
+===== Special EOF and TIMEOUT patterns =====
+
+There are two special patterns to match the End Of File or a Timeout condition. You you can pass these patterns to expect(). These patterns are not regular expressions. Use them like __predefined constants__.
+
+If the child has **died** and you have read all the child's output then ordinarily expect() will raise an **EOF exception**. You can read everything up to the EOF without generating an exception by using the EOF pattern __expect(pexpect.EOF)__. In this case everything the child has output will be available in the **before property**.
+
+===== Lists if patterns =====
+
+The pattern given to expect() may be __a regular expression__ or it may also be __a list of regular expressions__. This allows you to__ match multiple optional responses__. The expect() method returns the** index** of the pattern that was matched. For example, say you wanted to login to a server. After entering a password you could get various responses from the server -- your password could be rejected; or you could be allowed in and asked for your terminal type; or you could be let right in and given a command prompt. The following code fragment gives an example of this:
+
+   child.expect('password:')
+   child.sendline (my_secret_password)
+   # We expect any of these three patterns...
+   i = child.expect** (['Permission denied', 'Terminal type', '[#\$] '])**
+   if i==0:
+       print 'Permission denied on host. Can't login'
+       __child.kill(0)__
+   elif i==2:
+       print 'Login OK... need to send terminal type.'
+       child.sendline('vt100')
+       child.expect ('[#\$] ')
+   elif i==3:
+       print 'Login OK.'
+       print 'Shell command prompt', __child.after__
+
+If nothing matches an expected pattern then__ expect will eventually raise a TIMEOUT exception__. The default time is 30 seconds, but you can change this by passing a t**imeout argument** to expect():
+
+   # Wait no more than 2 minutes (120 seconds) for password prompt.
+   child.expect('password:', __timeout=120__)
+
+===== Find the end of line -- CR/LF conventions =====
+
+Matching at the __end of a line__ can be tricky. In general **the $ regex pattern is useless**. Pexpect matches regular expressions a little differently than what you might be used to. The $ matches the end of string, but Pexpect reads from the child **one character at a time**, so each character looks like the end of a line. Pexpect can't do a look-ahead into the child's output stream. In general you would have this situation when using regular expressions with a stream. Note, pexpect does have an internal buffer, so reads are faster than one character at a time, but from the user's perspective the regex pattern test happens one character at a time.
+
+The best way to match the end of a line is to **look for the **__newline__**: "\r\n" (CR/LF)**. Yes, that does appear to be DOS-style. It may surprise some UNIX people to learn that **terminal TTY device drivers** (dumb, vt100, ANSI, xterm, etc.) all use the CR/LF combination to mark the end of line. **UNIX uses just linefeeds to end lines in **__files__**, but not when it comes to TTY devices**! 
+
+Pexpect uses a__ Pseudo-TTY__ device to talk to the child application, so when the child application prints a "\n" your TTY device actually sees "\r\n". TTY devices are more like the Windows world. Each line of text end with a CR/LF combination. When you intercept data from a UNIX command from a TTY device you will find that the TTY device outputs a CR/LF combination. 
+
+**A UNIX command may** only write a linefeed (\n), __but the TTY device driver converts it to CR/LF__. This means that your terminal will see lines end with CR/LF (hex 0D 0A). Since **Pexpect emulates a terminal**, to match ends of lines you have to expect the CR/LF combination.
+
+   child.expect__ ('\r\n')__
+
+If you just need to skip past a new line then expect ('\n') by itself will work, but if you are expecting a specific pattern before the end of line then you need to explicitly look for the \r. For example the following **expects a word at the end of a line**:
+
+__   child.expect ('\w+\r\n')__
+
+But the following would both fail:
+
+   child.expect ('\w+\n')
+
+And as explained before, trying to use '$' to match the end of line would not work either:
+
+   child.expect ('\w+$')
+
+So if you need to explicitly look for the END OF LINE, you want to look for the __CR/LF combination__ -- not just the LF and not the $ pattern.
+
+This problem is not limited to Pexpect. **This problem happens any time you try to perform a regular expression match on a stream.** Regular expressions need to look ahead. **With a stream it is hard to look ahead** because the process generating the stream may not be finished. There is no way to know if the process has paused momentarily or is finished and waiting for you. 
+
+Pexpect must implicitly always do a NON greedy match (minimal) at the end of a input {### already said this}.
+
+Pexpect compiles all regular expressions with the __DOTALL __flag. With the DOTALL flag a "." will match a newline.
+
+===== Beware of + and * at the end of input =====
+
+Remember that any time you try to match a pattern that needs look-ahead that __you will always get a minimal match (non greedy)__. For example, the following will always return just one character:
+
+   child.expect ('.+')
+
+This example will match successfully, but will always return no characters:
+
+   child.expect ('.*')
+
+Generally any star * expression will **match as little as possible.**
+
+One thing you can do is to try to force a non-ambiguous character at the end of your \d+ pattern. Expect that character to delimit the string. For example, you might try making thr end of your pattrn be \D+ instead of \D*. That means number digits alone would not satisfy the (\d+) pattern. You would need some number(s) and at least one \D at the end.
+
+===== Matching groups =====
+
+You can group regular expression using **parenthesis**. After a match, the __match parameter__ of the spawn object will contain the Python re.match object.
+
+===== Debugging =====
+
+If you get the __string value__ of a pexpect.spawn object you will get lots of useful debugging information. For debugging it's very useful to use the following pattern:
+
+try:
+
+   i = child.expect ([pattern1, pattern2, pattern3, etc])
+
+except:
+
+   print "Exception was thrown"
+   print "debug information:"
+   print__ str__(child)
+
+It is also useful to__ log the child's input and out to a file or the screen__. The following will turn on logging and send output to stdout (the screen).
+
+   child = pexpect.spawn (foo)
+   child.logfile = sys.stdout
+
+===== Exceptions =====
+
+* EOF
+
+Note that two flavors of EOF Exception may be thrown. They are virtually identical except for the message string. For practical purposes you should have no need to distinguish between them, but they do give a little extra information about what type of platform you are running. The two messages are:
+
+   End Of File (EOF) in read(). Exception style platform.
+   End Of File (EOF) in read(). Empty string style platform.
+
+Some UNIX platforms will throw an exception when you try to read from a file descriptor in the EOF state. Other UNIX platforms instead quietly return an empty string to indicate that the EOF state has been reached.
+
+		 Expecting EOF
+
+If you wish to read up to the end of the child's output **without generating an EOF exception** then use the __expect(pexpect.EOF)__ method.
+
+* TIMEOUT
+
+The expect() and read() methods will also timeout if the child does not generate any output for a given amount of time. If this happens they will raise a TIMEOUT exception. You can have these method ignore a timeout and block indefinitely by passing None for the timeout parameter.
+
+   child.expect(pexpect.EOF, timeout=None)
+
+===== FAQ =====
+Q: Isn't there already a Python Expect?
+
+A: Yes, there are several of them. They usually require you to compile C. I wanted something that was pure Python and preferably a single module that was simple to install. I also wanted something that was easy to use. This pure Python expect only recently became possible with the introduction of the** pty module** in the standard Python library. Previously C extensions were required.
+Q: The `before` and `after` properties sound weird.
+
+A:__ This is how the -B and -A options in grep works__, so that made it easier for me to remember. Whatever makes my life easier is what's best. Originally I was going to model Pexpect after Expect, but then I found that I didn't actually like the way Expect did some things. It was more confusing. The `after` property can be a little confusing at first, because** it will actually include the matched string**. __The `after` means after the point of match, not after the matched string.__
+Q: Why not just use Expect?
+
+A: I love it. It's great. I has bailed me out of some real jams, but I wanted something that would do 90% of what I need from Expect; be 10% of the size; and allow me to write my code in Python instead of TCL. Pexpect is not nearly as big as Expect, but Pexpect does everything I have ever used Expect for.
+Q: Why not just use a pipe (popen())?
+
+A: **A pipe works fine for getting the output to**__ non-interactive__** programs**. If you just want to get the output from ls, uname, or ping then this works. Pipes do not work very well for interactive programs and pipes will almost certainly fail for most applications that ask for passwords such as telnet, ftp, or ssh.
+
+There are two reasons for this.
+
+===== First =====
+an application may **bypass stdout** and__ print directly to its controlling TTY__. Something like SSH will do this when it asks you for a password. This is why you cannot redirect the password prompt because it does not go through stdout or stderr.
+
+===== second =====
+ reason is because most applications are built using the **C Standard IO Library** (anything that uses #include <stdio.h>). One of the features of the stdio library is that __it buffers all input and output.__ Normally output is** line buffered** when a program is printing to a TTY (your terminal screen). Everytime the program prints a line-feed the currently buffered data will get printed to your screen. The problem comes when you connect a __pipe__. The stdio library is smart and can tell that it is printing to a pipe instead of a TTY. In that case it switches from line buffer mode to __block buffered__. In this mode the currently buffered data is flushed when the__ buffer is full__. This causes most interactive programs to __deadlock__. Block buffering is more efficient when writing to disks and pipes. Take the situation where a program prints a message "Enter your user name:\n" and then waits for you type type something. In block buffered mode, __the stdio library will not put the message into the pipe __even though a linefeed is printed. The result is that you never receive the message, yet the child application will sit and wait for you to type a response. Don't confuse the stdio lib's buffer with the pipe's buffer. The pipe buffer is another area that can cause problems. You could flush the input side of a pipe, whereas you have __no control over the stdio library__ buffer.
+
+===== More information =====
+: the Standard IO library has three states for a FILE *. These are: _IOFBF for block buffered; _IOLBF for line buffered; and _IONBF for unbuffered. The STDIO lib will use block buffering when talking to a **block file descriptor** such as a pipe. This is usually not helpful for interactive programs. Short of recompiling your program to include __fflush() __everywhere or recompiling a custom stdio library there is not much a controlling application can do about this if talking over a pipe.
+
+The program may have put data in its output that remains unflushed because the output buffer is not full; then the program will go and deadlock while waiting for input -- because you never send it any because you are still waiting for its output (still stuck in the STDIO's output buffer).
+
+The answer is to use a 
+
+===== pseudo-tty =====
+. A TTY device will force line buffering (as opposed to block buffering). Line buffering means that you will get each line when the child program sends a line feed. This corresponds to the way most interactive programs operate -- send a line of output then wait for a line of input.
+
+I put "answer" in quotes because it's ugly solution and because there is no POSIX standard for pseudo-TTY devices (even though they have a TTY standard...). What would make more sense to me would be to have some way to __set a mode on a file descriptor __so that it will tell the STDIO to be line-buffered. I have investigated, and I don't think there is a way to set the buffered state of a child process. The STDIO Library does not maintain any external state in the kernel or whatnot, so I don't think there is any way for you to alter it. I'm not quite sure how this line-buffered/block-buffered state change happens internally in the STDIO library. I think the STDIO lib looks at the file descriptor and decides to change behavior based on whether it's a TTY or a block file (see isatty()).
+
+I hope that this qualifies as helpful. __Don't use a pipe to control another application__...
+
+Pexpect may seem similar to **os.popen()** or commands module. The main difference is that__ Pexpect (like Expect) uses a pseudo-TTY to talk to the child__ __application__. 
+
+Most applications do no work well through the system() call or through pipes. And probably all applications that ask a user to type in a password will fail. These applications bypass the stdin and read directly from the TTY device. Many applications do not explicitly flush their output buffers. This causes deadlocks if you try to control an interactive application using a pipe. What happens is that most UNIX applications use the stdio (#include <stdio.h>) for input and output. The stdio library behaves differently depending on where the output is going. There is no way to control this behavior from the client end.
+Q: Can I do screen scraping with this thing?
+
+A: That depends. If your application just does line-oriented output then this is easy. If it does screen-oriented output then it may work, but it could be hard. For example, trying to scrape data from the 'top' command would be hard. The top command repaints the text window.
+
+I am working on an ANSI / VT100 terminal emulator that will have methods to get characters from an arbitrary X,Y coordinate of the virtual screen. It works and you can play with it, but I have no working examples at this time. 

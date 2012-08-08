@@ -1,0 +1,104 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-22T18:01:51+08:00
+
+====== all ======
+Created Sunday 22 May 2011
+
+http://www.opensubscriber.com/message/help-gnu-emacs@gnu.org/4314598.html
+I use fetchmail. It fetches mail in the background, so gnus start is
+faster :)
+
+this is my ~/.fetchmailrc
+
+----
+set daemon 300
+set no syslog
+set logfile /home/ME/.fetchmail.log
+
+defaults
+    protocol pop3
+    port 995
+    no rewrite                          # do not write additionnal
+headers
+    mda "/usr/bin/procmail -d %s"
+
+poll pop.gmail.com
+    user "EXAMPLE@gmai..." pass "SOMEPASSWORD"
+    flush
+    options ssl sslcertck
+    sslcertpath "/etc/ssl/certs"
+----
+
+for the ssl stuff you may need to install the said ssl certificates.
+
+You then need to use procmail to sort your mail. The following few
+lines will suffice in your ~/.procmailrc
+
+----
+VERBOSE=off
+PATH=$HOME/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/local/bin:.
+MAILDIR=$HOME/mail
+DEFAULT=$MAILDIR/inbox
+LOGFILE=$MAILDIR/log
+
+# add a header with number of lines in the email
+:0bw
+LINES=|wc -l | tr -d " "
+:0fhw
+|formail -a "Lines: $LINES"
+
+# put all email in the gnus file
+:0
+inbox
+----
+
+This will store all your mail in ~/mail/inbox
+
+Then in your ~/.emacsrc you can put the following
+
+----
+(setq
+user-full-name "YOUR NAME"
+user-mail-address "EXAMPLE@gmai..."
+nnmail-spool-file "~/mail/inbox"
+display-time-mail-file "~/mail/inbox")
+
+(setq gnus-select-method
+      '(nnml ""
+         (nnml-directory "~/Gnus/mail/")
+         (nnml-active-file "~/Gnus/mail/active")))
+----
+(I'm not sure you need these last two lines if you are fine with the
+default directories)
+
+Finally for smtp you can use (for example) msmtp, with the following in
+~/.emacs
+
+----
+(setq sendmail-program "/usr/bin/msmtp")
+----
+
+and the following in ~/.msmtprc
+
+----
+defaults
+logfile ~/.msmtp.log
+
+# gmail account
+account gmail
+host smtp.gmail.com
+port 587
+auth on
+tls on
+user EXAMPLE@gmai...
+password SOMEPASSWORD
+
+# set default account
+account default : gmail
+----
+
+Then start fetchmail with the command "fetchmail", and it should be
+working.
+
+Evan

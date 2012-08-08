@@ -1,0 +1,86 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-04T22:14:51+08:00
+
+====== 转移指令 ======
+Created Sunday 04 December 2011
+
+http://hi.baidu.com/power_nq/blog/item/b3df6522f702c349ad34de93.html
+
+表4 分支控制指令
+
+名称								助记符					语法格式
+
+无条件转移							b( ba bl bla)				target_addr
+条件转移								bc( bca bcl bcla)			BO,BI,target_addr
+条件转移（转移目标地址由LR指出）		bclr(bclrl)				BO,BI
+条件转移（转移目标地址由CTR指出）	bcctr(bcctrl)				BO,BI
+
+（1） 无条件转移指令bx（b ba bl bla）
+
+指令的编码格式：
+指令的语法格式：
+
+b target_addr（AA=0 LK=0）
+ba target_addr（AA=1 LK=0）
+bl target_addr（AA=0 LK=1）
+bla target_addr（AA=1 LK=1）
+
+如果AA＝0，则转移目标地址为LI||0b00的值经符号位扩展后加上指令地址。
+如果AA＝1，则转移目标地址为LI||0b00的值经符号扩展后的值。
+如果LK＝1，则转移指令下一条指令的有效地址存放到连接寄存器。
+
+（1） 条件转移指令bcx
+
+指令编码格式：
+指令语法格式：
+
+bc BO, BI, target_addr（AA＝0 LK＝0）
+bca BO, BI, target_addr（AA＝1 LK＝0）
+bcl BO, BI, target_addr（AA＝0 LK＝1）
+bcla BO, BI, target_addr（AA＝1 LK＝1）
+
+BI字段表示条件寄存器__CR中的位__用于转移条件。BO字段操作码定义见表5。
+
+表5 BO字段操作码定义
+
+BO				说明
+
+0000y			计数器CTR减量，如果条件不成立则转移
+0001y			计数器CTR减量，如果条件不成立则转移
+001zy			如果条件不成立，则转移
+0100y			计数器CTR减量，如果条件成立则转移
+0101y			计数器CTR减量，如果条件成立则转移
+011zy			如果条件成立则转移
+1z00y			计数器CTR减量，如果CTR！＝0，则发生转移
+1z01y			计数器CTR减量，如果CTR＝0，则发生转移
+1z1zz			发生转移
+
+注：位z表示该位可以被忽略，位y表示是不是条件转移
+
+（2） 条件转移指令bclx（转移目标地址由LR指出）
+
+指令的编码格式：
+指令的语法格式：
+
+bclr BO, BI(LK=0)
+bclrl BO, BI(LK=1)
+
+BI字段表示条件寄存器CR中的位用于转移条件。
+BO字段操作码定义如表5所示。
+
+转移目标地址为LR[0-29]||0b00。
+如果LK＝1，则转移指令下一条有效地址存放到连接寄存器。
+
+（3） 条件转移指令bcctrx（转移目标地址由CTR指出）
+
+指令的编码格式：
+指令的语法格式：
+
+bcctr BO, BI(LK=0)
+bcctrl BO, BI(LK=1)
+
+转移目标地址是CTR||0b00。
+
+如果LK＝1，则转移指令下一条指令的有效地址存放到连接寄存器。
+如果减量计数器（BO[2]=0），指令格式无效，则转移到目标地址。

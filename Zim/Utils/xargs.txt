@@ -1,0 +1,98 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-23T15:16:11+08:00
+
+====== xargs ======
+Created Wednesday 23 November 2011
+
+http://www.linuxplanet.com/linuxplanet/tutorials/6522/1
+
+===== The Joys of xargs =====
+xargs and find
+
+    August 29, 2008
+    By Juliet Kemp
+
+xargs is an incredibly useful command: it takes in** standard input** and executes your chosen command on it: 
+**xargs command**. 
+Deceptively simple in concept; extremely powerful in execution. It's most commonly used to execute one command on the output from another command (//command1 | xargs command2//), and most often the output-generating command is **find** (xargs is more flexible than the built-in// -exec// option). Here we'll look at xargs with find, and then at some other possibilities.
+
+A couple of options which are useful for testing: __-t__ echoes the command before executing it, and __-p__ echoes it and asks for confirmation.
+
+===== xargs and find =====
+
+find and xargs do go very well together: find to locate what you're looking for, and xargs to run the same command on each of the things found.
+
+Traditionally, an advantage to xargs was its ability to handle **long command lines** before failing, unlike some other commands. This command:
+
+//rm `find tmp -maxdepth 1 -name '*.mp3'`//
+
+is intended to remove all tmp/*.mp3 files (and ignore any subdirectories), but can fail with an "**Argument list too long**" message. This exact equivalent:
+
+//find tmp -maxdepth 1 -name '*.mp3' -maxdepth 1 | xargs rm//
+
+does exactly the same thing but will avoid the problem by **batching arguments up**. More modern kernels (since 2.6.23) shouldn't have this issue, but it's wise to make your scripts as portable as possible; and the xargs version is also easier on the eye.
+
+You can also manually batch arguments if needed, using the__ -n __option.
+
+//find tmp -maxdepth 1 -name '*.mp3' -maxdepth 1 | xargs -n1 rm//
+
+will __pass one argument at a time to rm__. This is also useful if you're using the__ -p__ option as you can confirm one file at a time rather than all at once.
+
+Filenames containing whitespace can also cause problems; xargs and find can deal with this, using GNU extensions to both to __break on the null character rather than on whitespace__:
+
+//find tmp -maxdepth 1 -name *.mp3 -print0 | xargs -0 rm//
+
+You must use these options either on both find and xargs or on neither, or you'll get odd results.
+Another common use of xargs with find is to combine it with grep. For example,
+
+find . -name '*.pl' | xargs grep -L '^use strict'
+
+will search all the *.pl files in the current directory and subdirectories, and print the names of any that don't have a line starting with 'use strict'. Enforce good practice in your scripting!
+
+Moving on from find: it can be useful to __pipe__ the contents of a file into xargs as input. So,
+
+xargs -t __-n2__ diff < diff-files
+
+would take the arguments listed in the file diff-files in groups of 2 and run diff on them. So if the diff-files file consisted of:
+
+**sample1 alternate1**
+**sample2 alternate2**
+
+then xargs would run:
+
+//diff sample1 alternate1//
+//diff sample2 alternate2//
+
+This can be a quick way of comparing large numbers of files. (Use -p instead of -t to get a pause after each diff as well as an echo of the command.)
+
+You can also use a listings file and xargs to concatenate the contents of those files:
+
+__xargs cat < list-of-files > files-contents__
+
+(generate list-of-files using xargs as well!
+
+__find . -maxdepth 1 -name '*.tex' | xargs echo > list-of-files__
+
+would get all your LaTeX source files in the current directory into one list, ready to be stuck together.)
+
+
+You can use xargs if you need to **rename** lots of files (e.g. datestamping). This command will rename each file in the current directory from filename.txt to 20080815-filename.txt:
+
+ls | xargs__ -I {}__ mv {} 20080815-{}
+
+This works because {} is a placeholder meaning "the current argument". (You can use xxx or yyy or any other string instead of {} if you want, as well, and it'll do exactly the same thing.) __-I implies -n1__, because you want to act on each file individually.
+
+Or you might want to move all the files in directory 1 into directory 2:
+
+ls dir1 | xargs -I {} -t mv dir1/{} dir2/{}
+
+Conclusion
+
+
+I've concentrated here on using xargs to manipulate files in various ways, but you can use the same tricks for other commands. For example, if you have a file containing a list of IP addresses,
+
+cat iplist | xargs -n1 nmap -sV
+
+would run nmap on each IP address at a time. Play around with it a bit and see what you can do!
+

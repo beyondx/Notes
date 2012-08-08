@@ -1,0 +1,739 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-02T19:08:23+08:00
+
+====== linux设备模型深探 ======
+Created Monday 02 July 2012
+------------------------------------------
+本文系本站原创,欢迎转载!
+转载请注明出处:http://ericxiao.cublog.cn/
+------------------------------------------
+
+一：前言
+Linux设备模型是一个极其复杂的结构体系，在编写驱动程序的时候，通常不会用到这方面的东西，但是。理解这部份内容，对于我们理解linux设备驱动的结构是大有裨益的。我们不但可以在编写程序程序的时候知其然，亦知其所以然。又可以学习到一种极其精致的架构设计方法。由于之前已经详细分析了sysfs文件系统。所以本节的讨论主要集中在设备模型的底层实现上。上层的接口，如pci.,usb ,网络设备都可以看成是底层的封装。
+
+二：kobject ,kset和ktype
+
+Kobject, kset, ktype这三个结构是设备模型中的下层架构。模型中的每一个元素都对应一个kobject.  kset和ktype可以看成是kobject在层次结构与属性结构方面的扩充。将三者之间的关系用图的方示描述如下：
+{{./080710160140.jpg}}
+ 
+如上图所示：我们知道。__在sysfs中每一个目录都对应一个kobject__.  这些kobject都有自己的parent。在没有指定parent的情况下，都会指向它所属的kset->object。其次，kset也内嵌了kobject. 这个kobject又可以指它上一级的parent。就这样。构成了一个空间上面的层次关系。
+
+其实，每个对象都有属性。例如，电源管理，执插拨事性管理等等。因为大部份的__同类设备__都有相同的属性，因此将这个属性隔离开来，存放在ktype中。这样就可以灵活的管理了.记得在分析sysfs的时候。对于sysfs中的普通文件读写操作都是由kobject->ktype->sysfs_ops来完成的.经过上面的分析，我们大概了解了kobject.kset与ktype的大概架设与相互之间的关系。下面我们从linux源代码中的分析来详细研究他们的操作。
+ 
+三:kobject,kset和ktype的操作
+为了说明kobject的操作，先写一个测试模块，代码如下：
+#include <linux/device.h>
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/init.h>
+#include <linux/string.h>
+#include <linux/sysfs.h>
+#include <linux/stat.h>
+ 
+MODULE_AUTHOR("eric xiao");
+MODULE_LICENSE("Dual BSD/GPL");
+ 
+void obj_test_release(struct kobject *kobject);
+ssize_t eric_test_show(struct kobject *kobject, struct attribute *attr,char *buf);
+ssize_t eric_test_store(struct kobject *kobject,struct attribute *attr,const char *buf, size_t count);
+ 
+struct attribute test_attr = {
+        .name = "eric_xiao",
+        .mode = S_IRWXUGO,
+};
+ 
+static struct attribute *def_attrs[] = {
+        &test_attr,
+        NULL,
+};
+ 
+ 
+struct sysfs_ops obj_test_sysops =
+{
+        .show = eric_test_show,
+        .store = eric_test_store,
+};
+ 
+struct kobj_type ktype =
+{
+        .release = obj_test_release,
+        .sysfs_ops=&obj_test_sysops,
+        .default_attrs=def_attrs,
+};
+ 
+void obj_test_release(struct kobject *kobject)
+{
+        printk("eric_test: release .\n");
+}
+ 
+ssize_t eric_test_show(struct kobject *kobject, struct attribute *attr,char *buf)
+{
+        printk("have show.\n");
+        printk("attrname:%s.\n", attr->name);
+        sprintf(buf,"%s\n",attr->name);
+        return strlen(attr->name)+2;
+}
+ 
+ssize_t eric_test_store(struct kobject *kobject,struct attribute *attr,const char *buf, size_t count)
+{
+        printk("havestore\n");
+        printk("write: %s\n",buf);
+        return count;
+}
+ 
+struct kobject kobj;
+static int kobject_test_init()
+{
+        printk("kboject test init.\n");
+        kobject_init_and_add(&kobj,&ktype,NULL,"eric_test");
+        return 0;
+}
+ 
+static int kobject_test_exit()
+{
+        printk("kobject test exit.\n");
+        kobject_del(&kobj);
+        return 0;
+}
+ 
+module_init(kobject_test_init);
+module_exit(kobject_test_exit);
+ 
+加载模块之后，会发现，在/sys下多了一个eric_test目录。该目录下有一个叫eric_xiao的文件。如下所示：
+[root@localhost eric_test]# ls
+eric_xiao
+用cat察看此文件：
+[root@localhost eric_test]# cat eric_xiao
+eric_xiao
+再用echo往里面写点东西；
+[root@localhost eric_test]# echo  hello > eric_xiao
+Dmesg的输出如下：
+ 
+have show.
+attrname:eric_xiao.
+havestore
+write: hello
+ 
+如上所示。我们看到了kobject的大概建立过程.我们来看一下kobject_init_and_add()的实现。在这个函数里，包含了对kobject的大部份操作。
+int kobject_init_and_add(struct kobject *kobj, struct kobj_type *ktype,
+               struct kobject *parent, const char *fmt, ...)
+{
+     va_list args;
+     int retval;
+     //初始化kobject
+     kobject_init(kobj, ktype);
+ 
+     va_start(args, fmt);
+     //为kobjcet设置名称，在sysfs中建立相关信息
+     retval = kobject_add_varg(kobj, parent, fmt, args);
+     va_end(args);
+ 
+     return retval;
+}
+上面的流程主要分为两部份。一部份是kobject的初始化。在这一部份，它将kobject与给定的ktype关联起来。初始化kobject中的各项结构。另一部份是kobject的名称设置。空间层次关系的设置，具体表现在sysfs文件系统中.
+对于第一部份，代码比较简单，这里不再赘述。跟踪第二部份，也就是kobject_add_varg()的实现.
+ 
+static int kobject_add_varg(struct kobject *kobj, struct kobject *parent,
+                  const char *fmt, va_list vargs)
+{
+     va_list aq;
+     int retval;
+ 
+     va_copy(aq, vargs);
+     //设置kobject的名字。即kobject的name成员
+     retval = kobject_set_name_vargs(kobj, fmt, aq);
+     va_end(aq);
+     if (retval) {
+         printk(KERN_ERR "kobject: can not set name properly!\n");
+         return retval;
+     }
+     //设置kobject的parent。在上面的例子中，我们没有给它指定父结点
+     kobj->parent = parent;
+     //在sysfs中添加kobjcet信息
+     return kobject_add_internal(kobj);
+}
+设置好kobject->name后，转入kobject_add_internal()。在sysfs中创建空间结构.代码如下：
+static int kobject_add_internal(struct kobject *kobj)
+{
+     int error = 0;
+     struct kobject *parent;
+ 
+     if (!kobj)
+         return -ENOENT;
+     //如果kobject的名字为空.退出
+     if (!kobj->name || !kobj->name[0]) {
+         pr_debug("kobject: (%p): attempted to be registered with empty "
+               "name!\n", kobj);
+         WARN_ON(1);
+         return -EINVAL;
+     }
+ 
+     //取kobject的父结点
+     parent = kobject_get(kobj->parent);
+     //如果kobject的父结点没有指定，就将kset->kobject做为它的父结点
+     /* join kset if set, use it as parent if we do not already have one */
+     if (kobj->kset) {
+         if (!parent)
+              parent = kobject_get(&kobj->kset->kobj);
+         kobj_kset_join(kobj);
+         kobj->parent = parent;
+     }
+     //调试用
+     pr_debug("kobject: '%s' (%p): %s: parent: '%s', set: '%s'\n",
+          kobject_name(kobj), kobj, __FUNCTION__,
+          parent ? kobject_name(parent) : "<NULL>",
+          kobj->kset ? kobject_name(&kobj->kset->kobj) : "<NULL>");
+ 
+     //在sysfs中创建kobject的相关元素
+     error = create_dir(kobj);
+     if (error) {
+         //v如果创建失败。减少相关的引用计数
+         kobj_kset_leave(kobj);
+         kobject_put(parent);
+         kobj->parent = NULL;
+ 
+         /* be noisy on error issues */
+         if (error == -EEXIST)
+              printk(KERN_ERR "%s failed for %s with "
+                     "-EEXIST, don't try to register things with "
+                     "the same name in the same directory.\n",
+                     __FUNCTION__, kobject_name(kobj));
+         else
+              printk(KERN_ERR "%s failed for %s (%d)\n",
+                     __FUNCTION__, kobject_name(kobj), error);
+         dump_stack();
+     } else
+         //如果创建成功。将state_in_sysfs建为1。表示该object已经在sysfs中了
+         kobj->state_in_sysfs = 1;
+ 
+     return error;
+}
+这段代码比较简单，它主要完成kobject父结点的判断和选定，然后再调用create_dir（）在sysfs创建相关信息。该函数代码如下：
+static int create_dir(struct kobject *kobj)
+{
+     int error = 0;
+     if (kobject_name(kobj)) {
+          //为kobject创建目录
+         error = sysfs_create_dir(kobj);
+         if (!error) {
+              //为kobject->ktype中的属性创建文件
+              error = populate_dir(kobj);
+              if (error)
+                   sysfs_remove_dir(kobj);
+         }
+     }
+     return error;
+}
+我们在上面的示例中看到的/sys下的eric_test目录，以及该目录下面的eric_xiao的这个文件就是这里被创建的。我们先看一下kobject所表示的目录创建过程。这是在sysfs_create_dir()中完成的。代码如下：
+int sysfs_create_dir(struct kobject * kobj)
+{
+     struct sysfs_dirent *parent_sd, *sd;
+     int error = 0;
+ 
+     BUG_ON(!kobj);
+     /*如果kobject的parnet存在。就在目录点的目录下创建这个目录。如果没有父结点不存在，就在/sys下面创建结点。在上面的流程中，我们可能并没有为其指定父结点，也没有为其指定kset。
+*/
+     if (kobj->parent)
+         parent_sd = kobj->parent->sd;
+     else
+         parent_sd = &sysfs_root;
+ 
+     //在sysfs中创建目录
+     error = create_dir(kobj, parent_sd, kobject_name(kobj), &sd);
+     if (!error)
+         kobj->sd = sd;
+     return error;
+}
+在这里，我们就要联系之前分析过的sysfs文件系统的研究了。如果不太清楚的，可以在找到那篇文章仔细的研读一下。create_dir（）就是在sysfs中创建目录的接口，在之前已经详细分析过了。这里不再讲述。
+接着看为kobject->ktype中的属性创建文件。这是在populate_dir（）中完成的。代码如下：
+static int populate_dir(struct kobject *kobj)
+{
+     struct kobj_type *t = get_ktype(kobj);
+     struct attribute *attr;
+     int error = 0;
+     int i;
+ 
+     if (t && t->default_attrs) {
+         for (i = 0; (attr = t->default_attrs[i]) != NULL; i++) {
+              error = sysfs_create_file(kobj, attr);
+              if (error)
+                   break;
+         }
+     }
+     return error;
+}
+这段代码比较简单。它遍历ktype中的属性。然后为其建立文件。请注意：文件的操作最后都会回溯到ktype->sysfs_ops的show和store这两个函数中.
+ 
+Kobject的创建已经分析完了，接着分析怎么将一个kobject注销掉。注意过程是在kobject_del()中完成的。代码如下：
+void kobject_del(struct kobject *kobj)
+{
+     if (!kobj)
+         return;
+ 
+     sysfs_remove_dir(kobj);
+     kobj->state_in_sysfs = 0;
+     kobj_kset_leave(kobj);
+     kobject_put(kobj->parent);
+     kobj->parent = NULL;
+}
+该函数会将在sysfs中的kobject对应的目录删除。请注意，属性文件是建立在这个目录下面的。只需要将这个目录删除。属性文件也随之删除。
+是后，减少相关的引用计数，如果kobject的引用计数为零。则将其所占空间释放.
+ //kset 中的kobject是独立的！！！
+Kset的操作与kobject类似,因为kset中内嵌了一个kobject结构,所以,大部份操作都是集中在kset->kobject上.具体分析一下kset_create_and_add()这个接口,类似上面分析的kobject接口,这个接口也包括了kset的大部分操作.代码如下:
+struct kset *kset_create_and_add(const char *name,
+                    struct kset_uevent_ops *uevent_ops,
+                    struct kobject *parent_kobj)
+{
+     struct kset *kset;
+     int error;
+     //创建一个kset
+     kset = kset_create(name, uevent_ops, parent_kobj);
+     if (!kset)
+         return NULL;
+     //注册kset
+     error = kset_register(kset);
+     if (error) {
+         //如果注册失败,释放kset
+         kfree(kset);
+         return NULL;
+     }
+     return kset;
+}
+Kset_create()用来创建一个struct kset结构.代码如下:
+static struct kset *kset_create(const char *name,
+                   struct kset_uevent_ops *uevent_ops,
+                   struct kobject *parent_kobj)
+{
+     struct kset *kset;
+ 
+     kset = kzalloc(sizeof(*kset), GFP_KERNEL);
+     if (!kset)
+         return NULL;
+     kobject_set_name(&kset->kobj, name);
+     kset->uevent_ops = uevent_ops;
+     kset->kobj.parent = parent_kobj;
+ 
+     kset->kobj.ktype = &kset_ktype;
+     kset->kobj.kset = NULL;
+ 
+     return kset;
+}
+我们注意,在这里创建kset时.为其内嵌的kobject指定其ktype结构为kset_ktype.这个结构的定义如下:
+static struct kobj_type kset_ktype = {
+     .sysfs_ops    = &kobj_sysfs_ops,
+     .release = kset_release,
+};
+属性文件的读写操作全部都包含在sysfs_ops成员里.kobj_sysfs_ops的定义如下:
+struct sysfs_ops kobj_sysfs_ops = {
+     .show    = kobj_attr_show,
+     .store   = kobj_attr_store,
+};
+Show,store成员对应的函数代码如下所示:
+static ssize_t kobj_attr_show(struct kobject *kobj, struct attribute *attr,
+                    char *buf)
+{
+     struct kobj_attribute *kattr;
+     ssize_t ret = -EIO;
+ 
+     kattr = container_of(attr, struct kobj_attribute, attr);
+     if (kattr->show)
+         ret = kattr->show(kobj, kattr, buf);
+     return ret;
+}
+ 
+static ssize_t kobj_attr_store(struct kobject *kobj, struct attribute *attr,
+                     const char *buf, size_t count)
+{
+     struct kobj_attribute *kattr;
+     ssize_t ret = -EIO;
+ 
+     kattr = container_of(attr, struct kobj_attribute, attr);
+     if (kattr->store)
+         ret = kattr->store(kobj, kattr, buf, count);
+     return ret;
+}
+从上面的代码看以看出.会将struct attribute结构转换为struct kobj_attribte结构.也就是说struct kobj_attribte内嵌了一个struct attribute.实际上,这是和宏__ATTR配合在一起使用的.经常用于group中.在这里并不打算研究group.原理都是一样的.这里列出来只是做个说明而已.
+创建好了kset之后,会调用kset_register().这个函数就是kset操作的核心代码了.如下:
+int kset_register(struct kset *k)
+{
+     int err;
+ 
+     if (!k)
+         return -EINVAL;
+ 
+     kset_init(k);
+     err = kobject_add_internal(&k->kobj);
+     if (err)
+         return err;
+     kobject_uevent(&k->kobj, KOBJ_ADD);
+     return 0;
+}
+在kset_init()里会初始化kset中的其它字段.然后调用kobject_add_internal()为其内嵌的kobject结构建立空间层次结构.之后因为添加了kset.会产生一个事件.这个事件是通过用户空间的hotplug程序处理的.这就是kset明显不同于kobject的地方.详细研究一下这个函数.这对于我们研究hotplug的深层机理是很有帮助的.它的代码如下;
+int kobject_uevent(struct kobject *kobj, enum kobject_action action)
+{
+     return kobject_uevent_env(kobj, action, NULL);
+}
+之后,会调用kobject_uevent_env().这个函数中的三个参数含义分别为:引起事件的kobject.事件类型(add,remove,change,move,online,offline等).第三个参数是要添加的环境变量.
+代码篇幅较长,我们效仿情景分析上面的做法.分段分析如下:
+int kobject_uevent_env(struct kobject *kobj, enum kobject_action action,
+                char *envp_ext[])
+{
+     struct kobj_uevent_env *env;
+     const char *action_string = kobject_actions[action];
+     const char *devpath = NULL;
+     const char *subsystem;
+     struct kobject *top_kobj;
+     struct kset *kset;
+     struct kset_uevent_ops *uevent_ops;
+     u64 seq;
+     int i = 0;
+     int retval = 0;
+ 
+     pr_debug("kobject: '%s' (%p): %s\n",
+          kobject_name(kobj), kobj, __FUNCTION__);
+ 
+     /* search the kset we belong to */
+     top_kobj = kobj;
+     while (!top_kobj->kset && top_kobj->parent)
+         top_kobj = top_kobj->parent;
+ 
+     if (!top_kobj->kset) {
+         pr_debug("kobject: '%s' (%p): %s: attempted to send uevent "
+               "without kset!\n", kobject_name(kobj), kobj,
+               __FUNCTION__);
+         return -EINVAL;
+     }
+因为对事件的处理函数包含在kobject->kset-> uevent_ops中.要处理事件,就必须要找到上层的一个不为空的kset.上面的代码就是顺着kobject->parent找不到一个不为空的kset.如果不存在这样的kset.就退出
+ 
+     kset = top_kobj->kset;
+     uevent_ops = kset->uevent_ops;
+ 
+     /* skip the event, if the filter returns zero. */
+     if (uevent_ops && uevent_ops->filter)
+         if (!uevent_ops->filter(kset, kobj)) {
+              pr_debug("kobject: '%s' (%p): %s: filter function "
+                    "caused the event to drop!\n",
+                    kobject_name(kobj), kobj, __FUNCTION__);
+              return 0;
+         }
+ 
+     /* originating subsystem */
+     if (uevent_ops && uevent_ops->name)
+         subsystem = uevent_ops->name(kset, kobj);
+     else
+         subsystem = kobject_name(&kset->kobj);
+     if (!subsystem) {
+         pr_debug("kobject: '%s' (%p): %s: unset subsystem caused the "
+               "event to drop!\n", kobject_name(kobj), kobj,
+               __FUNCTION__);
+         return 0;
+     }
+ 
+找到了不为空的kset.就跟kset-> uevent_ops->filter()匹配.看这个事件是否被过滤.如果没有被过滤掉.就会调用kset-> uevent_ops->name()得到子系统的名称,如果不存在kset-> uevent_ops->name().就会以kobject->name做为子系统名称.
+ 
+     /* environment buffer */
+     env = kzalloc(sizeof(struct kobj_uevent_env), GFP_KERNEL);
+     if (!env)
+         return -ENOMEM;
+ 
+     /* complete object path */
+     devpath = kobject_get_path(kobj, GFP_KERNEL);
+     if (!devpath) {
+         retval = -ENOENT;
+         goto exit;
+     }
+ 
+     /* default keys */
+     retval = add_uevent_var(env, "ACTION=%s", action_string);
+     if (retval)
+         goto exit;
+     retval = add_uevent_var(env, "DEVPATH=%s", devpath);
+     if (retval)
+         goto exit;
+     retval = add_uevent_var(env, "SUBSYSTEM=%s", subsystem);
+     if (retval)
+         goto exit;
+ 
+     /* keys passed in from the caller */
+     if (envp_ext) {
+         for (i = 0; envp_ext[i]; i++) {
+              retval = add_uevent_var(env, envp_ext[i]);
+              if (retval)
+                   goto exit;
+         }
+     }
+ 
+接下来,就应该设置为调用hotplug设置环境变量了.首先,分配一个struct kobj_uevent_env结构用来存放环境变量的值.然后调用kobject_get_path()用来获得引起事件的kobject在sysfs中的路径.再调用add_uevent_var()将动作代表的字串,kobject路径,子系统名称填充到struct kobj_uevent_env中,如果有指定环境变量,也将其添加进去. kobject_get_path()和add_uevent_var()都比较简单.这里不再详细分析了.请自行查看源代码
+ 
+     /* let the kset specific function add its stuff */
+     if (uevent_ops && uevent_ops->uevent) {
+         retval = uevent_ops->uevent(kset, kobj, env);
+         if (retval) {
+              pr_debug("kobject: '%s' (%p): %s: uevent() returned "
+                    "%d\n", kobject_name(kobj), kobj,
+                    __FUNCTION__, retval);
+              goto exit;
+         }
+     }
+ 
+     /*
+      * Mark "add" and "remove" events in the object to ensure proper
+      * events to userspace during automatic cleanup. If the object did
+      * send an "add" event, "remove" will automatically generated by
+      * the core, if not already done by the caller.
+      */
+     if (action == KOBJ_ADD)
+         kobj->state_add_uevent_sent = 1;
+     else if (action == KOBJ_REMOVE)
+         kobj->state_remove_uevent_sent = 1;
+ 
+     /* we will send an event, so request a new sequence number */
+     spin_lock(&sequence_lock);
+     seq = ++uevent_seqnum;
+     spin_unlock(&sequence_lock);
+     retval = add_uevent_var(env, "SEQNUM=%llu", (unsigned long long)seq);
+     if (retval)
+         goto exit;
+在这里还会调用kobject->kset-> uevent_ops->uevent().让产生事件的kobject添加环境变量.最后将事件序列添加到环境变量中去.
+ 
+#if defined(CONFIG_NET)
+     /* send netlink message */
+     if (uevent_sock) {
+         struct sk_buff *skb;
+         size_t len;
+ 
+         /* allocate message with the maximum possible size */
+         len = strlen(action_string) + strlen(devpath) + 2;
+         skb = alloc_skb(len + env->buflen, GFP_KERNEL);
+         if (skb) {
+              char *scratch;
+ 
+              /* add header */
+              scratch = skb_put(skb, len);
+              sprintf(scratch, "%s@%s", action_string, devpath);
+ 
+              /* copy keys to our continuous event payload buffer */
+              for (i = 0; i < env->envp_idx; i++) {
+                   len = strlen(env->envp[i]) + 1;
+                   scratch = skb_put(skb, len);
+                   strcpy(scratch, env->envp[i]);
+              }
+ 
+              NETLINK_CB(skb).dst_group = 1;
+              netlink_broadcast(uevent_sock, skb, 0, 1, GFP_KERNEL);
+         }
+     }
+#endif
+ 
+     /* call uevent_helper, usually only enabled during early boot */
+     if (uevent_helper[0]) {
+         char *argv [3];
+ 
+         argv [0] = uevent_helper;
+         argv [1] = (char *)subsystem;
+         argv [2] = NULL;
+         retval = add_uevent_var(env, "HOME=/");
+         if (retval)
+              goto exit;
+         retval = add_uevent_var(env,
+                        "PATH=/sbin:/bin:/usr/sbin:/usr/bin");
+         if (retval)
+              goto exit;
+ 
+         call_usermodehelper(argv[0], argv, env->envp, UMH_WAIT_EXEC);
+     }
+ 
+exit:
+     kfree(devpath);
+     kfree(env);
+     return retval;
+}
+忽略一段选择编译的代码.再后就是调用用户空间的hotplug了.添加最后两个环境变量.HOME和PATH.然后调用hotplug.以子系统名称为参数.
+现在我们终于知道hotplug处理程序中的参数和环境变量是怎么来的了.^_^
+ 
+使用完了kset.再调用kset_unregister()将其注销.这个函数很简单,请自行查阅代码.
+为了印证一下上面的分析，写一个测试模块。如下：
+#include <linux/device.h>
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/init.h>
+#include <linux/string.h>
+#include <linux/sysfs.h>
+#include <linux/stat.h>
+#include <linux/kobject.h>
+ 
+MODULE_AUTHOR("eric xiao");
+MODULE_LICENSE("Dual BSD/GPL");
+ 
+int kset_filter(struct kset *kset, struct kobject *kobj);
+const char *kset_name(struct kset *kset, struct kobject *kobj);
+int kset_uevent(struct kset *kset, struct kobject *kobj,
+                      struct kobj_uevent_env *env);
+ 
+struct kset kset_p;
+struct kset kset_c;
+ 
+struct kset_uevent_ops uevent_ops =
+{
+        .filter = kset_filter,
+        .name   = kset_name,
+        .uevent = kset_uevent,
+};
+ 
+int kset_filter(struct kset *kset, struct kobject *kobj)
+{
+        printk("UEVENT: filter. kobj %s.\n",kobj->name);
+        return 1;
+}
+ 
+const char *kset_name(struct kset *kset, struct kobject *kobj)
+{
+        static char buf[20];
+        printk("UEVENT: name. kobj %s.\n",kobj->name);
+        sprintf(buf,"%s","kset_test");
+        return buf;
+}
+ 
+int kset_uevent(struct kset *kset, struct kobject *kobj,
+                      struct kobj_uevent_env *env)
+{
+        int i = 0;
+        printk("UEVENT: uevent. kobj %s.\n",kobj->name);
+ 
+        while( i< env->envp_idx){
+                printk("%s.\n",env->envp[i]);
+                i++;
+        }
+ 
+        return 0;
+}
+ 
+ 
+int kset_test_init()
+{
+        printk("kset test init.\n");
+        kobject_set_name(&kset_p.kobj,"kset_p");
+        kset_p.uevent_ops = &uevent_ops;
+        kset_register(&kset_p);
+ 
+       kobject_set_name(&kset_c.kobj,"kset_c");
+        kset_c.kobj.kset = &kset_p;
+        kset_register(&kset_c);
+        return 0;
+}
+ 
+int kset_test_exit()
+{
+        printk("kset test exit.\n");
+        kset_unregister(&kset_p);
+        kset_unregister(&kset_c);
+        return 0;
+}
+ 
+module_init(kset_test_init);
+module_exit(kset_test_exit);
+在这里，定义并注册了二个kset.第二个kset的kobj->kset域指向第一个kset.这样，当第二个kset注册或者卸载的时候就会调用第一个kset中的uevent_ops的相关操作.
+kset_p.uevent_ops->filter函数中，使其返回1.使其匹配成功。
+在kset_p.uevent_ops->name中。使其返回的子系统名为引起事件的kobject的名称，即：kset_c.
+最后在kset_p.uevent_ops->uevent中将环境变量全部打印出来。
+下面是dmesg的输出结果：
+kset test init.
+UEVENT: filter. kobj kset_c.
+UEVENT: name. kobj kset_c.
+UEVENT: uevent. kobj kset_c.
+ACTION=add.
+DEVPATH=/kset_p/kset_c.
+SUBSYSTEM=kset_test.
+输出结果跟我们的分析是吻合的.
+在这里，值得我们注意的是。注册一个kobject不会产生事件，只有注册kset才会.
+ 
+四:bus,device和device_driver
+上面分析了kobject.kset,ktype.这三个结构联合起来一起构成了整个设备模型的基石.而bus.device.device_driver.则是基于kobject.kset.ktype之上的架构.在这里,总线,设备,驱动被有序的组和在一起.
+Bus.device.device_driver三者之间的关系如下图所示:
+
+ 
+如上图所示.struct bus_type的p->drivers_kset指向注册在上面的驱动程序.它的p->device_kset上挂着注册在上面的设备.每次有一个新的设备注册到上面,都会去匹配右边的驱动,看是否能匹配上.如果匹配成功,则将设备结构的is_registerd域置为0.然后将设备添加到驱动的p->klist_devices域.同理,每注册一个驱动,都会去匹配左边的设备,.如果匹配成功,将则设备加到驱动的p->klist_devices域.再将设备的is_registerd置为0/
+这就是linux设备模型用来管理设备和驱动的基本架构. 我们来跟踪一下代码来看下详细的操作.
+ 
+注册一个总线的接口为bus_register().我们照例分段分析:
+int bus_register(struct bus_type *bus)
+{
+     int retval;
+     struct bus_type_private *priv;
+ 
+     priv = kzalloc(sizeof(struct bus_type_private), GFP_KERNEL);
+     if (!priv)
+         return -ENOMEM;
+ 
+     priv->bus = bus;
+     bus->p = priv;
+ 
+     BLOCKING_INIT_NOTIFIER_HEAD(&priv->bus_notifier);
+ 
+     retval = kobject_set_name(&priv->subsys.kobj, "%s", bus->name);
+     if (retval)
+         goto out;
+ 
+     priv->subsys.kobj.kset = bus_kset;
+     priv->subsys.kobj.ktype = &bus_ktype;
+     priv->drivers_autoprobe = 1;
+ 
+     retval = kset_register(&priv->subsys);
+     if (retval)
+         goto out;
+首先,先为struct bus_type的私有区分配空间,然后将其和struct bus_type关联起来.由于struct bus_type也要在sysfs文件中表示一个节点,因此,它也内嵌也一个kset的结构.这就是priv->subsys.
+首先,它为这个kset的名称赋值为bus的名称,然后将priv->subsys.kobj.kset指向bus_kset. priv->subsys.kobj.ktype指向bus_ktype;然后调用kset_reqister()将priv->subsys注册.这里涉及到的接口都在之前分析过.注册过后,应该会在bus_kset所表示的目录下创建一个总线名称的目录.并且用户空间的hotplug应该会检测到一个add事件.我们来看一下bus_kset到底指向的是什么:
+     bus_kset = kset_create_and_add("bus", &bus_uevent_ops, NULL);
+从此可以看出.这个bus_kset在sysfs中的结点就是/sys/bus.在这里注册的struct bus_types就会在/sys/bus/下面出现.
+ 
+     retval = bus_create_file(bus, &bus_attr_uevent);
+     if (retval)
+         goto bus_uevent_fail;
+bus_create_file()就是在priv->subsys.kobj的这个kobject上建立一个普通属性的文件.这个文件的属性对应在bus_attr_uevent.读写操作对应在priv->subsys.ktype中.我们到后面才统一分析bus注册时候的文件创建
+ 
+     priv->devices_kset = kset_create_and_add("devices", NULL,
+                             &priv->subsys.kobj);
+     if (!priv->devices_kset) {
+         retval = -ENOMEM;
+         goto bus_devices_fail;
+     }
+ 
+     priv->drivers_kset = kset_create_and_add("drivers", NULL,
+                             &priv->subsys.kobj);
+     if (!priv->drivers_kset) {
+         retval = -ENOMEM;
+         goto bus_drivers_fail;
+     }
+ 
+     klist_init(&priv->klist_devices, klist_devices_get, klist_devices_put);
+     klist_init(&priv->klist_drivers, NULL, NULL);
+这段代码会在bus所在的目录下建立两个目录,分别为devices和drivers.并初始化挂载设备和驱动的链表
+ 
+     retval = add_probe_files(bus);
+     if (retval)
+         goto bus_probe_files_fail;
+ 
+     retval = bus_add_attrs(bus);
+     if (retval)
+         goto bus_attrs_fail;
+ 
+     pr_debug("bus: '%s': registered\n", bus->name);
+     return 0;
+在这里,会为bus_attr_drivers_probe, bus_attr_drivers_autoprobe.注册bus_type中的属性建立文件
+ 
+bus_attrs_fail:
+     remove_probe_files(bus);
+bus_probe_files_fail:
+     kset_unregister(bus->p->drivers_kset);
+bus_drivers_fail:
+     kset_unregister(bus->p->devices_kset);
+bus_devices_fail:
+     bus_remove_file(bus, &bus_attr_uevent);
+bus_uevent_fail:
+     kset_unregister(&bus->p->subsys);
+     kfree(bus->p);
+out:
+     return retval;
+}
+这段代码为出错处理

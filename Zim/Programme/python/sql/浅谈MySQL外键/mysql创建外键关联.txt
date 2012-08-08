@@ -1,0 +1,50 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-17T11:09:59+08:00
+
+====== mysql创建外键关联 ======
+Created Monday 17 October 2011
+http://eternal1025.iteye.com/blog/425311
+
+**参照完整性**(Referentialintegrity)是数据库设计中一个重要的概念。在系统不同的列表中，当数据库所有参照合法或非合法关联时都会涉及到参照完整性。当参照完整性存在时，任何与不存在记录的关联将变得无效化，由此可防止用户出现各种错误，从而提供更为准确和实用的数据库。 
+
+　　参照完整性通常通过**外键**(foreign key)的使用而被广泛应用。长久以来，流行工具开源RDBMSMySQL并没有支持外键，原因是这种支持将会降低RDBMS的速度和性能。然而，由于很多用户对参照完整性的优点倍感兴趣，最近MySQL的不同版本都通过新InnoDB列表引擎支持外键。由此，在数据库组成的列表中保持参照完整性将变得非常简单。 
+
+　　为了建立两个MySQL表之间的一个外键关系，必须满足以下三种情况： 
+
+    * 两个表必须是InnoDB表类型。 
+    * 使用在外键关系的域必须为索引型(Index)。 
+    * 使用在外键关系的域必须与数据类型相似。 
+
+例子是理解以上要点的最好方法，新建一个parts的表，cpu字段用来存放所有的cpu配件型号，再新建一个pc的表，其中的cpumodel字段用来存放pc机中的cpu型号，显然，cpumodel字段中的所有记录应该存在于parts表中。 
+mysql> create table parts( 
+    -> cpu char(20) not null, 
+    -> index(cpu) 
+    -> )engine=innodb; 
+Query OK, 0 rows affected (0.01 sec) 
+
+mysql> create table pc( 
+    -> cpumodel char(20) not null, 
+    -> index(cpumodel), 
+    -> foreign key(cpumodel) references parts(cpu) 
+    -> )engine=innodb; 
+Query OK, 0 rows affected (0.01 sec) 
+
+注意:对于非InnoDB表， FOREIGN KEY 语句将被忽略。对parts表添加数据1，2，3，接着对pc表进行测试，满足条件的 1 可以顺利insert进去，而不符合条件的字符 5 在insert表的时候，出现外键约束性错误，这正是我们想要的结果 
+
+
+mysql> insert into parts values('1'),('2'),('3'); 
+Query OK, 3 rows affected (0.00 sec) 
+Records: 3  Duplicates: 0  Warnings: 0 
+
+mysql> insert into pc values('1'); 
+Query OK, 1 row affected (0.01 sec) 
+
+
+mysql> insert into pc values('5'); 
+ERROR 1452 (23000): Cannot add or update a child row: a foreign 
+key constraint fails (`Orange/pc`, CONSTRAINT `pc_ibfk_1` FOREIGN KEY 
+(`cpumodel`) REFERENCES `parts` (`cpu`)) 
+
+
+如以上例子解释的，外键在捉摸数据入口错误上起着重要的作用，由此可建立更为强健更加集成的数据库。另一方面值得提到的是，执行外键核实是内部资料处理的过程，且不同表之间指定复杂的内部关系可以导致数据库的性能下降。所以，在参照完整性与性能考虑之间找到平衡点相当重要，而使用外键就是能够确保性能与稳健之间的最优结合。　　我期望本期的有关外键的介绍对你有所好处，你将会在下回的MySQL数据库设计中感受到外键的好处。编程快乐！ 

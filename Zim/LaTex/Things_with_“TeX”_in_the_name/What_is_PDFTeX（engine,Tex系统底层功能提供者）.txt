@@ -1,0 +1,17 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-09-07T21:19:55+08:00
+
+====== What is PDFTeX（engine,Tex系统底层功能提供者） ======
+Created Wednesday 07 September 2011
+
+One can reasonably say that PDFTeX is (today) the__ main stream__ of TeX distributions: most LaTeX and many ConTeXt(Latex和context只是__宏包__，它提供了方便的高级抽象) users nowadays use PDFTeX whether they know it or not (more precisely, they use PDFTeX extended by e-TeX). So what is PDFTeX?
+__e-Tex__ 是对PDFTeX引擎的扩展引擎。
+
+PDFTeX is a development of TeX that is capable of generating typeset PDF output in place of DVI. PDFTeX has other capabilities, most notably in the area of** fine typographic detail** (for example, its support for optimising __line breaks__), but its greatest impact to date has been in the area of PDF output.
+
+PDFTeX started as a topic for Hàn The Thành’s Master’s thesis, and seems first to have been published in TUGboat 18(4), in 1997 (though it was certainly discussed at the TUG’96 conference in Russia).
+
+While the world was making good use of “pre-releases” of PDFTeX, Thành used it as a test-bed for the micro-typography which was the prime subject of his Ph.D. research. Since Thành was finally awarded his Ph.D., day-to-day maintenance and development of PDFTeX 1.0 (and later) has been in the hands of a group of PDFTeX maintainers (which includes Thành); the group has managed to maintain a stable platform for general use.
+
+Development of PDFTeX has mostly __stopped __(only bug fixes, and occasional small development items are processed): future development is focused on LuaTeX. 

@@ -1,0 +1,49 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-21T22:29:39+08:00
+
+====== Django项目production环境发布笔记 ======
+Created Friday 21 October 2011
+
+这里使用apache2 + mod_python, 安装忽略， 另外需要到你部署的机子上安装django 和 MySQLdb，（我用的ubuntu server，装上之后 apache2, mod_python, MySQLdb 都已经有了， 装个django就好了。 ）
+
+其实配置蛮简单的， 修改/etc/apache2/httpd.conf， 加入以下片段。
+
+    Alias /site_media /home/denny/zoomino/website/zoomino_media  
+      
+    <Location "/">  
+          SetHandler python-program  
+          PythonHandler django.core.handlers.modpython  
+          SetEnv DJANGO_SETTINGS_MODULE zoomino.settings  
+     #    PythonOption django.root /  
+          PythonDebug On  
+          PythonPath "sys.path +['/home/denny']"  
+    </Location>  
+      
+    <Location "/site_media">  
+          SetHandler None  
+    </Location>  
+
+
+
+项目位于/home/denny,这里要注意PythonPath， 这里不是设置/home/denny/zoomino而且project dir的**上一级目录**， 也就是你运行django-admin.py startproject的当前目录。如果你想在开发的时候自动定位你的template dir，请看这篇文章http://dengyin2000.iteye.com/blog/323391。
+
+django虽然把可以处理静态文件，但是django内置的web server很差，所以发布的时候需要用apache这样的handle。
+
+Alias /site_media /home/denny/zoomino/website/zoomino_media 这句定义__资源文件的路径和映射的url__。
+
+然后我们把django项目映射到根url“/”上。 因为我把django映射到了根上， 所以最后一段肯定要加，要不然资源文件会被django handle了那肯定是要报错的。
+
+OK，最后把settings.py的DEBUG设成False， 重启apache就行了。
+
+
+如何在开发的时候处理静态文件请看。 http://docs.djangoproject.com/en/dev/howto/static-files/#howto-static-files， 再结合我的这篇文章http://dengyin2000.iteye.com/blog/323391定位你的static files就完美了。
+
+
+参考：http://docs.djangoproject.com/en/dev/topics/install/#database-installation
+      http://docs.djangoproject.com/en/dev/intro/install/#intro-install
+      http://docs.djangoproject.com/en/dev/howto/deployment/modpython/#howto-deployment-modpython
+
+安装apache mod-python
+
+http://www.howtoforge.com/embedding-python-in-apache2-with-mod_python-debian-ubuntu-fedora-centos-mandriva-opensuse 

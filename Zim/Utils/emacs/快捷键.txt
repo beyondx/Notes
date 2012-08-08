@@ -1,0 +1,204 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-04T16:51:33+08:00
+
+====== 快捷键 ======
+Created Monday 04 April 2011
+
+===== 剪切、粘贴与区域操作　 =====
+
+===== 段落重排操作 =====
+
+===== 后台shell命令 =====
+M-x 	compile           执行后台shell命令，在单独的*compliation*buff中显示命令输出信息
+M-x  kill-compilation	终止后台shell命令的运行
+ 　　
+M-x gdb 			GDB排错(参见[[../debug.txt|debug]]) 　　
+M-x dbx 			DBX排错 　　
+M-x xdb 			XDB排错 　　
+M-x sdb			SDB排错
+
+===== 搜索、替换命令 =====
+
+
+===== 打印命令 =====
+M-x print-buffer 	先使用pr,然后使用lpr 　　
+M-x lpr-buffer 		直接使用lpr 　　
+M-x print-region 　　
+M-x lpr-region
+
+
+
+===== 拼写检查 =====
+
+M-$		ispell-word	检查光标位置或光标后面的单词
+M-x	ispell-region
+M-x ispell-buffer
+M-x ispell-complete-word 	在文本模式下自动补足当前单词
+
+===== 文本缩进及重排 =====
+两者不是一回事，可以用制表符TAB和缩进前导字符串(fill prefix), 还可以使用文本缩进模式(indented text mode)
+M-q   对当前段落进行重排(先删除段落中所有的换行符，然后根据定义的行宽C-x f,自动分行)，注意段落的定义是空行和行的开头有至少两个空格(正常的文本模式，文本缩进模式不适合)。
+M-x  fill-individual-paragraphs  对选区内的各段落进行重排，根据缩进情况重新定义文本的段落(缩进程度相同的文本行
+							组成一个段落，缩进程度不同的文本将被划分为不同的段落)，然后再在保留其缩进设置的前提下对文本块中的各个段落进行重排。
+M-x edit-tab-stops	设置制表位，注意在第一行上的冒号代表制表位，按C-c C-c 生效
+M-x untabify			把选区中的制表位转换为空格
+缩进前导字符串可以自动在重排后的每行(不包括段落的第一行)文本的开头放置一个前导字符串，故需在自动换行模式下使用
+C-x .   set-fill-prefix		把当前行的左边界到光标之间的字符串设为加在自动换行时添加在每行开头作为缩进前导字符串。在第一列输入该命令表示
+						取消前导字符串
+M-x   indented-text-mode	进入文本缩进模式, 下一行按照上一行的缩进量自动对齐。每行开头的TAB键为下一行定义了一个新的缩进层次。注意在文本缩进模式中，段与段间是通过两个空行来区分的(而不是默认的一个空行或行首的多于两个空格)，。该模式中的制表符位不使用emacs预先定义的制表符位
+emacs在确定当前行的制表符位时会先查找上一非空白行，然后，该行的第一个制表符对应于上一行第一个非空白字符所在的那一列，第二个制表符位对应于上一行的第二个单词的首字符对应的位，依次类推。上一行结束后，正常的制表位将重新占据该行的正常位置。
+C-M-\	indent-region    对没有缩进的文本块进行缩进，emacs将按照第一行的格式对整个文本块进行缩进(下一行的缩进量是相对于上一行的)。然后按下M-q 				 将对文本块进行段落重排(注意在文本缩进模式下段落的定义是以两个空行位单位的)
+M-m   back-to-indentation	移动到文本行的第一个非空白字符上。
+M C-o  splite-line	将当前行从当前位置截断从而使当前行变为阶梯状的两行。
+C-j	newline-indent	当在行尾时缩进式换行且光标移到下一行，当在行中间时将当前行拆分位两行(下一行与当前行缩进式对齐)。
+C-o	open-line		当在行尾时在当前行下插入一个空行但光标不移动，当在行中间时将当前行拆分位两行(下一行不缩进)。
+格式化当前段落 Ctrl+Alt+\
+在minibuffer 中可以用M-n  M-p  命令来查看历史记录。
+
+===== emacs宏操作 =====
+宏时一组被记录下来的按键动作，可以反复多次地执行。emacs里的宏可以使任何命令和动作，要想用好宏关键是：
+1.判断什么是重复工作 2.如何用一组按键操作准确的完成这个重复的操作
+宏可以保存起来再需要的时候随时加载，可以不受emacs提供的命令的限制来创造出自己的东西来，任何时候只有
+一个活动的宏，如果又定义了另外一个宏，那么新的宏将成为活动宏，而早先的宏被覆盖
+
+C-x (  开始录制宏，状态栏上出现"Def"字样
+C-x )	结束录制宏
+C-x e	执行已经录制好的宏	
+C-g		停止和取消录制宏
+C-_		取消整个宏的执行结果
+C-u C-x ) 向现有的宏添加编辑命令(但不能对宏进行编辑)，用来补充不太完整的宏。
+M-x name-last-kbd-macro	给刚才录制的宏起个名字
+M-x insert-kbd-macro RETURN macroname RETURN 把命名的宏插入到当前打开个文件缓冲区中，如果想每次进入emacs时都能用
+		可以打开.emacs文件，将插入点移动到文件尾然后执行这个命令。
+M-x load-file	加载为宏命令定义的文件，可以将这条命令放在.emacs文件中如：
+		(load-file "~/emacs/nroff.macs") 这样emacs启动时就可个加载文件中的宏
+M-x macroname 执行宏命令
+
+C-u C-x q 在宏定义的过程中进入递归编辑状态，递归编辑期间任何输入的东西都不会被录制到宏中。
+M-C-c 退出递归编辑状态,继续红的录制
+
+C-x q   在宏定义里插入一个查询，当执行到这里时Emacs会在辅助缓冲区中给如一个是否继续的提示
+	y 继续执行这个宏，执行完后进入下一个循环(如果有的话)
+	n 停止。。。。，。。。
+	回车 停止执行这宏和以后的循环
+	
+
+良好的宏是哪些在任何场合都能正确工作的，应该在宏中使用绝对而非相对命令如使用M-f而非C-f，如果想让光标移到行首或尾，应用C-e或C-a
+宏通常以一个查找命令开始如C-s string ，他的作用是进入要在文件里开始执行这个宏的地方，有时给宏添加几个额外的命令如C-a C-e时有好处的，
+他的作用是确保宏工作在正确的行上。宏在录制的过程中所做的假设越少，他在执行时的效果越好。
+好的宏由三部分组成：
+1.找到准白开始工作的地方(通常利用查找操作实现)
+2.对文本进行预定的编辑处理
+3.做好下次循环的准备工作，这样重复的使用这个宏时就不用重新调整
+
+如果在红的开头使用了一个查找操作，就必须在这个宏结束时将光标移动到本次查找点的__后面__，否则宏将在文件的这个查找点处死循环。作为一条基本
+规则，如果宏是用来对一个文本行进行操作的，那么就应该移到下一个文本行的行首作为结束。
+
+
+
+
+   
+
+===== 输入法 =====
+启用内置的输入法：
+		M-x set-language-environment  选择chinese-GBK
+		C-\ 激活及关闭输入法
+		C-x RETURN C-\   选择输入法
+使用Ibus:
+ 如果用的英文系统，请在/etc/environment内添加：
+LC_CTYPE="zh_CN.UTF-8"
+然后启动emacs就可以了。
+
+
+===== 鼠标操作 =====
+表 6. Emacs 中的鼠标操作
+鼠标命令	描述
+B1 	这一命令将设置插入点位置；拖动鼠标左键以设置区域。
+B1-B1 	这一命令标记一个单词。
+B1-B1-B1 	这一命令标记一行。
+B2 	这一命令插入最近被杀死的内容，并把光标移动到插入内容的末尾。
+B3 	这一命令会设置并突出显示区域，然后无需删除就将其放在 kill 缓冲区中。如果某个区域已经被突出显示并设置，该区域的末尾将移动到您单击的位置。
+B3-B3 	这个命令将突出显示区域，然后删除它。如果某个区域已经被突出显示并设置，该区域的末尾将移动到您单击的位置，此后该区域将被删除。
+
+
+===== 小技巧 =====
+** 配置前景背景
+
+===== 主题 =====
+通过 color-theme 这个扩展。
+** 不重启 Emacs 来
+
+===== 更新设置 =====
+在 .emacs 中， C-x C-e 执行光标前面的一条语句还可 M-x load-file [[~/.emacs]]  或 M-x eval-buffer
+** 调用 cflow 生成
+
+===== 函数调用树 =====
+安装配置好 cflow 后，先输入 M-x
+然后输入 yyc/cflow-function
+接着在 minibuffer 中输入函数名。
+** 使用 cscope 
+
+===== 查看源码 =====
+若源码在不同的目录中，需要 cscope-indexer 脚本，若都在同一目录下，
+执行 C-c s I 就可生成 cscope 数据库来使用了。
+C-c s s         Find symbol.
+C-c s d         Find global definition.
+C-c s g         Find global definition (alternate binding).
+C-c s G         Find global definition without prompting.
+C-c s c         Find functions calling a function.
+C-c s C         Find called functions (list functions called from a function).
+C-c s t         Find text string.
+C-c s e         Find egrep pattern.
+C-c s f         Find a file.
+C-c s i         Find files #including a file.
+
+下面是在搜索到的结果之间切换用的快捷键：
+C-c s b         Display *cscope* buffer.
+C-c s B         Auto display *cscope* buffer toggle.
+C-c s n         Next symbol.
+C-c s N         Next file.
+C-c s p         Previous symbol.
+C-c s P         Previous file.
+C-c s u         Pop mark.
+
+** 使用 doxymacs 做
+
+===== 标准注释 =====
+*** 1 快捷键
+	C-c d f    为函数插入Doxygen注释
+	C-c d i    为文件插入Doxygen注释
+	C-c d ;    为当前成员插入Doxygen注释
+	C-c d m    插入多行注释
+	C-c d s    插入单行注释
+	C-c d @    插入环绕当前区域的注释
+	C-c d ?    查找当前鼠标点下的符号的文档
+	C-c d r    重新扫描tags文件
+*** 2 改变默认的doxygen注释类别
+	修改变量 doxymacs-doxygen-style, doxymacs默认是javaDoc,把它改为C++
+*** 3 定制doxygen的注释模板
+	doxymacs.el中的 doxymacs-C++-file-comment-template 是
+	C++-file-comment的模板，可定制.
+*** 其他常用可定制的变量
+	doxymacs-C++-function-comment-template  函数
+	doxymacs-C++-blank-multiline-comment-template 多行注释
+	doxymacs-C++-blank-singleline-comment-template 单行注释
+
+** 文档编辑模式 
+
+===== org-mode =====
+我当前就是在这种模式下编辑文档，有分层功能，而且可以自动添加表格，还
+可做 TODO list 来安排事务，只需用以下格式就可实现 TODO list
+* TODO
+	可在其后或下一行添加内容，但要注意若另起一行，则需要用 Tab 来分层表
+	明层次关系。当完成这个任务时，可用 Ctrl+x Ctrl+u 来自动标明完成，效
+其他小操作：
+字体加粗 *bold*
+斜字体 /italics/
+加下划线 _underline_
+** 向 WordPress 中
+
+===== 写博客 =====
+先用 M-x 然后输入 weblogger-start-entry 进入写博客的界面，写博客时
+最好退出 auto-fill-mode ，这样排版才和以前的文章的格式相同。
+

@@ -1,0 +1,58 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-02T15:31:27+08:00
+
+====== uboot ======
+Created Thursday 02 August 2012
+
+1. ltib在编译uboot时长时间地停在下面的命令行上：
+powerpc-e300c3-linux-gnu-objcopy -O srec u-boot u-boot.srec
+powerpc-e300c3-linux-gnu-objcopy --gap-fill=0xff -O binary u-boot u-boot.bin
+而且生成的uboot.bin文件非常大：
+[geekard@kb310 ltib-mpc8315erdb-20100719]$ ls -lh rpm/BUILD/u-boot-2009.03-rc2/u-boot.bin 
+-rwxr-xr-x 1 geekard geekard 4.0G Aug  4 15:18 rpm/BUILD/u-boot-2009.03-rc2/u-boot.bin
+[geekard@kb310 ltib-mpc8315erdb-20100719]$ 
+-----------------------------------
+用readelf探查显示结果如下：
+[geekard@kb310 u-boot-2009.03-rc2]$ powerpc-e300c3-linux-gnu-readelf -l u-boot
+
+Elf file type is EXEC (Executable file)
+Entry point 0xfe000100
+There are 3 program headers, starting at offset 52
+
+Program Headers:
+  Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
+  LOAD           0x000094 __0x00000094__ 0x00000094 0x0b052 0x0b052 R   0x1
+  LOAD           0x00b0e8 0__xfe000000__ 0xfe000000 0x3f3ec 0x4877c RWE 0x8
+  GNU_STACK      0x000000 0x00000000 0x00000000 0x00000 0x00000 RWE 0x4
+
+ Section to Segment mapping:
+  Segment Sections...
+   00     __.rodata.str1.1__ 
+   01     .text .text.unlikely .reloc .data .data.rel.ro.local .data.rel .data.rel.local .data.rel.ro .u_boot_cmd .bss 
+   02     
+http://www.mail-archive.com/u-boot@lists.denx.de/msg06883.html
+
+可见objcopy试图在u-boot.bin文件中的0x94到0xfe000000中填充0xff。解决方法是：
+diff -purN orig/cpu/mpc83xx/u-boot.lds u-boot/cpu/mpc83xx/u-boot.lds
+--- orig/cpu/mpc83xx/u-boot.lds	2008-12-29 14:26:05.000000000 -0500
++++ u-boot/cpu/mpc83xx/u-boot.lds	2008-12-29 14:26:13.000000000 -0500
+@@ -57,6 +57,7 @@ SECTIONS
+     . = ALIGN(16);
+     *(.rodata)
+     *(.rodata1)
+__+    *(.rodata.str1.1)__
+     *(.rodata.str1.4)
+     *(.eh_frame)
+   }
+
+
+------------------
+[geekard@kb310 ltib-mpc8315erdb-20100719]$ ./ltib -m prep -p u-boot
+[geekard@kb310 ltib-mpc8315erdb-20100719]$ cp modify/uboot/__MPC8315ERDB.h__ rpm/BUILD/u-boot-2009.03-rc2/include/configs/
+[geekard@kb310 ltib-mpc8315erdb-20100719]$ cp modify/uboot/__u-boot.lds__ rpm/BUILD/u-boot-2009.03-rc2/cpu/mpc83xx/
+[geekard@kb310 ltib-mpc8315erdb-20100719]$ ./ltib -m scbuild -p u-boot
+
+MPC8315ERDB.h文件修改DDR为512MB，关闭了eTSEC1.两文件位于附件中。
+[[./MPC8315ERDB001.h]] 
+ [[./u-boot001.lds]] 

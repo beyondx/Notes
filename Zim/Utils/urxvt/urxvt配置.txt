@@ -1,0 +1,117 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-04T17:01:20+08:00
+
+====== urxvt配置 ======
+Created Sunday 04 March 2012
+http://wikipyw.appspot.com/urxvt%E9%85%8D%E7%BD%AE%E5%8F%8A%E5%AE%9E%E7%8E%B0%E7%9C%9F%E9%80%8F%E6%98%8E%E7%9A%84%E6%96%B9%E6%B3%95
+
+配置
+
+! urxvt color set
+URxvt.background:black
+URxvt.foreground:green
+URxvt.colorBD:yellow
+URxvt.colorUL:Green
+URxvt.color0: #000000
+URxvt.color1: #CC0000
+URxvt.color2: #4E9A06
+URxvt.color3: #C4A000
+URxvt.color4: #3465A4
+URxvt.color5: #75507B
+URxvt.color6: #06989A
+URxvt.color7: #D3D7CF
+URxvt.color8: #555753
+URxvt.color9: #EF2929
+URxvt.color10: #8AE234
+URxvt.color11: #FCE94F
+URxvt.color12: #729FCF
+URxvt.color13: #AD7FA8
+URxvt.color14: #34E2E2
+URxvt.color15: #EEEEEC
+
+! scroll set
+URxvt.scrollBar:false
+!URxvt.scrollBar_right:True
+!URxvt.scrollBar_floating:True
+!URxvt.scrollstyle:plain
+!URxvt.scrollWithBuffer:false
+URxvt.saveLines:5000
+
+! font set
+URxvt.font:xft:Liberation Mono:pixelsize=16:antialias=false,xft:Microsoft Yahei:pixelsize=18
+URxvt.boldFont:xft:Liberation Mono:pixelsize=16:antialias=false:Bold,xft:Microsoft Yahei:pixelsize=18:Bold
+
+! Input Method set
+!URxvt.inputMethod:fcitx
+!URxvt.imFont:Liberation Mono
+!URxvt.preeditType: Root
+
+! window geometry set
+URxvt.geometry: 80x30
+URxvt.title:Rxvt-Unicode
+
+! bg transparent set
+!URxvt.inheritPixmap: true
+!URxvt.tintCddolor: white
+!URxvt.shading: 80
+
+! Tab set
+!URxvt.perl-ext-common: default,tabbed
+!URxvt.tabbed.tab-fg: 12
+!URxvt.tabbed.tab-bg: 0
+!URxvt.tabbed.tabbar-fg: 4
+
+!Rxvt.menu:/etc/X11/rxvt.menu
+!Rxvt.preeditType:Root
+!Rxvt.transparency:255
+
+! 开启标签功能
+URxvt.perl-ext-common: default,tabbed
+
+实现透明效果
+
+因为我用openbox，要实现窗口的阴影和动画效果，xcompmgr是必须的，我把它设成了开机自启动。比起xcompmgr默认的参数值，下面这条定制的命令实现了简洁的阴影和合理的渐隐渐显时间，因此提供了一个各方面都比较均衡、合理的桌面体验：
+
+xcompmgr -Ss -n -Cc -fF -I-10 -O-10 -D1 -t-3 -l-4 -r4
+
+然后在.Xresources中添加以下两行：
+
+URxvt.depth:32
+URxvt.background:rgba:0000/0000/0000/dddd
+
+最后当然要执行一下：
+
+xrdb ~/.Xresources
+
+此后直接启动urxvt即可。
+
+这里面最有意思的就是background项的配置，它有两种形式，一种是：
+
+URxvt.background:[80]black
+
+还有一种就是前面提到的形式。
+
+第一种形式中，中括号里的数字表示半透明度对应的百分比，括号外是颜色名称；第二种形式提供了比第一种更多的色彩选择，四组数字都是十六进制数，前三组是RGB颜色值，最后一组是半透明度，数值越大，透明度越低。
+Perl extensions
+
+man urxvtperl
+
+Clickable URLs
+
+You can make URLs in the terminal clickable using the matcher extension. For example, to open links in Firefox add the following to .Xresources:
+
+URxvt.perl-ext-common:  default,matcher
+URxvt.urlLauncher:      /usr/bin/firefox
+URxvt.matcher.button:   1
+
+Yankable URLs (No Mouse)
+
+In addition, you can select and open URLs in your web browser without using the mouse.
+
+Install the urxvt-url-select package from the [community] repo and adjust your .Xresources as necessary. An example is shown below:
+
+URxvt.perl-ext:      default,url-select
+URxvt.keysym.M-u:    perl:url-select:select_next
+URxvt.urlLauncher:   firefox
+URxvt.underlineURLs: true

@@ -1,0 +1,42 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-15T20:46:06+08:00
+
+====== Rob Pike ---- Notes on C Programming ======
+Created Wednesday 15 February 2012
+http://www.cppblog.com/leetaolion/archive/2008/02/29/43429.aspx
+
+Rob Pike, 是AT&T Bell Lab前Member of Technical Staff ，现在google研究操作系统，Unix先驱，UTF-8的设计人，The Unix Programming Environment 和 The Practice of Programming 的作者之一。 在《 Notes on C Programming 》中从另一个稍微不同的角度表述了 Unix 的哲学（或者说是程序局部优化6原则）:
+
+1. 你无法断定程序会在什么地方耗费运行时间。瓶颈经常出现在想不到的地方，所以别急于胡乱找个地方改代码，除非你已经证实那儿就是瓶颈所在。
+2. 估量。在你没对代码进行估量，特别是没找到最耗时的那部分之前，别去优化速度。
+3. 花哨的算法在 n 很小时通常很慢，而 n 通常很小。花哨算法的常数复杂度很大。__除非你确定 n 总是很大，否则不要用花哨算法__（即使 n 很大，也优先考虑原则 2 ）。
+比如，解决常见问题时，最简单的树——二叉树（binary tree）,总是比那些复杂的树（AVL树，伸展树（splay tree）和红黑树、B-树（B-tree）,多叉树（trie））来的高校。
+4. 花哨的算法比简单算法更容易出 bug 、更难实现。__尽量使用简单的算法配合简单的数据结构__。只要掌握了数据结构中的四大法宝，就可以包打天下，他们是：array 、linked list 、hash table、binary tree 。这四大法宝可不是各自为战的，__灵活结合__才能游刃有余。比如，一个用hash table组织的symbol table，其中是一个个由字符型array构成的linked list。
+5. __以数据为中心__。如果已经选择了正确的数据结构并且把一切都组织得井井有条，正确的算法也就不言自明。__编程的核心是数据结构，而不是算法__。
+6. 没有原则 6 。
+
+Ken Thompson —— Unix 最初版本的设计者和实现者，禅宗偈语般地对 Pike 的原则4 作了强调：
+拿不准就穷举
+
+附：E文原文（节选自《Notes on C Programming 》Rob Pike， February 21, 1989 ）
+E文全文地址：http://www.lysator.liu.se/c/pikestyle.html
+      Most programs are too complicated - that is, more complex than they need to be to solve their problems efficiently.  Why? Mostly it's because of bad design, but I will skip that issue here because it's a big one.  But programs are often complicated at the microscopic level, and that is something I can address here.
+      Rule 1.  You can't tell where a program is going to spend its time.  Bottlenecks occur in surprising places, so don't try to second guess and put in a speed hack until you've proven that's where the bottleneck is.
+
+      Rule 2.  Measure.  Don't tune for speed until you've measured, and even then don't, unless one part of the code overwhelms the rest.
+
+      Rule 3.  Fancy algorithms are slow when n is small, and n is usually small.  Fancy algorithms have big constants. Until you know that n is frequently going to be big, don't get fancy.  (Even if n does get big, use Rule 2 first.)   For example, binary trees are always faster than splay trees for workaday problems.
+
+      Rule 4.  Fancy algorithms are buggier than simple ones, and they're much harder to implement.  Use simple algorithms as well as simple data structures.
+
+      The following data structures are a complete list for almost all practical programs:
+
+array
+linked list
+hash table
+binary tree
+Of course, you must also be prepared to collect these into compound data structures.  For instance, a symbol table might be implemented as a hash table containing linked lists of arrays of characters.
+      Rule 5.  Data dominates.  If you've chosen the right data structures and organized things well, the algorithms will almost always be self­evident.  Data structures, not algorithms, are central to programming.  (See Brooks p. 102.)
+
+      Rule 6.  There is no Rule 6. 

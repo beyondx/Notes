@@ -1,0 +1,114 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-22T21:21:05+08:00
+
+====== Hostapd介绍 ======
+Created Wednesday 22 February 2012
+
+http://blog.csdn.net/hinyunsin/article/details/6029663
+
+===== Hostapd简介： =====
+简单说，hostapd能够使得无线网卡切换为__master模式__，模拟AP(通常可以认为是路由器)功能，也就是我们说的__软AP__(Soft AP)。
+
+Hostapd的功能就是作为__AP的认证服务器__，负责控制管理__stations__(通常可以认为带无线网卡的PC)的接入和认证。
+
+通过Hostapd可以将无线网卡切换为__AP/Master模式__，通过修改配置文件，可以建立一个开放式的(不加密)的，WEP，WPA或WPA2的无线网络。并且通过修改配置文件可以设置无线网卡的各种参数，包括频率，信号，beacon包时间间隔，是否发送beacon包，如果响应探针请求等等。还可以设置mac地址过滤条件等。具体可以参考它的配置文件说明。
+
+下面就从官网上摘下的部分原因及翻译。翻译的不好请见谅。
+ 
+hostapd is an IEEE 802.11 AP and IEEE 802.1X/WPA/WPA2/EAP/RADIUS Authenticator.
+
+Hostapd是IEEE 802.11 AP and IEEE 802.1X/WPA/WPA2/EAP/RADIUS的认证器
+
+    
+**hostapd is a user space daemon **for access point and authentication servers. It implements IEEE 802.11 access point management, IEEE 802.1X/WPA/WPA2/EAP Authenticators, RADIUS client, EAP server, and RADIUS authentication server. The current version supports Linux (Host AP, madwifi, mac80211-based drivers) and FreeBSD (net80211).
+
+Hostapd是一个访问点以及认证服务器的运行于用户空间的守护程序。它实现了IEEE 802.11接入带你(Access Point)的管理功能，是IEEE 802.1X/WPA/WPA2/EAP的认证器,是 RADIUS client, EAP server, and RADIUS认证服务器。当前版本的hostapd支持linux上Host AP，madwifi和基于mac80211协议栈的驱动程序，以及FreeBSD上net80211协议栈的驱动程序。
+
+ 
+hostapd is designed to be a "daemon" program that runs in the background and acts as the backend component controlling authentication. hostapd supports separate frontend programs and an example text-based frontend, hostapd_cli, is included with hostapd.
+
+Hostapd是一个后台守护进程，作为后台组件来控制和管理认证功能。Hostapd支持多个前台程序。hostapd_cli，就是一个跟hostapd一起的命令行前台程序。
+ 
+
+===== 支持特性 =====
+
+Supported WPA/IEEE 802.11i/EAP/IEEE 802.1X features
+支持WPA/IEEE 802.11i/EAP/IEEE 802.1X
+
+    WPA-PSK ("WPA-Personal")
+    WPA with EAP (with integrated EAP server or an external RADIUS backend authentication server) ("WPA-Enterprise")
+    key management for CCMP, TKIP, WEP104, WEP40
+    WPA and full IEEE 802.11i/RSN/WPA2
+    RSN: PMKSA caching, pre-authentication
+    IEEE 802.11r
+    IEEE 802.11w
+    RADIUS accounting
+    RADIUS authentication server with EAP
+    Wi-Fi Protected Setup (WPS)
+    Supported EAP methods (integrated EAP server and RADIUS authentication server)
+    EAP-TLS
+    EAP-PEAP/MSCHAPv2 (both PEAPv0 and PEAPv1)
+    EAP-PEAP/TLS (both PEAPv0 and PEAPv1)
+    EAP-PEAP/GTC (both PEAPv0 and PEAPv1)
+    EAP-PEAP/MD5-Challenge (both PEAPv0 and PEAPv1)
+    EAP-TTLS/EAP-MD5-Challenge
+    EAP-TTLS/EAP-GTC
+    EAP-TTLS/EAP-MSCHAPv2
+    EAP-TTLS/MSCHAPv2
+    EAP-TTLS/EAP-TLS
+    EAP-TTLS/MSCHAP
+    EAP-TTLS/PAP
+    EAP-TTLS/CHAP
+    EAP-SIM
+    EAP-AKA
+    EAP-AKA'
+    EAP-PAX
+    EAP-PSK
+    EAP-SAKE
+    EAP-FAST
+    EAP-IKEv2
+    EAP-GPSK
+
+ 
+Following methods are also supported, but since they do not generate keying material, they cannot be used with WPA or IEEE 802.1X WEP keying.
+
+同样支持下面的这些功能，但是这些不生成建钥资料，所以它们不能够WPA 或者 IEEE 802.1X WEP一同使用
+
+    EAP-MD5-Challenge
+    EAP-MSCHAPv2
+    EAP-GTC
+    EAP-TNC (Trusted Network Connect; TNCS, IF-IMV, IF-T, IF-TNCCS)
+
+ 
+
+===== 支持的无线网卡/驱动 =====
+
+    Linux mac80211 drivers
+    Host AP driver for Prism2/2.5/3
+   ** madwifi** (Atheros ar521x)  #已被__ath,ath5k,ath9k__取代
+    BSD net80211 layer (e.g., Atheros driver) (FreeBSD 6-CURRENT)
+
+ 
+
+===== 如何确定一款无线网卡是否能被hostpad支持 =====
+
+以ubuntu10.04为例
+执行sudo aptitude install iw，安装无线配置工具iw
+执行__iw list__，如果在下面的结果中出现AP字样，那么就表示这款网卡支持hostapd
+
+**Supported interface modes:**
+
+* IBSS (Ad-Hoc)
+* managed
+* AP
+* AP/VLAN
+* WDS
+* monitor
+* mesh point
+
+===== 推荐网址 =====
+http://hostap.epitest.fi/hostapd/
+http://wireless.kernel.org/en/users/Documentation/hostapd
+https://help.ubuntu.com/community/WifiDocs/MasterMode
+http://hostap.epitest.fi/gitweb/gitweb.cgi?p=hostap.git;a=blob_plain;f=hostapd/hostapd.conf

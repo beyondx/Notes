@@ -1,0 +1,77 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-23T20:52:38+08:00
+
+====== Django标准化项目dj-scaffold ======
+Created Sunday 23 October 2011
+http://haoluobo.com/2011/08/dj-scaffold/
+
+由于Django没有象rails一样指定项目的目录结构规范，很多人都对django项目的目录结构要如何组织而感到困惑。为此我又新创建了一个开源项目dj-scaffold（django的脚手架）。这个项目用于自动生成一个标注化的django项目和app目录结构，同时提供虚拟化环境。
+
+项目地址：https://github.com/vicalloy/dj-scaffold
+
+===== 安装 =====
+
+已经发布到了pypi，所以你可以用pip或easy_install 来进行安装。
+
+pip install dj-scaffold 或
+easy_install dj-scaffold
+
+===== 使用 =====
+
+dj-scaffold主要提供了两个命令，dj-scaffold.py和lbstartapp。
+
+====== dj-scaffold.py ======
+
+  该脚本用于取代django的startproject命令。使用方式如下：
+
+**dj-scaffold.py   projectname **
+
+在该命令执行后，将创建项目projectname。在项目的scripts目录中提供了脚本create_env.py和env.rc。
+
+* create_env.py   执行该脚本将__自动初始化并创建python虚拟环境__。新生成的python虚拟环境在env目录。
+* env.rc 该脚本用户启动python虚拟环境（source env.rc）。该脚本同时为python manage.py设置了快捷方式__$mg__。你可以在任何目录调用$mg来执行django命令。比如你用$mg runserver来启动测试服务器。
+
+项目对应的目录结构如下：
+
+注：文件太多，去掉了部分不重要的文件
+
+dj-scaffold.py projectname 
+
+|+docs/    #用于存放项目的相关文档
+|+env/     #python虚拟环境，由脚本自动生成
+|~requirements/     #第三方依赖包的存放位置
+| `-requirements.pip    #pip的依赖说明文件
+|~scripts/    #系统相关的脚本
+| |-create_env.py   ** #**__创建__**python虚拟环境（env目录）**
+| `-env.rc    #__进入__python虚拟环境。同时提供python manger.py的快捷方式$mg。可在任意目录使用$mg, 若要退出虚拟环境则可以使用deactive命令。
+|~sites/    #Django的__项目目录__。在settings文件中增加了部分默认配置。如数据库默认使用sqlite，设置项目的模板以及静态文件目录。
+| |+media/    #项目静态文件（用户上传）
+| |+static/    #项目静态文件（css、js等）
+| `+templates/    #__项目模板__
+|+tools/    #一些项目依赖的第三方工具包。如python虚拟环境初始化脚本等。
+`~wsgi/    #项目部署用的wsgi文件
+  `-dj_scaffold.wsgi
+
+====== lbstartapp ======
+
+lbstartapp作为django的扩展命令提供。将dj_scaffold加到INSTALLED_APPS后即可使用该命令。该命令将生成一个标准的app，相比django自带的startapp，lbstartapp将那些不太常用的app默认目录也都给生成了出来。对应目录结构如下：
+
+|+management/    #命令目录
+|+static/    #静态文件目录
+|+templates/    #模板目录
+|+templatetags/    #tag目录
+|-__init__.py
+|-admin.py    #admin管理后台的models配置文件
+|-forms.py
+|-models.py
+|-settings.py    #app自己的settings文件
+|-tests.py
+|-urls.py    #urls配置文件
+`-views.py
+
+NOTE
+
+    项目的大多代码来自：https://github.com/lincolnloop/django-startproject
+    类似项目：https://github.com/mozilla/playdoh 个人觉得这个项目还可以。不过我个人觉得自己写的更符合自己的习惯。
+    “摒弃魔法”是Django的哲学之一。为此Django没有为用户提供太多的默认操作，它希望一切对用户都是显示可见的。这本没太大的问题，但在我看来“no magic”并不代表连规范都不要。Django实在是太缺乏一些必要的规范。

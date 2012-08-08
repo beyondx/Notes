@@ -1,0 +1,63 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-13T12:36:35+08:00
+
+====== alsa ======
+Created Saturday 13 August 2011
+
+===== Installation =====
+
+**ALSA **is included in the default Arch kernel as a set of modules, so installing it isn't necessary.
+
+**udev **will automatically __probe your hardware__ at boot, loading the corresponding kernel module for your audio card. Therefore, your sound should already be working, but upstream sources __mute__ all channels by default.
+
+Users must be in the __audio__ group to play sound with ALSA. To add a user to the audio group, use the following command:
+# __gpasswd__ -a yourusername audio
+
+===== User-space utilities =====
+
+The__ alsa-utils __package contains the **alsamixer** userspace tool, which allows configuration of the sound device from the console or terminal. Install it with pacman:
+# pacman -S alsa-utils
+
+Install the __alsa-oss__ package if you want OSS applications to work with dmix (software mixing):
+# pacman -S alsa-oss
+
+Install the __alsa-plugins __package if you want high quality resampling, upmixing/downmixing and other advanced features:
+# pacman -S alsa-plugins
+
+===== Unmuting the channels =====
+
+The current version of ALSA installs with **all channels muted by default**. You will need to unmute the channels manually.
+
+It is easiest to use alsamixer ncurses UI to accomplish this (alternatively, use amixer from the commandline):
+$ alsamixer
+
+The label "MM" below a channel indicates that the channel is muted, and "00" indicates that it is open.
+
+Unmute the Master and PCM channels by scrolling to them with cursor left/right and pressing M. Use the ↑ key to increase the volume and obtain a value of zero dB gain. The gain may be found in the upper left next to the 'Item:' field. Higher values of gain will produce distorted sound.
+
+To get full 5.1 or 7.1 surround sound you likely need to unmute other channels such as Front, Surround, Center, LFE (subwoofer) and Side (these are the names of the channels with Intel HD Audio, they may vary with different hardware). Please take note that this will not automatically upmix stereo sources (like most music). In order to accomplish that, see #Upmixing/Downmixing.
+
+Leave alsamixer by pressing Esc.
+Note: Some cards need to have digital output muted/turned off in order to hear analog sound. For the Soundblaster Audigy LS mute the IEC958 channel.
+Note: Some machines, (like the Thinkpad T61), have a Speaker channel which must be unmuted and adjusted as well.
+
+Next, test to see if sound works:
+$ __speaker-test __-c 2
+
+Change -c to fit your speaker setup. Use -c 8 for 7.1, for instance:
+$ speaker-test -c 8
+
+If it doesn't work, proceed to #Configuration and then #Troubleshooting to solve your issues.
+
+If it works, you just need to save your mixer settings.
+# __alsactl__ -f /var/lib/alsa/asound.state store
+
+This will create the file /var/lib/alsa/asound.state, saving the alsamixer settings.
+
+Then, add__ the alsa daemon__ to your DAEMONS section in /etc/rc.conf to automatically **restore the mixer settings **at boot.
+File: /etc/rc.conf
+
+DAEMONS=(... @alsa ...)
+
+Note: The alsa daemon merely restores your volume mixer levels on boot up by reading** /var/lib/alsa/asound.state**. It is separate from the alsa audio library (and kernel level API).

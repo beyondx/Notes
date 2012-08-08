@@ -1,0 +1,53 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-05T14:50:11+08:00
+
+====== Python Essential Reference 4th – 第11章 – 读书笔记 ======
+Created 星期二 05 七月 2011
+
+本章主要介绍测试、调试和性能调优
+
+1、C、Java等语言，都是预编译类型，编译器会阻止大部分的错误。而对于Python来说，仅当运行时才能知道错误。因此，发现错误的过程更麻烦一些。
+
+2、函数、类等第一行常用三个引号的字符串来写注释docstring，如下：
+
+def split(line,...):
+   """
+    Split....
+
+    >>>split(...)
+    >>>[...]
+    """
+
+如上所示，doc中经常包含python交互shell的代码，用做测试用例。
+我们可以用docstring中的测试用例来做单元测试。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+import split #被测试模块
+import doctest
+#根据docstring，返回unittest的通过和失败数量
+nfail, nsuccess = doctest.testmod(split)
+
+3、上面用docstring来做测试的方法确实有点山寨，而且效率比较低，python也有unittest模块，其实和JUnit非常类似。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+import split #被测试模块
+import unittest
+class TestSplit(unittest.TestCase):
+    def setUp(self):
+        pass
+    def tearDown(self):
+        pass
+    def testsimplestring(self):
+        r = split.split("...")
+        self.assertEqual(r,[......])
+
+可以看到，和JUnit非常类似。其中assert还可以有：
+t.assert
+t.assertAlmostEqual(x,y,places) #在一定精度范围内匹配
+t.assertRaises(exc,callable…)
+等很多，需要时候看文档吧。
+
+4、

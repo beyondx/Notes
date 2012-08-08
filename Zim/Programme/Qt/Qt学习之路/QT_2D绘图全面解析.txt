@@ -1,0 +1,487 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-04T20:12:18+08:00
+
+====== QT 2D绘图全面解析 ======
+Created Friday 04 November 2011
+http://hacktao.com/2011/03/14/329
+
+Qt4中的2D绘图部分称为__Arthur绘图系统__.它由3个类支撑整个框架，QPainter,QPainterDevice和QPainterEngine.
+
+QPainter用来执行具体的绘图相关操作 如画点，画线，填充，变换，**alpha通道**等。QPainterDevice是QPainter用来绘图的绘图设备,Qt中有几种预定义的绘图设备，如QWidget,QPixamp,QPrinter等.他们都从QPaintDevice继承。QPaintEngine类提供了不同类型设备的接口，QPaintEngine对程序员透明，由QPainter,QPaintDevice类与其进行交互。
+
+从Qt4.2开始,__Graphics View框架__取代了QCanvas,  QGraphics View框架使用了MVC模式，适合对大量2D图元的管理，Grphics View框架中，**场景**(scene)存储了图形数据，它通过**视图**(view)以多种表现形式，每个**图元**(item)可以单独进行控制.
+
+===== Arthur绘图基础 =====
+ 
+在Arthur绘图框架中的基本绘图元素是**画笔**，**画刷**。QPainter类具有GUI程序需要的绝大多数函数,能够绘制基本图形(点，线，矩形，多边形等)以及复杂的图形(如绘图路径).使用绘图路径(QPaintPath)的优点是复杂形状的图形只用生成**一次**，以后再使用的时候是需要调用QPainter::drawPath()就可以了。
+QPainterPath对象可以用来填充，绘制轮廓。线和轮廓都可以用画笔(QPen)进行绘制，画刷(QBrush)进行**填充**。画笔定义了风格(线形),宽度，笔尖画刷以及端点是如何绘制的(cap-style),端点的连接方式(join-style).  画刷用来填充画笔绘制的图形，可以定制不同的填充模式和颜色的画刷。当绘制文字时，字体使用QFont类定义，Qt使用指定字体的属性，如果没有匹配的字体，Qt将使用最接近的字体。**字体属性**可以通过QFontInfo来获取。**字体度量**(measurement)使用QFontMetrics类来获取。QFontDatabase类可以获得底层窗口系统所有可用的字体.
+通常情况下QPainter以默认的坐标系统进行绘制，也可以用QMatrix类对坐标进行变换。 
+
+当绘制时，可以使用QPainter::RenderHint来告诉绘图引擎是否启用**反锯齿**功能使图变得平滑。
+
+QPainter::RenderHint的可取如表6-1中的值
+
+————————————————————————————————
+
+QPainter::Antialiasing           告诉绘图引擎应该在可能的情况下进行**边缘**的反锯齿绘制
+
+QPainter::TextAntialiasing       尽可能的情况下文字的反锯齿绘制
+
+QPainter::SmoothPixmapTransform  使用平滑的pixmap变换算法(双线性插值算法),而不是近邻插值算法
+-----------------------------------------------------------------------------------------
+
+QPainter的绘图函数
+
+drawArc()                                 弧
+
+drawChord()                               弦
+
+drawConvexPolygon()                       凸多边形
+
+drawEllipse()                             椭圆
+
+drawImage()                               QImage表示的图像
+
+drawLine()                                线
+
+drawLines()                               多条线
+
+drawPath()                                路径
+
+drawPicture()                             按QPainter指令绘制
+
+drawPie()                                 扇形
+
+drawPixmap()                              QPixmap表示的图像
+
+drawPoint()                               点
+
+drawPoints()                              多个点
+
+drawPolygon()                             多边形
+
+drawPolyline()                            多折线
+
+drawRect()                                矩形
+
+drawRects()                               多个矩形
+
+drawRoundRect()                           圆角矩形
+
+drawText()                                文字
+
+drawTiledPixmap()                         平铺图像
+
+drawLineSegments()                        绘制折线
+
+**drawPicture()**函数负责绘制QPicture中存储的**QPainter**指令，QPicture是可以记录QPainter绘图指令的类.它将QPainter的绘图指令串行化为平台无关的存储格式。
+
+下面的代码将记录的绘图指令重绘。
+
+	QPicture picture;
+	picture.load(“mypicture.pic”);
+	QPainter painter(this);
+	painter.drawPicture(0,0,picture);//在(0,0)处重放绘图指令，也可以使用QPicture::play()完成相同的功能
+	     
+
+
+===== 使用画笔 =====
+
+ 画笔的属性包括线型，线宽，颜色等。画笔的属性可以在构造函数中指定，也可以使用setStyle()，setWidth(), setBrush(),setCapStyle(),setJoinStyle()等函数
+
+ 逐项设定画笔的各项属性.Qt中使用Qt::PenStyle定义了6种画笔风格，分别是Qt::SolidLine,Qt::DashLine,Qt::DotLine,Qt::DashDotLine,Qt::DashDotDotLine,
+
+ Qt::CustomDashLine.自定义线风格(Qt::CustomDashLine)，需要使用QPen的setDashPattern()函数来设定自定义风格.
+
+    下面代码设置了一个自定义QPen
+
+	    QPen pen;
+	    QVector customDashes;
+	    qreal blank=4;
+	    dashes<<2< pen.setDashPattern(customDashes);
+
+   ** 端点风格(cap style)**
+
+    端点风格决定了线的端点样式，它只对线宽大于1的线有效。Qt种定义了三种端点风格用枚举类型Qt::PenCapStyle表示,分别为Qt::SqureCap,QT::FlatCap,Qt::RoundCap,
+
+**    连接风格(Join style)**
+
+    连接风格是两条线如何连接，连接风格对线宽大于等于1的线有效。Qt定义了四种连接方式用枚举类型Qt::PenStyle表示.分别是Qt::MiterJoin,Qt::BevelJoin,Qt::RoundJoin. Qt::SvgMiterJoin.
+
+
+===== 2.画刷 =====
+
+    在Qt中图形使用QBrush进行填充，画刷包括**填充颜色**和**风格(填充模式)**.在Qt中，颜色使用QColor类表示，QColor支持RGB,HSV,CMYK颜色模型。QColor还支持alpha混合的轮廓和填充。基本模式填充包括有各种点，线组合的模式。Qt支持RGB,HSV,和CMYK颜色模型。RGB是面向硬件的模型。颜色由红绿蓝三种基色混合而成。HSV模型比较符合人对颜色的感觉，由色调(0-359),饱和度(0-255),亮度(0-255)组成.CMYK由青，洋红，黄，黑四种基色组成。主要用于打印机等硬件拷贝设备上。每个颜色分量的取值是0-255.另外QColor还可以用   SVG1.0中定义的任何颜色名为参数初始化.
+
+    Qt4提供了**渐变填充**的画刷，渐变填充包括两个要素，**颜色的变化和路径的变化**。颜色变化可以指定从一种颜色渐变到另外一种颜色。也可以在变化的路径上指定一些点的颜色进行**分段渐变**。
+
+    Qt4中，提供了三种渐变填充：线性(QLinearGradient),圆形(QRadialGradient)和圆锥渐变(QConicalGradient).所有的类都从QGradient类继承.
+
+    －－－－－－－－－－－－－－－－－－
+
+**    线性渐变填充**
+
+    线性渐变填充指定两个控制点，画刷在两个控制点之间进行颜色插值。通过创建QLinearGradient对象来设置画刷.
+
+    QLinearGradient linearGradient(0,0,200,100);
+    linearGradient.setColorAt(0,Qt::red);
+    linearGradient.setColorAt(0.5,Qt::green);
+    linearGradient.setColorAt(1,Qt::blue);
+    painter.setBrush**(linearGradient)**;
+    painter.drawRect(0,0,200,100);
+
+    在QGradient构造函数中指定线行填充的两点分别为(0,0),(100,100).setColorAt()函数在0-1之间设置指定位置的颜
+
+**    圆形渐变填充**
+
+    圆形渐变填充需要指定圆心，半径和焦点。画刷在焦点和圆上的所有点之间进行颜色插值。创建QRadialGradient对象设置画刷
+
+    QRadialGradient radialGradient(50,50,50,30,30);
+    radialGradient.setColorAt(0.2,Qt::cyan);
+    radialGradient.setColorAt(0.8,Qt::yellow);
+    radialGradient.setColorAt(1,Qt::magenta);
+    painter.setBrush(radialGradient);
+    painter.drawEllipse(0,0,100,100);
+
+    ——————————-
+
+**    圆锥渐变填充**
+
+    圆锥渐变填充指定圆心和开始角，画刷沿圆心逆时针对颜色进行插值，创建QConicalGradient对象并设置画刷.
+
+    QConicalGradient conicalGradient(60,40,30);
+    conicalGradient.setColorAt(0,Qt::gray);
+    conicalGradient.setColorAt(0.4,Qt::darkGreen);
+    conicalGradient.setColorAt(0.6,Qt::darkMagenta);
+    conicalGradient.setColorAt(1,Qt::drakBlue);
+    painter.setBrush(conicalGradient);
+    painter.drawEllipse(0,0,100,100);
+
+    ———————————
+
+ 为了实现**自定义填充**，还可以使用QPixmap或者QImage对象进行__纹理填充__。两种图像分别使用**setTexture()**和**setTextureImage()**函数加载纹理.
+
+    ======================================================================================================================
+
+===== 双缓冲绘图 =====
+
+    在Qt4中，所有的窗口部件**默认都使用双缓冲**进行绘图。使用双缓冲，可以减轻绘制的闪烁感。在有些情况下，用户要关闭双缓冲，自己管理绘图。下面的语句设置了窗口部件的Qt::WA_PaintOnScreen属性 ，就关闭了窗口部件的双缓冲.
+
+    mywidget->**setAttribute**(Qt::WA_PaintOnScreen);
+
+    由于Qt4不再提供异或笔，**组合模式**QPainter::CompostionMode_Xor()并不是异或笔,Qt4只提供了QRubberBand实现矩形和直线的绘图反馈。因此要实现在绘图中动态反馈必须使用其他方法。程序中使用双环冲来解决这个问题。在绘图过程中，一个缓冲区绘制临时内存，一个缓冲区保存绘制好的内容，最后进行合并。
+
+    在交互绘图过程中，程序将图像缓冲区复制到临时缓冲区，并在临时缓冲区上绘制，绘制完毕在将结果复制到图像缓冲区，如果没有交互复制，则直接将图像缓冲区绘制显示到屏幕上。
+
+－－－－－－－－－－－－－－－－－－－－－－－－
+
+===== 使用alpha通道 =====
+
+    在windows,Mac OSX和有**XRender扩展**的X11系统上，Qt4能够支持Alpha通道，通过使用Alpha通道，可以实现__半透明__效果，QColor类中定义了Alpha通道的__透明度__，0 表示完全透明，255表示完全不透明。注意QWidget类有一个属性windowOpacity,通过setWindowOpacity(qreal level)可以设置**窗口的透明度**。但该属性和Alpha通道的原理并不相同，Qt4在Windows和Mac OS X平台上才支持该属性，但在X11平台上却需要Composite扩展才能工作。(alpha通道使用的是X11的xRender扩展).
+
+===== 绘图设备 =====
+
+    QPaintDevice类是实际的绘制设备的基类.QPainter能够在QPaintDevice子类上进行绘制，如**QWidget,QImage,QPixmap**,QGLWidget,QGLPixelBuffer,**QPicture**,QPrinter，QSvgGenerator.
+
+要实现自己的绘图设备，必须从QPaintDevice类继承并实现其虚函数QPaintDevice::__paintEngine()__以告之QPainter能够在这个特定的设备上绘制图形，同时还需要从QPaintEngine类继承自定义的图形绘制引擎。
+
+    1 QWidget
+
+    QWidget是所有用户界面元素的基类，窗口部件时用户界面的原子元素，他接受鼠标，键盘，窗口系统的其他事件并在屏幕上绘制自己。
+
+    2 QImage
+
+    QImage类提供了与硬件无关的__图像表示__，它为直接**操作像素**提供优化，QImage支持单色，8-bit,32-bit和alpha混合图像，使用QImage的优点在于可以获得平台无关的绘制操作，另外还有一个好处时图像可以不必在GUI线程中处理。
+
+    3 QPixmap
+
+    QPixmap时**后台显示**的图像，它为在屏幕上显示图像提供优化，不同于QImage,pixmap的图像数据用户不可见，而且由底层窗口系统管理，为了优化QPixmap图像，Qt提供了QPixmapCache类来存储临时的pixmap.Qt还提供了QPixmap的继承类QBitmap类，QBitmap表示单色的pixmap,主要用来创建自定义的QCursor和QBrush对象，构造QRegion对象，设置pixmap和窗口部件的掩码。
+
+    4 OPenGLWidget
+
+    Qt提供了QtOpenGL模块来实现OpenGL操作，QGLWidget允许使用OpenGL API进行绘制。同时QGLWidget时QWidget的子类，因此QPainter也可以在上面绘制。这样可以使Qt能够利用OpenGl完成绘制操作，如变换和绘制pixmap
+
+    5 pixel Buffer
+
+    QGLPixelBuffer从QPaintDevice继承，封装了OpenGL pbuffer.使用pbuffer绘制通常时全硬件加速，这比使用QPixmap绘制更为迅速。
+
+    6 FrameBuffer
+
+    QGLFrameBufferObject从QPaintDevice继承，QGLFrameBufferObject封装了OpenGL frameBuffer对象，FrameBuffer对戏那个用来实现后台屏幕绘制，比pixel buffer更好一些。
+
+    7 picture
+
+    QPicture类时能够记录和重演QPainter命令的绘图设备，picture串行化painter的命令为平台无关的格式，QPicture同时也于分辨率无关，如QPicuture能够在不同的设备上(svg,pdf,ps 打印机和屏幕)有一只的显示。QPicture::load()和QPicture::save()函数分别完成载入和存储图像。
+
+    8 Printer
+
+    QPrinter 类时在打印机上绘制的绘图设备，在Windows和MAC OS X上，QPrinter使用内建的打印机驱动程序，在X11上，QPrinter山城postscript代码并发送给lpr,lp或者其他打印程 序，QPrinter可以在任意其他QPrintEngine对象上打印，也可以直接生成PDF文件。
+
+    QPrintEngine类定义了QPrinter如何和其他打印机系统交互的接口，主要创建自己的打印引擎时，可以从QPaintEngine和QPaintEngine上继承。
+
+    ======================================================================================================
+
+ 
+
+===== 坐标系统与坐标变换 =====
+
+    1. Qt坐标系统由QPainter控制，同时也由 QPaintDevice和QPaintEngine类控制.QPaintDevice类是绘图设备的基 类，QWidget,QPixmap,QImage,和QPrinter都是QPaintDevice类的子类。Qt绘图设备默认坐标原点是**左上角**，X轴 向右增长，Y轴向下增长，默认的单位在基于像素的设备上是像素，在打印机设备上是1/72英寸(0.35毫米).QPainter的**逻辑坐标**与 QPainterDevice的**物理坐标**之间的映射由QPainter的**变换矩阵，视口和窗口处理**。逻辑坐标和物理坐标也是一直的。QPainter也支持坐标变换(如旋转和伸缩);
+
+    2. 坐标变换。
+
+    通常QPainer在设备的坐标系统上绘制图形，但QPainter也支持坐标变换。可以通过QPainter::scale()函数进行**比例变换**。使用 QPainter::rotate()函数进行**旋转变换**。**平移变换**则使用QPainter::translate()函 数，QPainter::shear()函数对图形进行**扭曲操作**，所有变换操作的**变换矩阵**都可以通过QPainter::wordMatrix()函数取出。不同的变换矩阵可以使用**堆栈**保存。
+
+    用QPainter::save()__保存变换矩阵__到堆栈，用QPainter::restore()函数将其弹出堆栈。
+
+    QMatrix定义了系统的二维变换。QMatrix对象实际上定义了一个3×3矩阵。
+
+    ————–
+
+    m11  m12  0
+
+    m21  m22  0
+
+    dx   dy   1
+
+    —————
+
+    x\\’=m11*x+m21*y+dx;
+
+    y\\’=m22*y+m12*x+dy;
+
+    其中dx,dy表示水平和垂直偏移量，m11,m22表示水平和垂直方向上的比例。m12和m21表示水平和垂直方向上的扭曲程度。
+
+    矩阵可以通过setMatrix函数进行设置，然后可以使用translate(),rotate(),scale(),shear()等函数进行变 换.Qt4.3中引入QTransform类表示变换矩阵。与QMatrix不同的是，QTransform()支持透视变换。使用toAffine() 函数可以将QTransform对象转换为QMatrix对象。这将丢失QTransform的透视变换数据。逻辑坐标和物理坐标的变换由 QPainter的worldMatrix()函数。以及QPainter的viewport()和window()函数处理。视口表示物理坐标下的任意 矩形。而在窗口表示在逻辑坐标下的相同矩形。默认情况下逻辑坐标与物理坐标时相同的。与绘图设备上的矩形也是一致的。使用窗口－视口变换可以使逻辑坐标符 合自定义要求，这个机制通常用来完成设备无关的绘图代码。例如，可以设置逻辑坐标(-100,-100)到(100,100)且在原点(0,0),通过调 用QPainter::setWindow()函数可以完成下列操作。
+
+    QPainter painter(this);
+
+    painter.setWindow(QRect(-100,-100,200,200));
+
+    现 在，逻辑坐标的(-100,-100)对应着绘图设备的(0,0),这样可以绘制独立于设备，始终在指定逻辑坐标上工作。设置窗口或视口矩形实际上是执行 线性变换。本质上是窗口四个角映射到对应的视口四个角，反之亦然，因此保持视口和窗口x轴和y轴之间的比例变换一致，保证变换没有变形。窗口－视口变换只 是线性变换，不执行裁剪操作，例如当绘制超出窗口后，这些绘制仍然 通过线性变换映射到
+
+    视口进行绘制。Qt的绘制过程是进行坐标变换，在进行窗口－视口变换。
+
+    ==================================================================================================================
+
+    使用不同的字体
+
+    Qt提供了Font类来表示字体，当创建QFont对象时，Qt会使用指定的字体，如果没有对应的字体，Qt将寻找一种最接近的已安装字体。字体信息可以通过
+
+    QFontInfo 取出，并可用QFontMetrics取得字体的相关数据。函数exactMatch()判断底层窗口系统中是否有完全对应的字体。使用 QApplication::setFont()可以设置应用程序默认的字体，如果选择的字体不包括所有要显示的字符，QFont将会尝试寻找最基接近的 字体。当QPainter绘制指定的字体中不存在的字符时
+
+    将绘制一个空心的正方行。
+
+    绘图路径  –QPainterPath
+
+    绘图路径(painter path)由基本图元(矩形，椭圆，直线，曲线)组成，绘图路径可以是闭合的路径，如矩形和圆，或者是非闭合的路径，如直线和曲线。绘图路径在Qt中使用QPainterPth类表示，
+
+    它提供了绘图操作的容器，可以使图形能够复用。绘图路径可以进行填充，显示轮廓和裁剪。要生成可填充的轮廓的绘图路径，可以使用QPainterPathStroker类.使用QPainterPath的优点是复杂的
+
+    图形只需创建一次，就可以多次使用。QPainterPath对象可以时只有起点的空路径，或者从其他QPainterPath对象复制，创建了QPainterPath对象后，可以使用lineTo(),cubicTo(),
+
+    quadTo() 函数将直线和曲线添加到路径中来，直线和曲线从currentPosition()开始绘制。currentPosition()总是返回最后的子路经绘 制的终点。使用moveTo()函数可以在不增加路径的情况下移动currentPositon(),它关闭了一个子路经，开始一个新的子路经。 closeSubPath()也可以关闭当前路径，并从currentPosition()连接一条直线到绘图路径的起点。QPainter可以使用 addEllipse(),addPath(),addRect(),addRegion(),addText()将Qt的一些基本图元加入绘图路径。一 个已有的绘图路径可以通过connectPath()函数加入到另一个绘图路径中。
+
+    如下代码绘制了一个箭头:
+
+    QPainterPath path;
+
+    path.moveTo(10,100);
+
+    path.cubicTo(10,100,100,10,200,70);
+
+    path.lineTo(200,50);
+
+    path.lineTo(220,80);
+
+    path.lineTo(200,110);
+
+    path.lineTo(200,90);
+
+    path.cuticTo(200,100,100,50,50,100);
+
+    QPainter painter(this);
+
+    QPen pen(QColor(255,0,0),2);
+
+    painter.setPen(pen);
+
+    painter.drawPath(path);
+
+    Qt提供了两种填充方式，Qt::OddEventFill和 Qt::WindingFill.Qt::OddEvent时默认的填充规则，它指定QPainterPath使用奇偶填充规则，该规则判断一个点是否在 论经图形内的方法是从该店画一条水平线到路径外，计算水平线和路径的交点数，如果交点时奇数个则说明该点在路径图形内。QPainterPath还有一些 函数可以获取路径信息，如elementAt()函数可以取出指定的子路经元素，
+
+    isEmpty()函数判断当前路径是否为空。 controlPointRect()函数返回路径中所有的点和控制点的矩形，该函数运行速度比返回精确包容框boundingRect()函数快得多。 contains()函数判断一个点或一个矩形是否在路径内。intersects()判断指定的矩形与路径是否相交.QPainterPath可以将矩 形图形转换为其他图形，如使用toFillPolygon（）,toFillPolygon(),toSubpathPOlygons()函数将路径转化 为多边形。
+
+    QPainterPath还可以使用文字作为路径，下面的代码演示了文字路径，并使用线性渐变填充。
+
+    QLinearGradient linearGrad(QPointF(200,0),QPointF(1000,0));
+
+    linearGrad.setColorAt(0,Qt::black);
+
+    linearGrad.setColorAt(1,Qt::white);
+
+    QFont font(“隶书”,80);
+
+    font.setBold(true);
+
+    QPainterPath textPath();
+
+    textPath.addText(200,300,font,tr(“电子工业出版社”));
+
+    painter.setBrush(linearGrad);
+
+    painter.drawPath(textPath);
+
+    ===========================================================================
+
+    QImage和QPixmap绘图设备
+
+    Qt 提供了4个处理图像的类。QImage,QPixmap,QBitmap,QPicure.他们有着各自的特点。QImage优化了I/O操作，可以直接 存取操作像素数据。QPixmap主要用来在屏幕上显示图像。QBitmap从QPixmap继承，只能表示两种颜色，QPicture是可以记录和重放 QPrinter命令的类。QImage提供了与硬件无关的图像表示方法。通过QImage可以直接存取像素数据，QImage也可以用作绘图设备。
+
+    QImage 支持的图像颜色可以是单色，8位，32位和alpha混合的格式。因为QImage从QPainterDevice继承，所以QPainter可以直接在 QImage上绘图。除了绘制文字格式外(QFont依赖于底层的GUI).其他的绘制操作可以在任意线程中完成，如果要在其他线程中绘制文字，可以使用 QPainterPath。QImage对象具有隐式共享，作为传值参数，可以使用数据流及进行比较等特性。
+
+    读入图像可以通过QImage构造函 数，load(),loadFromData()几种方法完成。还可以通过QImage的静态函数fromData()由指定数据构造一个QImage对 象。既可以从文件系统装入，也可以从Qt应用程序的嵌入式资源中读取，使用save()可以保存QImage对象。可以通过 QImageReader::supportedImageFormats()和 QImageWriter::supportedImageFormats()获取QImage支持的所有文件格式列表。
+
+    ——————————————
+
+    QImage函数
+
+    ————————————————————————————————————————————————–
+
+    几何函数   size(),widt(),dotsPermeterX(),dotsPerMeterY()函数获取图像大小和比例信息。
+
+    rect()函数返回图像的包容矩形，valid()测试给定的坐标是否在此矩形内。offset()获取图像和其他图像之间的相对偏移量。setOffset()函数设置偏移量。
+
+    颜色函数   某个像素的颜色可以通过pixel函数获取，返回值是QRgb类型，对于单色和256色图像，colorTable()返回调色板,numColors返回调色板中的条目数.用pixelIndex()
+
+    函数获取像素的颜色索引，然后使用color()函数取出实际的颜色值.hasAlphaChannel()函数返回图像是否使用了alpha通道。allGray(),isGrayscale()测试图像是否为灰度图像。
+
+    文字        text()函数返回图像附属的文字，textKeys()返回文字的键值表。setText()函数改变图像附属文字.
+
+    低级信息   depth()函数获取图像颜色位数.支持1,8,32位.format().bytesPerLine()和numBytes()函数返回图像的数据存储信息.serieralNumber()函数取得唯一标识QImage对象的数字.
+
+    ————————————————————————————————————————————————–
+
+    QImage的8位和单色图像采用颜色索引表的方式存取，32为的图像则直接存储ARGB值.因此他们的像素操作函数也不相同，对32位的图像，setPixel()函数可以改变指定像素的QRgb颜色值，对8位和
+
+    单 色图像，setPixel()改变在预定义颜色表中的索引值，如果要改变颜色表，可以使用setColor()函数。QImage提供 scanLine()函数返回指定行的数据。bits()函数返回第一个像素的指针。每个像素在QImage中都使用整数形式表示。单色图像使用一位的索 引指向只有两种颜色的调色板，有两种类型的单色图像，big endia(MSB),little endian(LSB).256色图像使用8位颜色调色板，调色板的数据类型是QVector,QRgb实际上时无符号整数型，存储ARGB 的格式是0xAARRGGBB.32位的图像直接存储，有三种类型的存储格式：RGB,ARGB和已预乘的ARGB。在已预乘ARGB中，红绿蓝三色已经 和alpha相乘并模除255.allGray()和isGrayscale()函数可以判断一个彩色图像能否安全转化为灰度图像。图像的格式用 format()函数读取出，convertToFormat()可以进行图像格式转化，QImage支持的存储格式如下:
+
+    QImage::Format_Mono            单色图像(MSB)
+
+    QImage::Format_MonoLSB         单色图像(LSB)
+
+    QImage::Format_Indexed8        使用颜色表的256色图像
+
+    QImage::Format_RGB32           不支持Alpha通道的32位图像
+
+    QImage::FOrmat_ARGB32          含Alpha通道的32位图像
+
+    QImage::Format_ARGB32_Premultiplied   已预乘的含Alpha通道的32位图像.
+
+    ———————————–
+
+    QPixmap
+
+    QPixmap 主要完成屏幕后台(off-screen)缓冲区绘图。QPixmap对象可以使用QLabel或QAbstractButton子类 (QPushButton,QToolButton)显示,QLabel通过设置pixmap属性，QAbstractButton通过设置icon属性 来完成，除了使用构造函数初始化，QPixmap对象还可以使用静态函数grabWidget()和grabWindow()函数创建，并绘制指定的窗口 和窗口部件.QPixmap中的像素数据时内部的，并且由底层的窗口系统进行管理，如果要存取像素，只有通过QPrinter函数将QPixmap对戏那 个转换为QImage对象，根据底层系统的不同，QPixmap可以RGB32或者混合alpha格式存储，如果图像有Alpha通道且底层系统允许，则 优先使用混合alpha格式，因此QPixmap时依赖于底层系统的，在X11上和Mac上，QPixmap存储在服务器端,QImage存储在客户点， 在windows上，这两个类表达方式时相同的。QImage和QPixmap可以相互转换，通常QImage载入图像并进行直接操作，然后转换为 QPixmap在屏幕上显示。如果不需要操作像素，就直接使用QPixmap.在windows上，QPixmap还可以与HBITMAP之间相互转 换，QPixmap和QImage一样使用隐式共享，也能够使用数据流。
+
+    =======================================================================================================
+
+    组合模式绘图
+
+    组 合模式(Composition Mode)用来指定如何合并源图像和一个图像，最常见的是SourceOver(通常也叫alpha混合),当原像素和目标像素以这种方式混合时，源图像 的alpha通道定义了像素的透明度。组合模式绘图只支持Format_ARGB32_Premultiplied和Format_ARGB32格格式， 而且应该优先使用Format_ARGB32_Premultiplied格式，设置了组合模式后，它对所有的绘图操作都有效，如画笔，画刷，渐变效果和 pixmap/image绘制。QPainter::CompositeMode枚举类型中前12中组合类型是T.Porter和T.Duff于1984 年在沦为(Compositing Digital Image)中阐明的12种混合规则(Porter-Duff规则)混合的计算方法在此给出。以便理解混合的过程。
+
+    首先定义混合的因子 :
+
+    As:       原像素的alpha分量
+
+    Cs:       原像素种计算好(premultiplied)色彩分量
+
+    Ad:       目标像素的alpha分量
+
+    Cd;       目标像素计算好的色彩分量
+
+    Fs:       原像素在输出结果种占有的比例
+
+    Fd:       目标像素在输出结果种占有的比例
+
+    Ar:       输出结果种的Alpha分量
+
+    Cr:       输出结果种计算好的色彩分量
+
+    Porter和Duff定义了选择混合因子Fs和Fd产生不同的视觉效果的12种规则，最终结果种的Alpha值和色彩值由下面的公式决定
+
+    Fs=f(Ad);
+
+    Fd=f(As);
+
+    Ar=AsxFs+AdxFd
+
+    Cr=CsxFs+CdxFd
+
+    每种类型的Fs和Fd取值如表所示
+
+    ——————————————————————————————
+
+    常 量                                             Fs        Fd              说明
+
+    QPainter::CompositionMode_SourceOver            1        1-As         默认模式，源alpha和目标像素混合
+
+    QPainter::CompositionMode_DestinationOver       1-Ad       1          和SourceOver相反，目标Alpha和源像素混合
+
+    QPainter::CompositionMode_Clear                 N/A       N/A         清除目标像素
+
+    QPainter::CompositionMode_Source                N/A       N/A         输出源像素
+
+    QPainter::CompositionMode_SourceIn              Ad        0           在目标部分的源替代目标
+
+    QPainter::CompositionMode_DestinationI          0         As          于SourceIn相反
+
+    QPainter::CompositionMode_SourceOut             1-Ad      0           在目标之外的源替代目标
+
+    QPainter::CompositionMode_DestinationOut        0         1-As        于SourceOut相反
+
+    Qpainter::CompositionMode_SourceAtop            Ad        1-As        在目标部分的源和目标组合
+
+    QPainter::CompositionMode_DestinationAtop       1-Ad      As          与sourceatop相反
+
+    QPainter::CompositionMode_Xor                   1-Ad      1-As        在目标之外的源和源之外的目标混合
+
+    ——————————————————————————————————–
+
+    注意，上面的说明并没有完全概括各种混合的含义，要准确理解他们可以看公式并进行实践，畜类上面12种Porter_Duff规则外，Qt还支持12种扩展混合模式。下面给出计算公式需要注意如果结果中alpha值和色彩值超过0-255的范围，数值将会被截断
+
+    1  QPainter::CompositionMode_Plus           源和目标相加，该操作实现动画中两幅图像的溶解和过度过程。Cr=Cs+Cd   Ar=As+Ad
+
+    2  QPainter::CompositionMode_Multiply       源和目标进行正片叠底(multiply)操作。结果的颜色至少是源和目标种较暗的颜色。任何颜色和黑色作该操作产生黑色。任何颜色和白色作
+
+    该操作将不会改变。Cr=CsxCd+Csx(1-Ad)+Cdx(1-As)  Ar=AsxAd+Asx(1-Ad)+Adx(1-As)=As+Ad-AsxAd
+
+    3  QPainter::CompositionMode_Screen         源和目标互补然后相乘结果的颜色至少是源和目标种较亮的颜色。任何颜色和黑色进行滤色操作不会改变，任何颜色和白色进行滤色操
+
+    作还是白色
+
+    4  QPainter::CompositionMode_Overlay        根据目标颜色值不同，进行相乘操作或滤色操作，源色彩保持亮度和阴影覆盖在目标上。目标颜色和源颜色混合以反应目标的亮度。
+
+    5  QPainter::CompositionMode_Darken         选择源和目标种较暗的颜色
+
+    6  QPainter::CompositionMode_Lighten        选择源和目标种较亮的颜色
+
+    7  QPainter::CompositoinMode_ColorDodge     加亮目标颜色以反应源颜色，绘制黑色将没有效果
+
+    8  QPainter::CompositionMode_ColorBurn      使目标颜色变暗以反应源颜色，绘制白色没有效果。
+
+    9  QPainter::CompositionMode_HardLight      根据源的颜色，决定是正片叠底还是滤色操作。如果源颜色高于0.5，目标颜色将变亮。即进行滤色操作。如果源颜色亮度值低于0.5，目标将
+
+    会变暗，相当于进行了正片叠底操作。如果源亮度值等于0.5，目标不会改变，变亮或者变暗成都取决于源颜色和0.5的差，绘制纯黑色和纯白
+
+    色结果还是纯黑或纯白。
+
+    10 QPainter::CompositionMode_SoftLight      根据源的颜色，决定进行变暗(darken)操作还是变亮(lighten)操作。如果源颜色比0.5亮，目标将变亮，即进行了滤色操作。如果源颜色
+
+    比0.5暗，目标将变暗，相当于进行了颜色加深(burn)操作,如果等于0.5.目标不会发生改变。变亮或者变暗的程度取决于源颜色和0.5的差
+
+    值。
+
+    11 QPainter::CompositionMode_Difference     源和目标种较暗的颜色减去较亮的颜色，绘制导致白色反转成目标颜色黑色没 化
+
+    12 Qpainter::CompositionMode_Exclusion      和上一条规则的效果类似，但对比对较低一些，绘制白色将导致反转成目标颜色，绘制黑色没有

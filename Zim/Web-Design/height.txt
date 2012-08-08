@@ -1,0 +1,82 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-15T15:56:40+08:00
+
+====== height ======
+Created Sunday 15 May 2011
+http://www.tutwow.com/htmlcss/quick-tip-css-100-height/
+
+
+===== Quick Tip: CSS 100% Height =====
+September 11, 2008 in HTML/CSS, Tips
+171
+
+I don’t know about you, but I always get frustrated trying to figure out how to get my layout to stretch vertically to 100% of the page.  I have a div that I want to stretch, but it just doesn’t stretch.  Now why wouldn’t it do that?  Today I will share the solution with you.
+
+Say you have coded an HTML file like this:
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
+
+<title>CSS 100% Height</title>
+<link rel="stylesheet" type="text/css" href="style.css" />
+</head>
+
+<body>
+<div id="content">
+Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat.
+</div>
+</body>
+</html>
+
+And you have a CSS file like this:
+
+body {
+	margin: 0;
+	padding: 0;
+}
+#content {
+	background: #EEE;
+	border-left: 1px solid #000;
+	border-right: 1px solid #000;
+	padding: 0 20px 0 20px;
+	margin: auto;
+	font: 1.5em arial, verdana, sans-serif;
+	width: 960px;
+	height: 100%;
+}
+
+That gives you this example file.  As you can see, the content box on that page doesn’t stretch to the whole height of the page, even though we added the “height: 100%;” line to the CSS file.  Why is that?
+
+Let me give you a different way of thinking about HTML.  HTML is pretty much just a bunch of containers stacked inside each other.  So in our page, first we have the <html> container, then the <body> container inside of that, and finally the <div id=”content”> container inside of that.  When we put content into one of those boxes, it stretches that box and all the boxes containing that box so that they can hold the new content.  So when we put our text into the <div id=”content”> box, that box streches, which in turn stretches all of the boxes that it is in (in our case the <body> and <html> boxes).
+
+When we put the “height: 100%;” style onto the <div id=”content”> box, what we are doing is telling it to stretch to the full height of the box that it is in.  In this example, the box that it is in is the <body> box.  So the <div id=”content”> box is 100% of the height of the <body> box.  Well, how tall is the <body> box?  It’s just as tall as the <div id=”content”> box, because we never told it how tall it should be!  So when we put the “height: 100%;” style onto the <div id=”content”> box, we are just telling it to be as tall as itself!
+
+To fix this, we need to tell the <body> box to get bigger.  But then we run into the same problem with the <html> box – it is only as big as the <body> box!  So to fix our problem (to get the <div id=”content”> box to stretch the whole height of the page), we need to tell the <html> and <body> boxes to be the full height of the page.
+
+So if we change our CSS file to this:
+
+html {
+	height: 100%;
+}
+body {
+	margin: 0;
+	padding: 0;
+	height: 100%;
+}
+#content {
+	background: #EEE;
+	border-left: 1px solid #000;
+	border-right: 1px solid #000;
+	padding: 0 20px 0 20px;
+	margin: auto;
+	font: 1.5em arial, verdana, sans-serif;
+	width: 960px;
+	height: 100%;
+}
+
+And that’s it!  This is what we have now.  The content box is now stretched to the full height of the page!

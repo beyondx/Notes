@@ -1,0 +1,99 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-04T14:44:52+08:00
+
+====== CC++结构体的一个高级特性――指定成员的位数 ======
+Created 星期六 04 六月 2011
+
+宋宝华 21cnbao@21cn.com  sweek
+在大多数情况下，我们一般这样定义结构体：
+struct student
+{
+       unsigned int sex;
+       unsigned int age;
+};
+对于一般的应用，这已经能很充分地实现数据了的“封装”。
+但是，在实际工程中，往往碰到这样的情况：那就是要用一个**基本类型变量中的不同的位表示不同的含义**。譬如一个cpu内部的标志寄存器，假设为16 bit，而每个bit都可以表达不同的含义，有的表示结果是否为0，有的表示是否越界等等。这个时候我们用什么数据结构来表达这个寄存器呢？
+答案还是结构体！
+
+为达到此目的，我们要用到结构体的高级特性，那就是在基本成员变量的后面添加：
+: 数据位数
+组成新的结构体：
+
+struct xxx
+{
+       成员1类型 成员1 : 成员1位数;
+       成员2类型 成员2 : 成员2位数;
+       成员3类型 成员3 : 成员3位数;
+};
+基本的成员变量就会被拆分！这个语法在初级编程中很少用到，但是在高级程序设计中不断地被用到！
+例如：
+struct student
+{
+       unsigned int sex : 1;
+       unsigned int age : 15;
+};
+上述结构体中的两个成员sex和age加起来只占用了一个unsigned int的空间（假设unsigned int为16位）。
+
+基本成员变量被拆分后，访问的方法仍然和访问没有拆分的情况是一样的，例如：
+struct student sweek;
+sweek.sex = MALE;
+sweek.age = 20;
+
+虽然拆分基本成员变量在语法上是得到支持的，但是并不等于我们想怎么分就怎么分，例如下面的拆分显然是不合理的：
+struct student
+{
+       unsigned int sex : 1;
+       unsigned int age : 12;
+};
+这是因为1+12 = 13，不能再组合成一个基本成员，__不能组合成char、int或任何类型__，这显然是不能“自圆其说”的。
+
+在拆分基本成员变量的情况下，我们要特别注意数据的存放顺序，这还与CPU是Big endian还是Little endian来决定。Little endian和Big endian是CPU存放数据的两种不同顺序。对于整型、长整型等数据类型，Big endian认为第一个字节是最高位字节（按照从低地址到高地址的顺序存放数据的高位字节到低位字节）；而Little endian则相反，它认为第一个字节是最低位字节（按照从低地址到高地址的顺序存放数据的低位字节到高位字节）。
+
+我们定义IP包头结构体为：
+struct iphdr {
+#if defined(__LITTLE_ENDIAN_BITFIELD)
+       __u8       ihl:4,
+              version:4;
+#elif defined (__BIG_ENDIAN_BITFIELD)
+       __u8       version:4,
+            ihl:4;
+#else
+#error       "Please fix <asm/byteorder.h>"
+#endif
+       __u8       tos;
+       __u16       tot_len;
+       __u16       id;
+       __u16       frag_off;
+       __u8       ttl;
+       __u8       protocol;
+       __u16       check;
+       __u32       saddr;
+       __u32       daddr;
+       /*The options start here. */
+};
+在Little endian模式下，iphdr中定义：
+       __u8       ihl:4,
+              version:4;
+其存放方式为：
+第1字节低4位 ihl
+第1字节高4位 version （IP的版本号）
+
+若在Big endian模式下还这样定义，则存放方式为：
+第1字节低4位 version （IP的版本号）
+第1字节高4位 ihl
+这与实际的IP协议是不匹配的，所以在Linux内核源代码中，IP包头结构体的定义利用了宏：
+#if defined(____LITTLE_ENDIAN_BITFIELD__)
+…
+#elif defined (__BIG_ENDIAN_BITFIELD)
+…
+#endif
+来区分两种不同的情况。
+
+
+由此我们总结全文的主要观点：
+（1）       C/C++语言的结构体支持对其中的基本成员变量按位拆分；
+（2）     拆分的位数应该是合乎逻辑的，应仍然可以组合为基本成员变量；
+
+要特别注意拆分后的数据的存放顺序，这一点要结合具体的CPU的结构。
+

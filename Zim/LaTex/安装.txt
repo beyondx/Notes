@@ -1,0 +1,108 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-21T14:59:51+08:00
+
+====== 安装 ======
+Created Sunday 21 August 2011
+
+接下来安装中文支持，首先上网下载AdobeFonts 共有四种，宋体，仿宋，楷体，黑体。
+解压出来复制到：/usr/share/fonts
+然后执行：fc-cache -fsv  更新字体缓存
+然后查看以下：fc-list :lang=zh-cn >> zhcn.txt
+看看zhcn中有没有adobe字体：
+
+Adobe 楷体 Std,Adobe Kaiti Std,Adobe Kaiti Std R,Adobe 楷体 Std R:style=R,Regular
+Adobe 黑体 Std,Adobe Heiti Std,Adobe Heiti Std R,Adobe 黑体 Std R:style=R,Regular
+Adobe 宋体 Std,Adobe Song Std,Adobe Song Std L,Adobe 宋体 Std L:style=L,Regular
+Adobe 仿宋 Std,Adobe Fangsong Std,Adobe Fangsong Std R,Adobe 仿宋 Std R:style=R,Regular
+如果安装成功就会显示上面的内容。
+
+下面是编辑latex如何使用Adobe字体。按照下面的做法不会出错，字体也很漂亮
+\documentclass[11pt, a4paper]{article}
+\usepackage{__fontspec__}
+\setmainfont{Adobe Fangsong Std} %这里Fangsong 可以换成Adobe其他三种的任何一种，Song, Heiti,Kaiti
+\begin{document}
+你好，Tex
+\end{document}
+记住最后用 xelatex 进行编译，直接生成的是一个pdf文件，打开看看就知道字体使用对了没有。
+
+===== texlive安装和中文支持   =====
+
+有两种方法设置latex的中文支持
+
+1. 
+
+==== 利用系统自带的字体 ====
+——xelatex 命令直接生成PDF
+	1.1 系统字体目录：/usr/share/fonts
+	添加Adobefonts——Fangsong,Song,Kaiti, Hei (google搜索之)于一个新文件夹adobe-fonts中，运行 fc-list 查看是否安装成功。
+	1.2 在tex文件 可利用命令\setmainfont{} / \setromanfont{} / \setsanfont{}调用新建的系统字体。
+
+	eg.
+	
+	\documentclass[12pt,a4paper]{article}
+	
+	\usepackage{fontspec}
+	
+	\setmainfont{Adobe Kaiti Std}
+	
+	%括号里的字符应是fc-list中的
+	
+	\begin{document}
+	
+	{\setromanfont{Adobe Fangsong Std}不需要安装字体，仿宋 GB2312 \\}
+	
+	\end{document}
+	
+	然后终端运行xelatex.
+
+2 
+
+==== 安装tex 系统的中文字体 ====
+
+有一个简便的方法
+
+2.1 直接下载 YWang-zhfonts (http://bj.soulinfo.com/~hugang/tex/tex2007/) ,解压——tar -jxf *.bz2  ， 它是个隐藏文件。
+
+   查找texmf-local目录——利用配置文件texmf.cnf(/usr/share/texmf/web2c/texmf.cnf)，如目录不存在则建立一个。
+
+2.2 把刚解压的文件夹tex-var下的文件复制到/usr/local/share/texmf
+2.3 运行 texhash/ __mktexlsr__ 刷新tex系统
+
+eg.
+
+\documentclass{article}
+\usepackage{CJKutf8}
+\begin{document}
+\begin{CJK}{UTF8}{hei}
+I make it!
+
+我成功了！
+\end{CJK}
+\end{document}
+
+
+===== 附录： =====
+
+字体主要格式（http://www.ztxz.cn/ziti/11696.html）
+       1.光栅字体（.FON）　这种字体是针对特定的显示分辨率以不同大小存储的位图，用于Windows系统中屏幕上的菜单、按钮等处文字的显示。它并不是 以矢量描述的，放大以后会出现锯齿，只适合屏幕描述。不过它的显示速度非常快，所以作为系统字体而在Windows中使用。
+　　2.矢量字体（.FON）
+　　虽然扩展名和光栅字体一样，但是这种字体却是由基于矢量的数学模型定义的，是Windows系统字体的一类，一些windows应用程序会在较大尺寸的屏幕显示中自动使用矢量字体来代替光栅字体的显示。
+　　3.PostScript字体(.PFM)
+　　这种字体基于另一种矢量语言（Adobe PostScript）的描述，常用于PostScript打印机中，不过Windows并不直接支持这类字体，要在Windows使用这类字体需要安装"Adobe Type Manger"(ATM)软件来进行协调。
+　　4.TrueType字体（.TTF）
+　 　这是我们日常操作中接触得最多的一种类型的字体，其最大的特点就是它是由一种数学模式来进行定义的基于轮廓技术的字体，这使得它们比基于矢量的字体更容 易处理，保证了屏幕与打印输出的一致性。同时，这类字体和矢量字体一样可以随意缩放、旋转而不必担心会出现锯齿。我们下面要制作的字体就属于这一类型。
+　　5.OpenType字体(.OTF)
+　 　__OpenType__，是一种可缩放字型（scalable font）电脑字体类型，采用PostScript格式，是美国微软公司与Adobe公司联合开发，用来替代TrueType字型的新字型。这类字体的文 件扩展名为.otf，类型代码是OTTO，现行标准为OpenType 1.4。
+　　OpenType最初发表于1996年，并在 2000年之后出现大量字体。它源于微软公司的TrueType Open字型，TrueType Open字型又源于TrueType字型。OpenType font包括了Adobe CID-Keyed font技术。Adobe公司已经在2002年末将其字体库全部改用OpenType格式。到2005年大概有一万多种OpenType字体，Adobe 产品占了三分之一。
+
+汉字字符集（http://www.ztxz.cn/ziti/11212.html）
+①GB-2313字符集： 6763个简体汉字，715个符号，总计7478个字符
+②GBK字符集： 21003个简繁体汉字，882个符号，共计21885个字符(包含BIG-5字符集：13060个繁体汉字 + 808个符号 =13868个字符）
+③GB18030字符集：GBK字符集 + CJK Ext-A = 27533个汉字(CJK-A中有52字与GBK中的汉字重复，但内码不同，在计总数时不算在内)
+④UnicodeCJK：20902个汉字 (包含在GBK字符集中)
+⑤UnicodeCJK Ext-A： 6582个汉字 (包含在GB18030字符集中)
+⑥UnicodeCJK Ext-B： 42711个汉字
+⑦全部70244个汉字下载 ( 27533 + 42711 = 70244 )
+⑧古难字索引 ( CJK+Ext-A+Ext-B ) ★ 部首检字表
+字体名后面的数字，是指能显示的GBK + CJK-Ext-A + CJK-Ext-B汉字的个数。

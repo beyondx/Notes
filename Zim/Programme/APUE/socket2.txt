@@ -1,0 +1,54 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-21T16:54:40+08:00
+
+====== socket2 ======
+Created Thursday 21 April 2011
+http://blog168.chinaunix.net/space.php?uid=20196318&do=blog&id=171096
+1. 重用已使用的地址
+
+问题描述：在刚刚关闭了测试程序后，再启动服务器时提示bind失败，返回错误EADDRINUSE。
+
+原因分析：套接字（主动关闭一端）在关闭套接字后会停留在TIME_WAIT状态一端时间，由于我在同一机器上同时运行客户端与服务器，故服务器在重新启动执行bind时，可能上次关闭连接还没有完成，连接依然存在，故bind失败。通过设置套接口的SO_REUSEADDR可重用已绑定的地址，通常所有的TCP服务器都应该指定本套接口选项。具体方法为：
+
+int flag = 1;
+
+setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
+
+ 
+
+2．IO地址复用
+
+直接调用read/write读写套接口和先调用select/poll在调用read/write都属于阻塞IO，只不过前者阻塞在读写系统调用上，而者阻塞在select/poll上。由于select需要两个系统调用，IO复用还稍有劣势，使用select/poll的优势在于我们可以等待多个描述字就绪。
+
+ 
+
+IO复用的编程模型通常为：(以poll为例，应用实例请参考UNP第158页)
+
+1．  创建一个pollfd结构数组，数组长度为进程可能打开的最大描述符个数，可简单的使用OPEN_MAX <limits.h>。
+
+2．  置数组的第一个元素为监听套接字的就绪条件，并将其它的元素都清空。
+
+3．  调用poll，等待poll返回。
+
+4．  对于每一个已就绪的描述字：
+
+l  如果是监听描述字，则调用accept，得到连接描述字，并在pollfd数组第一个空位中加入连接描述字的就绪条件，并将就绪描述字数目减1，当减到0时转到3。
+
+l  如果是连接描述字，则接受来自该描述字的请求信息，并发送响应信息，将该描述字从pollfd数组中移除，并将就绪描述字数目减1，当减到0时转到3。
+
+ 
+
+3. 同一地址启动TCP与UDP服务
+
+1． 创建TCP套接字，并绑定地址。
+
+2． 创建UDP套接字，并绑定地址。
+
+3． 调用select/poll检查TCP、UDP套接字是否就绪。
+
+l  如果TCP套接字可读，则调用accept获取连接套接字，读取并响应请求。
+
+l  如果UDP套接字可读，则直接读取请求，并发送响应。
+
+具体应用实例参见UNP第223页。

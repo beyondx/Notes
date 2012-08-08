@@ -1,0 +1,54 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-23T09:55:16+08:00
+
+====== telnet smtp ======
+Created Monday 23 May 2011
+
+Welcome to the Emacs shell
+
+~ $ __telnet smtp.qq.com smtp__
+Trying 222.202.96.96...
+Connected to smtp.qq.com.
+Escape character is '^]'.
+220 esmtp4.qq.com Esmtp QQ Mail Server
+__HELO smtp.qq.com __  //向SMTP server打招呼
+HELO smtp.qq.com   //回显
+250 esmtp4.qq.com  //更正提示
+__AUTH LOGIN__		//用户登录请求，认证方式为LOGIN
+AUTH LOGIN
+334 VXNlcm5hbWU6  //需要认证提示
+__Z2Vla2FyZA==    __ //base64加密的用户名
+Z2Vla2FyZA==
+334 UGFzc3dvcmQ6  
+__aG80bzQ0		__//base64加密的密码
+aG80bzQ0
+235 Authentication successful
+__MAIL from: <geekard@gmail.com> __//发送者
+MAIL from: <geekard@gmail.com>
+501 mail from address must be same as authorization user //错误提示
+__MAIL from: <geekard@qq.com>__ //必须和认证时提供的邮箱相同
+MAIL from: <geekard@qq.com>
+250 Ok
+__RCPT TO: <geekard@gmail.com>__ //接收者
+RCPT TO: <geekard@gmail.com>
+250 Ok
+__DATA	__//写邮件内容(包括主题等)
+DATA
+354 End data with <CR><LF>.<CR><LF>
+__Subject: test mail from telnet. __ //主题
+Subject: test mail from telnet.
+__CC: geekard@qq.com  __//抄送
+CC: geekard@qq.com
+__test mail from telnet.  __//邮件正文
+test mail from telnet.
+__.__		//单独点号结束正文
+.
+250 Ok: queued as 
+__quit__		//发送结束
+quit
+221 Bye
+Connection closed by foreign host.
+~ $ 
+
+PS：base64在线生成小工具：http://www.sharejs.com/tooldetails-162.aspx

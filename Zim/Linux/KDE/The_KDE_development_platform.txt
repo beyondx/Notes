@@ -1,0 +1,74 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-17T09:30:21+08:00
+
+====== The KDE development platform ======
+Created Thursday 17 November 2011
+
+http://kde.org/developerplatform/
+
+The KDE Development Platform consists of an integrated set of technologies that help you build applications quickly and efficiently.
+
+===== Background =====
+
+The KDE Development Platform started out as a way to **share functionality **between applications KDE developers were creating. Developers realized that by sharing the workload, their applications became easier to write and maintain, and stability and consistency were improved. This philosophy is present in the guidelines for adding new functionality to the KDE Development Platform to this day: __one such requirement is to have at least two distinct KDE applications which make use of it__.
+
+KDE 2.0 introduced many new technologies and concepts to the KDE Development Platform such as **KParts** for object embedding, **KIO** which provides KDE applications with network transparency, an easy **multimedia** API, the **KHTML** web engine (which was later adopted by Apple to form **WebKit**), a **configuration** framework and much more. By offering more than just simple widgets and basic tools such as filedialogs, toolbars, system-wide spell check and more, KDE applications behave more like users expect them to and less developer time is spent tweaking individual applications to meet visual and behavior guidelines.
+
+===== Defining features =====
+
+KDE Developer Platform version 4 introduced several new 'Pillars' for applications to use. These include **Akonadi **for storage and retrieval of user data, **Phonon** for multimedia, **Solid** for hardware awareness, **Threadweaver** for simplified multithreading, **Sonnet **for spellchecking, **Kross** for multi-language scripting support,** Nepomuk **for semantic file and content indexing and retrieval and **Oxygen **for visual design. These technologies have brought even more powerful, easy to use building blocks to the KDE Developer Platform for application developers to take advantage of. Most of these pillar technologies can also be used as independant libraries allowing developers to mix-and-match which dependencies they wish to rely on.
+
+The entire KDE Development Platform is built upon the** Qt toolkit **from Qt Development Frameworks, a Nokia company. Like Qt, the KDE libraries are LGPL or BSD licensed and enable easy cross-platform development. The KDE community works on enabling KDE applications both on Unix and Unix-like operating systems such as Linux, Sun Solaris and BSD as well as Windows and Mac. Efforts are also directed at supporting KDE on mobile platforms like Symbian, Windows CE and Maemo. Other operating systems like Haiku are supported by a vibrant community.
+
+While the KDE Platform is mainly written in **C++**, it includes a set of bindings for other programming languages including Python, Java, C# and Ruby.
+
+===== Technologies =====
+
+===     User Interface ===
+        Plasma Workspaces
+        Sonnet
+        Spell and grammar-checking technology
+        KParts
+        Pluggable component architecture
+        KHTML
+        HTML rendering and JS library
+        KIO
+        Extensible network-enabled Input and Output framework
+
+===     Hardware and Multimedia ===
+        Solid
+        Hardware and network awareness
+        Phonon
+        Multimedia framework
+
+===     Communication ===
+        Akonadi
+        Centralized PIM storage solution
+
+===     User Interface ===
+        Providing Online Help
+        Defining menus and toolbars in XML
+        Goya
+        Widgets on itemlists
+
+===     Services ===
+        Policykit-KDE
+        Authentication framework
+        DBus
+        Inter-process communication
+        Starting other programs
+        Nepomuk
+        Semantic desktop indexing technology
+        KNewStuff
+        Collaborative data sharing (might move here from projects)
+
+===     Games ===
+        Gluon
+        High-level game development library
+        KGGZ
+        Providing access to the GGZ Gaming Zone, a free online gaming centre.
+
+===     Other ===
+        Kross
+        Scripting framework

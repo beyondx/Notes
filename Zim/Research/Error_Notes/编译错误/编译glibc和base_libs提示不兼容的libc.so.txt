@@ -1,0 +1,19 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-22T10:35:27+08:00
+
+====== 编译glibc和base libs提示不兼容的libc.so ======
+Created Wednesday 22 February 2012
+http://www.mail-archive.com/ltib@nongnu.org/msg00623.html
+
+这是由于glibc和base_libs的rpm控制脚本存在bug。
+修改ltib目录下的dist/lfs-xx/glibc|base_libs目录下的spec文件中下面部分：
+
+# remove absolute paths from text search files (if they exist)
+ perl -w -e '
+-    @ARGV = grep { `file $_` =~ m,ASCII C program text, } @ARGV;
++    @ARGV = grep { `file $_` =~ m,ASCII\s+.*text, } @ARGV;
+
+RTW：这其实是__将生成的libc.so和libc_noshared.so中的绝对路径去掉__。
+
+在新版本的工具链制作脚本中已经自动打上了上面的patch。

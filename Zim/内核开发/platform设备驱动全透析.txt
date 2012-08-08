@@ -1,0 +1,370 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-12T21:28:42+08:00
+
+====== platform设备驱动全透析 ======
+Created Monday 12 March 2012
+http://blog.csdn.net/21cnbao/article/details/5615421
+1.1 platform总线、设备与驱动
+
+在Linux 2.6的设备驱动模型中，关心__总线、设备和驱动__这3个实体，__总线将设备和驱动绑定__。在系统每注册一个设备的时候，会寻找与之匹配的驱动；相反的，在系统每注册一个驱动的时候，会寻找与之匹配的设备，而__匹配由总线完成__。
+
+__一个现实的Linux设备和驱动通常都需要挂接在一种总线上__，对于本身依附于PCI、USB、I2 C、SPI等的设备而言，这自然不是问题，但是在嵌入式系统里面，SoC系统中集成的外设控制器、挂接在SoC内存空间的外设等确不依附于此类总线。基于这一背景，__Linux发明了一种虚拟的总线，称为platform总线__，相应的设备称为platform_device，而驱动成为platform_driver。
+
+注意，所谓的platform_device并不是与字符设备、块设备和网络设备并列的概念，而是Linux系统提供的一种附加手段，例如，在S3C6410处理器中，把内部集成的I2 C、RTC、SPI、LCD、看门狗**等控制器都归纳为platform_device**，而它们本身就是字符设备。platform_device结构体的定义如代码清单1所示。
+
+代码清单1 	platform_device结构体
+
+1 struct platform_device {
+2 const char * __name__;/* 设备名 */
+3 u32 id;
+4 __struct device__ dev;
+5 u32 num_resources;/* 设备所使用各类资源数量 */
+6 struct resource * resource;/* 资源 */
+7 };
+
+platform_driver这个结构体中包含probe()、remove()、shutdown()、suspend()、resume()函数，通常也需要由驱动实现，如代码清单2。
+
+代码清单2 platform_driver结构体
+
+1 struct platform_driver {
+2 int (*probe)(struct platform_device *);
+3 int (*remove)(struct platform_device *);
+4 void (*shutdown)(struct platform_device *);
+5 int (*suspend)(struct platform_device *, pm_message_t state);
+6 int (*suspend_late)(struct platform_device *, pm_message_t state);
+7 int (*resume_early)(struct platform_device *);
+8 int (*resume)(struct platform_device *);
+9 struct pm_ext_ops *pm;
+10 __struct device_driver__ driver;
+11};
+
+系统中为platform总线定义了一个bus_type的实例platform_bus_type，其定义如代码清单15.3。
+
+代码清单15.3 platform总线的bus_type 实例platform_bus_type
+
+1 __struct bus_type __platform_bus_type = {     #定义一个__名称为"platform"的虚拟总线__。
+2 .name =** "platform"**,
+3 .dev_attrs = platform_dev_attrs,
+4 __.match __= platform_match,
+5 .uevent = platform_uevent,
+6 .pm = PLATFORM_PM_OPS_PTR,
+7 };
+8 EXPORT_SYMBOL_GPL(platform_bus_type);
+
+这里要重点关注其match()成员函数，正是此成员__表明了platform_device和platform_driver之间如何匹配__，如代码清单4所示。
+**PS：设备与驱动之间的匹配是由总线决定的。**
+
+代码清单4 platform_bus_type的match()成员函数
+
+1 static int platform_match(**struct device** *dev, **struct device_driver** *drv)   #注意，不是sturct platform_device。
+2 {
+3 struct platform_device *pdev;
+4
+5 pdev = container_of(dev, struct platform_device, dev);
+6 return (strncmp(pdev->name, drv->name, **BUS_ID_SIZE**) == 0);
+7 }
+
+从代码清单4的第6行可以看出，匹配platform_device和platform_driver__主要看二者的name字段是否相同__。
+
+对platform_device的定义通常在BSP的板文件中实现，在板文件中，将platform_device归纳为一个数组，最终通过platform_add_devices()函数统一注册。platform_add_devices()函数可以将平台设备添加到系统中，这个函数的原型为：
+
+int platform_add_devices(struct platform_device **devs, int num);
+
+该函数的第一个参数为平台设备数组的指针，第二个参数为平台设备的数量，它内部调用了platform_device_register()函数用于注册单个的平台设备。
+1.2 将globalfifo作为platform设备
+
+现在我们将前面章节的globalfifo驱动挂接到platform总线上，要完成2个工作:
+
+1. 将globalfifo移植为platform驱动。
+
+2. 在板文件中添加globalfifo这个platform设备。
+
+为完成将globalfifo移植到platform驱动的工作，需要在原始的globalfifo字符设备驱动中套一层platform_driver的外壳，如代码清单5。注意进行这一工作后，并没有改变globalfifo是字符设备的本质，只是将其挂接到了platform总线。
+
+代码清单5 为globalfifo添加platform_driver
+
+1 static int __devinit globalfifo_probe(struct platform_device *pdev)
+
+2 {
+
+3 int ret;
+
+4 dev_t devno = MKDEV(globalfifo_major, 0);
+
+5
+
+6 /* 申请设备号*/
+
+7 if (globalfifo_major)
+
+8 ret = register_chrdev_region(devno, 1, "globalfifo");
+
+9 else { /* 动态申请设备号 */
+
+10 ret = alloc_chrdev_region(&devno, 0, 1, "globalfifo");
+
+11 globalfifo_major = MAJOR(devno);
+
+12 }
+
+13 if (ret < 0)
+
+14 return ret;
+
+15 /* 动态申请设备结构体的内存*/
+
+16 globalfifo_devp = kmalloc(sizeof(struct globalfifo_dev), GFP_KERNEL);
+
+17 if (!globalfifo_devp) { /*申请失败*/
+
+18 ret = - ENOMEM;
+
+19 goto fail_malloc;
+
+20 }
+
+21
+
+22 memset(globalfifo_devp, 0, sizeof(struct globalfifo_dev));
+
+23
+
+24 globalfifo_setup_cdev(globalfifo_devp, 0);
+
+25
+
+26 init_MUTEX(&globalfifo_devp->sem); /*初始化信号量*/
+
+27 init_waitqueue_head(&globalfifo_devp->r_wait); /*初始化读等待队列头*/
+
+28 init_waitqueue_head(&globalfifo_devp->w_wait); /*初始化写等待队列头*/
+
+29
+
+30 return 0;
+
+31
+
+32 fail_malloc: unregister_chrdev_region(devno, 1);
+
+33 return ret;
+
+34 }
+
+35
+
+36 static int __devexit globalfifo_remove(struct platform_device *pdev)
+
+37 {
+
+38 cdev_del(&globalfifo_devp->cdev); /*注销cdev*/
+
+39 kfree(globalfifo_devp); /*释放设备结构体内存*/
+
+40 unregister_chrdev_region(MKDEV(globalfifo_major, 0), 1); /*释放设备号*/
+
+41 return 0;
+
+42 }
+
+43
+
+44 static struct platform_driver globalfifo_device_driver = {
+
+45 .probe = globalfifo_probe,
+
+46 .remove = __devexit_p(globalfifo_remove),
+
+47 .driver = {
+
+48 .name = "globalfifo",
+
+49 .owner = THIS_MODULE,
+
+50 }
+
+51 };
+
+52
+
+53 static int __init globalfifo_init(void)
+
+54 {
+
+55 return platform_driver_register(&globalfifo_device_driver);
+
+56 }
+
+57
+
+58 static void __exit globalfifo_exit(void)
+
+59 {
+
+60 platform_driver_unregister(&globalfifo_device_driver);
+
+61 }
+
+62
+
+63 module_init(globalfifo_init);
+
+64 module_exit(globalfifo_exit);
+
+在代码清单5中，模块加载和卸载函数仅仅通过platform_driver_register()、platform_driver_unregister()函数进行platform_driver的注册与注销，而原先注册和注销字符设备的工作已经被移交到platform_driver的probe()和remove()成员函数中。
+
+代码清单5未列出的部分与原始的globalfifo驱动相同，都是实现作为字符设备驱动核心的file_operations的成员函数。
+
+为了完成在板文件中添加globalfifo这个platform设备的工作，需要在板文件（对于LDD6410而言，为arch/arm/mach-s3c6410/ mach-ldd6410.c）中添加相应的代码，如代码清单6。
+
+代码清单6 globalfifo对应的platform_device
+
+1 static struct platform_device globalfifo_device = {
+
+2 .name = "globalfifo",
+
+3 .id = -1,
+
+4 };
+
+对于LDD6410开发板而言，为了完成上述globalfifo_device这一platform_device的注册，只需要将其地址放入arch/arm/mach-s3c6410/ mach-ldd6410.c中定义的ldd6410_devices数组，如：
+
+static struct platform_device *ldd6410_devices[] __initdata = {
+
++ & globalfifo_device,
+
+#ifdef CONFIG_FB_S3C_V2
+
+&s3c_device_fb,
+
+#endif
+
+&s3c_device_hsmmc0,
+
+...
+
+}
+
+在加载LDD6410驱动后，在sysfs中会发现如下结点：
+
+/sys/bus/platform/devices/globalfifo/
+
+/sys/devices/platform/globalfifo/
+
+留意一下代码清单5的第48行和代码清单6的第2行，platform_device和platform_driver的name一致，这是二者得以匹配的前提。
+1.3 platform设备资源和数据
+
+留意一下代码清单1中platform_device结构体定义的第5~6行，描述了platform_device的资源，资源本身由resource结构体描述，其定义如代码清单7。
+
+代码清单7 resouce结构体定义
+
+1 struct resource {
+
+2 resource_size_t start;
+
+3 resource_size_t end;
+
+4 const char *name;
+
+5 unsigned long flags;
+
+6 struct resource *parent, *sibling, *child;
+
+7 };
+
+我们通常关心start、end和flags这3个字段，分别标明资源的开始值、结束值和类型，flags可以为IORESOURCE_IO、IORESOURCE_MEM、IORESOURCE_IRQ、IORESOURCE_DMA等。start、end的含义会随着flags而变更，如当flags为IORESOURCE_MEM时，start、end分别表示该platform_device占据的内存的开始地址和结束地址；当flags为IORESOURCE_IRQ时，start、end分别表示该platform_device使用的中断号的开始值和结束值，如果只使用了1个中断号，开始和结束值相同。对于同种类型的资源而言，可以有多份，譬如说某设备占据了2个内存区域，则可以定义2个IORESOURCE_MEM资源。
+
+对resource的定义也通常在BSP的板文件中进行，而在具体的设备驱动中透过platform_get_resource()这样的API来获取，此API的原型为：
+
+struct resource *platform_get_resource(struct platform_device *, unsigned int, unsigned int);
+
+譬如在LDD6410开发板的板文件中为DM9000网卡定义了如下resouce：
+
+static struct resource ldd6410_dm9000_resource[] = {
+
+[0] = {
+
+.start = 0x18000000,
+
+.end = 0x18000000 + 3,
+
+.flags = IORESOURCE_MEM
+
+},
+
+[1] = {
+
+.start = 0x18000000 + 0x4,
+
+.end = 0x18000000 + 0x7,
+
+.flags = IORESOURCE_MEM
+
+},
+
+[2] = {
+
+.start = IRQ_EINT(7),
+
+.end = IRQ_EINT(7),
+
+.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
+
+}
+
+};
+
+在DM9000网卡的驱动中则是通过如下办法拿到这3份资源：
+
+db->addr_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+
+db->data_res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+
+db->irq_res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+
+对于IRQ而言，platform_get_resource()还有一个进行了封装的变体platform_get_irq()，其原型为：
+
+int platform_get_irq(struct platform_device *dev, unsigned int num);
+
+它实际上调用了“platform_get_resource(dev, IORESOURCE_IRQ, num);”。
+
+设备除了可以在BSP中定义资源以外，还可以附加一些数据信息，因为对设备的硬件描述除了中断、内存、DMA通道以外，可能还会有一些配置信息，而这些配置信息也依赖于板，不适宜直接放置在设备驱动本身，因此，platform也提供了platform_data的支持。platform_data的形式是自定义的，如对于DM9000网卡而言，platform_data为一个dm9000_plat_data结构体，我们就可以将MAC地址、总线宽度、有无EEPROM信息放入platform_data：
+
+static struct dm9000_plat_data ldd6410_dm9000_platdata = {
+
+.flags = DM9000_PLATF_16BITONLY | DM9000_PLATF_NO_EEPROM,
+
+.dev_addr = { 0x0, 0x16, 0xd4, 0x9f, 0xed, 0xa4 },
+
+};
+
+static struct platform_device ldd6410_dm9000 = {
+
+.name = "dm9000",
+
+.id = 0,
+
+.num_resources = ARRAY_SIZE(ldd6410_dm9000_resource),
+
+.resource = ldd6410_dm9000_resource,
+
+.dev = {
+
+.platform_data = &ldd6410_dm9000_platdata,
+
+}
+
+};
+
+而在DM9000网卡的驱动中，通过如下方式就拿到了platform_data：
+
+struct dm9000_plat_data *pdata = pdev->dev.platform_data;
+
+其中，pdev为platform_device的指针。
+
+由以上分析可知，设备驱动中引入platform的概念至少有如下2大好处：
+
+1. 使得设备被挂接在一个总线上，因此，符合Linux 2.6的设备模型。其结果是，配套的sysfs结点、设备电源管理都成为可能。
+
+2. 隔离BSP和驱动。在BSP中定义platform设备和设备使用的资源、设备的具体配置信息，而在驱动中，只需要通过通用API去获取资源和数据，做到了板相关代码和驱动代码的分离，使得驱动具有更好的可扩展性和跨平台性。

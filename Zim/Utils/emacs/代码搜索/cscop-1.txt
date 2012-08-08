@@ -1,0 +1,170 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-18T09:27:03+08:00
+
+====== cscop-1 ======
+Created Monday 18 April 2011
+
+===== 简介 =====
+
+对于浏览源代码来说，在 Emacs 里面也有很多工具可用，比如自带的 etags 就不错，不过功能不如 Cscope 强大。它最初是由 Bell 实验室开发，并且多年以来一直是 AT&T Unix 商业发行版的一部分。它已经被用于管理超过两千万行代码的工程。在2000年4月，多亏了 Santa Cruz Operation, Inc. (SCO) ， Cscope 的源代码在 BSD license 下开放了源代码Blah~Blah~
+
+使用Cscope，主要用来回答以下问题：
+Where is this variable used?
+What is the value of this preprocessor symbol?
+Where is this function in the source files?
+What functions call this function?
+What functions are called by this function?
+Where does the message "out of space" come from?
+Where is this source file in the directory structure?
+What files include this header file?
+
+
+====== 安装和配置 ======
+
+===== 1. =====
+首先，在系统中安装Cscope。Linux下，安装软件的方式通常有两种：
+方式一：下载Cscope的源代码，按照源码包中的INSTALL说明文件，执行下面的命令进行配置编译安装
+./configure
+make
+make install
+
+Cscope的源码包里面有个xcscope.el文件，为(X)Emacs提供了Cscope 接口。它处于源码包的 contrib/xcscope 目录下。该目录下面还有一个名为cscope-indexer的脚本文件，用于创建文件列表和数据库。
+
+方式二：利用linux发行版的软件管理工具进行安装。我使用的是Jaunty Jackalope（Ubuntu 9.04），只要一条命令，解决所有问题。
+sudo apt-get install cscope
+安装后，cscope-indexer脚本位于/usr/bin目录下，xcscope.el被置于emacs默认的load-path下，在我的系统中是/usr/share/emacs/site-lisp。
+
+===== 2. =====
+为了能够执行cscope-indexer脚本，需要将它放到PATH变量指向的文件夹下，如/usr/bin，并确认该脚本具有执行权限。
+ 
+
+==== 3. ====
+把xcscope.el文件放到系统用户的load-path下。为系统用户创建文件夹并将其加入load-path的方法是：先创建文件夹，
+		mkdir -p ~/.emacs.d/site-lisp/
+然后，在emacs的配置文件~/.emacs中添加
+;;LOAD_PATH       
+(add-to-list 'load-path' "~/.emacs.d/site-lisp")
+如果没有该文件，请手动创建。
+
+===== 4. =====
+在.emacs文件中加入下面的语句
+(require 'xcscope)
+或者，你希望只在打开c/c++文件的时候才加载xcscope，可以加入
+(add-hook 'c-mode-common-hook '(lambda() (require 'xcscope)))
+
+===== 5. =====
+xcscope默认的快捷键都是绑定到C-c s的前缀上面，如果你经常使用xcscope.el，可以自己进行按键绑定，减少击键次数。不要担心别人笑你懒，xcscope.el的编写者就鼓励我们这样做:-)。具体方法是，在.emacs文件中加入
+
+(define-key global-map [(control f3)]  'cscope-set-initial-directory)
+(define-key global-map [(control f4)]  'cscope-unset-initial-directory)
+(define-key global-map [(control f5)]  'cscope-find-this-symbol)
+(define-key global-map [(control f6)]  'cscope-find-global-definition)
+(define-key global-map [(control f7)]  'cscope-find-global-definition-no-prompting)
+(define-key global-map [(control f8)]  'cscope-pop-mark)
+(define-key global-map [(control f9)]  'cscope-next-symbol)
+(define-key global-map [(control f10)] 'cscope-next-file)
+(define-key global-map [(control f11)] 'cscope-prev-symbol)
+(define-key global-map [(control f12)] 'cscope-prev-file)
+(define-key global-map [(meta f9)]     'cscope-display-buffer)
+(define-key global-map [(meta f10)]    'cscope-display-buffer-toggle)
+
+===== 6. =====
+重启emacs，使配置生效。
+
+
+====== 基本使用 ======
+
+这里以内核源码为例，介绍Cscope的基本用法。
+1.首先，在源码根目录下，如~/kernerl/linux-2.6.29.3,利用cscope-indexer脚本生成文件列表和数据库，方法是执行
+
+cscope-indexer －r
+
+-r参数表示递归检索子目录，文件列表和数据库的默认文件名分别为cscope.files和cscope.out，可以使用-i,-f参数进行修改，请参考man了解脚本参数用法。
+
+2.激动人心的时刻到了。用emacs打开init/main.c，C-s搜索sched_init函数，将光标停在函数名上，按C-c s d或者先前设置的Ctrl+F6,回车进行查找。结果居然用了35.32秒，汗！原来，Cscope默认在每次进行查找时更新cscope.out。当工程十分庞大时，建议关闭该选项以提高查找速度。方法是在~/.emacs文件中加入
+
+(setq cscope-do-not-update-database t)
+
+重复上述操作，结果仍然用了9.89秒，再汗！莫非是我的古董本太慢？
+
+ 3.百度一下，你就知道:) Cscope可以通过创建反向索引加速查找，方法是调用Cscope时，使用-q参数。真的假的，一试便知。修改cscope-indexer脚本，将
+
+cscope -b -i $LIST_FILE -f $DATABASE_FILE
+
+替换为
+
+cscope -q -b -i $LIST_FILE -f $DATABASE_FILE
+
+进入内核根目录，删除先前的文件列表和数据库，重新调用cscope-indexer。这回多生成了两个文件，cscope.in.out和cscope.po.out。重试刚才的查找，结果只用了0.08秒，大功告成。
+
+cscope查找函数定义
+
+===== 附：默认的按键绑定 =====
+;; * Keybindings:
+;; All keybindings use the "C-c s" prefix, but are usable only while
+;; editing a source file, or in the cscope results buffer:
+;;      C-c s s         Find symbol.
+;;      C-c s d         Find global definition.
+;;      C-c s g         Find global definition (alternate binding).
+;;      C-c s G         Find global definition without prompting.
+;;      C-c s c         Find functions calling a function.
+;;      C-c s C         Find called functions (list functions called   from a function).
+;;      C-c s t         Find text string.
+;;      C-c s e         Find egrep pattern.
+;;      C-c s f         Find a file.
+;;      C-c s i         Find files #including a file.
+
+;; These pertain to navigation through the search results:
+
+;;      C-c s b         Display *cscope* buffer.
+;;      C-c s B         Auto display *cscope* buffer toggle.
+;;      C-c s n         Next symbol.
+;;      C-c s N         Next file.
+;;      C-c s p         Previous symbol.
+;;      C-c s P         Previous file.
+;;      C-c s u         Pop mark.
+;;
+
+;; These pertain to setting and unsetting the variable,` cscope-initial-directory', (location searched for the cscope database  directory):
+
+;;
+
+;;      C-c s a         Set initial directory.
+;;      C-c s A         Unset initial directory.
+;;
+
+;; These pertain to cscope database maintenance:
+
+;;
+;;      C-c s L         Create list of files to index.
+;;      C-c s I         Create list and index.
+;;      C-c s E         Edit list of files to index.
+;;      C-c s W         Locate this buffer's cscope directory
+;;                      ("W" --> "where").
+;;      C-c s S         Locate this buffer's cscope directory.
+;;                      (alternate binding: "S" --> "show").
+;;      C-c s T         Locate this buffer's cscope directory.
+;;                      (alternate binding: "T" --> "tell").
+;;      C-c s D         Dired this buffer's directory.
+
+===== cscope 的安装 =====
+ 
+
+直接 sudo apt-get install cscope 然后找到cscope.el cp到site-lisp/
+
+添加:
+(require 'xcscope)
+
+cscope的主要功能和对应的快捷键：（ 貌似全局查找函数的插件）
+;; C-c s a             设定初始化的目录，一般是你代码的根目录
+;; C-s s I             对目录中的相关文件建立列表并进行索引
+;; C-c s s             序找符号
+;; C-c s g             寻找全局的定义
+;; C-c s c             看看指定函数被哪些函数所调用
+;; C-c s C             看看指定函数调用了哪些函数
+;; C-c s e             寻找正则表达式
+;; C-c s f             寻找文件
+;; C-c s i             看看指定的文件被哪些文件include)
+
+ 

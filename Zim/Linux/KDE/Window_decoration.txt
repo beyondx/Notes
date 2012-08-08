@@ -1,0 +1,75 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-17T11:06:46+08:00
+
+====== Window decoration ======
+Created Thursday 17 November 2011
+http://en.wikipedia.org/wiki/Window_decoration
+
+In graphical computing, window decorations are provided by__ window managers __to improve the usability of a multi-windowed desktop. They typically consist of a __title bar __along the top of each window and a __minimal border__ around the other three sides, although this can often be varied upon if the user wishes.[1] On Windows this is called "nonclient area".[2]
+
+In the predominant layout for modern window decorations, __the top（title） bar contains a title and buttons which perform windowing-related actions such as minimizing, maximizing and closing . The border exists primarily to allow the user to resize the window.__
+
+Window decorations are important in developing the __look and feel__ of a desktop environment. 
+
+However, modern systems allow for great customization of the colors, styles and__ animation effects__ used. User modifications some times cross between the appearance of different desktop environments.
+
+=== Contents ===
+    1 Types of window decoration
+        1.1 Borders
+        1.2 Types of borders
+            1.2.1 Useless Borders
+        1.3 Title Bars
+        1.4 Types of titlebar
+            1.4.1 Useless Titlebars
+        1.5 Title Bar Buttons
+    2 Gallery
+    3 See also
+    4 References
+
+==== Types of window decoration ====
+
+ 
+
+=== Borders ===
+
+A **window border** is a window decoration component provided by some** window managers**, that appears around the **active **window. Some window managers may also display a border around background windows.
+
+=== Types of borders ===
+
+Typically window borders can be used to provide__ window motion__ enabling the window to be moved or resized by using a drag action.
+
+=== Useless Borders ===
+
+Some window managers provide useless borders which are purely for decorative purposes and offer **no window motion** facility. These window managers do not allow windows to be resized by using a drag action on the border.
+
+=== Title Bars ===
+
+A titlebar is a window decoration component provided by some window managers which appears at the top of each window. The titlebar is typically used to display the name of the application, or the name of the open document, and may provide title bar buttons for minimizing, maximizing, closing or rolling up of application windows.
+
+=== Types of titlebar ===
+
+Typically titlebars can be used to provide **window motion** enabling the window to be moved around the screen by using a drag action.
+
+=== Useless Titlebars ===
+
+Some window managers provide useless titlebars which are purely for decorative purposes and offer no window motion facility. These window managers do not allow windows to be moved around the screen by using a drag action on the titlebar.
+
+=== Title Bar Buttons ===
+
+Title bar buttons are included in the titlebar of some window managers, and provide the facility to minimize, maximize, rollup or close application windows. Some window managers may display the titlebar buttons in the taskbar or task panel, rather than in a titlebar.
+
+=== Gallery ===
+
+    KDE application KDVI using the Kubuntu KDE window decorator
+
+    KDE application KDVI using the default Emerald window decorator
+
+    KDE application KDVI using the default GTK window decorator
+
+
+
+[edit] References
+
+    ^ http://markhobley.yi.org/glossary/windowdecorations.html
+    ^ http://msdn.microsoft.com/en-us/library/dd162743.aspx

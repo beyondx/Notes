@@ -1,0 +1,82 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-20T12:37:47+08:00
+
+====== 每个程序员都必须遵守的编程原则 ======
+Created Sunday 20 November 2011
+
+好的编程原则跟好的系统设计原则和技术实施原则有着密切的联系。下面的这些编程原则在过去的这些年里让我成为了一名优秀的 程序员，我相信，这些原则对任何一个开发人员来说，都能让他的编程能力大幅度的提高，能让他开发出可维护性更强、缺陷更少的程 序。
+ 
+
+    我不要自我重复
+    这也许是在编程开发这最最基本的一个信条，就是要告诉你不要出现重复的代码。我们很多的编程结构之所以存在，就是为了帮助我们消除重复(例如，循环语句，函数，类，等等)。一旦程序里开始有重复现象的出现(例如很长的表达式、一大堆的语句，但都是为了表达相同的概念)，你就需要对代码进行一次新的提炼，抽象。
+    http://en.wikipedia.org/wiki/Don%27t_repeat_yourself
+
+    提炼原则
+    跟“不要自我重复原则”相关，这一原则是说“程序中任何一段具有功能性的代码在源代码文件中应该唯一的存在。”
+    http://en.wikipedia.org/wiki/Abstraction_principle_(programming)
+
+    保持简单
+    简单化(避免复杂)永远都应该是你的头等目标。简单的程序让你写起来容易，产生的bug更少，更容易维护修改。
+    http://en.wikipedia.org/wiki/KISS_principle
+
+    不要开发你目前用不到的功能
+    除非你真正需要用到它，否则不要轻易加上那些乱七八糟用不到的功能。
+    http://en.wikipedia.org/wiki/YAGNI
+
+    用最简单的方法让程序跑起来
+    在开发时有个非常好的问题你需要问问自己，“怎样才能最简单的让程序跑起来？”这能帮助我们在设计时让程序保持简单。
+    http://c2.com/xp/DoTheSimplestThingThatCouldPossiblyWork.html
+
+    不要让我动脑子
+    这实际上是Steve Krug 关于web界面操作的一本书的书名，但也适用于编程。主旨是，程序代码应该让人们花最小的努力就能读懂和理解。如果一段程序对于阅读者来说需要花费太多的努力才能理解，那它很可能需要进一步简化。
+    http://www.sensible.com/dmmt.html
+
+    开放/封闭原则
+    程序里的实体项(类，模块，函数等)应该对扩展行为开放，对修改行为关闭。换句话说，不要写允许别人修改的类，应该写能让人们扩展的类。
+    http://en.wikipedia.org/wiki/Open_Closed_Principle
+
+    为维护者写程序
+    任何值得你编写的程序在将来都是值得你去维护的，也许由你维护，也许由他人。在将来，当你不得不维护这些程序时，你对这些代码的记忆会基本上跟一个陌生人一样，所以，你最好还是当成一直在给别人写程序。一个有助于你记住这个原则的办法是“写程序时时刻记着，这个将来要维护你写的程序的人是一个有严重暴力倾向，并且知道你住在哪里的精神变态者”。
+    http://c2.com/cgi/wiki?CodeForTheMaintainer
+
+    最少意外原则
+    最少意外原则通常是使用在用户界面设计上，但这个原则同样适用于编写程序。程序代码应尽可能的不要让阅读者感到意外。也就是说应该遵循编码规范和常见习惯，按照公认的习惯方式进行组织和命名，不符常规的编程动作应该尽可能的避免。
+    http://en.wikipedia.org/wiki/Principle_of_least_astonishment
+
+    单一职责原则
+    一个代码组件(例如类或函数)应该只执行单一的预设的任务。
+    http://en.wikipedia.org/wiki/Single_responsibility_principle
+
+    最小化耦合关系
+    一个代码片段(代码块，函数，类等)应该最小化它对其它代码的依赖。这个目标通过尽可能少的使用共享变量来实现。“低耦合是一个计算机系统结构合理、设计优秀的标志，把它与高聚合特征联合起来，会对可读性和可维护性等重要目标的实现具有重要的意义。”
+    http://en.wikipedia.org/wiki/Coupling_(computer_programming)
+
+    最大化内聚性
+    具有相似功能的代码应该放在同一个代码组件里。
+    http://en.wikipedia.org/wiki/Cohesion_(computer_science)
+
+    隐藏实现细节
+    隐藏实现细节能最小化你在修改程序组件时产生的对那些使用这个组件的其它程序模块的影响。
+    http://en.wikipedia.org/wiki/Information_Hiding
+
+    笛米特法则(Law of Demeter)
+    程序组件应该只跟它的直系亲属有关系(例如继承类，内包含的对象，通过参数入口传入的对象等。)
+    http://en.wikipedia.org/wiki/Law_of_Demeter
+
+    避免过早优化
+    只有当你的程序没有其它问题，只是比你预期的要慢时，你才能去考虑优化工作。只有当其它工作都做完后，你才能考虑优化问题，而且你只应该依据经验做法来优化。“对于小幅度的性能改进都不该考虑，要优化就应该是97%的性能提升：过早优化是一切罪恶的根源”—Donald Knuth。
+    http://en.wikipedia.org/wiki/Program_optimization
+
+    代码复用
+    这不是非常核心的原则，但它跟其它原则一样非常有价值。代码复用能提高程序的可靠性，节省你的开发时间。
+    http://en.wikipedia.org/wiki/Code_reuse
+
+    职责分离
+    不同领域的功能应该由完全不同的代码模块来管理，尽量减少这样的模块之间的重叠。
+ http://en.wikipedia.org/wiki/Separation_of_concerns
+
+    拥抱变化
+    这是Kent Beck的一本书的副标题，它也是极限编程和敏捷开发方法的基本信条之一。很多的其它原则都基于此观念：面对变化，欢迎变化。事实上，一些经典的软件工程原则，例如最小化耦合，就是为了让程序更容易面对变化。不论你是否采用了极限编程方法，这个原则对你的程序开发都有重要意义。http://www.amazon.com/gp/product/0321278658
+
+http://www.aqee.net/principles-of-good-programming/

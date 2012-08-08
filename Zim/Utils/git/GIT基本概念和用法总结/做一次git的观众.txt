@@ -1,0 +1,296 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-19T13:01:51+08:00
+
+====== 做一次git的观众 ======
+Created Sunday 19 February 2012
+
+http://www.iteye.com/topic/732199
+
+Git这个强大的版本管理系统，工作的时候默默注视着你的代码目录，所有的操作几乎都在.git目录中完成。今天我们来做一次git的观众，以便深入了解git的各个操作。
+
+首先，新建一个目录：git-monitor，进入目录后，用下面的命令初始化一个git仓库：
+
+    $> git init --bare git-monitor.git  
+
+
+然后，创建一个工作目录wp1，意思为working_copy_1，进入该目录，运行git init，以创建.git目录。
+
+进入.git目录，会发现下列文件和目录：
+
+    HEAD        config      description hooks/       info/        objects/     refs/  
+
+这些都是git的演员。我们当观众的，就从监控这些文件开始。但是演员分主角、配角，和跑龙套的，在这些文件中，config是配置文件，内容不会变的；hooks中的文件是一些__回调程序的例子__，删掉都没关系；description文件只为某些git的__web应用提供描述信息__。它们都是跑龙套的，剩下的文件和目录有：
+
+    HEAD        info/        objects/       refs/  
+
+在后续的操作中，还有两位要上场，分别是index文件和logs目录，至此，主要演员表为：
+
+    HEAD        index       info/        objects/       refs/        logs/  
+
+要用肉眼盯着它们看，实在不容易，于是我写了个ruby小程序（下载链接在最后），用于监控这些目录，一旦目录和文件有变化，就在控制台上向我们报告。我把这个程序放到.git目录下，并把它跑起来。接下来，好戏就开演了。
+
+回到wp1目录。新建一个文件file1.txt，然后看看监控程序，发现没有任何输出，说明git对刚才的操作没有响应。既然没反应，那我就接着操作，在file1.txt中加一行内容
+
+    content added by wp1, 1st time  
+
+再看看监控，还是没有反应。看来，__只要我们不调用git命令，它就不会有反应__。那我就调一个看看：
+
+    $> git add .  
+
+再看看监控，终于有反应了：
+
+    Created file: **index**  (in dir: git-monitor/wp1/.git)  
+    Created file: __c2__/a04aa8cba9ba9a7a2fb8c9ecf74a3a0fc5e3fc  (in dir: git-monitor/wp1/.git/**objects**)  
+
+git add这个命令，根据`man git-add`的解释，是__把某个文件加入到index。这个index实际上就是工作目录下所有文件和目录状态的一个快照(stage)，每一次git提交所产生的tree对象，就是依据index文件产生的__（对index同志的详细采访，可以参考[url＝http://progit.org/book/zh/ch9-2.html]这里[/url]）。__git add 实际调用的是git-update-index，他们 只是刷新了 git 的跟踪信息__
+
+我们来看看产生的那个object到底是什么，根据git的规则，__object下的的目录名加文件名和起来是一个40字符的字符串__，它是对文件内容进行SHA1 digest之后，用16进制编码得到的结果。此文件的内容是二进制的，要查看它，就要用下面的命令：
+
+    $> git __cat-file -t__ c2a04aa8cba9ba9a7a2fb8c9ecf74a3a0fc5e3fc  
+    blob  
+    $> git __cat-file -p__ c2a04aa8cba9ba9a7a2fb8c9ecf74a3a0fc5e3fc  
+    content added by wp1, 1st time  
+
+其中，-t这个参数是为了显示object类型，-p这个参数，是为了显示object的内容。显然，这个object就是刚才加进去的file1.txt，它是**一个blob类型的对象，只存储文件内容和长度**。
+
+接下来，我把这次添加的内容提交一下（git commit -m 'commit by wp1, 1st time'），再看看监控，又有输出了，这次的内容还真丰富啊：
+
+    Changed file: index  
+    Created file: 16/71ae856c149673436da08f1ba026469c3a918d  (in dir: git-monitor/wp1/.git/objects)  
+    Created file: 30/c64c3a55b02f4c251565ef057d402f84751b56  (in dir: git-monitor/wp1/.git/objects)  
+    Created file: heads/master  (in dir: git-monitor/wp1/.git/refs)  
+    Created file: HEAD  (in dir: git-monitor/wp1/.git/logs)  
+    Created file: refs/heads/master  (in dir: git-monitor/wp1/.git/logs)  
+
+
+首先，我们发现index文件被改变了。但是，经过我仔细比对两次的index文件的二进制字节码后发现，它的__内容并没有改变__，所以可能是它的修改时间发生了改变。对此我想说的是：请高人指点！
+
+再看后面新生成的两个文件，用我们上面的办法看看内容：
+
+    $> git cat-file -p 1671ae856c149673436da08f1ba026469c3a918d  
+    **tree 30c64c3a55b02f4c251565ef057d402f84751b56**  
+    author Kevin Fu <corntrace@email.com> 1281230735 +0800  
+    committer Kevin Fu <corntrace@email.com> 1281230735 +0800  
+      
+    commit by wp1, 1st time  
+      
+    $> git cat-file -p 30c64c3a55b02f4c251565ef057d402f84751b56  
+    **100644 blob c2a04aa8cba9ba9a7a2fb8c9ecf74a3a0fc5e3fc    file1.txt  **
+
+
+显然，第一个文件是个commit对象，第二个文件是个tree对象，从引用关系来看，是__先生成的tree对象，再生成的commit对象__。注意，这个commit对象没有parent引用。
+
+再看看后面生成的refs，用__git show-ref__可以查看所有refs的内容
+
+    $> git show-refs 
+    1671ae856c149673436da08f1ba026469c3a918d  refs/heads/master  
+
+master当然指的是master分支，它的值__指向刚才看到的commit对象__
+
+最后就是两个log文件。log文件虽然只是供人查看，但在git中的地位非同一般。先看看其内容：
+
+    $ cat logs/HEAD  
+    0000000000000000000000000000000000000000 1671ae856c149673436da08f1ba026469c3a918d Kevin Fu <corntrace@email.com> 1281230735 +0800 commit (initial): commit by wp1, 1st time  
+      
+    $ cat logs/refs/heads/master  
+    0000000000000000000000000000000000000000 1671ae856c149673436da08f1ba026469c3a918d Kevin Fu <corntrace@email.com> 1281230735 +0800 commit (initial): commit by wp1, 1st time  
+
+可以看到，这两个文件的内容**目前是一样的**。这个文件记录了什么呢？__它记录的是工作目录的状态变化__。其中，那一串0表示，一起是从零开始的，因为git在初始化工作目录时，并没有创建任何对象，要表示初始状态，只好用40个0来表示了。后面那串，就是指向刚才的**本次的commit对象**。这条记录解释出来，就是：在1281230735 +0800时刻，由Kevin Fu做了一次提交，工作目录从初始状态，转到commit 1671ae8对应的状态。
+
+这个时候，用过git的人可能会生疑问：用git log看到的输出不是这个样子的呀。说对了，git log的输出，并不是由这里的log文件产生的，我认为，它的内容是根据commit之间的关联关系，实时计算并显示出来的。而这里的logs，是git中的reflog，用git reflog命令可以查看：
+
+    $> git reflog  
+    1671ae8 HEAD@{0}: commit (initial): commit by wp1, 1st time  
+
+这个内容，就跟上面的对应上了吧。为什么说这个log文件很重要呢？因为在git中，__objects其实都是死的，绝大多数情况下，一旦创建就不会被修改，也不会被删除__；当版本控制的内容发生变化时，只有新的objects被创建出来，没有旧的objects被改变。那么一堆死东西，如何实现灵活的版本变化呢？第一个就是靠**不断变化的版本指针**，比如HEAD以及refs/heads/master文件，第二个，就是靠**记录工作目录变化情况的日志文件**。
+
+__有了日志文件，你想查看谁就查看谁，想往哪个版本跳就往哪个版本跳，想合并谁就合并谁。__许多git命令，都是基于这个思想而设计的。
+
+
+接下来，我再添加一个文件file2.txt，但不是在master branch中，而是新开一个branch: advanced，我们看看开分支的时候，监控有何变化：
+Bash代码  收藏代码
+
+    $> git checkout -b advanced  
+    (monitor outputs)  
+    Changed file: index  
+    Changed file: HEAD  
+    Created file: heads/advanced  (in dir: /Users/corntrace/git-monitor/wp1/.git/refs)  
+    Created file: refs/heads/advanced  (in dir: /Users/corntrace/git-monitor/wp1/.git/logs)  
+    Changed file: HEAD  (in dir: /Users/corntrace/git-monitor/wp1/.git/logs)  
+
+
+除去那个index文件的变化，看看其他的文件。首先是HEAD文件，其内容变成了：refs/heads/advanced，说明__HEAD已经移到了advanced分支__上。再看看新产生的refs/heads/advanced文件：
+
+    $> git show-ref  
+    1671ae856c149673436da08f1ba026469c3a918d refs/heads/advanced  
+    1671ae856c149673436da08f1ba026469c3a918d refs/heads/master  
+
+
+可见__目前它与master分支指向同一个commit__。再来看看两个日志文件：
+
+    $ cat logs/__HEAD __ 
+    0000000000000000000000000000000000000000 1671ae856c149673436da08f1ba026469c3a918d Kevin Fu <corntrace@email.com> 1281230735 +0800 commit (initial): commit by wp1, 1st time  
+    1671ae856c149673436da08f1ba026469c3a918d 1671ae856c149673436da08f1ba026469c3a918d Kevin Fu <corntrace@email.com> 1281236136 +0800 **checkout:** **moving from master to advanced  **
+
+它果然把我的一举一动都记录下来了。在第二条记录里，两个sha1值是一样的，__说明没有提交，只有指针的创建或改变__。
+再看看另一个log：
+
+    0000000000000000000000000000000000000000 1671ae856c149673436da08f1ba026469c3a918d Kevin Fu <corntrace@email.com> 1281236136 +0800 **branch: Created from HEAD  **
+
+
+它说明了advanced分支是**从零开始**，转到commit 671ae8的。看来它一点都不含糊啊。
+
+现在，我增加文件file2.txt，并添加以下内容，但分两次提交：第一次提交前两行，第二次提交后两行
+
+    content added by wp1, 1st time  
+    additional content added by wp1, 1st time too  
+      
+    # TODO: implement a feature  
+    # I plan to do ...  
+
+
+显然，第一次提交将会产生3个objects：**一个commit对象，一个file2.txt的blob对象，还有一个tree对象**，另外，**refs/heads/advanced会指向目前的这个commit对象**，**然后两个log文件（logs/HEAD和logs/refs/heads/advanced）会添加一些内容**，我全部列在这里：
+
+    $> git show-ref  
+    35ba29ec8f31d5372b75d7be6b1ec7f03c0fb666 refs/heads/advanced  
+    1671ae856c149673436da08f1ba026469c3a918d refs/heads/master  
+      
+    $> git cat-file -p 35ba29ec8f31d5372b75d7be6b1ec7f03c0fb666  
+    tree 9c1c4549a869ede4d5f85c93594c1c23c311122f  
+    __parent__ **1671ae856c149673436da08f1ba026469c3a918d  **
+    author Kevin Fu <corntrace@email.com> 1281251100 +0800  
+    committer Kevin Fu <corntrace@email.com> 1281251100 +0800  
+      
+    commit by wp1 for file2.txt, 1st time  
+      
+    $> git cat-file -p 9c1c4549a869ede4d5f85c93594c1c23c311122f   
+    100644 blob c2a04aa8cba9ba9a7a2fb8c9ecf74a3a0fc5e3fc    file1.txt  
+    100644 blob baa4a1630ce88a9198b5eda885884aadab795806    file2.txt  
+      
+    $> git cat-file -p baa4a1630ce88a9198b5eda885884aadab795806   
+    content added by wp1, 1st time  
+    additional content added by wp1, 1st time  
+      
+    $> cat logs/HEAD  
+    0000000000000000000000000000000000000000 1671ae856c149673436da08f1ba026469c3a918d Kevin Fu <corntrace@email.com> 1281230735 +0800 commit (initial): commit by wp1, 1st time  
+    1671ae856c149673436da08f1ba026469c3a918d 1671ae856c149673436da08f1ba026469c3a918d Kevin Fu <corntrace@email.com> 1281236136 +0800 checkout: **moving from master to advanced  **
+    1671ae856c149673436da08f1ba026469c3a918d 35ba29ec8f31d5372b75d7be6b1ec7f03c0fb666 Kevin Fu <corntrace@email.com> 1281251100 +0800 commit: commit by wp1 for file2.txt, 1st time  
+      
+    $> cat logs/refs/heads/advanced  
+    0000000000000000000000000000000000000000 1671ae856c149673436da08f1ba026469c3a918d Kevin Fu <corntrace@email.com> 1281236136 +0800 branch: Created from HEAD  
+    1671ae856c149673436da08f1ba026469c3a918d 35ba29ec8f31d5372b75d7be6b1ec7f03c0fb666 Kevin Fu <corntrace@email.com> 1281251100 +0800 commit: commit by wp1 for file2.txt, 1st time  
+
+
+可以看到，这次的commit对象中多了parent的引用，就是指向上一次的commit。
+
+接下来我提交第二部分的内容，其结果与刚才的分析相似，就不写了。提交之后，**我转回master分支，将advanced分支中的内容合并进来，然后将master分支推送出去**，我就可以下班了。
+
+我们看看转回master分支时，监控都有哪些输出：
+
+    Changed file: index  
+    Changed file: HEAD  
+    Changed file: HEAD  (in dir: /Users/corntrace/git-monitor/wp1/.git/logs)  
+
+可见，除了那个index文件，HEAD文件的内容被该为：ref: refs/heads/master，logs/HEAD文件中添加了一行__记录分支跳转的日志__。
+
+接下来我运行git merge advanced。合并完成后，看看监控的输出：
+
+    Changed file: index  
+    Changed file: heads/master  (in dir: /Users/corntrace/git-monitor/wp1/.git/refs)  
+    Changed file: HEAD  (in dir: /Users/corntrace/git-monitor/wp1/.git/logs)  
+    Changed file: refs/heads/master  (in dir: /Users/corntrace/git-monitor/wp1/.git/logs)  
+
+这里列出后三项的内容：
+
+    $> git show-ref  
+    8227ae64f1f651669c6445d4c37909c8443df209 refs/heads/advanced  
+    8227ae64f1f651669c6445d4c37909c8443df209 refs/heads/master  
+      
+    $> cat logs/HEAD  
+    (猜都能猜出来，就省了吧)  
+      
+    $> cat logs/refs/heads/master  
+    0000000000000000000000000000000000000000 1671ae856c149673436da08f1ba026469c3a918d Kevin Fu <corntrace@email.com> 1281230735 +0800 commit (initial): commit by wp1, 1st time  
+    1671ae856c149673436da08f1ba026469c3a918d 8227ae64f1f651669c6445d4c37909c8443df209 Kevin Fu <corntrace@email.com> 1281252267 +0800 __merge advanced: Fast-forward  __
+
+从分支的指向可以看到，它**指到advanced分支对应的commit上去了**；从logs的内容可以看到，本次的操作称为merge advanced: Fast-forword。除此之外，并__没有产生任何object__，连commit都没有，这是因为在合并之后，git分析出当前的目录树结构与advanced分支中的目录树是一样的，所以只是简单的把master的指针指向advanced分支。
+
+OK，在下班之前，我还是要看看master分支中的代码，确保没有什么坏代码被交上去。但是，我的神，file2.txt中有一个TODO，这要是被老板看见了，还不要我晚上加班啊！我能把它删掉再提交吗？不能啊，老板要是往回看一个版本，不就找出来了！因此，当务之急就是，__把master的版本指针退回去__，让它指向原来的1671ae8这个版本。git reset这个命令可以帮到我。
+
+    $>** git reset --hard 1671ae8  **
+    (monitor outputs)  
+    Changed file: index  
+    Changed file: heads/master  (in dir: /Users/corntrace/git-monitor/wp1/.git/refs)  
+    Changed file: __HEAD __ (in dir: /Users/corntrace/git-monitor/wp1/.git/logs)  
+    Changed file: refs/heads/master  (in dir: /Users/corntrace/git-monitor/wp1/.git/logs)  
+      
+    $> git show-ref  
+    8227ae64f1f651669c6445d4c37909c8443df209 refs/heads/advanced  
+    1671ae856c149673436da08f1ba026469c3a918d refs/heads/master  
+      
+    $> cat logs/refs/heads/master  
+    0000000000000000000000000000000000000000 1671ae856c149673436da08f1ba026469c3a918d Kevin Fu <corntrace@email.com> 1281230735 +0800 commit (initial): commit by wp1, 1st time  
+    **1671ae856c149673436da08f1ba026469c3a918d** 8227ae64f1f651669c6445d4c37909c8443df209 Kevin Fu <corntrace@email.com> 1281252267 +0800 merge advanced: Fast-forward  
+    8227ae64f1f651669c6445d4c37909c8443df209 **1671ae856c149673436da08f1ba026469c3a918d **Kevin Fu <corntrace@email.com> 1281253859 +0800 1671ae8: updating HEAD  
+
+
+可以看到，master的head是真的退回去了，reflog中的记录，稍候再说。现在只要把advanced中想要的那个提交弄过来，就万事大吉了。git cherry-pick这个命令这是用来做这个的。
+
+    $> **git cherry-pick --ff 35ba29e  **
+    (此时这里居然没有任何输出，git的作者们太高估用户了！来看看monitor outputs)  
+    Changed file: index  
+    Changed file: heads/master  (in dir: /Users/corntrace/git-monitor/wp1/.git/refs)  
+    Changed file: HEAD  (in dir: /Users/corntrace/git-monitor/wp1/.git/logs)  
+    Changed file: refs/heads/master  (in dir: /Users/corntrace/git-monitor/wp1/.git/logs)  
+      
+    $> git show-ref  
+    8227ae64f1f651669c6445d4c37909c8443df209 refs/heads/advanced  
+    35ba29ec8f31d5372b75d7be6b1ec7f03c0fb666 refs/heads/master  
+      
+    $> cat file2.txt  
+    content added by wp1, 1st time  
+    additional content added by wp1, 1st time  
+
+
+看，TODO果然是没有了！在这里我用的--ff参数，是要告诉git，只需要做fast-forword就可以了，因为35ba29e这个commit的parent，正是先前的master的head(1671ae8)。
+
+OK，我可以把master分支推送到远程仓库里去了。在推之前，我需要__把远程仓库加进来__。这里我就用一个本地的仓库来代替远程的吧。
+
+    $> git remote add origin /path/to/git-monitor.git  
+    (这一步monitor无输出)  
+      
+    $> git push origin master  
+    (monitor outputs)  
+    Created file: remotes/origin/master  (in dir: /Users/corntrace/git-monitor/wp1/.git/refs)  
+    Created file: refs/remotes/origin/master  (in dir: /Users/corntrace/git-monitor/wp1/.git/logs)  
+      
+    $> git show-ref  
+    8227ae64f1f651669c6445d4c37909c8443df209 refs/heads/advanced  
+    35ba29ec8f31d5372b75d7be6b1ec7f03c0fb666 refs/heads/master  
+    35ba29ec8f31d5372b75d7be6b1ec7f03c0fb666** refs/remotes/origin/master  **
+      
+    $> cat logs/refs/remotes/origin/master  
+    0000000000000000000000000000000000000000 35ba29ec8f31d5372b75d7be6b1ec7f03c0fb666 Kevin Fu <corntrace@email.com> 1281255166 +0800 update by push  
+
+
+可见，这一步的操作就是新建了一个remote master分支的ref，然后添加了一个logs文件。看来所有的事情都办妥了，那就下班吧。
+
+但是老板还没有下班，而是正准备做code review。他把代码checkout下来：
+
+    $> git co /path/to/git-monitor.git && cd git-monitor  
+    $> git reflog  
+    35ba29e HEAD@{0}: clone: from /Users/corntrace/git-monitor/git-monitor.git  
+
+
+他的reflog文件中，完全没有我刚才操作的内容。看来，__git是不会提交reflog到仓库中的__。
+
+OK，写到这里，今天的git剧就要谢幕了。相关文件在后面下载，大家可以重播。如果你有使用git的好的case，也可以分享给大家，Thank you! 
+
+-------------------------
+楼上所说的.gitignore问题，能否说得详细一些？
+
+如果是通配符匹配的问题，可以看看别人的.gitignore文件，比如这个http://github.com/facebook/three20/blob/master/.gitignore
+
+如果是某个文件已经在git版本控制中了，又想ignore它，就__需要先 git rm /path/to/the/file.txt --cached__ 把它删掉，然后再写入.gitignore中 
+-----------------------------------

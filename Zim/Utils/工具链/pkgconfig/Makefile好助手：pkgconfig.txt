@@ -1,0 +1,55 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-13T14:30:33+08:00
+
+====== Makefile好助手：pkgconfig ======
+Created Wednesday 13 June 2012
+http://blog.csdn.net/absurd/article/details/599813
+
+你在Unix下开发过软件吗？写完一个程序，编译运行完全正常，在你本机上工作得好好的，你放到源代码管理系统中。然后，告诉你的同事说，你可以取下来用了。这时，你长长的出了一口气，几天的工作没有白费，多么清新的空气啊，你开始飘飘然了。
+
+“Hi，怎么编译不过去？”你还沉浸在那种美妙的感觉之中，双臂充满着力量，似乎没有什么问题能难倒你的。正在此时，那个笨蛋已经冲着你嚷开了。
+
+“不会吧，我这边好好的！”表面上你说得很客气，其实，你心里已经骂开了，真笨，不知道脑子干嘛用的。也许，你想的没错，上次，他犯了一个简单的错误，不是你一去就解决了吗。
+
+他喊三次之后，你不得不放下你手上的工作，刚才那种美妙的感觉已经消失得无影无踪了，要不是你把情绪控制得很好，一肚子气就要撒在他身上了。你走到他的电脑前，键入make，优雅的按下回车。怎么可能出错呢？你信心十足。然而，屏幕上的结果多少有点让人脸红，该死的，libxxx.so怎么会让不到呢？
+
+你在/usr目录中查找libxxx.so，一切都逃不过你的眼睛。奇怪，libxxx.so怎么在/usr/local/lib下，不是应该在/usr/lib下的吗？这你可不能怪别人，别人想安装在哪里都行，下次还可能安装到/lib目录下呢。
+
+以上的场景并非虚构，我都经历过好几次，明明在本机上好好的，在别人的机器上连编译都过不去。可能两人的操作系统一模一样，需要的库都安装上，只是由于个人喜好不同，安装在不同的目录而已。遇到这种情况，每次都技巧性的绕过去了，用的补丁型的方法，心里老惦记其它地方能不能工作。
+
+
+今天我们要介绍的pkgconfig，为解决以上问题提供了一个优美方案。从此，你再也不为此担忧了。Pkgconfig提供了下面几个功能：
+
+1. 检查库的版本号。如果所需要的库的版本不满足要求，它会打印出错误信息，避免链接错误版本的库文件。
+2. 获得编译预处理参数，如宏定义，头文件的位置。
+3. 获得链接参数，如库及依赖的其它库的位置，文件名及其它一些连接参数。
+4. 自动加入所依赖的其它库的设置。
+
+这一切都自动的，库文件安装在哪里都没关系！
+
+在使用前，我们说说pkgconfig的原理，pkgconfig并非精灵，可以凭空得到以上信息。事实上，为了让pkgconfig可以得到这些信息，要求__库的提供者提供一个.pc文件__。比如gtk+-2.0的pc文件内容如下：
+
+prefix=/usr
+exec_prefix=/usr
+libdir=/usr/lib
+includedir=/usr/include
+target=x11
+
+gtk_binary_version=2.4.0
+gtk_host=i386-redhat-linux-gnu
+
+Name: GTK+
+Description: GIMP Tool Kit (${target} target)
+Version: 2.6.7
+Requires: gdk-${target}-2.0 atk
+__Libs__: -L${libdir} -lgtk-${target}-2.0
+__Cflags__: -I${includedir}/gtk-2.0
+
+这个文件一般放在__/usr/lib/pkgconfig/__或者/usr/local/lib/pkgconfig/里，当然也可以放在其它任何地方，如像X11相关的pc文件是放在/usr/X11R6/lib/pkgconfig下的。为了让pkgconfig可以找到你的pc文件，你要把pc文件所在的路径，设置在__环境变量PKG_CONFIG_PATH__里。
+
+使用方法很简单，比如，我们要使用gtk+的库编译一个程序：
+
+gcc -g arrow.c -o arrow  **`pkg-config "gtk+-2.0 > 2.0.0" --cflags --libs`**
+
+只要安装了gtk+2.0，不管它在哪里，编译都是正常的。这是不是简单很多了？

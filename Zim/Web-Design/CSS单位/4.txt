@@ -1,0 +1,64 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-13T21:44:59+08:00
+
+====== 4 ======
+Created Friday 13 May 2011
+http://www.blabla.cn/css_tutorials/060_css_length_unit.html
+CSS长度单位参考
+ 
+在CSS样式表中，我们经常会看到pt， px，em，ex，in等这类长度单位。它们各是什么意思，有什么区别呢？
+在CSS样式表中，长度单位分两种：
+相对长度单位，如px, em等
+绝对长度单位，如pt,mm等
+也谈px和pt的区别
+经常看到有人拿px和pt比较，主要是为了争辩在确定字体大小(font-size)或其它CSS属性大小时，用什么样的CSS长度单位更加好。有人说，用pt更好，因为pt是绝对长度单位，不会因为屏幕分辨率大小，或者其它因素而改变。
+我去做了一个测试，写了这样一个HTML例子。代码如下：
+<html>
+<head><title>CSS单位长度区别 - px和pt的区别</title></head>
+<body >
+<p style = "font-size:20pt;">Font-size is 20pt</p>
+<p style = "font-size:20px;">Font-size is 20px</p>
+</body>
+</html>
+点击浏览文件
+我将我的显示器分别调到1024*768和800*600的分辨率(指screen resolution)。不管是用pt还是用px设置的字体，都随着分辨率变化而变化。(我使用的浏览器是IE6，其它浏览器上尚未测试过。)
+我又写了另外一个HTML例子，测试一下cm(厘米)。代码如下：
+<html>
+<head><title>CSS长度单位的区别 - pt,px和cm的区别</title></head>
+<body >
+以下div宽度300pt，高度30pt： <br>
+<div style = "width:300pt;height:30pt;border:1px solid blue;"></div>
+以下div宽度300px，高度30px：<br>
+<div style = "width:300px;height:30px;border:1px solid blue;"></div>
+以下div宽度10cm，高度3cm： <br>
+<div style = "width:10cm;height:3cm;border:1px solid blue;"></div>
+</body>
+</html>
+点击浏览文件
+结果是，cm(厘米)也是随着显示器分辨率变化而变化的。
+对于计算机的屏幕设备而言，像素(Pixel)或者说px是一个最基本的单位，就是一个点。其它所有的单位，都和像素成一个固定的比例换算关系。所有的长度单位基于屏幕进行显示的时候，都统一先换算成为像素的多少，然后进行显示。所以，就计算机的屏幕而言，相对长度和绝对长度没有本质差别。任何单位其实都是像素，差别只是比例不同。
+如果把讨论扩展到其它输出设备，比如打印机，基本的长度单位可能不是像素，而是其它的和生活中的度量单位一致的单位了。
+CSS绝对长度单位是对于输出设备(output device)而言的。拿pt来说，这是一个在文字排版工具(word,adobe等)中非常常用的字体单位，不管你的显示器分辨率是1024*768，还是800*600，同一篇文档打印在纸面上的结果是一样的。
+写网页用哪个长度单位更好，是px还是pt呢？
+我个人比较偏向px，因为px能够精确地表示元素在屏幕中的位置和大小，网页主要是为了屏幕显示，而不是为了打印等其它需要的。
+CSS相对长度单位(relative length unit)
+CSS相对长度单位中的相对二字，表明了其长度单位会随着它的参考值的变化而变化，不是固定的。
+以下是CSS相对长度单位列表：
+CSS相对长度单位	说明
+em	元素的字体高度The height of the element's font
+ex	字母x的高度The height of the letter "x"
+px	像素Pixels
+%	百分比Percentage
+CSS绝对长度单位(absolute length unit)
+绝对长度单位是一个固定的值。比如我们常用的有mm，就是毫米的意思。
+以下是CSS绝对长度单位列表：
+CSS绝对长度单位	说明
+in	英寸Inches (1 英寸 = 2.54 厘米)
+cm	厘米Centimeters
+mm	毫米Millimeters
+pt	点Points (1点 = 1/72英寸)
+pc	皮卡Picas (1 皮卡 = 12 点)
+ 
+作者或编者：布啦布啦   最近更新日期：2007-05-01
+参考来源：www.BlaBla.cn 布啦布啦网页教程与代码

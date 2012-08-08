@@ -1,0 +1,339 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-10T16:56:15+08:00
+
+====== sysfs and usb ======
+Created Tuesday 10 July 2012
+http://www.makelinux.net/ldd3/chp-13-sect-2
+
+USB总线一般都是挂接在PCI总线上的，例如：
+
+[geekard@kb310 ~]$ lspci
+00:00.0 Host bridge: Intel Corporation 2nd Generation Core Processor Family DRAM Controller (rev 09)
+00:01.0 PCI bridge: Intel Corporation Xeon E3-1200/2nd Generation Core Processor Family PCI Express Root Port (rev 09)
+00:02.0 VGA compatible controller: Intel Corporation 2nd Generation Core Processor Family Integrated Graphics Controller (rev 09)
+00:16.0 Communication controller: Intel Corporation 6 Series/C200 Series Chipset Family MEI Controller #1 (rev 04)
+__00:1a.0 USB controller:__ Intel Corporation 6 Series/C200 Series Chipset Family USB Enhanced Host Controller #2 (rev 05)
+00:1b.0 Audio device: Intel Corporation 6 Series/C200 Series Chipset Family High Definition Audio Controller (rev 05)
+00:1c.0 PCI bridge: Intel Corporation 6 Series/C200 Series Chipset Family PCI Express Root Port 1 (rev b5)
+00:1c.2 PCI bridge: Intel Corporation 6 Series/C200 Series Chipset Family PCI Express Root Port 3 (rev b5)
+00:1c.3 PCI bridge: Intel Corporation 6 Series/C200 Series Chipset Family PCI Express Root Port 4 (rev b5)
+00:1c.5 PCI bridge: Intel Corporation 6 Series/C200 Series Chipset Family PCI Express Root Port 6 (rev b5)
+__00:1d.0 USB controller:__ Intel Corporation 6 Series/C200 Series Chipset Family USB Enhanced Host Controller #1 (rev 05)
+00:1f.0 ISA bridge: Intel Corporation H61 Express Chipset Family LPC Controller (rev 05)
+00:1f.2 IDE interface: Intel Corporation 6 Series/C200 Series Chipset Family 4 port SATA IDE Controller (rev 05)
+00:1f.3 SMBus: Intel Corporation 6 Series/C200 Series Chipset Family SMBus Controller (rev 05)
+00:1f.5 IDE interface: Intel Corporation 6 Series/C200 Series Chipset Family 2 port SATA IDE Controller (rev 05)
+03:00.0 Ethernet controller: Realtek Semiconductor Co., Ltd. RTL8111/8168B PCI Express Gigabit Ethernet controller (rev 06)
+__04:00.0 USB controller:__ ASMedia Technology Inc. ASM1042 SuperSpeed USB Host Controller
+05:00.0 SATA controller: ASMedia Technology Inc. ASM1062 Serial ATA Controller (rev 01)
+[geekard@kb310 ~]$ 
+
+[geekard@kb310 ~]$ ls /sys/bus/pci/devices/0000\:00\:1a.0/ -F
+broken_parity_status  config                    dma_mask_bits  firmware_node@  local_cpus  numa_node  remove  resource    subsystem_device  uframe_periodic_max
+class                 consistent_dma_mask_bits  driver@        irq             modalias    pools      rescan  resource0   subsystem_vendor  __usb1/__
+companion             device                    enable         local_cpulist   msi_bus     power/     reset   subsystem@  __uevent__            vendor
+[geekard@kb310 ~]$ 
+
+[geekard@kb310 ~]$ cat /sys/bus/pci/devices/0000\:00\:1a.0/uevent 
+DRIVER=__ehci_hcd__
+PCI_CLASS=C0320    #PCI设备类别，USB Enhanced Host Controller
+PCI_ID=8086:1C2D   #VenderID:DeviceID，Intel Corporation      6 Series/C200 Series Chipset Family
+PCI_SUBSYS_ID=1043:844D
+PCI_SLOT_NAME=0000:00:1a.0
+MODALIAS=pci:v00008086d00001C2Dsv00001043sd0000844Dbc0Csc03i20
+[geekard@kb310 ~]$ 
+
+PCI设备__00:1a.0有3种角色：__
+1. PCI-USB Bridge，为一个PCI设备，使用的驱动是__ehci_hcd、uhci_hcd、ohci_hcd、xhci_hcd。__
+2. USB Controller，USB 总线控制器，使用的驱动是usb。
+3. USB BUS Root HUB，USB总线上的根HUB，同时也是该总线上的第一个设备，使用的驱动是hub。
+上面三个设备和驱动是任何一条USB总线都必不可少的，对于某一个具体的USB设备，可能还需要相应的驱动如：键盘、鼠标等USB输入设备驱动usbhid, U盘等大容量存储设备的驱动usb-storage等。 
+
+13.2. USB and Sysfs
+
+Due to the complexity of a single USB physical device, the representation of that device in sysfs is also quite complex. Both the physical __USB device__ (as represented by a **struct usb_device**) and the individual __USB interfaces__ (as represented by a **struct usb_interface**) are shown in sysfs as individual devices. (This is because both of those structures contain a **struct device** structure.) As an example, for a simple USB mouse that contains only one USB interface, the following would be the sysfs directory tree for that device:
+
+/sys/devices/pci0000:00/0000:00:09.0/usb2/2-1
+|-- 2-1:1.0    #USB 设备上的某接口
+|   |-- bAlternateSetting
+|   |-- bInterfaceClass
+|   |-- bInterfaceNumber
+|   |-- bInterfaceProtocol
+|   |-- bInterfaceSubClass
+|   |-- bNumEndpoints
+|   |-- detach_state
+|   |-- iInterface
+|   `-- power
+|       `-- state
+|-- bConfigurationValue 	#USB设备
+|-- bDeviceClass
+|-- bDeviceProtocol
+|-- bDeviceSubClass
+|-- bMaxPower
+|-- bNumConfigurations
+|-- bNumInterfaces
+|-- bcdDevice
+|-- bmAttributes
+|-- detach_state
+|-- devnum
+|-- idProduct
+|-- idVendor
+|-- maxchild
+|-- power
+|   `-- state
+|-- speed
+`-- version
+
+The **struct usb_device** is represented in the tree at:
+
+/sys/devices/pci0000:00/0000:00:09.0/usb2/__2-1__
+
+while the **USB interface** for the mouse—the interface that the USB mouse driver is bound to—is located at the directory:
+
+/sys/devices/pci0000:00/0000:00:09.0/usb2/2-1/__2-1:1.0__
+
+其实在下面的路径中涉及到__4个__devices: 
+/sys/devices/pci0000:00/0000:00:09.0/usb2/__2-1__
+
+1. 0000:00:09.0，它是一个PCI Bridget设备，用于桥接PCI和USB总线。
+
+2. usb2, 它是一个具有两种角色的USB Device：USB Controller  和 USB  ROOT HUB。通常USB Controller和PCI Bridge做在一个设备中，但是它们由各自的目录如上面路径中的0000:00:09.0和usb2。USB Controller通常和一个USB 总线直接相连，总线号由Contrrler Name中的数字表示，如这里的2。作为Root HUB时，是总线上的第一个USB设备，设备标识一般为__busnum-0:1.0 __即总线上0号端口的1配置0接口，也就是说每个USB Root HUB的0号端口总是被保留给该USB HUB Device自身。
+
+3. 2-1，Root HUB(即USB Controller)的1号端口上插入的USB Device。
+
+To help understand what this long device path means, we describe how the kernel labels the USB devices.
+
+The first USB device is __a root hub__. This is __the USB controller__, usually contained in a PCI device. The controller is so named because it controls the whole USB bus connected to it. The controller is a bridge between the PCI bus and the USB bus, as well as being the first USB device on that bus.
+
+All root hubs are assigned a unique number by the __USB core__. In our example, the root hub is called usb2, as it is the second root hub that was registered with the USB core. There is no limit on the number of root hubs that can be contained in a single system at any time.
+
+Every device that is on a USB bus takes the number of the root hub as the first number in its name. That is followed by a - character and then the number of the port that the device is plugged into. As the device in our example is plugged into the first port, a 1 is added to the name. So the device name for **the main USB mouse device is 2-1**. Because this USB device contains __one interface__, that causes another device in the tree to be added to the sysfs path. The naming scheme for USB interfaces is the device name up to this point: in our example, it's 2-1 followed by a colon and __the USB configuration number__, then a period and __the interface number__. So for this example, the device name is 2-1:1.0 because it is the first configuration and has interface number zero.
+
+So to summarize, the USB sysfs device naming scheme is:
+
+**root_hub-hub_port:config.interface**
+
+root_hub-hub_port 对应一个USB设备，其中0号端口保留给root hub自身(非root的hub其0号端口不保留)。每个USB设备可以有多个配置，每个配置可以由多个接口。
+
+As the devices go further down in the USB tree, and as more and more USB hubs are used, the hub port number is added to the string following the previous hub port number in the chain. For a two-deep tree, the device name looks like:
+
+**root_hub-hub_port-hub_port:config.interface**
+
+As can be seen in the previous directory listing of the USB device and interface, all of the USB specific information is available directly through sysfs (for example, the idVendor, idProduct, and bMaxPower information). One of these files, **bConfigurationValue**, can be written to in order to change the active USB configuration that is being used. This is useful for devices that have multiple configurations, when the kernel is unable to determine what configuration to select in order to properly operate the device. A number of USB modems need to have the proper configuration value written to this file in order to have the correct USB driver bind to the device.
+
+Sysfs does not expose all of the different parts of a USB device, as __it stops at the interface level__. Any alternate configurations that the device may contain are not shown, as well as the details of __the endpoints associated with the interfaces__. This information can be found in __the usbfs filesystem__, which is mounted in the /proc/bus/usb/ directory on the system. The file /proc/bus/usb/**devices** does show all of the same information exposed in sysfs, as well as the alternate configuration and endpoint information for all USB devices that are present in the system. usbfs also allows user-space programs to directly talk to USB devices, which has enabled a lot of kernel drivers to be moved out to user space, where it is easier to maintain and debug. The USB scanner driver is a good example of this, as it is no longer present in the kernel because its functionality is now contained in the user-space SANE library programs.
+----------------------------------------------------------------------
+http://blog.csdn.net/bdc995/article/details/3185493
+/sys/devices/pci0000:00/0000:00:09.0/usb2/2-1
+|-- 2-1:1.0
+|  |-- bAlternateSetting  
+|  |-- bInterfaceClass  
+|  |-- bInterfaceNumber  
+|  |-- bInterfaceProtocol  
+|  |-- bInterfaceSubClass  
+|  |-- bNumEndpoints  
+|  |-- detach_state  
+|  |-- iInterface  
+|  `-- power  
+|  `-- state  
+|-- bConfigurationValue
+|-- bDeviceClass
+|-- bDeviceProtocol
+|-- bDeviceSubClass
+|-- bMaxPower
+|-- bNumConfigurations
+|-- bNumInterfaces
+|-- bcdDevice
+|-- bmAttributes
+|-- detach_state
+|-- devnum
+|-- idProduct
+|-- idVendor
+|-- maxchild
+|-- power
+| `-- state
+|-- speed
+`-- version
+
+sysfs 没暴露一个 USB 设备的所有的不同部分,因为它停止在接口水平. 任何这个设备可能包含的预备配置都没有展示, 连同关联到接口的端点的细节. 这个信息可在 usbfs 文件系统中找到, 它加载在系统的 /proc/bus/usb/ 目录. 文件 /proc/bus/usb/devices 展示了所有的在 sysfs 中暴露的信息, 连同所有的出现在系统中的 USB 设备的预备配置和端点信息. usbfs 也允许用户空间程序直接对话 USB 设备, 这已使能了许多内核驱动被移出到用户空间, 这里容易维护和调试.
+
+The USB device filesystem is a dynamically generated filesystem that complements the normal device node system, and can be used to write user space device drivers. Writing of user space device drivers is covered in the programmer's section of this guide. In addition to the device nodes, there are two files that are also generated - the __drivers__ and __devices__ files. If you followed the instructions in the installation chapter, you should find them as **/proc/bus/usb/drivers** and **/proc/bus/usb/device** respectively. If the /proc/bus/usb directory is empty, you have not mounted the filesystem, or you have mounted it in the wrong location.
+
+/proc/bus/usb/drivers just lists the currently registered drivers (even if the driver is not being used by any device). This is most useful when testing module installation, and checking for USB support in an unknown kernel. Here is an example of its use:
+
+[bradh@rachel bradh]$ more /proc/bus/usb/drivers
+__hid__
+ov511
+cpia
+printer
+__hub__
+/proc/bus/usb/devices lists information about the devices currently attached to the USB bus. This is very useful when trying to figure out if the device is **correctly enumerated**. Here is an example of its use, showing the root hub, a hub, a mouse and a camera:
+
+T:  Bus=00 Lev=00 Prnt=00 Port=__00__ Cnt=00 Dev#=  1 Spd=12  MxCh= 2    Dev#总是随着发现的USB设备递增，Root HUB作为一个USB设备，它的parent为0，插入的端口号为0，由于同级只有一个设备，所以Cnt为0。
+B:  Alloc= 28/900 us ( 3%), #Int=  2, #Iso=  0
+D:  Ver= 1.00 Cls=09(hub  ) Sub=00 Prot=00 MxPS= 8 #Cfgs=  1
+P:  Vendor=0000 ProdID=0000 Rev= 0.00
+C:* #Ifs= 1 Cfg#= 1 Atr=40 MxPwr=  0mA
+I:  If#= 0 Alt= 0 #EPs= 1 Cls=09(hub  ) Sub=00 Prot=00 Driver=hub   #驱动是和USB Device的某个接口绑定的。
+E:  Ad=81(I) Atr=03(Int.) MxPS=   8 Ivl=255ms
+
+
+T:  Bus=00 Lev=01 Prnt=01 Port=__01__ Cnt=01 Dev#=  2 Spd=12  MxCh= 4
+D:  Ver= 1.00 Cls=09(hub  ) Sub=00 Prot=00 MxPS= 8 #Cfgs=  1
+P:  Vendor=0451 ProdID=1446 Rev= 1.00
+C:* #Ifs= 1 Cfg#= 1 Atr=e0 MxPwr=100mA
+I:  If#= 0 Alt= 0 #EPs= 1 Cls=09(hub  ) Sub=00 Prot=00 Driver=**hub**
+E:  Ad=81(I) Atr=03(Int.) MxPS=   1 Ivl=255ms
+
+
+T:  Bus=00 Lev=02 Prnt=02 Port=__00__ Cnt=01 Dev#=  3 Spd=12  MxCh= 0  #非Root HUB的0号端口不保留。
+D:  Ver= 1.00 Cls=00(>ifc ) Sub=00 Prot=00 MxPS= 8 #Cfgs=  1
+P:  Vendor=0553 ProdID=0002 Rev= 1.00
+C:* #Ifs= 1 Cfg#= 1 Atr=80 MxPwr=400mA
+I:  If#= 1 Alt= 0 #EPs= 1 Cls=ff(vend.) Sub=00 Prot=ff Driver=cpia  #该USB设备有4个interfaces，每个interface有1个endpoint。
+E:  Ad=81(I) Atr=01(Isoc) MxPS=   0 Ivl=  1ms
+I:  If#= 1 Alt= 1 #EPs= 1 Cls=ff(vend.) Sub=00 Prot=ff Driver=cpia
+E:  Ad=81(I) Atr=01(Isoc) MxPS= 448 Ivl=  1ms
+I:  If#= 1 Alt= 2 #EPs= 1 Cls=ff(vend.) Sub=00 Prot=ff Driver=cpia
+E:  Ad=81(I) Atr=01(Isoc) MxPS= 704 Ivl=  1ms
+I:  If#= 1 Alt= 3 #EPs= 1 Cls=ff(vend.) Sub=00 Prot=ff Driver=cpia
+E:  Ad=81(I) Atr=01(Isoc) MxPS= 960 Ivl=  1ms
+
+
+T:  Bus=00 Lev=02 Prnt=02 Port=02 Cnt=02 Dev#=  5 Spd=1.5 MxCh= 0
+D:  Ver= 1.00 Cls=00(>ifc ) Sub=00 Prot=00 MxPS= 8 #Cfgs=  1
+P:  Vendor=046d ProdID=c001 Rev= 1.10
+S:  Manufacturer=Logitech
+S:  Product=USB-PS/2 Mouse
+C:* #Ifs= 1 Cfg#= 1 Atr=a0 MxPwr= 50mA
+I:  If#= 0 Alt= 0 #EPs= 1 Cls=03(HID  ) Sub=01 Prot=02 Driver=hid
+E:  Ad=81(I) Atr=03(Int.) MxPS=   8 Ivl= 10ms
+
+The information in the /proc/bus/usb/devices output is arranged in groups:
+
+* The line that starts with T: is __the topology__. Bus indicates which bus the device is on. Lev indicates the level of the device, starting at level 00 for the root hub, level 01 for any device attached to the root hub, level 02 for devices attached to hubs at level 01, and so on. Prnt is the parent device for this device (always 00 for the root hub, and 01 for the devices attached to the root hub). Port is the port on the parent device, starting at 00 for the first port on each device. Prnt/Port is unique per bus. Cnt indicates what number device this is, at this level, based on the enumeration order within that level of the topology, starting at 01 for the first device. Dev# indicates what number device this is, irrespective of level, based on the bus enumeration order. This is unique per bus. Spd indicates what speed this device is running at, in Mbps (either 1.5 or 12 with the current version of USB). MxCh indicates how many devices can be connected to this device, and is 00 for anything except a hub. Driver indicates which device driver is being used for this device - an entry of (none) indicates that no driver is being used.
+
+* The line that starts with D: is information from __the device descriptor__. Ver indicates which USB specification version the device claims to meet. Cls indicates which device class the device is claiming to meet, in both hexadecimal and as a string. A Cls entry of 00(>ifc) indicates that the device class specification compliance is interface dependent, and the interface descriptor should be read for device class information. Sub indicates which sub-class (within the Cls entry), the device meets. Prot indicates which protocol within a class or sub-class the device claims to meet. MxPS indicates how big the packets from Endpoint 0 are. #Cfgs indicates how many configurations this device has.
+
+* Much like D:, the line that starts with P: is information from the device descriptor, and is seperated mainly because it wouldn't all fit on one line. Vendor indicates the Vendor Identification code for the device, and ProdID indicates the Product Identification code for the device. Rev indicates the product revision number.
+
+Refer to the USB specification clause 9.7.1 for further information on device descriptors.
+
+* The lines that start with S:, if any, are **the vendor and product strings** that the device returned.
+
+* The line that starts with C: is information from __the configuration descriptor__ - the number of C:lines per device is given by #Cfgs, and the entry followed by an asterisk is the current configuration. #If indicates how many interfaces the device has. Cfg# indicates which configuration is being described. Atr is a hexadecimal indication of the device attributes (0x80 for bus-powered, 0x40 for self-powered, 0x20 for remote wake-up capable). MxPwr is the maximum power draw for this device configuration, in milliamps. Refer to USB specification clause 9.7.2 for further information on configuration descriptors.
+
+* The line that starts with I: is information from __the interface descriptor__ - the number of I: lines per C: line is given by the #Ifs entry. If# indicates which interface is being described within a given device configuration. Alt indicates which alternate setting of this interface is being described. #EPs indicates how many endpoints there are within the alternate setting for this endpoint. Cls indicates which class the alternate setting of the interface corresponds to, in both hexadecimal and as a character string. Sub indicates which sub-class the alternate setting of the interface belongs to. Prot indicates which interface protocol (within a class and sub-class tuple) the alternate setting of the interface conforms to. Driver indicates which of the various USB drivers has claimed this interface. See USB specification clause 9.7.3 for further information.
+
+* The line that starts with E: is information from __the endpoint descriptor__ - the number of E: lines per I: line is given by the #EPs entry. Endpoint 0 is not displayed. Ad indicates the endpoint address, with a letter to indicate whether the endpoint is an In or Out endpoint. Atr indicate the attribute (transfer type) associated with the endpoint, followed by a string translating the transfer type. MxPS indicates the maximum packet size this endpoint is capable of sending or receiving, as appropriate. Ivl indicates the interval, in milliseconds, between polling of interrupt endpoints. Ivl is ignored for bulk and control transfers, and is set to 1 for isochronous transfers. See USB specification clause 9.7.4 for further information on endpoint descriptors.
+
+Refer to linux/Documentation/usb/proc_usb_info.txt for more information on using the USB device filesystem information.
+
+
+[geekard@kb310 ~]$ lsusb
+Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+Bus 001 Device 002: ID 8087:0024 Intel Corp. Integrated Rate Matching Hub
+
+Bus 002 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+Bus 003 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub
+
+Bus 004 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+Bus 004 Device 002: ID 8087:0024 Intel Corp. Integrated Rate Matching Hub
+Bus 004 Device 003: ID 046d:c52e Logitech, Inc. 
+Bus 004 Device 004: ID 13fd:0840 Initio Corporation 
+[geekard@kb310 ~]$ 
+
+可见系统中共有4条USB总线，每条USB总线由一个USB Controller控制。USB Controller设备同时也是该总线的root hub，作为总线中第一个USB Device，其序号总是001。例如，对于BUS 001，其sysfs的目录结构为：
+
+[geekard@kb310 ~]$ tree /sys/bus/usb/devices/usb1 
+/sys/bus/usb/devices/usb1
+├── __1-0:1.0                          # USB Root HUB, 使用总线保留的0号端口。__
+│   ├── bAlternateSetting
+│   ├── bInterfaceClass
+│   ├── bInterfaceNumber
+│   ├── bInterfaceProtocol
+│   ├── bInterfaceSubClass
+│   ├── bNumEndpoints
+│   ├── driver -> ../../../../../bus/usb/drivers/hub   #因为是Root HUB，所以使用的驱动是hub。
+│   │   │  
+│   │   ├── uevent
+│   │   └── wMaxPacketSize
+│   ├── modalias
+│   ├── subsystem -> ../../../../../bus/usb
+│   ├── supports_autosuspend
+│   └── uevent
+├── __1-1                        # USB Root HUB的1号端口，上面插有USB 设备__
+│   ├── __1-1:1.0             		#该USB 设备的0号接口__
+│   │   ├── bAlternateSetting
+│   │   ├── bInterfaceClass
+│   │   ├── bInterfaceNumber
+│   │   ├── bInterfaceProtocol
+│   │   ├── bInterfaceSubClass
+│   │   ├── bNumEndpoints
+│   │   ├── driver -> ../../../../../../bus/usb/drivers/hub  # 驱动是和接口绑定的。
+│   │   │   ├── type
+│   │   │   ├── uevent
+│   │   │   └── wMaxPacketSize
+│   │   ├── modalias
+│   │   ├── subsystem -> ../../../../../../bus/usb
+│   │   ├── supports_autosuspend
+│   │   └── uevent
+│   ├── authorized     #1号端口上的 **USB设备** 属性文件。
+│   ├── avoid_reset_quirk
+│   ├── bcdDevice
+│   ├── bConfigurationValue
+│   ├── bDeviceClass
+│   ├── bDeviceProtocol
+│   ├── bDeviceSubClass
+│   ├── bmAttributes
+│   ├── bMaxPacketSize0
+│   ├── bMaxPower
+│   ├── bNumConfigurations
+│   ├── bNumInterfaces
+│   ├── busnum
+│   ├── configuration
+│   ├── descriptors
+│   ├── dev
+│   ├── devnum
+│   ├── devpath
+│   ├── driver -> ../../../../../bus/usb/drivers/usb
+│   │   ├── type
+│   │   ├── uevent
+│   │   └── wMaxPacketSize
+│   ├── idProduct
+│   ├── idVendor
+│   ├── maxchild
+├── bcdDevice     # USB Controller 设备的属性文件(另外的一种角色：Root HUB位于__1-0:1.0 目录中__)。
+├── bConfigurationValue
+├── bDeviceClass
+├── bDeviceProtocol
+├── bDeviceSubClass
+├── bmAttributes
+├── bMaxPacketSize0
+├── bMaxPower
+├── bNumConfigurations
+├── bNumInterfaces
+├── busnum
+├── configuration
+├── descriptors
+├── dev
+├── devnum
+├── devpath
+├── driver -> ../../../../bus/usb/drivers/__usb     #usb驱动用于USB Controller。__
+├── idProduct
+├── idVendor
+├── manufacturer
+├── maxchild
+├── product
+├── quirks
+├── removable
+├── remove
+├── serial
+├── speed
+├── subsystem -> ../../../../bus/usb
+├── uevent
+├── urbnum
+└── version
+[geekard@kb310 ~]$ 
+

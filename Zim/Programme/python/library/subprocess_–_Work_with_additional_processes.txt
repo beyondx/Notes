@@ -1,0 +1,667 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-05T21:07:10+08:00
+
+====== subprocess – Work with additional processes ======
+Created Thursday 05 January 2012
+http://www.doughellmann.com/PyMOTW/subprocess/#module-subprocess
+Purpose:	Spawn and communicate with additional processes.
+Available In:	2.4 and later
+
+The subprocess module provides __a consistent interface__ to creating and working with additional processes. It offers a higher-level interface than some of the other available modules, and is intended to replace functions such as// os.system(), os.spawn*(), os.popen*(), popen2.*() and commands.*()//. To make it easier to compare subprocess with those other modules, many of the examples here re-create the ones used for// os and popen//.
+
+The subprocess module defines one class,__ Popen__ and a few** wrapper functions** that use that class. The constructor for Popen takes arguments to set up the new process so the __parent can communicate with it via pipes__. It provides all of the functionality of the other modules and functions it replaces, and more. The API is consistent for all uses, and many of the extra steps of overhead needed (such as closing extra file descriptors and ensuring the pipes are closed) are “built in” instead of being handled by the application code separately.
+
+Note
+The API is roughly the same, but the underlying implementation is slightly different between Unix and Windows. All of the examples shown here were tested on Mac OS X. Behavior on a non-Unix OS will vary.
+
+===== Running External Command =====
+
+To run an external command __without interacting with it__, such as one would do with os.system(), Use the call() function.
+
+import subprocess
+
+# Simple command
+[x] subprocess.call(['ls', '-1'], shell=True)  
+上面的代码是错误的，因为在使用序列的情况下, shell应该为__False__.否则python调用一个shell来执行序列中的第一个命令，而将序列中的其它元素作为**shell本身**的参数。这也是下面的输出结果不是长格式的原因。
+
+The command line arguments are passed as a list of strings, which avoids the need for escaping quotes or other special characters that might be interpreted by the shell.
+
+$ python subprocess_os_system.py
+
+__init__.py
+index.rst
+interaction.py
+repeater.py
+signal_child.py
+signal_parent.py
+subprocess_check_call.py
+subprocess_check_output.py
+subprocess_check_output_error.py
+subprocess_check_output_error_trap_output.py
+subprocess_os_system.py
+subprocess_pipes.py
+subprocess_popen2.py
+subprocess_popen3.py
+subprocess_popen4.py
+subprocess_popen_read.py
+subprocess_popen_write.py
+subprocess_shell_variables.py
+subprocess_signal_parent_shell.py
+subprocess_signal_setsid.py
+
+Setting the__ shell__ argument to a true value causes subprocess to **spawn an intermediate shell process**, and tell it to run the command. The default is to run the command directly.
+
+import subprocess
+
+# Command with shell expansion
+subprocess.call('echo $HOME', shell=True)   #由于是fork一个shell来执行args，因此参数字符串中可以包含__shell可以识别的各种特殊字符和语法__。
+
+Using an intermediate shell means that variables, glob patterns, and other special shell features in the command string are processed before the command is run.
+
+$ python subprocess_shell_variables.py
+
+/Users/dhellmann
+
+===== Error Handling =====
+
+The return value from call() is the__ exit code__ of the program. The caller is responsible for interpreting it to detect errors. The** check_call()** function works like call() except that the__ exit code is checked__, and if it indicates an error happened then a **CalledProcessError** exception is raised.
+
+import subprocess
+
+subprocess.check_call(['false'])
+
+The false command always exits with a non-zero status code, which check_call() interprets as an error.
+
+$ python subprocess_check_call.py
+
+Traceback (most recent call last):
+  File "subprocess_check_call.py", line 11, in <module>
+    subprocess.check_call(['false'])
+  File "/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.
+7/subprocess.py", line 504, in check_call
+    raise CalledProcessError(retcode, cmd)
+subprocess.CalledProcessError: Command '['false']' returned non-zero exit status 1
+
+===== Capturing Output =====
+
+The standard input and output channels for the process started by call() are__ bound to the parent’s input and output__. That means the **calling programm cannot capture the output of the command**. Use check_output() to capture the output for later processing.
+
+import subprocess
+
+__output__ = subprocess.check_output(['ls', '-1'])   #捕获子进程的__标准输出__，并将其作为字符串返回。同时对命令的退出码进行检测，__若非0则产生异常，这时子进程被捕获的标准输出将被丢弃__。
+print 'Have %d bytes in output' % len(output)
+print output
+                                  
+
+The ls -1 command runs successfully, so the text it prints to standard output is captured and returned.
+
+$ python subprocess_check_output.py
+
+Have 462 bytes in output
+__init__.py
+index.rst
+interaction.py
+repeater.py
+signal_child.py
+signal_parent.py
+subprocess_check_call.py
+subprocess_check_output.py
+subprocess_check_output_error.py
+subprocess_check_output_error_trap_output.py
+subprocess_os_system.py
+subprocess_pipes.py
+subprocess_popen2.py
+subprocess_popen3.py
+subprocess_popen4.py
+subprocess_popen_read.py
+subprocess_popen_write.py
+subprocess_shell_variables.py
+subprocess_signal_parent_shell.py
+subprocess_signal_setsid.py
+
+This script runs a series of commands__ in a subshell__. Messages are sent to standard output and standard error__ before__ the commands exit with an error code.
+
+import subprocess
+
+output = subprocess.check_output(
+    'echo to stdout; echo to stderr 1>&2; exit 1',
+    **shell=True**,
+    )
+print 'Have %d bytes in output' % len(output)
+print output
+                      
+
+The message to standard error is printed to the console, but the __message to standard output is hidden__.
+这是因为如果子进程没有成果执行，被__捕获的标准输出会被丢弃__，而stderr被**输出到终端**。
+
+$ python subprocess_check_output_error.py
+
+__to stderr__
+Traceback (most recent call last):
+  File "subprocess_check_output_error.py", line 14, in <module>
+    shell=True,
+  File "/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.
+7/subprocess.py", line 537, in check_output
+    raise CalledProcessError(retcode, cmd, output=output)
+subprocess.CalledProcessError: Command 'echo to stdout; echo to stderr
+ 1>&2; exit 1' returned non-zero exit status 1
+
+To prevent error messages from commands run through check_output() from being written to the console, set the stderr parameter to the constant __STDOUT__.
+
+import subprocess
+
+output = subprocess.check_output(
+    'echo to stdout; echo to stderr 1>&2; exit 1',
+    shell=True,
+    stderr=subprocess.STDOUT,   #子进程的标准出错被重定向到**该进程的标准输出流**中，因此子进程的__标准出错流也会被捕获__。
+    )
+print 'Have %d bytes in output' % len(output)
+print output
+
+                                  
+
+Now the error and standard output channels are __merged together__ so if the command prints error messages, __they are captured__ and not sent to the console.
+
+$ python subprocess_check_output_error_trap_output.py
+
+Traceback (most recent call last):
+  File "subprocess_check_output_error_trap_output.py", line 15, in <module>
+    stderr=subprocess.STDOUT,
+  File "/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/subprocess.py", line 537, in check_output
+    raise CalledProcessError(retcode, cmd, output=output)
+subprocess.CalledProcessError: Command 'echo to stdout; echo to stderr 1>&2; exit 1' returned non-zero exit status 1
+
+===== Working with Pipes Directly =====
+
+By passing different arguments for **stdin, stdout, and stderr** it is possible to mimic the variations of os.popen().
+
+==== popen ====
+
+To run a process and **read all of its output**, set the stdout value to __PIPE__ and call __communicate()__.
+PIPE是在subprocess模块中定义的__全局变量，还有STDOUT__。
+
+import subprocess
+
+print '\nread:'
+proc = subprocess.Popen(['echo', '"to stdout"'],   #如果使用的是列表，则shell应该设置为False。
+                        **stdout**=subprocess.__PIPE__,
+                        )
+#proc为一个**Popen实例**。
+stdout_value = proc.communicate()__[0]   #向子进程发送空内容，然后捕获它的所有标准输出和标准出错，直到子进程退出。使用此方法时，Popen()应该使用PIPE。__
+print '\tstdout:', repr(stdout_value)
+
+This is similar to the way popen() works, except that the reading is managed internally by the **Popen instance**.
+
+$ python subprocess_popen_read.py
+
+
+read:
+        stdout: '"to stdout"\n'
+
+To set up a pipe to allow the calling program to **write data to it**, set __stdin to PIPE__.
+
+import subprocess
+
+print '\nwrite:'
+proc = subprocess.Popen(['cat', '-'],
+                        __stdin=subprocess.PIPE__,
+                        )
+proc.communicate('\tstdin: to stdin\n')
+
+To send data to the standard input channel of the process **one time**, pass the data to communicate(). This is similar to using popen() with mode 'w'.
+
+$ python -u subprocess_popen_write.py
+
+
+write:
+        stdin: to stdin
+
+==== popen2 ====
+
+To set up the Popen instance for__ reading and writing__, use a combination of the previous techniques.
+
+import subprocess
+
+print '\npopen2:'
+
+proc = subprocess.Popen(['cat', '-'],
+                       ** stdin**=subprocess.PIPE,
+                        **stdout**=subprocess.PIPE,
+                        )
+stdout_value = proc.communicate('through stdin to stdout')__[0]__
+print '\tpass through:', repr(stdout_value)
+
+This sets up the pipe to mimic popen2().
+
+$ python -u subprocess_popen2.py
+
+
+popen2:
+        pass through: 'through stdin to stdout'
+
+==== popen3 ====
+
+It is also possible watch both of the streams for **stdin、stdout and stderr**, as with popen3().
+
+import subprocess
+
+print '\npopen3:'
+proc = subprocess.Popen('cat -; echo "to stderr" 1>&2',
+                        shell=True,
+                        stdin=subprocess.PIPE,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        )
+**stdout_value, stderr_value** = proc.communicate('through stdin to stdout')
+print '\tpass through:', repr(stdout_value)
+print '\tstderr      :', repr(stderr_value)
+
+Reading from stderr works the same as with stdout. Passing PIPE tells Popen to attach to the channel, and communicate() reads all of the data from it before returning.
+
+$ python -u subprocess_popen3.py
+
+
+popen3:
+        pass through: 'through stdin to stdout'
+        stderr      : 'to stderr\n'
+
+==== popen4 ====
+
+To** direct the error output from the process to its standard output channel**, use __STDOUT __for stderr instead of PIPE.
+
+import subprocess
+
+print '\npopen4:'
+proc = subprocess.Popen('cat -; echo "to stderr" 1>&2',
+                        shell=True,
+                        stdin=subprocess.PIPE,
+                        stdout=subprocess.PIPE,
+                       ** stderr=subprocess.STDOUT**,
+                        )
+stdout_value, stderr_value = proc.communicate('through stdin to stdout\n')
+print '\tcombined output:', repr(stdout_value)
+print '\tstderr value   :', repr(stderr_value)
+
+Combining the output in this way is similar to how popen4() works.
+
+$ python -u subprocess_popen4.py
+
+
+popen4:
+        combined output: 'through stdin to stdout\nto stderr\n'
+        stderr value   : None
+
+===== Connecting Segments of a Pipe =====
+
+Multiple commands can be connected into a pipeline, similar to the way the Unix shell works, by creating separate Popen instances and__ chaining their inputs and outputs together__. The stdout attribute of one Popen instance is used as the stdin argument for the next in the pipeline, instead of the constant PIPE. The output is read from the stdout handle for the** final** command in the pipeline.
+
+import subprocess
+
+cat = subprocess.Popen(['cat', 'index.rst'], 
+                        stdout=subprocess.PIPE,
+                        )
+
+grep = subprocess.Popen(['grep', '.. include::'],
+                        stdin=cat.stdout,  #本子进程的标准输入__通过pipe__和上一个进程的标准输出相连。
+                        stdout=subprocess.__PIPE__,
+                        )
+
+cut = subprocess.Popen(['cut', '-f', '3', '-d:'],
+                        stdin=grep.stdout,
+                        stdout=subprocess.PIPE,
+                        )
+
+end_of_pipe = __cut.stdout  #返回一个文件对象。__
+
+print 'Included files:'
+for line in end_of_pipe:  #打印文件中的所有行。
+    print '\t', line.strip()
+
+This example reproduces the command line cat index.rst | grep ".. include" | cut -f 3 -d:, which reads the reStructuredText source file for this section and finds all of the lines that include other files, then prints only the filenames.
+
+$ python -u subprocess_pipes.py
+
+Included files:
+        subprocess_os_system.py
+        subprocess_shell_variables.py
+        subprocess_check_call.py
+        subprocess_check_output.py
+        subprocess_check_output_error.py
+        subprocess_check_output_error_trap_output.py
+        subprocess_popen_read.py
+        subprocess_popen_write.py
+        subprocess_popen2.py
+        subprocess_popen3.py
+        subprocess_popen4.py
+        subprocess_pipes.py
+        repeater.py
+        interaction.py
+        signal_child.py
+        signal_parent.py
+        subprocess_signal_parent_shell.py
+        subprocess_signal_setsid.py
+
+===== Interacting with Another Command =====
+
+All of the above examples assume a limited amount of interaction. The **communicate() **method reads __all __of the output and__ waits __for child process to exit before returning. It is also possible to write to and read from the** individual pipe handles** used by the Popen instance. A simple echo program that reads from standard input and writes to standard output illustrates this:
+
+import **sys**
+
+__sys.stderr__.write('repeater.py: starting\n')
+sys.stderr.flush()
+
+while True:
+    next_line = **sys.stdin.readline()**
+    if not next_line:
+        break
+    sys.stdout.write(next_line)
+    sys.stdout.flush()
+
+sys.stderr.write('repeater.py: exiting\n')
+sys.stderr.flush()
+
+The script, repeater.py, writes to stderr when it starts and stops. That information can be used to show the__ lifetime__ of the child process.
+
+The next interaction example uses the stdin and stdout file handles __owned by the Popen instance__ in different ways. In the first example, a sequence of 10 numbers are written to stdin of the process, and after each write the next line of output is read back. In the second example, the same 10 numbers are written but the output is __read all at once __using communicate().
+
+import subprocess
+
+print 'One line at a time:'
+proc = subprocess.Popen('python repeater.py', 
+                        shell=True,
+                      **  stdin=subprocess.PIPE,**
+**                        stdout=subprocess.PIPE,**
+                        )
+for i in range(10):
+    __proc.stdin.write__('%d\n' % i)
+    output = __proc.stdout.readline__()
+    print output.rstrip()
+remainder = proc.communicate__()__[0]  #发送空字符，因此子进程认为是读到文件结束符__因此终止__。
+print remainder
+
+print
+print 'All output at once:'
+proc = subprocess.Popen('python repeater.py', 
+                        shell=True,
+                        stdin=subprocess.PIPE,
+                        stdout=subprocess.PIPE,
+                        )
+for i in range(10):
+    proc.stdin.write('%d\n' % i)
+
+output = proc.communicate()[0]
+print output
+
+The "repeater.py: exiting" lines **come at different points** in the output for each loop style.
+
+$ python -u interaction.py
+
+One line at a time:
+repeater.py: starting
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+repeater.py: exiting
+
+
+All output at once:
+repeater.py: starting
+repeater.py: exiting
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+
+===== Signaling Between Processes =====
+每个Popen实例都有多个属性如：pid, returncode, stdin, stdout, stderr。
+
+The os examples include a demonstration of __signaling between processes__ using **os.fork() and os.kill()**. Since__ each Popen instance provides a pid attribute__ with the process id of the child process, it is possible to do something similar with subprocess. For example, using this script for the child process to be executed by the parent process
+
+#子进程源文件(signal_child.py)：
+import **os**
+import **signal**
+import **time**
+import** sys**
+
+pid = os.getpid()
+received = False
+
+def signal_usr1(signum, frame):
+    "Callback invoked when a signal is received"
+    global received
+    received = True
+    print 'CHILD %6s: Received USR1' % pid
+   __ sys.stdout.flush()__
+
+print 'CHILD %6s: Setting up signal handler' % pid
+sys.stdout.flush()
+signal.signal(__signal.SIGUSR1__, signal_usr1)
+print 'CHILD %6s: Pausing to wait for signal' % pid
+sys.stdout.flush()
+time.sleep(3)
+
+if not received:
+    print 'CHILD %6s: Never received signal' % pid
+
+combined with this parent process
+
+import os
+import signal
+import subprocess
+import time
+import sys
+
+proc = subprocess.Popen(['python', 'signal_child.py'])  #子进程在后台执行。
+print 'PARENT      : Pausing before sending signal...'
+sys.stdout.flush()
+time.sleep(1)  #这个sleep是为了与子进程同步。
+print 'PARENT      : Signaling child'
+sys.stdout.flush()
+__os.kill(proc.pid, signal.SIGUSR1)__
+
+the output is:
+
+$ python signal_parent.py
+
+PARENT      : Pausing before sending signal...
+CHILD  11668: Setting up signal handler
+CHILD  11668: Pausing to wait for signal
+PARENT      : Signaling child
+CHILD  11668: Received USR1
+
+===== Process Groups / Sessions =====
+
+Because of the way the__ process tree__ works under Unix, if the process created by **Popen spawns sub-processes**, those children will not receive any signals sent to the parent. That means, for example, it will be difficult to cause them to terminate by sending SIGINT or SIGTERM.
+
+import os
+import signal
+import subprocess
+import **tempfile**
+import time
+import sys
+
+__script__ = '''#!/bin/sh
+echo "Shell script in process $$"
+set -x
+python signal_child.py
+'''
+**script_file** = tempfile.__NamedTemporaryFile__('wt')
+script_file.write(script)
+script_file.flush()
+
+proc = subprocess.Popen(['sh', script_file.__name__], close_fds=True)
+print 'PARENT      : Pausing before sending signal to child %s...' % proc.pid
+sys.stdout.flush()
+time.sleep(1)
+print 'PARENT      : Signaling child %s' % proc.pid
+sys.stdout.flush()
+os.kill(proc.__pid__, signal.SIGUSR1)
+time.sleep(3)
+
+The pid used to send the signal does not match the pid of the child of the shell script waiting for the signal because in this example, there are __three separate__ processes interacting:
+
+* subprocess_signal_parent_shell.py
+* __The Unix shell__ process **running the script** created by the main python program.
+* signal_child.py
+
+$ python subprocess_signal_parent_shell.py
+
+PARENT      : Pausing before sending signal to child 11671...
+Shell script in process 11671
++ python signal_child.py
+CHILD  11672: Setting up signal handler
+CHILD  11672: Pausing to wait for signal
+PARENT      : Signaling child 11671
+CHILD  11672: Never received signal
+
+The solution to this problem is to__ use a process group__ to associate the children so they can **be signaled together**. The process group is created with __os.setsid()__, setting the “session id” to the process id of the current process. All child processes** inherit the session id**, and since it should **only be set set in the shell created by Popen and its descendants,** os.setsid() __should not be called in the parent process__. Instead, the function is passed to Popen as the __preexec_fn__ argument so it is run **after the fork() inside the new process, before it uses exec() to run the shell**.
+
+import os
+import signal
+import subprocess
+import tempfile
+import time
+import sys
+
+script = '''#!/bin/sh
+echo "Shell script in process $$"
+set -x
+python signal_child.py
+'''
+script_file = tempfile.NamedTemporaryFile('wt')
+script_file.write(script)
+script_file.flush()
+
+proc = subprocess.Popen(['sh', script_file.name], 
+                        close_fds=True,
+                        __preexec_fn=os.setsid__,
+                        )   #在fork后执行(exec)sh前执行os.setsid，这样__shell和ignal_child.py进程都在一个进程组中__。注意，这里的shell为__非交互式shell__，所以它在执行脚本时不会将脚本放在另一个进程组中以实现交互式shell的前后台命令的功能。
+
+print 'PARENT      : Pausing before sending signal to child %s...' % proc.pid
+sys.stdout.flush()
+time.sleep(1)
+print 'PARENT      : Signaling process group %s' % proc.pid
+sys.stdout.flush()
+__os.killpg__(__proc.pid__, signal.SIGUSR1)
+time.sleep(3)
+
+The sequence of events is:
+
+    The parent program instantiates Popen.
+    The Popen instance forks a new process.
+    The new process runs os.setsid().
+    The new process runs exec() to start the shell.
+    The shell runs the shell script.
+    The shell script forks again and that process execs Python.
+    Python runs signal_child.py.
+    The parent program signals the process group using the pid of the shell.
+    The shell and Python processes receive the signal. The shell ignores it. Python invokes the signal handler.
+
+To signal the **entire process group**, use __os.killpg()__ with the pid value from the Popen instance.
+
+$ python subprocess_signal_setsid.py
+
+PARENT      : Pausing before sending signal to child 11676...
+Shell script in process 11676
++ python signal_child.py
+CHILD  11677: Setting up signal handler
+CHILD  11677: Pausing to wait for signal
+PARENT      : Signaling process group 11676
+CHILD  11677: Received USR1
+
+===== See also =====
+
+* **subprocess**
+    Standard library documentation for this module.
+* os
+    Although many are deprecated, the functions for working with processes found in the os module are still widely used in existing code.
+* UNIX SIgnals and Process Groups
+    A good description of UNIX signaling and how process groups work.
+* Advanced Programming in the UNIX(R) Environment
+    Covers working with multiple processes, such as handling signals, closing duplicated file descriptors, etc.
+* pipes
+    Unix shell command pipeline templates in the standard library.
+
+
+
+=================================================================
+ 
+
+    Doug Hellmann
+    It isn't clear if you're working exactly with the example program or if you have modified it.** When stdin is set to PIPE the new process will block trying to read input.** __The parent has to write something or close the stdin handle to send an end-of-file to the new process so it will have data to read so it does not block.__
+        Like
+        Reply
+        3 months ago
+        in reply to cheenu
+    Vincent
+    Note that by default the value for the __"bufsize" parameter of Popen is 0__, which means that stream communications are** not buffered**, resulting in a drop of performance if your process yields a lot of information on stdout/stderr.
+    Setting bufsize to__ -1 __improves the situation a lot !
+
+  
+    I'm trying to make a python script that will log me onto a ssh server and then pass over the controls to me in the terminal.  
+    So far I have:
+    import subprocess
+    proc = subprocess.call('ssh -t -t USERserver ',shell=True,)
+
+    But I cannot get it so that the python script can interact with ssh session and enter password and then pass over control to terminal user.
+
+        Like
+        Reply
+        6 months ago
+    Doug Hellmann
+    You probably need to set stdin and stdout for the process. You should be able to get more help on comp.lang.python.
+        Like
+        Reply
+        6 months ago
+        in reply to Scott S
+    nerd
+    The "Python Version: 2.4 and later" indicator at the top of this article is incorrect as "check_output" was not released until python 2.7
+
+      
+    Doug
+    Wow. helpful in so many ways, especially that last bit about__ setting a process group and using os.killpg()__. I'm not sure I would have ever gotten that right just reading from the docs. I ran into the same issue...trying to end the child process, which was the shell, not realizing that the script the shell was executing was a __third process__, so it would always hang. I got around it by using "sh exec mycommand" but that might not work in every case, and I'm not sure what other side effects may be lurking because of it. Thanks again.
+        Like
+   
+    barbara
+    Ha, thank you for this - I was poking around online last night looking for some help when I came across this post and had a lightbulb moment. :)
+        Like
+        Reply
+        2 years ago
+    Doug Hellmann
+    What platform are you on @pythonnewb? It sounds like the repeater.py file needs to have its permissions changed from the way they are packaged by default.
+        Like
+        Reply
+        2 years ago
+    pythonnewb
+    Ok, i get it..
+
+    here is an example
+
+    import __urllib2__
+    import subprocess
+
+
+    openurl = urllib2.urlopen(''http........')
+    grep = subprocess.Popen('grep HEAD',
+    shell=True,
+    stdin=subprocess.PIPE,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.STDOUT
+    )
+    grep_stdout=grep.communicate(openurl.read(3000))[0]
+
+    print(grep_stdout)

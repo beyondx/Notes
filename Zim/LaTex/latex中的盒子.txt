@@ -1,0 +1,16 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-09-26T20:07:19+08:00
+
+====== latex中的盒子 ======
+http://blog.sina.com.cn/s/blog_5e16f1770100gwkw.htmltop
+Created Monday 26 September 2011
+任何 LATEX 对象（字符，图形等）都把盒子作为单位， 每个盒子在它的左侧均有一参考点 （Reference point）。盒子的基线（baseline，见图 ）是通过参考点的一条水平线。当 LATEX 排列文本时，这些字符的参考点被从左到右的排成一条直线，称为当前基线（current baseline），并使它与字符的基线对齐。 LATEX 也用同样的方法来处理图形和其它对象，每个对象的参考点都被放置于当前基线上。
+{{./1.gif}}
+每个 LATEX 盒子的大小由高度、深度、宽度（ height,depth,width）来决定。高度是参考点到盒子顶部的距离，深度是参考点到盒子底部的距离，宽度则是盒子的宽度。全部高度（totalheight）被定义为从盒子底部到顶部的距离，即：
+全部高度=高度+深度
+所有未曾旋转的 EPS 图形的参考点都是它的左下角（见下图的左边的盒子），它的深度为零，高度就等于全部高度。图中间的盒子则是将图形旋转后，它的高度就不等于全部高度了。右边的盒子则展示可将图形旋转使其高度为零。
+{{./2.gif}}
+
+
+地址：http://www.ctex.org/documents/latex/graphics/node6.html

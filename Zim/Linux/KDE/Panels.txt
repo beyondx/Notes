@@ -1,0 +1,85 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-16T15:28:47+08:00
+
+====== Panels ======
+Created Wednesday 16 November 2011
+
+http://userbase.kde.org/Plasma/Panels
+
+目录
+
+    1 Panels in Plasma Desktop
+    2 Configuration
+        2.1 The Panel Toolbox
+        2.2 The "More Settings" Menu
+        2.3 Under the Hood
+    3 Multiple Panels
+        3.1 Adding a Panel
+    4 Locking
+
+===== Panels in Plasma Desktop =====
+{{~/sync/notes/zim/Linux/KDE/Panels/512px-Panel_Settings.png}}
+Panel in configuration mode with More settings-submenu open.
+
+A Panel is __a widget container __which can be located on **any side** of the desktop. There can be **multiple panels** on the same side. The default layout is one panel that stretches across the entire bottom of the desktop with the following widgets: **application menu, desktop pager, task manager (list of open windows), system tray, device notifier and clock.** If you are using a laptop, netbook or other computer that uses a battery there will also be a power management widget on the panel. At the end of the panel is a **toolbox button **which can be activated to access configuration options.
+
+===== Configuration =====
+
+The panel can then be configured by clicking on the toolbox located on the right for horizontal or bottom for vertical panel. At that point, the panel will be in __configuration mode__. Panel configuration may also be accessed via the context (right click) menu in the panel.
+{{~/sync/notes/zim/Linux/KDE/Panels/512px-Panel_Settings_resize.png}}
+The arrows on the edge of the panel allow the panel's** size** to be adjusted. Dragging the arrow makes the panel smaller or larger. Dragging the arrow when it is pointing down, moves the panel's **position**.
+
+Widgets in the panel can be sorted by dragging them when in configuration mode. Widgets align left in the horizontal and top in the vertical panel
+
+===== The Panel Toolbox =====
+
+* Screen Edge: Allows you to drag the panel to **any **of the four edges of the screen. 
+* Height (for horizontal panel): Allows the panel** height **to be adjusted. 
+* Width (for vertical panel): Allows the panel **width** to be adjusted. 
+* Add Widgets: Allows widgets to be added to the panel. 
+* Add __Spacer__: Allows you to add a spacer into the panel giving space between the items in it.
+       The standard behavior of a spacer is that it uses as much space as possible (flexible size), but you can also set it to a fixed size:. 		Enter the context (right click) menu and deactivate Set Flexible Size. 
+
+===== The "More Settings" Menu =====
+ 
+* Panel Alignment: Allows the alignment of the panel to be set in three pre-set positions.
+        Left/Top
+        Center
+        Right/Bottom 
+* Visibility
+        Always Visible: Keeps the panel visible at all times, even when windows are maximised.
+        Auto Hide: Hides the panel off screen until the mouse is __placed near __the screen edge.
+        Windows can cover: This allows windows to cover the panel and if maximised, will cover the panel.
+        Windows go below: This allows windows to go below the panel, even when maximised. 
+* Maximize Panel: Makes the panel fit to the screen edges, if it has been resized. 
+* Lock Widgets: Locks the panel and widgets in position. Also hides the toolbox. 
+* Remove this panel: Removes the current panel and all widgets in it. 
+
+===== Under the Hood =====
+
+Should anything "untoward" happen to your panel have a look at **~/.kde(4)/share/config/plasma-desktop-appletsrc** - the panel itself is classed as a containment (there are at least two, the desktop and the panel) which is home to all the different widgets you put there.
+
+
+Info needed
+
+Here the relevant section of plasma-desktop-appletsrc for a default panel containment should go. Please help us provide the info if you know anything about this.
+
+
+===== Multiple Panels =====
+
+It is also possible to have more than one panel on your desktop. This proves useful if you want to have a more flexible layout:
+{{~/sync/notes/zim/Linux/KDE/Panels/512px-Multipanel.png}}
+Screenshot showing a desktop with multiple panels: a vertical panel with an application launcher, shortcuts and a system tray and a second panel placed horizontally at the top of the screen with a task manager and a clock.
+
+===== Adding a Panel =====
+
+To add a new panel either click on the desktop toolbox button and select Add Panel or open the context (right click) menu on the desktop and select Add Panel from the menu.
+
+If more than one kind of Panel is installed, you will be able to select between them to choose what sort of Panel you would prefer. By default, two Panel types are available: __Default Panel__, which creates a Panel containing all of the default widgets (launcher, pager, tasks, system tray, clock, etc.), and Blank Panel, which adds an empty Panel without any pre-configured widgets in it.
+Locking
+
+The panels and desktop may be locked to prevent changes being made to them. When locked, the toolbox buttons will not be shown on either the desktop or on the panels. To configure a panel, it must be unlocked, otherwise the toolbox and context menu entries to configure or add widgets are unavailable.
+
+Locking can be done by either selecting the Lock Widgets entry in the Panel toolbox's More Settings menu or in the Panel context (right click) menu. Once locked, the Panels can be unlocked again by right clicking on either a panel or desktop and selecting Unlock Widgets from the menu that is displayed.
+2个分类: Desktop | Plasma

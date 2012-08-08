@@ -1,0 +1,176 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-30T13:25:39+08:00
+
+====== 随机化算法(3) — 舍伍德(Sherwood)算法 ======
+Created Saturday 30 July 2011
+
+正文：
+
+这一章怎么说呢，我个人感觉不好理解，在网上查了一些资料，没发现有具体对舍伍德算法的介绍。
+
+迄今为止看的最全面的就是王晓东的《计算机算法设计与分析》里讲的了。在网上查的一些资料也基本全和这本书上讲的一样，至于是这本书先写的，还是其他位置先写的，我就不做评论了。
+
+(有时间我把那本书上讲舍伍德的一段给拍下来放到文章里)
+
+书上对舍伍德讲的比较详细，但是不太好理解，一定要多看几遍。
+
+我这里只说下他的基本思想：在一般输入数据的程序里，输入多多少少会影响到算法的计算复杂度。这时可用舍伍德算法消除算法所需计算时间与输入实例间的这种联系。
+
+联系例子，在快速排序中，我们是以第一个元素为基准开始排序时，为了避免这样的情况，可以用舍伍德算法解决，也就是使第一个基准元素是随机的。
+
+事先说明下：以后章节，若在代码中头文件里包含了RandomNumber.h头文件，请查看前面写的《概率算法(1) — 随机数》里的伪随机数类RandomNumber.我以后不再提醒。
+
+这是一个非递归版的舍伍德快速排序算法：
+
+/*
+* Author: Tanky woo
+* Blog:   www.WuTianQi.com
+* Date:   2010.12.8
+* 舍伍德(Sherwood)算法运用(1) -- 线性时间选择算法
+* 代码来至王晓东《计算机算法设计与分析》
+*/
+ 
+#include "RandomNumber.h"
+#include <iostream>
+#include <iomanip>
+#include <time.h>
+using namespace std;
+const int INF = 9999;
+ 
+// 交换a, b的值
+template <typename Type>
+void Swap(Type &a, Type &b)
+{
+	Type temp;
+	temp = a;
+	a = b;
+	b = temp;
+}
+ 
+template <typename Type>
+Type select(Type a[], int lt, int rt, int k)
+{
+	// 计算a[lt:rt]中第k小元素
+	static RandomNumber rnd;
+	while(true)
+	{
+		if(lt > rt)
+			return a[lt];
+		int i = lt, j = lt+rnd.Random(rt-lt+1);   // 随机选择的划分基准
+		Swap(a[i], a[j]);
+		j = rt+1;
+		Type pivot = a[lt];
+		//以划分基准为轴作元素交换
+		while(true)
+		{
+			while(a[++i] < pivot);
+			while(a[--j] > pivot);
+			if(i >= j)
+				break;
+			Swap(a[i], a[j]);
+		}
+		if(j - lt + 1 == k)
+			return pivot;
+		a[lt] = a[j];
+		a[j] = pivot;
+		// 对子数组重复划分过程
+		if(j - lt + 1 < k)
+			{
+				k = k - j + lt - 1;
+				lt = j + 1;
+			}
+		else
+			rt = j - 1;
+	}
+}
+ 
+template <typename Type>
+Type Select(Type a[], int n, int k)
+{
+	// 计算a[0: n-1]中第k小元素
+	// 假设a[n]是一个键值无穷大的元素
+	if(k < 1 || k > n)
+		cerr << "Wrong!" << endl;
+	return select(a, 0, n-1, k);
+}
+ 
+int main()
+{
+	int arr[7] = {3, 2, 5, 7, 10, INF};
+	cout << Select(arr, 6, 4) << endl;
+}
+
+当然，舍伍德算法也不是万能的。有时也会遇到这样的情况，即所给的确定性算法无法直接改造成舍伍德型算法。此时可借助于随机预处理技术，不改变原有的确定性算法，仅对其输入进行随机洗牌，同样可收到舍伍德算法的效果。
+
+以下是随机洗牌算法：
+
+/*
+* Author: Tanky woo
+* Blog:   www.WuTianQi.com
+* Date:   2010.12.8
+* 和舍伍德算法效果类似的一个程序 -- 随机洗牌
+* 代码来至王晓东《计算机算法设计与分析》
+*/
+ 
+#include "RandomNumber.h"
+#include <iostream>
+#include <iomanip>
+#include <time.h>
+using namespace std;
+ 
+// 交换a, b的值
+template <typename Type>
+void Swap(Type &a, Type &b)
+{
+	Type temp;
+	temp = a;
+	a = b;
+	b = temp;
+}
+ 
+template <typename Type>
+void Shuffle (Type a[], int len)
+{
+	// 随机洗牌算法
+	static RandomNumber rnd;
+	for (int i = 0; i < len; ++i) 
+	{
+		int j = rnd.Random(len-i) + i;      
+		Swap (a[i], a[j]) ;    
+	}
+}
+ 
+template <typename Type>
+void Print (Type a[], int len)
+{
+	for(int i=0; i<len; ++i)
+		cout << a[i] << " ";
+	cout << endl;
+}
+ 
+int main()
+{
+	int arr[10];
+	// 原先次序
+	for(int i=0; i<10; ++i)
+		arr[i] = i+1;
+	Print(arr, 10);
+ 
+ 
+	// 第一次洗牌
+	Shuffle(arr, 10);
+	Print(arr, 10);
+ 
+	// 第二次洗牌
+	Shuffle(arr, 10);
+	Print(arr, 10);
+ 
+	return 0;
+}
+
+原次序与第一洗牌和第二次洗牌后都不一样。
+
+说实话，这一章我也很迷糊，如果有问题，欢迎大家指出。
+
+下一章将是：《随机化算法(4) — 拉斯维加斯(Las Vegas)算法》

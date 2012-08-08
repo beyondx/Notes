@@ -1,0 +1,249 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-07T19:31:35+08:00
+
+====== Django+python+BeautifulSoup组合的垂直搜索爬虫 ======
+Created Friday 07 October 2011
+http://www.yiihsia.com/2010/11/djangopythonbeautifulsoup%E7%BB%84%E5%90%88%E7%9A%84%E5%9E%82%E7%9B%B4%E6%90%9C%E7%B4%A2%E7%88%AC%E8%99%AB/
+使用python+BeautifulSoup完成爬虫抓取特定数据的工作，并使用Django搭建一个管理平台，用来协调抓取工作。
+因为自己很喜欢Django admin后台，所以这次用这个后台对抓取到的链接进行管理，使我的爬虫可以应对各种后期的需求。比如分时段抓取，定期的对已经抓取的地址重新抓取。数据库是用python自带的sqlite3，所以很方便。
+大三的时候做一个电影推荐系统，需要些电影数据。本文的例子是对豆瓣电影抓取特定的数据。
+第一步：建立Django模型
+
+模仿nutch的爬虫思路，这里简化了。每次抓取任务开始先从数据库里找到未保存的(is_save = False)的链接，放到抓取链表里。你也可以根据自己的需求去过滤链接。
+python代码：
+
+class Crawl_URL(models.Model):
+    url = models.URLField('抓取地址',max_length=100, unique=True)
+    weight = models.SmallIntegerField('抓取深度',default = 0)#抓取深度起始1
+    is_save = models.BooleanField('是否已保存',default= False)#
+    date = models.DateTimeField('保存时间',auto_now_add=True,blank=True,null=True)
+    def __unicode__(self):
+        return self.url
+
+然后生成相应的表。
+还需要一个admin管理后台
+
+class Crawl_URLAdmin(admin.ModelAdmin):
+    list_display = ('url','weight','is_save','date',)
+    ordering = ('-id',)
+    list_filter = ('is_save','weight','date',)
+    fields = ('url','weight','is_save',)
+admin.site.register(Crawl_URL, Crawl_URLAdmin)
+
+第二步，编写爬虫代码
+爬虫是单线程，并且每次抓取后都有相应的暂定，豆瓣网会禁止一定强度抓取的爬虫
+爬虫根据深度来控制，每次都是先生成链接，然后抓取，并解析出更多的链接，最后将抓取过的链接is_save=true，并把新链接存入数据库中。每次一个深度抓取完后都需要花比较长的时候把链接导入数据库。因为需要判断链接是否已存入数据库。
+这个只对满足正则表达式 http://movie.douban.com/subject/(\d+)/ 的地址进行数据解析。并且直接忽略掉不是电影模块的链接。
+第一次抓取需要在后台加个链接，比如http://movie.douban.com/chart，这是个排行榜的页面，电影比较受欢迎。
+python代码：
+
+# coding=UTF-8
+ 
+import urllib2
+ 
+from BeautifulSoup import *
+ 
+from urlparse import urljoin
+ 
+from pysqlite2 import dbapi2 as sqlite
+ 
+from movie.models import *
+ 
+from django.contrib.auth.models import User
+ 
+from time import sleep
+ 
+image_path = 'C:/Users/soul/djcodetest/picture/'
+ 
+user = User.objects.get(id=1)
+ 
+def crawl(depth=10):
+ 
+for i in range(1,depth):
+ 
+print '开始抓取 for %d....'%i
+ 
+pages = Crawl_URL.objects.filter(is_save=False)
+ 
+newurls={}
+ 
+for crawl_page in pages:
+ 
+page = crawl_page.url
+ 
+try:
+ 
+c=urllib2.urlopen(page)
+ 
+except:
+ 
+continue
+ 
+try:
+ 
+#解析元数据和url
+ 
+soup=BeautifulSoup(c.read())
+ 
+#解析电影页面
+ 
+if re.search(r'^http://movie.douban.com/subject/(\d+)/$',page):
+ 
+read_html(soup)
+ 
+#解析出有效的链接，放入newurls
+ 
+links=soup('a')
+ 
+for link in links:
+ 
+if 'href' in dict(link.attrs):
+ 
+url=urljoin(page,link['href'])
+ 
+if url.find("'")!=-1: continue
+ 
+if len(url) &gt; 60: continue
+ 
+url=url.split('#')[0]  # removie location portion
+ 
+if re.search(r'^http://movie.douban.com', url):
+ 
+newurls[url]= crawl_page.weight + 1 #连接有效。存入字典中
+ 
+try:
+ 
+print 'add url :'
+ 
+except:
+ 
+pass
+ 
+except Exception.args:
+ 
+try:
+ 
+print "Could not parse : %s" % args
+ 
+except:
+ 
+pass
+ 
+#newurls存入数据库 is_save=False weight=i
+ 
+crawl_page.is_save = True
+ 
+crawl_page.save()
+ 
+#休眠2.5秒
+ 
+sleep(2.5)
+ 
+save_url(newurls)
+ 
+#保存url，放到数据库里
+ 
+def save_url(newurls):
+ 
+for (url,weight) in newurls.items():
+ 
+url = Crawl_URL(url=url,weight=weight)
+ 
+try:
+ 
+url.save()
+ 
+except:
+ 
+try:
+ 
+print 'url重复:'
+ 
+except:
+ 
+pass
+ 
+return True
+
+第三步，用BeautifulSoup解析页面
+抽取出电影标题，图片，剧情介绍，主演，标签，地区。关于BeautifulSoup的使用可以看这里BeautifulSoup技术文档
+
+
+#抓取数据  
+def read_html(soup):  
+    #解析出标题  
+    html_title = soup.html.head.title.string  
+    title = html_title[:len(html_title)-5]  
+    #解析出电影介绍  
+    try:  
+        intro = soup.find('span',attrs={'class':'all hidden'}).text  
+    except:  
+        try:  
+            node = soup.find('div',attrs={'class':'blank20'}).previousSibling  
+            intro = node.contents[0]+node.contents[2]  
+        except:  
+            try:  
+                contents = soup.find('div',attrs={'class':'blank20'}).previousSibling.previousSibling.text  
+                intro = contents[:len(contents)-22]  
+            except:  
+                intro = u'暂无'  
+ 
+    #取得图片  
+    html_image = soup('a',href=re.compile('douban.com/lpic'))[0]['href']  
+    data = urllib2.urlopen(html_image).read()  
+    image = '201003/'+html_image[html_image.rfind('/')+1:]  
+    f = file(image_path+image,'wb')  
+    f.write(data)  
+    f.close()  
+ 
+ 
+    #解析出地区  
+    try:  
+        soup_obmo = soup.find('div',attrs={'class':'obmo'}).findAll('span')  
+        html_area = soup_obmo[0].nextSibling.split('/')  
+        area = html_area[0].lstrip()  
+    except:  
+        area = ''  
+ 
+    #time = soup_obmo[1].nextSibling.split(' ')[1]  
+    #time = time.strptime(html_time,'%Y-%m-%d')  
+ 
+    #生成电影对象  
+    new_movie = Movie(title=title,intro=intro,area=area,version='暂无',upload_user=user,image=image)  
+    new_movie.save()  
+    try:  
+        actors = soup.find('div',attrs={'id':'info'}).findAll('span')[5].nextSibling.nextSibling.string.split(' ')[0]  
+        actors_list = Actor.objects.filter(name = actors)  
+        if len(actors_list) == 1:  
+            actor = actors_list[0]  
+            new_movie.actors.add(actor)  
+        else:  
+            actor = Actor(name=actors)  
+            actor.save()      
+            new_movie.actors.add(actor)  
+    except:  
+        pass  
+ 
+    #tag  
+    tags = soup.find('div',attrs={'class':'blank20'}).findAll('a')  
+    for tag_html in tags:  
+        tag_str = tag_html.string  
+        if len(tag_str) > 4:  
+            continue  
+        tag_list = Tag.objects.filter(name = tag_str)  
+        if len(tag_list) == 1:  
+            tag = tag_list[0]  
+ 
+            new_movie.tags.add(tag)  
+        else:  
+            tag = Tag(name=tag_str)  
+            tag.save()    
+            new_movie.tags.add(tag)  
+    #try:  
+ 
+    #except Exception.args:  
+    #   print "Could not download : %s" % args  
+    print r'download success'
+
+豆瓣的电影页面并不是很对称，所以有时候抓取的结果可能会有点出入

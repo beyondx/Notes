@@ -1,0 +1,213 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-28T21:30:28+08:00
+
+====== mc ======
+Created Monday 28 March 2011
+http://hi.baidu.com/xksmyt/blog/item/150d8ab4f7d8c3fb30add178.html
+mc使用方法
+2010-10-30 21:01
+转载自 tianhai_xyz
+最终编辑 tianhai_xyz
+Midnight Commander - 文件管理器
+
+Philipp Thomas
+菲利普 托马斯
+
+介绍
+
+Midnight Commander，简称mc，是一个基于文本模式的文件管理器，而它的前辈其实就
+是DOS下的Norton Commander。
+它们有相同的底层，在顶部带有一个下拉菜单，两个用来显示文件和信息的大窗口，底部
+有一个命令行和一个快捷键提示信息。
+
+www.linuxsir.com.cn/photo/mcphoto/suse_pic1.gif
+http://218.5.6.250/personal/fzucad/linux/suse_pic1.png
+
+任何对Norton Commander熟悉的人都会马上喜欢上Midnight Commander的。
+和它的前辈比较起来，mc作为一个Linux程序，提供了很多附加的功能：
+
+依靠NFS文件系统，显示远程计算机上的目录信息。
+通过FTP以FTP目录树的方式在窗口中连接到远程计算机。
+能以文件树的形式显示Tar，Cpio和RPM文件。
+支持Unix系统特殊的命令，诸如：改变文件属主（chown）和改变文件权限（chmod），
+建立硬链接和符号链接（links和symlinks）。
+
+另外，Midnight Commander还提供了远比它的前辈多的配置选项。
+
+配置
+
+打开Midnight Commander之后要做的第一件事就是，按下F9键激活菜单然后选择“选项”。
+会跳出一个配置选项的窗口。在这个配置窗口中包含了大量的配置信息:
+www.linuxsir.com.cn/photo/mcphoto/suse_pic2.gif
+http://218.5.6.250/personal/fzucad/linux/suse_pic2.png
+
+窗口选项
+
+显示备份文件（show Backup file）：许多程序，例如vi和joe，会产生以'~'符号结尾
+的备份文件，Midnight Commander默认不会显示它们。
+
+显示隐藏文件（show Hidden file）：以.为文件名开头的文件通常不会被显示，在Linux
+系统中这类文件是隐藏文件
+
+向下标记（Downward marking）：在默认设置中，如果一个文件被高亮选中（使用Insert
+键或Ctrl+c键），选择框就会自动向下移动。但如果这个选项是非选中的，那么选择框就不
+会动了。
+
+下坠式菜单（Dropdown menus）：如果你选中这个选项，当你按下F9的时候就会出现一个
+下坠式菜单。如果你使这个选项非选中，那么只有菜单栏处于激活的状态，你必须先选择一
+个菜单项，菜单的内容才会出现。
+
+所以文件同类处理（All files mixed）：如果这个选项被选中，文件和目录就没有区别。
+也就是说，当这个选项处于非选中状态时，目录（和目录的链接）总时排在文件的前面。
+
+快速浏览（Quick read）：这个选项通常是非选中的。当它处于选中状态时，Midnight
+Commander使用一种特殊方法来判断一个目录的内容是否改变。显示的内容只有当目录的
+i-node被改变后才会刷新。这种方法造成只有在目录中的文件被删除或被建立时才会刷新显
+示，但是当文件的属性（大小，拥有者，存取权限，等等）改变时却不会刷新。这时只能靠手
+工来刷新了（用Ctrl + r键）。
+
+
+调用后暂停（Pause after call-up）
+下列命令被调用后，Midnight Commander会暂停并给你看这些命令的输出信息。有对这个选
+项三种可能的选择：
+从不（Never）：这意味着你从不想看到任何命令的输出信息。当你使用Linux终端或者是一个
+终端窗口时，你可以按下Ctrl + o来看到输出。
+哑终端（On dumb terminals）：在这种终端上（对Midnight Commander而言就是既非Linux
+终端也不是一个终端窗口），不适合显示最后执行的命令的输出信息，Midnight Commander
+会暂停下来并显示一个暂停的消息。
+总是（Always）：总是暂停。
+
+其它选项的详细操作（Other Options Verbose operstions）：这个选项指定了当你执行复
+制，重命名或删除文件操作时是否弹出一个窗口。如果你工作在一个慢速的终端上，你可能希望
+关闭这个选项。当你的连接速度低于9600bps时，这个选项会自动关闭。
+
+计算总的大小（Calculating grand totals）：当这个选项打开时，Midnight Commander
+会计算所有等待操作的文件的大小和数量。这样你就可以用一点点时间换来一个精确的进度报告
+了。
+
+Shell模式（Shell patterns）：选择，反选择和过滤命令通常使用了类似与Shell的正则表达
+式。下面的转换就可以带来这种效果：
+*由.*代替（代表0个或更多个字符），
+?由.代替（代表一个字符）并且
+.代表一个中止符号。
+当这个选项被关闭时，规则表达式相当于ed中的那一套（参加man ed）。
+
+自动保存设置（Saving settings automatically）：当这个选项打开时，Midnight
+Commander把所有的配置信息保存到你的HOME目录的.mc子目录中去。
+
+自动菜单（Auto menus）：如果这个选项被打开，当进入Midnight Commander时自动打开菜单
+栏。
+
+使用内部编辑器（Using the internal editor）：指定你是想使用内嵌编辑器还是外部编辑
+器来编辑文件。当这个选项被关闭时，Midnight Commander使用环境变量中EDITOR指定的编
+辑器。当环境变量没有指定编辑器时，就使用vi。
+
+使用内部浏览器（Using the internal viewer）：如果你不想使用内嵌的浏览器来浏览文件，
+就关闭这个选项。Midnight Commander使用环境变量中PAGER指定的浏览器。当环境变量没有指
+定浏览器时，就使用view。
+
+总共（Total）显示所有的东东（displying everything）：当输入不明确时MC通常在按下
+Esc-Tab或Alt-Tab两次之后显示所有可能出现的情况。第一次时它尽量补充完整，并产生鸣叫。
+如果你想看到所有可能出现的情况，你就可以再按一次Esc-Tab或Alt-Tab，不过这个选项是要打
+开着的。
+
+旋转标志（Rotating bar）：这个选项指定了当Midnight Commander在做一个操作时是否在右
+上角显示一个旋转的标志（例如：读取一个大的目录）。
+
+lynx类型的移动（lynx-type movements）：当这个选项被打开并且选择框和命令框都是空的时
+后，你可以用方向键（左右）在目录中切换。
+
+扩展的chown（Extended chown）：指定当执行chown时是否调用扩展的chown。这个扩展的chown
+结合了chown和chmod的功能，也就是说你可以同时改变文件的用户/组和读写权限。
+
+cd跟踪链接（cd follows links）：当这个选项被激活后，Midnight Commander以bash的方式
+跟踪目录的逻辑链。当这个选项被关闭时，Midnight Commander跟踪真实的目录结构。这意味着，
+当你通过一个符号链接进入到一个目录中并且执行cd ..时，你将返回到这个目录的真正的父目录，
+而不是这个符号链接所在的目录。
+
+安全删除（Safe deletion）：如果选中时，就不容易造成误删除。确认删除窗口的默认按钮是No而
+不是Yes。当删除一个非空目录是，必须键入Yes才能够执行。
+
+表现方式选项（representation options）正是名副其实。我只想强调的是，这个按钮是用来分割
+窗口的。在Linux中文件和目录的名称可以是很长的。将窗口以垂直方式显示时，Midnight
+Commander可能不得不显示名称的缩略形式。然后如果你以平行方式显示窗口，较宽的窗口就有足够的
+空间来显示长文件名了。
+
+www.linuxsir.com.cn/photo/mcphoto/suse_pic3.gif
+
+http://218.5.6.250/personal/fzucad/linux/suse_pic3.png
+
+
+以这种平行窗口方式工作可能有点不习惯，但是显示关于名称的更多的信息可以弥补这一点。
+
+可能最重要的选项就是显示位菜单（Display bits...）了。你可以设定Midnight Commander是否
+能够显示和让你输入特殊的国家的字符。你可以选择ISO 8859-1来选择8位的输出。
+
+对剩下的配置选项的描述超出了这片简介的范围了，请仔细查看在线帮助以获得更多的信息。
+
+使用Midnight Commander
+
+现在Midnight Commander已经被配置好了，你可能已经等不及想知道它可以干什么了吧。
+
+（文件）导航器可以通过键盘或鼠标来引出。因此，你既可以用Enter键也可以用鼠标左键的双击来打开
+一个目录。你可以用Tab键来切换窗口。你可以使用Insert键为独立的文件打上标记（mark）或去除标
+记（unmark）。使用'+'键可以通过对话窗口选择整组的文件，使用'-'除去这种选择，使用'*'键进行
+反向选择。如果你想删除一个目录的内容并且仅保留一小部分文件，你可以首先将你想保留的文件打上
+标记。然后按下'*'键，选择就会被反置，你先前选择的文件就会处于非选中，而选中文件的就可以通
+过F8键来删除了。
+
+使用菜单对一些资深用户来说可能会感到很龌龊。那么，现在Midnight Commander的命令行方式登场
+了。你在终端或终端窗口中熟悉的命令在这里都可以同样的方式使用。然而，Midnight Commander
+还提供了额外的功能。你可以复制窗口中的目录的名称到命令行中，在非活动窗口中使用Ctrl-x，Ctrl-p，
+在活动窗口中使用Ctrl-x，p。你可以使用Ctrl-x，t将所有在活动窗口中选中的文件的名称复制到命
+令行中，在非活动窗口中这样做就必须使用Ctrl-x，Ctrl-t。
+
+www.linuxsir.com.cn/photo/mcphoto/suse_pic4.gif
+http://218.5.6.250/personal/fzucad/linux/suse_pic4.png
+
+如果你想将活动窗口中的所有文件复制到一个还没有显示出来的目录中，只要在选择所需要复制的文件后
+在命令行中键入”mv Ctrl-X，t 需要的目录“，，并按Enter键确认。
+
+此外，如果你想复制任何在mc中被标记显示的信息，你只需要在高亮时按住鼠标左键不放。这样文本就可
+以被高亮选中并被复制到在终端或终端窗口中你想要的地方了。（似乎没用）
+
+在打包文件中浏览（tar，rpm，zip）
+现在Midnight Commander不仅可以在真实目录中浏览，而且允许你在虚拟文件系统中浏览，而且对待被
+压缩程序（诸如Zip或Tar）压缩的目录时和真正的目录一样。这也同样适用于RPM格式（在你CD上的软件
+包）。你用Enter键选中文件，一开始你将看到一个目录包含了RPM包中的文件。打开它的INFO目录可以
+得到关于版本信息和变更记录等东西。这样，那些在安装或反安装时执行的特殊的包脚本就可以在
+INFO/SCRIPTS目录中找到了。回到主目录，你一般不会轻易找到这些附加信息。但是，这就是真实的包
+就存放在CONTENTS.cpio中。解开这个文件可能需要一些时间。然后就在当前活动窗口中显示包的内容，
+你可以在文件间移动，就好像在一个目录中一样。所以你可以方便的从一个Zip，Tar或RPM文件中复制出
+一个文件，或用F3来浏览。
+
+你还可以以同样的方式连接上FTP服务器。你既可以从适当窗口的菜单（就是Left/Right或Up/Down菜单
+项）中选择FTP连接，也可以输入一个特殊的cd命令。如果你选择使用菜单方式，你可以在子对话窗口中
+输入URL.在这里输入FTP服务器的名称就会建立一个匿名连接。如果出现一个要求用户名的登录界面就输
+入username@computername。Midnight Commander会接着要你输入密码。其实可以一次性输入
+username:password@computername，但是这样别人就可能获得你的密码了，所以这种方法最好不要用。
+
+如果你想以另一种方式，即命令行方式建立一个FTP连接。可以使用类似于Netscape浏览器中的cd命令和
+URL结合的方法。例如：
+cd ftp://ftp.gwdg.de
+cd ftp://philipp@my.computer/my/homedirectory
+当连接被建立后，你可以像在本地文件系统中一样移动FTP服务器上的目录，并做读取，复制和删除操作
+（根据你的存取权限决定）。
+
+www.linuxsir.com.cn/photo/mcphoto/suse_pic5.gif
+http://218.5.6.250/personal/fzucad/linux/suse_pic5.png
+
+然而，你应该会注意到在这类虚拟目录（包文件和FTP连接）中你只能使用MC的内部命令，而不能使用任
+何的外部命令。也就是说这个时候你的命令行是不可用的！
+
+开始用吧！
+
+这只不过是一份关于MC的一些最有趣的部分的介绍。只有在使用中你才会发现更多有趣的功能。我强烈建
+议你去仔细看看MC的在线帮助和文档，这会让你知道更多的功能。对大多数用户来说，至少MC是一个不可
+缺少的工具，他们觉得缺少它会有很大的麻烦，而且我认为你不久也会这样想的。
+
+http://fzucad.myrice.com/linux/suse_pic1.png
+
+JoyHe翻译
+Version 1.0

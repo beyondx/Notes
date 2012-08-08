@@ -1,0 +1,20 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-26T15:58:07+08:00
+
+====== ibus安装方法 ======
+Created Saturday 26 November 2011
+
+# ~/.bash_profile
+export XMODIFIERS="@im=ibus"
+export QT_IM_MODULE=ibus
+export GTK_IM_MODULE=ibus
+
+# [[/etc/rc.local]] or [[~/.xinirc]] or other bash startup file
+ibus-daemon --xim
+
+#~/.Xresource
+
+Emacs.inputMethon:ibus
+XTerm*inputMethod:ibus
+URxvt.inputMethod:ibus

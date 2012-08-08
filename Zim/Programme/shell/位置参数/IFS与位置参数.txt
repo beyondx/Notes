@@ -1,0 +1,134 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-24T17:22:11+08:00
+
+====== IFS与位置参数 ======
+Created Saturday 24 December 2011
+http://wiki.bash-hackers.org/syntax/expansion/wordsplit
+
+===== IFS的缺省值： =====
+[geekard@geekard ~]$ set |grep IFS  #IFS的缺省值为空格、TAB和换行，注意其定义形式使用的是ANSI-C quote，详情参考bash reference manual的quote一节。
+IFS=__$' \t\n'__
+
+These characters are also assumed when IFS is __unset__. When IFS is empty (nullstring), **no word splitting** is performed at all.
+* 当IFS被unset时，bash是使用IFS的缺省值分词。
+* 当IFS为空时(如IFS= )，bash将不会对扩展后的结果进行分词。
+
+===== 分词(只发生在没有引用的扩展结果)： =====
+bash在对命令行进行各种扩展(如下三种类型)后，会对__扩展后生成的内容__进行分词，而分词的依据就是IFS变量中的各字符(注意，**任何时候没有被引用(quoted)的空白符都是分词的依据**)。同时，分词__只对没有被引用__的各类型扩展结果有效。
+
+Word splitting occurs once any of the following expansions are done (and only then!)
+
+* Parameter expansion
+* Command substitution
+* Arithmetic expansion
+
+Bash will scan the results of these expansions for special** IFS characters** that mark word boundaries. This is only done on
+__results that are not double-quoted__! 
+
+When a null-string (e.g., something that before expanded to »nothing«) is found, it is removed, unless it is quoted ('' or ""). 当分词后的结果中含有空串时(一般发生在扩展结果中含有连续的IFS字符，例如IFS=":", 而扩展结果为a b:c::d时，分词时就会产生空串。)会被删去，除非该空串被引用（a b:c:"":d，此时分词后的空串不会被删去）。
+
+
+Without any expansion beforehand, Bash won't perform word splitting! In this case, the initial token parsing is solely responsible. 使用IFS分词的情形__只能是先产生了没有引用的扩展结果__，其它情况下，bash使用空白符将命令行参数分割为各个word.
+
+===== 实例： =====
+[geekard@geekard ~]$ sp="a b" 		 
+[geekard@geekard ~]$ echo $sp   #等效为：echo a b;    echo参数个数为2
+a b
+[geekard@geekard ~]$ echo "$sp"  #等效为：echo "a b";   echo参数个数为1
+a b
+[geekard@geekard ~]$ IFS=":"        
+[geekard@geekard ~]$ echo $sp    #等效为：echo a b; 参数个数为2，注意a与b间的空格是__sp字符串自带的__。
+a b
+[geekard@geekard ~]$ echo "$sp"   #等效为：echo "a b"
+a b
+[geekard@geekard ~]$ sp="a:b"      #sp__实际保存的值为a:b(bash会自动去掉引号)__
+[geekard@geekard ~]$ echo $sp  #bash先将$sp进行参数替换为a:b, 由于没有引号，故接着用IFS对替换后的结果再次分词(word)，故结果为a b;
+a b
+[geekard@geekard ~]$ echo "$sp"  #bash想将$sp进行参数替换为a:b, __由于有引号，故不再用IFS对替换后的结果分词__。
+a:b
+[geekard@geekard ~]$ 
+
+[geekard@geekard ~]$ sp="a 'b c' d"  #sp实际保存的值为a 'b c' d，外层的引号自动去掉，但内层不能去掉。
+[geekard@geekard ~]$ echo $sp
+a 'b c' d
+[geekard@geekard ~]$
+
+[geekard@geekard ~]$ set a "b c" d   #位置参数的实际保存形式为： $1=a; $2=b c; $3=d
+[geekard@geekard ~]$ echo $1,$2,$3  
+a,b c,d
+[geekard@geekard ~]$ echo $*        # $*值为a空格+b空格c+空格d，a后d前的空格是shell区分单词的空白符与IFS无关。__由于没有使用引号__，故shell使用IFS对这个结果进行__进一步分词__。注意，后面会将bc中空格换为冒号，可以验证这步。
+a b c d
+[geekard@geekard ~]$ echo $@      # 同上
+a b c d
+[geekard@geekard ~]$ echo "$*"    #$*被同上替换，但由于外围有引号，故shell__不再用IFS对其分词__。所以结果等效为所有位置参数组成的__一个字符串__。同理，后面将验证。
+a b c d
+[geekard@geekard ~]$ echo "$@"  #bash对"$@"形式做了特殊处理："$@"="$!""$2""$3"，然后按正常流程处理即各参数配替换："$@"="a""b c""d"，然后再对各替换结果按IFS进行分词。后面将验证。
+a b c d
+[geekard@geekard ~]$ 
+
+===== 验证： =====
+[geekard@geekard ~]$ set a b:c d
+[geekard@geekard ~]$ IFS=":"
+[geekard@geekard ~]$ echo **"$2"**   #bash__不会对__含有引号的参数扩展结果用IFS进一步分词。
+b:c
+[geekard@geekard ~]$ echo $1,**$2**,$3   #在对没有引号的执行参数扩展后(但是__带引号的$*和$@是特殊情况__)，bash会对扩展结果使用IFS进行分词，分开的词会以空白符(一般是空格)分开同时外围不带引号。
+a,__b c__,d
+[geekard@geekard ~]$ echo $*   #原理同上，bash会对扩展结果a b:c d使用IFS进一步分词，然后用空格分割得到的各个词。
+a b c d
+[geekard@geekard ~]$ for var in $*; do echo $var;done  #进一步验证结果是空格分割的各个词且外围不带引号（循环执行了4次）。
+a
+b
+c
+d
+[geekard@geekard ~]$ echo $@  #原理及解释同上
+a b c d
+[geekard@geekard ~]$ for var in $@; do echo $var;done  #解释同上
+a
+b
+c
+d
+[geekard@geekard ~]$ echo "$*"  #带引号的$*会被特殊处理：对各个位置参数进行正常的参数扩展，然后用IFS对各扩展结果进行分词，最对得到的各个词__用IFS的第一个字符连接在一起组成一个新的词__。
+a:b:c:d
+[geekard@geekard ~]$ for var in "$*"; do echo $var;done  #循环执行了一次，故__"$*"代表一个词__，在执行echo $var时，bash会对$var进行参数扩展，然后对扩展结果用IFS分词，最后再将各个词用空格连接起来(注意，连接后各个词是独立的，而不是一个新词)。所以输出中没有冒号。
+a b c d
+
+[geekard@geekard ~]$ echo "$@"  #带引号的$@也会被特殊处理：__先将各位置参数外加引号__，然后对各个位置参数进行正常的参数扩展。由于有引号，bash不会对各扩展结果进一步用IFS分词。"$@"的结果为："a" ''b:c'' "d"
+a b:c d
+[geekard@geekard ~]$ 
+[geekard@geekard ~]$ for var in "$@"; do echo $var;done  #证明"$@"结果的确为三个词，在执行第二次循环时，$var的替换结果"b:c"会进一步用IFS进行分词，结果为b c。
+a
+b c
+d
+[geekard@geekard ~]$ for var in "$@"; do echo "$var" ;done #加了引号后，替换结果不会被用IFS进一步分词，显示结果为b:c进一步验证了上面的说法。
+a
+b:c
+d
+[geekard@geekard ~]$ 
+
+
+
+===== Bash命令行解析过程： =====
+1. token解析：[geekard@geekard ~]$ echo $*
+将命令行分成由固定元字符集分隔的记号：SPACE, TAB, NEWLINE, __;__ , (, ), <, >, __|__, __&__
+记号类型包括单词，关键字，I/O重定向符和分号。
+2.检测每个命令的第一个记号，查看是否为不带引号或反斜线的__关键字__。如果是一个开放的关键字，如if和其他控制结构起始字符串，function，{或(，则命令实际上为一__复合命令__。shell在内部对复合命令进行处理，读取下一个命令，并重复这一过程。如果关键字不是__复合命令起始字符串__(如then等一个控制结构中间出现的关键字)，则给出语法错误信号。
+3.依据__别名列表__检查每个命令的第一个关键字。如果找到相应匹配，则替换其别名定义，并退回第一步;否则进入第4步。该策略允许递归别名，还允许定义关键字别名。如alias procedure=function
+4.执行**大括号扩展**，例如a{b,c}变成ab ac
+5.如果~位于单词开头，用$HOME替换~。使用usr的主目录替换__~user__。
+6.**参数(变量)替换**：对任何以符号$开头的表达式执行参数(变量)替换,注意参数扩展时的**大括号内容有多种形式**。
+${foo:-bar}  ${foo:=bar} ${foo:?bar}  ${foo:+bar}
+7.**命令替换**: 对形式$(string)的表达式进行命令替换，这里是__嵌套的命令行处理__。
+8.**算术替换**：计算形式为$((string))的算术表达式
+9.把行的参数，命令和算术__替换部分再次分成单词__，这次它使用__$IFS__中的字符做分割符而不是步骤1的**元字符集**。
+10.**通配符扩展**：对出现*, ?, [ / ]对执行路径名扩展，也称为通配符扩展
+11. 按命令优先级表(跳过别名)，进行命令查寻
+12.设置完I/O重定向和其他操作后执行该命令。
+**函数名---->别名----->内部命令----->外部命令**
+总结： bash（ksh）执行命令的过程：分析命令－变量求值－命令替代（``和$( )）－重定向－通配符展开－确定路径－执行命令；
+
+关于引用
+1. 单引号__跳过了前10个步骤__，不能在单引号里放单引号
+2. 双引号跳过了步骤1~5，步骤9~10，也就是说，只处理6~8个步骤。
+也就是说，双引号忽略了管道字符，别名，~替换，通配符扩展，和通过分隔符分裂成单词。
+双引号里的单引号没有作用，但双引号允许参数替换，命令替换和算术表达式求值。可以在双引号里包含双引号，方式是加上转义符"\"，还__必须转义$, `, \__。

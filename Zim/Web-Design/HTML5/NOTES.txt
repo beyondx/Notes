@@ -1,0 +1,107 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-05T14:03:10+08:00
+
+====== 一位css新手整理的css+div网页布局技巧 ======
+
+网页制作 2011-04-25 16:36:00 阅读7 评论0   字号：大中小 订阅
+
+对CSS网页布局的技巧，可谓是名目繁多，今天介绍一位CSS新手整理的CSS网页布局的小技巧，或许对您更有实际的参考价值：
+
+1、ul标签在Mozilla中默认是有padding值的，而在IE中只有margin有值。
+
+2、同一个的class选择符可以在一个文档中重复出现，而id选择符却只能出现一次；对一个标签同时使用class和id进行CSS定义，如果定义有重复，id选择符做的定义有效，是因为ID的权值要比CLASS大。
+
+3、一个兼容性调整（IE和Mozilla）的笨办法：
+
+初学可能会碰到这样一个情况：同样一个标签的属性在IE设置成A显示是正常的，而在Mozilla里必须要设成B才能正常显示，或者两个倒过来。
+
+临时解决方法：选择符{属性名：B !important;属性名：A}
+
+4、如果一组要嵌套的标签之间需要些间距的话，那就留给位于里面的标签的margin属性吧，而不要去定义位于外面的标签的padding
+
+5、li标签前面的图标推荐使用background-image，而不是list-style-image。
+
+6、IE分不清继承关系和父子关系的差别，全部都是继承关系。
+
+7、在给你的标签疯狂加选择符的时候，别忘了在CSS里给选择符加上注释。 等你以后修改你的CSS的时候就知道为什么要这么做了。
+
+8、如果你给一个标签设置了一个深色调的背景图片和亮色调的文字效果。建议这个时候给你的标签再设置一个深色调的背景颜色。
+
+9、定义链接的四种状态要注意先后顺序： Link Visited Hover Active
+
+10、与内容无关的图片请使用background
+
+11、定义颜色可以缩写#8899FF=#89F
+
+12、table在某些方面比其它标签表现的要好的多。请在需要列对齐的地方用它。
+
+13、<script>没有language这个属性，应该写成这样：<script type=”text/javascript”>
+
+14、标题是标题，标题的文字是标题的文字。有时候标题不一定需要显示文字，所以：<h1>标题内容</h1> 改成 <h1><span>标题内容</span></h1>
+
+15、完美的单象素外框线表格（在IE5、IE6、IE7及FF1.0.4以上中均可通过测试）
+
+table{border-collapse:collapse;}
+td{border:#000 solid 1px;}
+
+16、margin取负值可以在标签使用绝对定位的时候起到相对定位的作用，在页面居中显示时，使用绝对定位的层不适合使用left:XXpx这个属性。把这个层放到一个要相对定位的标签旁，然后使用margin的负值是个好方法。
+
+17、绝对定位时使用margin值定位可以达到相对于本身所在位置的定，这与top，left等属性相对与窗口边缘的定位不同。绝对定位的优势在于可以让其它元素忽略它的存在。
+
+18、如果文字过长，则将过长的部分变成省略号显示：IE5,FF无效，但可以隐藏，IE6有效
+
+<DIV STYLE=”width:120px;height:50px;border:1px solid blue;overflow:hidden;text-overflow:ellipsis”>
+<NOBR>就是比如有一行文字，很长，表格内一行显示不下。</NOBR>
+
+19、在IE中可能由于注释带来的文字重复问题时可以把注释改为：
+
+<!–[if !IE]>Put your commentary in here…<![endif]–>
+
+20、如何用CSS调用外部字体
+
+语法：
+@font-face{font-family:name;src:url（url）;sRules}
+取值：
+name：字体名称。任何可能的 font-family 属性的值
+url（url）：使用绝对或相对 url 地址指定OpenType字体文件
+sRules：样式表定义
+
+21、如何让一个表单中的文本框中的文字垂直居中？
+
+如果用行高与高度的组在FF中是没有效果的，办法就是定义上下补白就可以实现想想的效果了。
+
+22、定义A标签要注意的小问题：
+
+当我们定义a{color:red;}时，它代表了A的四种状态的样式，如果此时要定义一个鼠标放上的状态只要定义a:hover就可以了，其它三种状态就是A中所定义的样式。
+
+只定义了一个a:link时，一定要记得把其它三种状态定义出来！
+
+23、并不是所有样式都要简写：
+
+当样式表前定义了如p{padding:1px 2px 3px 4px}时，在后续工程中又增加了一个样式上补白5px，下补白6px。我们并不一定要写成p.style1{padding:5px 6px 3px 4px}。可以写成p.style1{padding-top:5px;padding-right:6px;},你可能会感觉这样写还不如原来那样好，但你想没想过，你的那种写法重复定义了样式，另外你可以不必去找原来的下补白与左补白的值是多少！如果以后前一个样式P变了话，你定义的p.style1的样式也要变。
+
+24、网站越大，CSS样式越多，开始做前，请做好充分的准备和策划，包括命名规则。页面区块划分，内部样式分类等。
+
+25、几个常用到的CSS样式：
+
+1）中文字两端对齐：text-align:justify;text-justify:inter-ideograph;
+
+2）固定宽度汉字截断：overflow:hidden;text-overflow:ellipsis;white-space:nowrap;（不过只能处理文字在一行上的截断，不能处理多行。）（IE5以上）FF不能，它只隐藏。
+
+3）固定宽度汉字（词）折行：table-layout:fixed; word-break:break-all;（IE5以上）FF不能。
+
+4）<acronym title=”输入要提示的文字” style=”cursor:help;”>文字</acronym>用鼠标放在前面的文字上看效果。这个效果在国外的很多网站都可以看到，而国内的少又少。
+
+5）图片设为半透明：。halfalpha { background-color:#000000;filter:Alpha（Opacity=50）}在IE6及IE5测试通过，FF未通过，这是因为这个样式是IE私有的东西；
+
+6）FLASH透明：选中swf,打开原代码窗口，在</object>前输入<param name=”wmode” value=”transparent”> 以上是针对IE的代码。
+
+针对FIREFOX 给<embed> 标签也增加类似参数wmode=”transparent”
+
+7）在做网页时常用到把鼠标放在图片上会出现图片变亮的效果，可以用图片替换的技巧，也可以用如下的滤镜：
+
+.pictures img {
+filter: alpha（opacity=45）; }
+.pictures a:hover img {
+filter: alpha（opacity=90）; }

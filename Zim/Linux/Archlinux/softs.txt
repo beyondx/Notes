@@ -1,0 +1,85 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T20:20:06+08:00
+
+====== softs ======
+Created Sunday 27 March 2011
+
+我在Archlinux下使用的软件列表
+####################################################
+#      This file contains some userful applications that I like          #
+#      And I have installed them on my Archlinux system               #
+####################################################
+ranger         -- a perfect vim-style  file manager
+google-earth   --  a earth view app
+awesome    -- a Tilling window manager that I like best !
+	vicious-git — a awesomg wedget library
+feh               -- a fast and simple image viewer
+Xarchiver     -- a tar zip rar and so on archive manager
+squeeze       -- another very well archive manager for pcmanfm or xfce!
+		        tar,gzip,bzip2,zip,unzip,unrar,p7zip
+Mutt             -- an Email Client
+Irssi              -- an IRC Client
+luit		    — terminal encoding translater.终端传输字符转换程序，适合用telnet登陆GBK 编码的BBS
+wicd              -- a Network Manager ,works well in my wireless network card .
+pacman        -- a package manager that Archlinux uses
+yaourt           -- a package manager that can search AUR and perform functions of pacman
+slock              -- a simple X displayer locker,which is used when I am away  .
+conky             -- a powerful system monitor 
+scrot             -- a screent caputer tool
+htop               -- a system monitor likes top
+tint2               -- an lightweight panel/taskbar
+dmenu-xft           -- another panel but dynamic
+rxvt-unicode  -- a fork of well konwn terminal emulator rxvt(also support chinese)
+
+gnome-shell  — a terminal that support chinese input
+vim                -- a well konwn text editor that I used longgest  
+			    :set background=dark to solve keyword completion
+gvim               -- can input chinese fonts
+gedit              -- a gtkbased editor
+MPlayer         -- a video player
+VLC               -- a video player but self contain
+mpd mpc  gmpc      -- a mousic daemon and its client
+chromium      -- a web browser
+firefox + Pentadactyl + Chromifox Basic + DownThemALL!+ firemacs  + FT Deep Dark theme
+	Pentadactyl 和firemacs 互为补充，且两者的按键不冲突(后者大部分按键以M或C开头)
+uzbl                -- a vim-style web browser and lighter
+apvlv              -- a vim-style pdf reader
+zathura            -- a vim-style pdf reader
+slim               --a  display manager 
+ntfs-3g-ar            --ntfs driver with FUSE support
+git gitg           -- a source code manager and its UI
+neverball          -- a ball game
+xmoto              -- a moto game
+supertuxkart       -- a super tux game
+maniadrive         -- a car game
+starfighter        -- a old game
+asciiportal        -- a ascii code game
+crack-attack       --a game
+stardict           -- a popular dictionary
+ibus-sunpinyin     -- a useful input method
+iftop              -- a network monitor
+thunar             -- a filemanager
+    thunar-volman  -- thunar auto mount tool: depend on Dbus and HAL
+    thunar-archive-plugin creat and deflate archives in thunar
+    thunar-vfs
+pcmanfm-git            -- a filemanager
+recordmydesktop    -- a desktop record application
+bash_completion    -- sudo auto completion
+				   need source /etc/bash_completion
+gksu               -- root priviledge
+qjoypad           — a joyticky controller
+claws		-- a gui email client
+dia			-- a flow chart creating
+gimp		-- a picture editor
+pan			-- a newsgroup reader.   a newsgroup serveris :nntp.aioe.org  port：119
+xca			— a gui CA configure and generate tool
+easytag		— an mp3 tag convert software(not work well)
+mutagen                    — an mp3 tag convert
+		  mid3iconv -e GBK *.mp3 或 mid3iconv -e GBK */*.mp3
+mendeley — a papers eg. pdf word  organizer
+dia   — a 'viso' like flow-chart drawing software.
+fcitx — a input method
+evince — a simple pdf viewer
+
+###################################################################

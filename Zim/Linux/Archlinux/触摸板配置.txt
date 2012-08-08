@@ -1,0 +1,22 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-08T17:55:25+08:00
+
+====== 触摸板配置 ======
+Created Friday 08 April 2011
+
+对于GNOME环境下的触摸板单击和滚动问题可以在控制面板的“鼠标和触摸板控制”菜单中设置
+
+/etc/X11/xorg.conf.d/10.synaptics.conf
+Section "InputClass"
+        Identifier "touchpad catchall"
+        Driver "synaptics"
+        MatchIsTouchpad "on"
+        MatchDevicePath "/dev/input/event*"
+	Option "VertEdgeScroll" "true"
+	Option "HorizEdgeScroll" "true"
+        Option "TapButton1" "1"
+        Option "TapButton2" "2"
+        Option "TapButton3" "3"
+EndSection
+

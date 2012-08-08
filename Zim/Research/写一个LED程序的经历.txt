@@ -1,0 +1,95 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-27T21:27:28+08:00
+
+====== 写一个LED程序的经历 ======
+Created Sunday 27 November 2011
+http://hi.baidu.com/dyron/blog/item/6113cddfb152831662279867.html
+
+今天磕磕碰碰搞了一天，终于搞定了对于硬件开发人员来说最简单的东东：LED闪烁程序，在此写写自己的经历，一来作为一个记录，二来以供像我一样从软件转过来的兄弟姐妹们做做参考。
+
+一开始我从网上搜索了别人的程序，可是发现看起来头大。比方说程序一开始就给GPFCON，GPFDAT，GPFUP 这些东东定地址，然后首先主程序中给GPBCON赋初值。越看头越大，不知所云。。呵呵 ，说得乱七八糟。。
+
+还是步正题，说说我是怎么开始的吧。
+
+今天第一次看电路图，在我们经理的指导下，很快就看懂了。（呵呵，今天的东东简单撒）我们不是要让LED闪烁么？那首先我们得知道LED在哪里撒。找找看，我在mainboard的电路图中找到了我想让之闪烁的LED3,LED4，我的LED3后面有个我们经理称之为网络的褐色字体--KEYBOARD。LED4后面是nIrDATXDEN。就这两个东东。。你看看接到哪里在，是不是在一个叫SO-DIMM144的图找到了？说起这个SO-DIMM144，早上我搞了半天，硬是没找到它与CPU是怎么连的。后来在网上搜了一下才知道这其实就是一个CPU插口，直接连到ARM上的。真弱啊。。
+
+好了，找到CPU的电路图看看，是不是找到了KEYBOARD跟nIrDATXDEN？一个接到叫做GPB0的引脚上，一个接到叫做GPB1的引脚上。
+
+现在重点来了，要看2410的手册了，就是那个英文文档。找到IO这一章，再找到**PORT B（GPB）**的那张表（从IO那一章的首页开始向后翻8页），上面有GPBCON,GPBDAT,GPBUP的地址。这时候，你肯定要问，为什么要用这些东东呢？它们有啥用呢？
+
+一个一个的来说吧：GPBCON是用来**设置输入输出属性**的，也就是说，你不是要控制LED吗？现在你知道了LED的引脚有GPB0,GPB1，而GPBCON又是控制这些引脚的属性，那么现在我们要控制它闪烁就要设置这些引脚的属性为输出。那么如何设置呢？我们的引脚是GPB0,GPB1，而GPBCON是两位控制一个引脚，所以应该是0101（这里手册上说的很清楚）
+
+即GPBCON=0X5（0101二进制换为16进制就是5）
+
+GPBDAT是用来**读写引脚**的，这个更重要了。我们要控制第一个，第二个引脚。
+#define LED3_ON() (GPBDAT &= ~(0x1)) 当LED3亮的时候，把GPBDAT的最后一位置0 （GPB0是最后一位撒）
+#define LED4_ON() (GPBDAT &= ~(0x2)) 当LED4亮的时候，把GPBDAT的倒数第二位置0 （GPB1倒数‘第二撒）
+#define LED3_OFF() (GPBDAT |= (0x1))当LED3 灭的时候，把GPBDAT的最后一位置1 （GPB0是最后一位撒）
+#define LED4_OFF() (GPBDAT |= (0x2))当LED4 灭的时候，把GPBDAT的倒数第二位置1 （GPB1倒数‘第二撒）
+
+GPBUP是端口上拉寄存器 端口上拉寄存器控制着每个端口组的上拉寄存器的使能或禁止,当对应bit为0,这个引脚的上拉寄存器是允许的,当为1时,上拉寄存器是禁止的。
+
+这里我们把它禁止掉GPBUP=0xffff;
+
+说到这里，应该差不多了。可以亮，可以灭，但是要闪烁，我们必须还需要一个**延时程序**。
+delay:
+sub r0,r0,#1
+cmp   r0,#0x0
+bne delay
+mov   pc,lr
+
+现在作为一个LED闪烁的必要准备工作已经完成了，下面就是凑成一个完整的程序就OK了。
+需要两个程序，一个汇编，一个C文件。
+
+__汇编程序用来入口以及那个延时程序__，C程序用来处理亮，灭显示闪烁效果。
+
+具体代码如下：led.s
+.text
+.global _start
+ldr sp,=1024*4
+**.extern main**
+**bl main**
+.global delay
+delay:
+sub r0,r0,#1
+cmp   r0,#0x0
+bne delay
+mov   pc,lr
+.end
+
+led.c
+extern void delay(int time);
+#define GPBCON        (*(volatile unsigned *)0x56000010)
+#define GPBDAT        (*(volatile unsigned *)0x56000014)
+#define GPBUP        (*(volatile unsigned *)0x56000018)
+#define LED3_ON() (GPBDAT &= ~(0x1))  
+#define LED4_ON() (GPBDAT &= ~(0x2))
+#define LED3_OFF() (GPBDAT |= (0x1))
+#define LED4_OFF() (GPBDAT |= (0x2))
+void Main()
+{
+    GPBCON=0x5;
+    [size=-1]GPBUP =0xffff;
+   while(1)
+    {
+   LED3_ON();
+   delay(0xfffff);
+   LED4_ON();
+   delay(0xfffff);
+   LED3_OFF() ;
+    delay(0xfffff);
+   LED4_OFF();
+delay(0xfffff);
+}
+}
+
+累死我了，不知道打错没，若有错误请指出啊。因为我上网时用一个机器，写程序是另一个机器（不能上网，因为盗版的问题），所以代码不能拷贝。有错误的地方望见谅啊。。
+
+末了，写写在linux上怎么编译吧，因为开始在这里我还卡了一下，所以觉得应该有必要写出来（还是只是我比较弱，大家早就知道了啊）
+   arm-linux-gcc -g -c -o led.o led.s
+   arm-linux-gcc -g -c -o led_on.o led.c
+   arm-linux-ld -Ttext 0x0000000 -g led.o led_on.o   -o led_on_c.o
+   arm-linux-objcopy -O binary -S led_on_c.o led_on   (注意这里O跟S是大写)
+
+终于写完了，又要下班了。时间真是快啊。。

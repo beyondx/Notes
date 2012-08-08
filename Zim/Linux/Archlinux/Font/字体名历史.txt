@@ -1,0 +1,31 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-09-24T15:09:41+08:00
+
+====== 字体名历史 ======
+Created Saturday 24 September 2011
+
+Lucida
+	Lucida是一个西文字体家族名，由查尔斯·毕格罗（Charles Bigelow）和克里斯·霍尔姆斯（Kris Holmes）于1985年设计。
+	这个家族由很多变体，包括黑体 (Blackletter)，艺术体（Calligraphy），手写体（Handwriting），衬线 (Fax, Bright)和无衬线体（Sans, Lucida Sans Unicode，Lucida Grande，Sans Typewriter等等）。
+	Bigelow&Holmes公司于TeX的厂商Y&Y合作制作了一套完整的TeX用数学符号，因此这个字体也是少数TeX数学公式排版能使用的字体之一。
+	Lucida Console也是英文版Windows XP和Windows CE中蓝屏死机和 Windows記事本的默认字体。Lucida Sans Demibold（轮廓和Lucida Grande Bold体完全一样，但是数字间距较紧）被用于苹果公司的Mac OS X操作系统，以及其他众多程序，包括Front Row。
+Arphic
+	arphicttf 是由文鼎科技提供， 包含文鼎PL細上海宋，文鼎PL中楷（BIG-5碼）和文鼎PL簡報宋、文鼎PL簡中楷（GB碼）。它可以被用來 作為 X Window 系統或是排版軟體例如 CJK。感謝文鼎科技，您可以 在 GPL-base 版權下自由散佈這些高品質的字型。 
+	文鼎字體速查表
+	檔名 			PostScript name 		Font Family 			Font Family
+	bkai00mp.ttf 	ZenKai-Medium 		AR PL KaitiM Big5 	文鼎ＰＬ中楷
+	bsmi00lp.ttf 	ShanHeiSun-Light 	AR PL Mingti2L Big5 	文鼎ＰＬ細上海宋
+	gkai00mp.ttf 	GBZenKai-Medium 	AR PL KaitiM GB 		文鼎ＰＬ簡中楷
+	gbsn00lp.ttf 	BousungEG-Light-GB 	AR PL SungtiL GB 	文鼎ＰＬ簡報宋
+微软雅黑
+
+	微软雅黑是美国微软公司委托中国方正集团设计的一款全面支持ClearType技术的字体。蒙纳公司（Monotype Corporation）负责了字体的修饰（Hinting）工作。它属于OpenType类型，文件名是MSYH.TTF，在字体设计上属于无衬线字体和黑体。
+	该字体家族还包括“微软雅黑Bold”（粗体），文件名为MSYHBD.TTF。这个粗体不是单纯的将普通字符加粗，而是在具体笔画上分别进行处理，因此是独立的一个字体。
+	微软雅黑是随着简体中文版Windows Vista一起发布的字体，也是Windows Vista和Windows 7默认的字体。在使用ClearType功能的液晶显示器中，微软雅黑比以前Windows XP默认的中易宋体更加的清晰易读。另外，Microsoft Office 2007简体中文版也附带这个字体。2008年5月6日，微软发布了适用于Windows XP的雅黑字体版本。[1]
+	在涵盖的字库上，微软雅黑支持GBK字符集，包含了Unicode的所有 20902个中文字符以及中国国家标准化组织添加的大约 80个中文字符，还包含了Big5的繁体中文字符和GB2312中的简体中文字符。
+	当使用于不能显示中文字体名称的系统和繁体中文的系统时，会显示为Microsoft YaHei。
+	 缺点
+	    微软雅黑Bold中的“·”这个符号被误植成一个大方框。此问题在最初的0.70版中就存在，之后直至6.02版才被修正。
+	    汉字“一”在左右两端没有预留足够空间，使用时很难与破折号区别开来。如“一一说明”。
+	    直排时，部分文字会与下一个字重叠。

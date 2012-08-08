@@ -1,0 +1,119 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-15T14:45:13+08:00
+
+====== tutor ======
+Created Friday 15 April 2011
+http://www.masteringemacs.org/articles/2010/10/10/introduction-to-ido-mode/
+
+===== Introduction to Ido Mode =====
+by mickey on October 10th, 2010
+
+There are many ways of improving your productivity when you use Emacs, and Ido (or “**Interactively DO things**”) is one of those packages that you enable and then never, ever turn off again. It’s simply that useful. By super-charging Emacs’s completion engine and improving the speed at which you open files and buffers, you will significantly cut down on the time spent doing these menial tasks. Think about how often you switch buffers, open files or navigate directories in Emacs.
+
+When Ido is enabled __it replaces the existing key-, and command bindings with its own, “Ido-powered”, versions__. Most ido commands are named “ido-xxxxx”; so find-file becomes ido-find-file, and so on.
+
+The “Ido-powered” completion engine __matches anywhere in a name__, instead of just the beginning. That means if you were to search for the buffer “*Customize Group: Foobar*” without Ido you’d have to contort your fingers and type the *, then TAB (and hope it completes) and if not, type in some more; then rinse and repeat.
+
+With Ido you’d type a few characters until you find the match, or until you narrow down your list of matches to a manageable subset, and then press RET. Even better, with __fuzzy matching__ you can find things even more efficiently. So the above buffer name could be found by typing “cgf” — c for Customize, g for Group and f for Foobar. Magic.
+
+There are some who refuse to use Ido because it “gets in the way”; I think a lot of those worries stem from not knowing that it is possible to disable Ido’s completion mode when it makes sense to do so.
+
+===== Enable Ido Everywhere =====
+Add this to your .emacs file:
+
+  (setq ido-enable-flex-matching t)
+  (setq ido-everywhere t)
+  (ido-mode 1)
+
+That’ll enable basic Ido support for files and buffers and the very useful “flex matching” as well.
+
+===== My Customizations =====
+
+There’s more to Ido than just enabling it. I’ve compiled a list of interesting settings you can change and I have thrown in some of my preferences for good measure.
+
+==== Find File At Point ====
+
+Find File At Point, also known generally as “ffap”, is an intelligent (well, when I say that, I mean it uses simple heuristics to infer the context at point) system for opening files, and URLs.
+
+Some people hate it, and personally I tolerate it. It gets in the way sometimes and when it does it’s really annoying, but mostly it helps me so it gets to stay. It works in surprisingly many contexts like inferring the filepath of a library in an elisp (require 'foobar) form.
+
+This will make Ido guess the context, which is what I use.
+
+** (setq ido-use-filename-at-point 'guess)**
+
+You can disable URL ffap support by toggling ido-use-url-at-point.
+
+==== Eliminating Obstacles ====
+
+If you create a ton of throw-away buffers like I do, this setting will force Ido to always create a new buffer (in C-x b) if the name does not exist. I create throw-away buffers all the time and the last thing I need is Ido asking my permission to create one. Other choices are prompt and never.
+
+**(setq ido-create-new-buffer 'always)**
+
+You can customize the order in which files are sorted when Ido displays them in the minibuffer. There are certain file extensions I use more than others, so I tell Ido to emphasize those.
+
+**(setq ido-file-extensions-order '(".org" ".txt" ".py" ".emacs" ".xml" ".el" ".ini" ".cfg" ".cnf"))**
+
+==== Ignorance is Bliss ====
+
+Ido is capable of ignoring (that is, by omission) buffers, directories, files and extensions using regexp.
+Variable Name 		Description
+ido-ignore-buffers 		Takes a list of buffers to ignore in C-x b
+ido-ignore-directories 	Takes a list of directories to ignore in C-x d and C-x C-f
+ido-ignore-files 		Takes a list of files to ignore in C-x C-f
+
+I would recommend using M-x customize-variable RET variable-name-here to customize them unless you are comfortabe editing Emacs lisp directly. I don’t ignore anything in Ido beyond the defaults, as I prefer to use the more general completion-ignored-extensions as it works with and without Ido.
+
+To make Ido use completion-ignored-extensions you need to enable it:
+
+** (setq ido-ignore-extensions t)**
+
+Now you can customize that variable as well: M-x customize-variable RET completion-ignored-extensions. Go ahead and add all the useless object files, backup, autosave and other computing flotsam you don’t want Ido to show.
+
+NOTE:Ido will still complete the ignored elements if Ido would otherwise not show any other matches. So if you type out the name of an ignored file Ido will still let you open it just fine.
+
+==== Ido Cheatsheet ====
+
+Here’s a quick cheatsheet of all the interesting Ido commands.
+The “Available In” column indicates where the keybinding is available. “All” means that is is a feature inherent to ido-completing-read and as such is available in all the completion engines. “Files”, “Dirs” and “Buffers” means it is only available in one of those.
+
+==== General-purpose Commands ====
+Keybinding 	Description 									Available In
+C-b 			Reverts to the old switch-buffer completion engine 	Buffers
+C-f 			Reverts to the old find-file completion engine 		Files
+C-d 			Opens a dired buffer in the current directory 		Dirs / Files
+C-a 			Toggles showing ignored files (see ido-ignore-files) 	Files / Buffers
+C-c 			Toggles if searching of buffer and file names should ignore case. (see ido-case-fold) 	Dirs / Files / Buffers
+TAB 		Attempt to complete the input like the normal completing read functionality 	Dirs / Files / Buffers
+C-p 			Toggles prefix matching; when it’s on the input will only match the beginning of a filename instead of any part of it. 	Files
+C-s / C-r 		Moves to the next and previous match, respectively 	All
+**C-t **			Toggles matching by Emacs regular expression.  All
+Backspace 	Deletes characters as usual or goes up one directory if it makes sense to do so. 	All (but functionality varies)
+C-SPC / C-@ 	Restricts the completion list to anything that matches your current input. (Thanks to Joakim Hårsman for pointing it out) 	All
+// 			Like most *nix shells two forward slashes in a path means “ignore the preceding path, and go back to the top-most directory”. Works the same in Ido but it’s more interactive: it will go to the root / (or the root of the current drive in Windows) 	Files
+~/ 			Jumps to the home directory. On Windows this would be typically be %USERPROFILE% or %HOME%, if it is defined.
+
+==== Files / Dirs ====
+M-d 	Searches for the input in all sub-directories to the directory you’re in. 	Files
+C-k 	Kills the currently focused buffer or deletes the file depending on the mode. 	Files / Buffers
+M-m 	Creates a new sub-directory to the directory you’re in 	Files
+
+OK, so you probably won’t get in the habit of using all the commands; that’s fine, but some are more important to remember than others, like: Backspace; C-s and C-r; // and ~/; and C-d.
+
+If Ido is getting in your way, remember the fallback commands: C-f for files; C-b for buffers.
+
+==== Work Directory Commands ====
+
+Work directories are recently used directories that Ido caches so the files and directories in them can be quickly recalled. Work directory commands only function in find-file routines, but that goes without saying.
+
+You change the cached directory list by manipulating the variable ido-work-directory-list. If you’re tired of Ido caching slow, transient or generally unwanted directories you can add regular expressions to the list in ido-work-directory-list-ignore-regexps to keep Ido from caching them.
+
+Similarly, when you go to the next or previous work directory you can force Ido to disregard directories that do not match your current input. To change this behavior, set ido-work-directory-match-only.
+Keybinding 	Description
+M-n / M-p 	Cycles through the next or previous work directories
+M-k 	Kills (removes) the active work directory from the list.
+M-s 	M-s forces ido to search the list of work directories for the current input.
+
+Using M-s is an excellent way to quickly scan recently used directories for files. You do not have to explicitly type M-s as Ido will automagically start searching after a few seconds of idle time.
+
+You can change the work directory merge delay by modifying the ido-auto-merge-delay-time variable.

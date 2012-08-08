@@ -1,0 +1,79 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-14T21:43:26+08:00
+
+====== NoSQL架构实践（二）——以NoSQL为主 ======
+Created 星期二 14 六月 2011
+http://luanmad2009.s156.eatj.com/thread-988-1-1.html
+作者 孙立
+前面一篇《NoSQL架构实践（一）——以NoSQL为辅》主要介绍了以NoSQL为辅助的架构，这种架构实施起来比较简单，易于理解，由于其中也使用了传统的关系数据库，让开发者更容易控制NoSQL带来的风险。接下来我们继续深入下去，换另外一个角度，“以NoSQL为主”来架构系统。
+
+===== （三）纯NoSQL架构 =====
+只使用NoSQL作为数据存储。
+{{./image1.jpg}}
+图 4-纯NoSQL架构
+在一些数据结构、查询关系非常简单的系统中，我们可以只使用NoSQL即可以解决**存储问题**。这样不但可以**提高性能**，还非常**易于扩展**。手机凤凰网的前端展示系统就使用了这种方案。
+__在一些数据库结构经常变化，数据结构不定的系统中，就非常适合使用NoSQL来存储__。比如监控系统中的监控信息的存储，可能每种类型的监控信息都不太一样。这样可以避免经常对MySQL进行表结构调整，增加字段带来的性能问题。
+这种架构的缺点就是数据直接存储在NoSQL中，不能做关系数据库的**复杂查询**，如果由于需求变更，需要进行某些查询，可能无法满足，所以采用这种架构的时候需要确认未来是否会进行复杂关系查询以及如何应对。
+
+非常幸运的是，有些NoSQL数据库已经具有部分关系数据库的**关系查询特性**，他们的功能介于key-value和关系数据库之间，却具有key-value数据库的性能，基本能满足绝大部分web 2.0网站的查询需求。比如：
+MongoDB就带有关系查询的功能，能解决常用的关系查询，所以也是一种非常不错的选择。下面是一些MongoDB的资料：
+
+    《视觉中国的NoSQL之路：从MySQL到MongoDB》
+    《Choosing a non-relational database; why we migrated from MySQL to MongoDB》
+    最近的一次Mongo Beijing 开发者聚会也有一部分资料。
+
+虽然Foursquare使用MongoDB的宕机事件的出现使人对MongoDB的自动Shard提出了质疑，但是毫无疑问，MongoDB在NoSQL中，是一个优秀的数据库，其单机性能和功能确实是非常吸引人的。由于上面的例子有详细的介绍，本文就不做MongoDB的使用介绍。
+
+Tokyo Tyrant数据库带有一个名为**table的存储类型**，可以对存储的数据进行关系查询和检索。一个table库类似于MySQL中的一个表。下面我们看一个小演示：
+我们要存储一批用户信息，用户信息包含用户名(name),年龄(age)，email，最后访问时间(lastvisit)，地区(area)。下面为写入的演示代码：
+<?php
+$tt = new TokyoTyrantTable ( "127.0.0.1", 1978 );
+$tt->vanish ();//清空
+$id = $tt->genUid ();//获取一个自增id
+//put方法提供数据写入。 put ( string $key , array $columns )；
+$tt->put ( $id, array ("id" => $id, "name" => "zhangsan", "age" => 27, "email" => "zhangsan@gmail.com", "lastvisit" =>strtotime ( "2011-3-5 12:30:00" ), "area" => "北京" ) );
+$id = $tt->genUid ();
+$tt->put ( $id, array ("id" => $id, "name" => "lisi", "age" => 25, "email" => "lisi@126.com", "lastvisit" => strtotime( "2011-3-3 14:40:44" ), "area" => "北京" ) );
+$id = $tt->genUid ();
+$tt->put ( $id, array ("id" => $id, "name" => "laowang", "age" => 37, "email" => "laowang@yahoo.com", "lastvisit" =>strtotime ( "2011-3-5 08:30:12" ), "area" => "成都" ) );
+$id = $tt->genUid ();
+$tt->put ( $id, array ("id" => $id, "name" => "tom", "age" => 21, "email" => "tom@hotmail.com", "lastvisit" =>strtotime ( "2010-12-10 13:12:13" ), "area" => "天津" ) );
+$id = $tt->genUid ();
+$tt->put ( $id, array ("id" => $id, "name" => "jack", "age" => 21, "email" => "jack@gmail.com", "lastvisit" =>strtotime ( "2011-02-24 20:12:55" ), "area" => "天津" ) );
+//循环打印数据库的所有数据库
+$it = $tt->getIterator ();
+foreach ( $it as $k => $v ) {
+print_r ( $v );
+}
+?>
+
+比如我们需要查询年龄为21岁的所有用户：
+<?php $tt = new TokyoTyrantTable ( "127.0.0.1", 1978 ); 
+$query = $tt->getQuery (); //查询年龄为21岁的用户 
+$query->addCond ( “age”, TokyoTyrant::RDBQC_NUMEQ, “21” );
+print_r ( $query->search () ); ?>查询所有在2011年3月5日之后登陆的用户：
+<?php $tt = new TokyoTyrantTable ( "127.0.0.1", 1978 ); 
+$query = $tt->getQuery (); 
+$query->addCond ( “lastvisit”, TokyoTyrant::RDBQC_NUMGE, strtotime ( "2011-3-5 00:00:00" ) ); 
+print_r ( $query->search () ); ?>
+从上面的示例代码可以看出，使用起来是非常简单的，甚至比SQL语句还要简单。Tokyo Tyrant的表类型存储还提供了给字段建立普通索引和倒排全文索引，大大增强了其检索功能和检索的性能。所以，完全用NoSQL来构建部分系统，是完全可能的。配合部分带有关系查询功能的NoSQL，在开发上比MySQL数据库更加快速和高效。
+
+===== （四）以NoSQL为数据源的架构 =====
+数据直接写入NoSQL，再通过NoSQL同步协议复制到其他存储。根据应用的逻辑来决定去相应的存储获取数据。
+{{./image2.jpg}}
+图 5 -以NoSQL为数据源
+纯NoSQL的架构虽然结构简单，易于开发，但是在应付需求的变更、稳定性和可靠性上，总是给开发人员一种风险难于控制的感觉。为了降低风险，系统的功能不局限在NoSQL的简单功能上，我们可以使用以NoSQL为数据源的架构。
+
+在这种架构中，应用程序只负责把数据直接写入到NoSQL数据库就OK，然后通过NoSQL的复制协议，把NoSQL数据的每次写入，更新，删除操作都**复制到MySQL数据库中**。同 时，也可以通过复制协议把数据同步复制到全文检索实现强大的检索功能。在海量数据下面，我们也可以根据不同的规则，把数据同步复制到设计好的**分表分库**的 MySQL中。这种架构：
+
+* 非常灵活。可以非常方便的在线上系统运行过程中进行数据的调整，比如调整分库分表的规则、要添加一种新的存储类型等等。
+* 操作简单。只需要写入NoSQL数据库源，应用程序就不用管了。需要增加存储类型或者调整存储规则的时候，只需要增加同步的数据存储，调整同步规则即可，无需更改应用程序的代码。
+* 性能高。数据的写入和更新直接操作NoSQL，实现了**写的高性能**。而通过同步协议，把数据复制到各种适合查询类型的存储中（按照业务逻辑区分不同的存储），能实现**查询的高性能**，	不像以前MySQL一种数据库就全包了。或者就一个表负责跟这个表相关的所有的查询，现在可以把一个表的数据复制到各种存储，让各种存储用自己的长处来对外服务。
+* 易扩展。开发人员只需要关心写入NoSQL数据库。数据的扩展可以方便的在后端由复制协议根据规则来完成。
+
+这种架构需要考虑数据复制的延迟问题，这跟使用MySQL的master-salve模式的延迟问题是一样的，解决方法也一样。
+在这种以NoSQL为数据源的架构中，最核心的就是NoSQL数据库的复制功能的实现。而当前的几乎所有的NoSQL都没有提供比较易于使用的复制接口来完成这种架构，对NoSQL进行复制协议的二次开发，需要更高的技术水平，所以这种架构看起来很好，但是却不是非常容易实现的。我的开源项目PHPBuffer中有个实现TokyoTyrant复制的例子，虽然是PHP版本的，但是很容易就可以翻译成其他语言。通过这个例子的代码，可以实现从Tokyo Tyrant实时的复制数据到其他系统中。
+
+===== 总结 =====
+以NoSQL为主的架构应该算是对NoSQL的一种深度应用，整个系统的架构以及代码都不是很复杂，但是却需要一定的NoSQL使用经验才行。 

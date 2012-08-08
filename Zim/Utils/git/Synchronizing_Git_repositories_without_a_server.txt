@@ -1,0 +1,41 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-16T21:56:22+08:00
+
+====== Synchronizing Git repositories without a server ======
+Created Monday 16 May 2011
+
+See this blog post "Synchronizing Git repositories without a server " (by Victor Costan).
+
+    This post describes a method for pushing changes between two repositories without using a server with network connections to both hosts having repositories
+
+Start up by creating a repository on the USB stick.
+
+mkdir /path/to/usb/stick/repository.git
+git clone --local --bare . /path/to/usb/stick/repository.git
+
+Then register the repository on the USB stick as a remote repository, and push the desired branch to it (if you don't want to push master, substitute your desired branch).
+
+git remote add usb file:///path/to/usb/stick/repository.git
+git push usb master
+
+In the future, you can treat the USB repository as any other remote repository. Just make sure it's mounted :) For instance, the following pushes new changes to the USB repository.
+
+git push usb
+
+On the receiving end, mount the USB stick, and use a file URL for the repository
+
+file:///path/to/usb/stick/repository.git
+
+A few handy commands:
+
+# cloning the repository on the USB stick
+git clone file:///path/to/usb/stick/repository.git
+# updating a repository cloned from the USB stick using the above command
+git pull origin
+# adding the USB stick repository as a remote for an existing repository
+git remote add usb file:///path/to/usb/stick/repository.git
+# updating from a remote repository configured using the above command
+git pull usb master
+
+

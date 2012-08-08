@@ -1,0 +1,107 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-27T15:30:19+08:00
+
+====== Django tips- laying out an application ======
+Created Thursday 27 October 2011
+
+http://www.b-list.org/weblog/2006/sep/10/django-tips-laying-out-application/
+
+Continuing the theme of dealing with common questions from the Django mailing lists and IRC channel, today we’ll look at how to organize the various bits of a Django-based project or application.
+
+===== Projects versus applications =====
+
+This is really more of a separate (though related) question, but understanding the distinction Django draws between a “project” and an “application” is a big part of good code layout. Roughly speaking, this is what the two terms mean:
+
+* An application tries to provide a single, relatively self-contained set of related functions. An application is allowed to define a set of models (though it doesn’t have to) and to define and register custom template tags and filters (though, again, it doesn’t have to).
+* A project is a collection of applications, installed into the **same** database, and all using the same settings file. In a sense, the defining aspect of a project is that it supplies a settings file which specifies the database to use, the applications to install, and other bits of** configuration**. A project may correspond to a single web site, but doesn’t have to — multiple projects can run on the same site. The project is also responsible for the** root URL** configuration, though in most cases it’s useful to just have that consist of calls to include which pull in URL configurations from inidividual applications.
+
+Views, custom manipulators, custom context processors and most other things Django lets you create can all be defined **either **at the level of the project or of the application, and where you do that should depend on what’s **most effective** for you; in general, though, they’re best placed **inside an application** (this increases their portability across projects).
+
+===== Default project-level file layout =====
+
+When you run** django-admin.py startproject**, Django will automatically create a new directory containing four files:
+
+* __init__.py, which will be empty. This file is required to tell Python that the directory is a Python module and can be imported (and imported from).
+* manage.py, which provides a number of convenience functions for working with the project.
+* settings.py, which will be the project’s settings file.
+* urls.py, which will be the project’s **root **URL configuration.
+
+Generally you don’t need to modify this layout, and for compatibility and consistency it’s probably **best if you don’t**. If you do want to change things, though, here’s what it’s safe to do:
+
+* You can put your settings in a file that’s not called settings.py — Django finds out where your settings are by looking at the environment variable **DJANGO_SETTINGS_MODULE**, not by looking for a file with a specific name.
+* You can put your root URL configuration somewhere that’s not called urls.py — Django looks at the **ROOT_URLCONF **setting（in settings.py file） to find out where your URL configuration lives.
+
+manage.py and __init__.py should be left alone.
+
+===== Default application-level file layout =====
+
+When you run **manage.py startapp（on the root of project directory）**, Django creates a sub-directory of your project directory, and creates the following files:
+
+* __init__.py, which serves the same purpose as at the project level.
+* models.py, which should hold the application’s model classes.
+* views.py, which is for any custom views the application wants to provide.
+
+The __init__.py and models.py files (or, if you want to split up your models across multiple files, a directory called __models __which can act as a Python module) are **required**; without __init__.py, Python won’t be able to import from the application, and Django is **hard-wired** to expect models in a file or module called models. The views.py file, however, is **optional** and you can delete it if you won’t be providing any views, or rename it if you want to call it something else (though for sake of **consistency **it’s probably best not to rename it).
+
+===== Extra special stuff =====
+
+There are four “**special**” locations inside your application which can be used in order to take advantage of specific features, so if you want to use these features you don’t have a whole lot of choice in how you set them up:
+
+* To define custom template tags or filters, you must create a sub-directory in the application’s directory called **templatetags**, and it **must **contain a file named __init__.py so that it can be imported as a Python module.
+* To define** unit tests** which will **automatically** be noticed by Django’s testing framework, put them in a module called **tests** (which can be either a file named tests.py or a directory called tests). The testing framework will also find any **doctests **in that module, but the preferred place for those is, of course, the docstrings of the classes or functions they’re designed to test.
+* To provide custom SQL which will be executed immediately after your application is** installed**, create a sub-directory called__ sql __inside the application’s directory; the file names should be the same as the names of the models whose tables they’ll operate on; for example, if you have an app named weblog containing a model named Entry, then the file __sql/entry.sql __inside the app’s directory can be used to modify or insert data into the entries table as soon as it’s been created.
+* To provide custom Python functions which will run when the application is installed, put them in a file named __management.py__, and use Django’s internal dispatcher to connect your functions to the **post_syncdb** signal.
+
+That last one deserves a bit more explanation, so let’s look at it in detail.
+
+Internally, Django uses a package called **PyDispatcher** to enable its various bits to communicate cleanly with each other. Basically, the dispatcher works like this:
+
+* Various parts of Django, as well as other applications, define plain objects called “signals”.
+* Code which wants other things to be notified of something happening tells the dispatcher to send a particular signal.
+* Code which wants to be notified when something happens uses the dispatcher’s connect method to listen for a particular signal.
+
+For example, if you wanted to set up a function which would execute any time a new application is installed, you could create a file in your application called management.py, and put this code in it:
+
+	from django.dispatch import dispatcher
+	from django.db.models import signals
+	 
+	def my_syncdb_func():
+	    # put your code here...
+	    
+	dispatcher.connect(my_syncdb_func, signal=signals.post_syncdb)
+
+Several of the applications bundled with Django use this trick to do various things:
+
+* django.contrib.sites listens to find out when it’s been installed, and creates the default “example.com” site object, which is needed for the admin to function.
+* django.contrib.contenttypes listens for any new apps being installed, and creates new ContentType instances for all the models being installed.
+* django.contrib.auth listens on two fronts: when the auth app is installed, it prompts you to create a superuser, and when any new app is installed, it creates permissions for that app’s models.
+
+This works because the syncdb function in manage.py imports the management files from all the installed and soon-to-be-installed apps in your project; that makes sure any app which needs to can take advantage of the dispatcher.
+
+===== Other useful conventions =====
+
+Of course, that doesn’t cover all the things you might want to do within Django, so naturally people end up wondering how they should organize the rest of their code. Generally there’s no need to require standardized layouts or locations for certain functions, but it can be helpful to adhere to a few conventions. So to provide an example, here’s how I generally lay out any additional bits I need in things that I’m working on.
+
+At the project level, I generally don’t add a whole lot; it’s rare that I need to do something that doesn’t make more sense as part of an application. However, if you’re going to be running multiple projects which all use some or all of the same applications, it can be useful to organize your settings carefully. Jacob has, once or twice, pointed out the trick that we use at the Journal-World, and I think it’s fairly useful: 
+//we have our code base in one directory structure, and settings files in another, with a “default” settings file at the top level of the settings tree. Settings files for individual sites import the default settings and override anything they need to, or add any extra settings they require. Because Django doesn’t require settings files to live in the same directory tree as the applications their projects use, this is extremely easy and extremely useful to do.//
+
+At the application level, I usually drop in **a few more** files depending on exactly what the application is going to be using:
+
+* If the application defines any custom manipulators, I put them in a file called __forms.py __instead of in the views file.
+* If there are multiple custom managers in the app, I put them in a file called __managers.py__ instead of the models file.
+* If I’m defining any custom context processors, I put them in a file called __context_processors.py__.
+* If I’m setting up any custom dispatcher signals, they go in a file called __signals.py__.
+* If the application is setting up any syndication feeds, the feed classes go in a file called __feeds.py__. Similarly, sitemap classes go in __sitemaps.py__.
+* Middleware classes go in a file called __middleware.py__.
+* Any miscellaneous code which doesn’t clearly go anywhere else goes in a file or module called __utils__.
+
+I don’t always use all of that functionality in an app, but if I do it’s nice to have a convention for it, so that I only need to remember to do from appname import forms or from appname import feeds.
+
+===== And one more thing… =====
+
+This is something I’m still in the process of developing, but I also like to have an easy way to test the **dependencies** my applications have, and to make sure everything is **configured** properly. The easiest way to do this, in my experience, is to put some code in the application’s__ __init__.py__ which checks for everything the application will need. I wrote up a simple example in a post on the Django developers list, and I’m still working on improving that; there are functions tucked away in django.core.management which will let you test not only whether an application can be imported and is listed in the INSTALLED_APPS setting, but whether it’s actually been installed into the database.
+
+===== How do you do it? =====
+
+I think I’ve covered everything I know of, and every trick I use, for laying out a Django project or application cleanly; if you see something here you like, feel free to start using it. And if I’ve overlooked something cool that you know of, please post it in a comment and let the world know about it :) 

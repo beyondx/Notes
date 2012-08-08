@@ -1,0 +1,94 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-06T16:04:10+08:00
+
+====== U-Boot中fdt命令的使用 ======
+Created Monday 06 August 2012
+http://www.linuxidc.com/Linux/2012-04/58807.htm
+
+依linux community的要求，从linux-3.5后，新提交的code必须对device tree进行支持。下面介绍如何使u-boot支持device tree，以及fdt命令的使用。
+
+1. u-boot对fdt(flattened device tree)的支持。
+
+实现：只要在板子的配置文件如MPC8315ERDB.h中加入
+
+#define CONFIG_OF_LIBFDT               /* Device Tree support */
+
+重新编译u-boot，就可以实现对device tree的支持。
+另外如果想要在Uboot的命令行中使用fdt命令，需要在该文件中加入：
+#define CONFIG_CMD_FDT宏
+
+2. u-boot下的fdt命令使用
+2.1 首先查看fdt的帮助信息。
+------------------------------------------------
+U-Boot> fdt
+fdt - flattened device tree utility commands
+
+Usage:
+fdt addr <addr> [<length>] - Set the fdt location to <addr>
+fdt move <fdt> <newaddr> <length> - Copy the fdt to <addr> and make it active
+fdt resize - Resize fdt to size + padding to 4k addr
+fdt print <path> [<prop>] - Recursive print starting at <path>
+fdt list <path> [<prop>] - Print one level starting at <path>
+fdt set <path> <prop> [<val>] - Set <property> [to <val>]
+fdt mknode <path> <node> - Create a new node after <path>
+fdt rm <path> [<prop>] - Delete the node or <property>
+fdt header - Display header info
+fdt bootcpu <id> - Set boot cpuid
+fdt memory <addr> <size> - Add/Update memory node
+fdt rsvmem print - Show current mem reserves
+fdt rsvmem add <addr> <size> - Add a mem reserve
+fdt rsvmem delete <index> - Delete a mem reserves
+fdt chosen [<start> <end>] - Add/update the /chosen branch in the tree
+<start>/<end> - initrd start/end addr
+NOTE: Dereference aliases by omiting the leading '/', e.g. fdt print ethernet0.
+U-Boot>
+------------------------------------------------
+2.2 使用fdt命令
+把device tree blob (dtb)文件下载到内存里。
+-----------------------------------------
+
+U-Boot> tftpboot 0x71000000 bshen/test-ek.dtb
+
+-----------------------------------------
+
+设置fdt的地址
+
+-----------------------------------------
+
+U-Boot> fdt addr 0x71000000
+
+-----------------------------------------
+
+然后就可以使用其余的命令参数了
+
+-----------------------------------------
+
+U-Boot> fdt header
+magic: 0xd00dfeed
+totalsize: 0x1887 (6279)
+off_dt_struct: 0x38
+off_dt_strings: 0x1648
+off_mem_rsvmap: 0x28
+version: 17
+last_comp_version: 16
+boot_cpuid_phys: 0x0
+size_dt_strings: 0x23f
+size_dt_struct: 0x1610
+number mem_rsv: 0x0
+
+-----------------------------------------
+
+fdt print 不跟参数时，打印出整颗树
+
+fdt print加path参数，则打path内容，如下(其中/memory是path)：
+
+-----------------------------------------
+
+U-Boot> fdt print /memory
+memory {
+device_type = "memory";
+reg = <0x70000000 0x4000000>;
+};
+
+-----------------------------------------

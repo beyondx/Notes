@@ -1,0 +1,347 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-18T17:19:55+08:00
+
+====== Django新手需要注意的10个要点 ======
+Created Tuesday 18 October 2011
+http://shinyzhu.iteye.com/blog/593427
+
+接触django是从上个月开始，学习python时间也不长，但我经常在社区看看别人发表的文章，早上看到一篇不错的博客，却一直不能访问，最终从bing的缓存里找到，因为害怕丢失和忘掉，所以顺便翻译过来，放到这里，同时也分享给大家，贡献给各位django初学的朋友们，希望能有一些帮助：）
+
+原文地址是：http://zeroandone.posterous.com/top-10-tips-to-a-new-django-developer
+
+==== 1，不要将项目名称包含在引用代码里 ====
+
+比如你创建了一个名为"project"的项目，包含一个名为"app"的应用，那么如下代码是不好的：
+
+    from project.app.models import Author  
+
+缺点在于：应用和项目变成了**紧耦合**，无法将应用轻易变得可重用。如果将来要换一个项目名称，那你可有得受了。
+
+推荐的做法是：
+
+    from app.models import Author  
+
+请注意，你需要将项目的路径配置在**PYTHONPATH**中。
+
+===== 2，不要硬编码MEDIA_ROOT和TEMPLATE_DIRS =====
+
+项目配置文件settings.py中不要使用如下代码：
+
+
+    TEMPLATE_DIRS = ( "/home/html/project/templates",)  
+    MEDIA_ROOT = "/home/html/project/appmedia/"   
+
+当你在部署到生产环境，或者迁移服务器的时候，就会发生问题。
+
+推荐使用如下方式：
+
+    SITE_ROOT = os.path.realpath(os.path.dirname(__file__))  
+    MEDIA_ROOT = os.path.join(SITE_ROOT, '//appmedia//')  
+    TEMPLATE_DIRS = ( os.path.join(SITE_ROOT, 'templates'),)  
+
+（也可以使用abspath，跟realpath的区别请参考http://rob.cogit8.org/blog/2009/May/05/django-and-relativity-updated/ ）
+
+ 
+
+===== 3，不要将静态文件的路径硬编码在模板中 =====
+
+模板中链接CSS，javascript或图片的时候，不建议使用如下方式：
+
+    <link rel="stylesheet" type="text/css" href="/appmedia/amazing.css" />  
+    <script type="text/javascript" src="/appmedia/jquery.min.js"></script>  
+
+当你的项目需要将静态文件用**其他服务器**提供的时候，通常会是另外一个http地址，那么你就得把所有的/appmedia/替换成新的地址，做网站写代码已经够乏味的了。
+
+没有后顾之忧的解决方法是使用{{ MEDIA_URL }}代替硬编码的路径：
+ 
+    <link rel="stylesheet" type="text/css" href="{{ MEDIA_URL }}amazing.css" />  
+    <script type="text/javascript" src="{{ MEDIA_URL }}jquery.min.js"></script>  
+
+模板上下文变量怎么获取到呢？请使用 **RequestContext**即可：
+
+    return render_to_response("app/template.html", {'var': 'foo'},  
+    context_instance=RequestContext(request))  
+ 
+从RequestContext里还可以获取到当前用户等信息，更详细的介绍请参考：http://www.b-list.org/weblog/2006/jun/14/django-tips-template-context-processors/
+
+===== 4，不要将业务逻辑代码写到视图里 =====
+ 
+不要迷惑，虽然你可能看过很多书和例子，它们把逻辑都写在了views.py里，但请你别这么做。因为这样不利于单元测试，不利于重用代码。
+
+那我的业务逻辑应该放哪里呢？推荐放到__模型__里或者单独建立一个**辅助（helper）模块**。
+
+当然，从模型得到一个Author，获取Author列表的代码是可以放到视图里面的。
+
+  
+
+===== 5，部署时别忘记将DEBUG设置成False =====
+
+我们常常忘记在部署时禁用DEBUG，有很多种方法自动来处理这个配置：
+
+     
+    if socket.gethostname() == 'productionserver.com':  
+        DEBUG = False  
+    else:  
+        DEBUG = True   
+
+此方法请参考：http://nicksergeant.com/blog/django/automatically-setting-debug-your-django-app-based-server-hostname
+
+另一种途径是使用不同的配置文件：
+
+    #文件名：settings_debug.py  
+    #包含调试模式的配置信息  
+    #使用python manage.py runserver settings=settings_debug.py来运行项目  
+      
+    from settings import *  
+      
+    DEBUG = True  
+      
+    #还可以配置更多在调试时使用的变量：）  
+
+此方法请参考：http://blog.dpeepul.com/2009/07/02/from-now-you-will-never-forget-to-put-debug-true-in-django-production-environment/
+
+ 
+
+===== 6，只加载一次自定义的模板标签 =====
+
+当需要使用自定义或者第三方的模板标签和模板过滤器时，通常要在模板中使用：
+
+    {% load template_tags %}  
+
+ 
+实际情况是，需要在所有用到自定义模板标签和模板过滤器的模板中都使用上面的代码，这样就不DRY了。
+
+ 
+    from django import template  
+      
+    template.add_to_builtins('app.templatetags.custom_tag_module')  
+
+ 
+请将以上代码放到项目启动时能加载的模块中（settings.py, urls.py, models.py等）即可。
+
+上面代码的作用是在项目启动时就把自定义模板标签或过滤器加载进来，模板中任何一个地方都可以使用它们，而不需要{% load template_tags %}。
+
+===== 7，合理配置和使用URL =====
+
+ 
+
+不要将URL全都配置在一个urls.py文件中，比如：
+
+ 
+Python代码  收藏代码
+
+    urlpatterns = patterns('',  
+      url(r'^askalumini/question/$','.....registerInstitution',name='iregister'),  
+      url(r'^askalumin/answer/$','someview.....',name='newmemberurl'),  
+      url(r'^institution/member/$','someview.....',name="dashboardurl"),  
+      url(r'^institution/faculty/$','editInstitute',name="editinstituteurl"),  
+      url(r'^memeber/editprofile/$','editProfile',name="editprofileurl"),  
+      url(r'^member/changepassword/$','changePassword',name="changepasswordurl"),  
+      url(r'^member/forgotpassword/$','forgotPassword',name="forgotpasswordurl"),  
+      url(r'^member/changepicture/$','changePicture',name="changepictureurl"),  
+      url(r'^member/logout/$','memeberlogout',name="logouturl"), ,  
+    )  
+
+ 
+
+建议的方式是将各应用的URL配置在各自的urls.py中，这样可以使应用更容易重复使用到不同项目里：
+
+ 
+Python代码  收藏代码
+
+    urlpatterns = patterns('',  
+      (r'^$', include('institution.urls')),  
+      (r'^institution/', include('institution.urls')),  
+      (r'^askalumini/', include('askalumini.urls')),  
+      (r'^member/', include('member.urls')),  
+    )  
+
+ 
+
+如下是应用askalumini的urls.py：
+
+ 
+Python代码  收藏代码
+
+    urlpatterns = patterns('askalumini.views',  
+      url(r'^$','askHome',name='askaluminiurl'),  
+      url(r'^questions/(?P<questionno>\d+)/$','displayQuestion',name='askquestiondisplay'),  
+      url(r'^askquestions/$','askQuestion',name='askquestionurl'),  
+      url(r'^postcomment/$','postComment',name="askquestioncomment")  
+    )  
+
+ 
+
+刚才提到静态文件路径不要硬编码，url的处理方式也尽量不要硬编码，否则当你更改一个地址时会牵涉到多处的修改，可以使用一些url函数来处理。
+
+ 
+
+在/project/askalumini/urls.py中，为每一个url定义了name，它可以帮助我们有效地在视图、模板和模型中处理url，而不是硬编码。
+
+ 
+
+为保证名称的唯一，请遵照将url命名为<appname>/<somelabel>的习惯用法。
+
+ 
+
+举例来说，在views.py文件中有如下代码：
+
+ 
+Python代码  收藏代码
+
+    HttpResponseRedirect("/askalumini/questions/54")  
+
+ 
+
+请改为：
+
+ 
+Python代码  收藏代码
+
+    from django.core.urlresolvers import reverse  
+    HttpResponseRedirect(reverse('askquestiondisplay',kwargs={'questionno':q.id}))   
+
+ 
+
+在模型中使用models.permalink装饰器来格式url：
+
+ 
+Python代码  收藏代码
+
+    @models.permalink  
+    def get_absolute_url(self):  
+        return ('profileurl2',(),{'userid': self.user.id})  
+
+ 
+
+在模板中使用url标签代替硬编码：
+
+ 
+Html代码  收藏代码
+
+    {% url askquestiondisplay 345 %}  
+    <a href="{% url askquestiondisplay 345 %}"> Ask Question </a>   
+
+ 
+
+8，调试
+
+ 
+
+调试通常会借助一些第三方工具来获得更多的运行时信息。
+
+ 
+
+一个请求执行了多少句SQL？花了多长时间？
+
+ 
+
+调用的哪个模板？客户端设置了什么COOKIE？SESSION呢？。。。
+
+ 
+
+你可以使用django-debug-toolbar查看上面甚至更多的信息：http://github.com/robhudson/django-debug-toolbar
+
+ 
+
+另一个工具是Werkzeug debugger，它可以在错误页面打开python shell，让你更方便的跟踪错误信息，请访问：http://blog.dpeepul.com/2009/07/14/python-shell-right-on-the-django-error-page/ 获得更多信息。
+
+ 
+
+还有pdb，一个强大的调试工具：http://ericholscher.com/blog/2008/aug/31/using-pdb-python-debugger-django-debugging-series-/
+
+ 
+
+9，了解pinax备用
+
+ 
+
+django最大的优点是代码重用，DRY，pinax就是这样一个平台，包含了许多可拿来直接使用的代码，比如openid，电子邮件验证等等。请访问：http://pinaxproject.com/
+
+ 
+
+10，了解一些著名的第三方应用
+
+ 
+
+1）数据库升级工具
+
+ 
+
+什么是数据库升级工具？你运行了syncdb，运行了一年之后，对模型做了更改，添加了字段，删除了字段，要再运行syncdb吗？或者ALTER TABLE ...？
+
+ 
+
+django-evolutions可以帮你完成上面的事情，但它好像不够强壮：http://code.google.com/p/django-evolution/
+
+ 
+
+South能很强壮地完成上面的事情，但是需要学学怎么用：http://south.aeracode.org/
+
+ 
+
+2）模板系统
+
+ 
+
+django自带的模板系统是可以替换的，并且各自有优缺点。
+
+ 
+
+template-utils增强了模板的比较标签等功能 ，并提供其他的一些实用特性：http://django-template-utils.googlecode.com/svn/trunk/docs/
+
+ 
+
+Jinja是一个完整的第三方模板系统，可以替换默认模板系统，它提供了许多优越的特性：http://jinja.pocoo.org/2/
+
+ 
+
+3）第三方应用
+
+ 
+
+django command extensions提供了很多实用的命令行功能：
+
+ 
+
+shell_plus加载所有django模型
+
+ 
+
+runserver_plus整合了Werkzeug调试工具
+
+ 
+
+生成模型图表，你可以展示给你的老板
+
+ 
+
+……
+
+ 
+
+请参考：http://ericholscher.com/blog/2008/sep/12/screencast-django-command-extensions/
+
+ 
+
+Sorl可以生成缩略图：http://code.google.com/p/sorl-thumbnail/
+
+ 
+
+…………
+
+ 
+
+---END---
+
+ 
+
+另外，从原文的评论里也有不少发现：
+
+    用django.shortcuts的redirect代替HttpResponseRedirect：http://docs.djangoproject.com/en/dev/topics/http/shortcuts/#redirect
+    使用VirtualEnv部署django项目
+    django项目规范：http://ericholscher.com/projects/django-conventions/project/
+    上面提到的10点中，第2和第4是最容易在新手中发生的。
+    第6点并不适合于团队协作
+

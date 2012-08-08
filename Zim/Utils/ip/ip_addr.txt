@@ -1,0 +1,161 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-12T14:19:06+08:00
+
+====== ip addr ======
+Created Thursday 12 July 2012
+
+==== 1. 查看帮助: ====
+[geekard@kb310 man]$ __ip addr help__
+Usage: ip addr {add|change|replace} [local] IFADDR dev STRING [ LIFETIME ]  #local缺省参数，可以不用指定。
+                                                      [ CONFFLAG-LIST ]
+       ip addr del IFADDR dev STRING
+       ip addr {show|flush} [ dev STRING ] [ scope SCOPE-ID ]
+                            [ to PREFIX ] [ FLAG-LIST ] [ label PATTERN ]
+IFADDR := PREFIX | ADDR peer PREFIX
+          [ broadcast ADDR ] [ anycast ADDR ]
+          [ label STRING ] [ scope SCOPE-ID ]
+SCOPE-ID := [ host | link | global | NUMBER ]
+FLAG-LIST := [ FLAG-LIST ] FLAG
+FLAG  := [ permanent | dynamic | secondary | primary |
+           tentative | deprecated | dadfailed | temporary |
+           CONFFLAG-LIST ]
+CONFFLAG-LIST := [ CONFFLAG-LIST ] CONFFLAG
+CONFFLAG  := [ home | nodad ]
+LIFETIME := [ valid_lft LFT ] [ preferred_lft LFT ]
+LFT := forever | SECONDS
+[geekard@kb310 man]$ 
+
+注意: ip addr change|replace命令目前并没有实现，所以不能使用。
+
+2. ==== 查看IP ====
+
+
+[geekard@kb310 man]$ __ip addr show__ 
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 576 qdisc pfifo_fast state UP qlen 1000
+    link/ether c8:60:00:8a:db:e7 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.1.103/24 brd 255.255.255.255 scope global eth0
+[geekard@kb310 man]$ 
+
+==== 3.添加IP ====
+为一个接口添加IP地址时，**最好采用PREFIX的形式**，否则ip命令认为该IP的网络号长度是32，这样就不会自动生成广播路由表项。
+[geekard@kb310 man]$ __sudo ip addr add 192.168.1.109/24 broadcast 192.168.1.255 dev eth0__
+[geekard@kb310 man]$ ip addr show 
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 576 qdisc pfifo_fast state UP qlen 1000
+    link/ether c8:60:00:8a:db:e7 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.1.103/24 brd 255.255.255.255 scope global eth0
+    inet 192.168.1.109/24 brd 192.168.1.255 scope global __secondary__ eth0  
+[geekard@kb310 man]$ 
+
+如果采用ADDR的形式，则**ip将不知道该地址的网络号**，因此不会自动生成广播路由项。
+[geekard@kb310 man]$ __sudo ip -s addr add 192.168.3.113 dev eth0; ip addr show__
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 576 qdisc pfifo_fast state UP qlen 1000
+    link/ether c8:60:00:8a:db:e7 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.1.103/24 brd 192.168.1.255 scope global eth0
+    inet 192.168.1.109/24 brd 192.168.1.255 scope global eth0
+    inet 192.168.2.109/24 brd 192.168.2.255 scope global eth0
+    inet 192.168.3.113/__32__ scope global eth0    
+[geekard@kb310 man]$ ip route show type **broadcast** table __local__
+127.0.0.0 dev lo  table local  proto kernel  scope link  src 127.0.0.1 
+127.255.255.255 dev lo  table local  proto kernel  scope link  src 127.0.0.1 
+192.168.1.0 dev eth0  table local  proto kernel  scope link  src 192.168.1.111 
+192.168.1.255 dev eth0  table local  proto kernel  scope link  src 192.168.1.111 
+192.168.2.0 dev eth0  table local  proto kernel  scope link  src 192.168.2.110 
+192.168.2.255 dev eth0  table local  proto kernel  scope link  src 192.168.2.110 
+[geekard@kb310 man]$ 
+
+可见内核并没有自动向local路由表中添加去往192.168.3.0的路由项。另外需要注意的是，ip addr add命令__没有netmask参数__，因此添加IP时最好使用PREFIX形式，例外的情况是__点对点链路(这时peer参数有效)__。
+
+* 一个网络端口可以由多个IP地址，它们可以位于不同的子网中，而且是相互独立的。
+* 同个网络端口虽然可以配置多个不同子网的IP，但该端口只能由一个缺省网关，外界只能通过其中一个IP访问当该主机端口。
+* 同个网络端口配置多个不同子网的IP，这一般用于TUN/TAP情况。
+
+
+==== 4.删除IP ====
+删除IP时，可以使用两种命令形式：
+* ip addr del IFADDR dev STRING
+* ip addr {show|flush} [ dev STRING ] [ scope SCOPE-ID ]
+                          [ to PREFIX ] [ FLAG-LIST ] [ label PATTERN ]
+前一种形式使用的是IFADDR，一次只能删除一个IP地址。
+后一种形式使用的是to PREFIX，如果PREFIX含有后缀则一次可以删除多个IP，否则只删除单个IP。
+[geekard@kb310 man]$ ip addr show
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 576 qdisc pfifo_fast state UP qlen 1000
+    link/ether c8:60:00:8a:db:e7 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.3.113/32 scope global eth0
+    inet 192.168.2.114/24 scope global eth0
+    inet 192.168.2.33/24 scope global secondary eth0
+[geekard@kb310 man]$ __sudo ip addr del 192.168.2.33/24 dev eth0__;ip addr show    #对于ip addr del而言，IP地址带不带后缀的效果都是一样的(不带后缀时会出现警告)。
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 576 qdisc pfifo_fast state UP qlen 1000
+    link/ether c8:60:00:8a:db:e7 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.3.113/32 scope global eth0
+    inet 192.168.2.114/24 scope global eth0
+[geekard@kb310 man]$ 
+
+[geekard@kb310 man]$ ip addr show
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 576 qdisc pfifo_fast state UP qlen 1000
+    link/ether c8:60:00:8a:db:e7 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.2.110/24 brd 192.168.2.255 scope global eth0
+    inet 192.168.3.113/32 scope global eth0
+    inet 192.168.1.113/24 scope global eth0
+    inet 192.168.1.114/24 scope global secondary eth0
+    inet 192.168.2.114/24 scope global secondary eth0
+[geekard@kb310 man]$ sudo ip -s addr flush dev eth0 to 192.168.1.1/__24__ 
+
+*** Round 1, deleting 2 addresses ***   #删除了两个含有192.168.1前缀的IP地址
+*** Flush is complete after 1 round ***
+[geekard@kb310 man]$ ip addr show
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 576 qdisc pfifo_fast state UP qlen 1000
+    link/ether c8:60:00:8a:db:e7 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.2.110/24 brd 192.168.2.255 scope global eth0
+    inet 192.168.3.113/32 scope global eth0
+    inet 192.168.2.114/24 scope global secondary eth0
+[geekard@kb310 man]$ sudo ip -s addr flush dev eth0 to 192.168.2.110
+
+*** Round 1, deleting 1 addresses ***   #只删除__一个__IP地址
+*** Flush is complete after 1 round ***
+[geekard@kb310 man]$ ip addr show
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 576 qdisc pfifo_fast state UP qlen 1000
+    link/ether c8:60:00:8a:db:e7 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.3.113/32 scope global eth0
+    inet 192.168.2.114/24 scope global eth0
+[geekard@kb310 man]$ 

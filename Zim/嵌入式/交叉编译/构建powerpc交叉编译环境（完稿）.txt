@@ -1,0 +1,219 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-14T12:36:54+08:00
+
+====== 构建powerpc交叉编译环境（完稿） ======
+Created Wednesday 14 December 2011
+
+http://blog.csdn.net/shaolyh/article/details/4459300
+
+嵌入式开发系统一般分为3种：
+1、连接式：（略）
+2、可抽换式：（略）
+3、独立式：（略）
+ 
+我们通常见到的是连接式。
+由于一般嵌入式开发系统存储大小有限，通常你都要在你的强大的pc机上建立一个用于目标机的交叉编译环境。这是一个由编译器、连接器和解释器组成的综合开发环境。
+
+交叉编译工具主要由以下三个组件组成：
+1、binutils
+2、gcc
+3、glibc：有时出于减小 libc 库大小的考虑，你也可以用别的 c 库来代替 glibc，例如 uClibc、dietlibc 和 newlib。
+
+工具链主要包括binutils, gcc, glibc三个组件，由于各个组件的开发和发布彼此独立，所以并非用各组件的任意版本都能顺利完成建立工作。建立一个交叉编译工具链是一个相当复杂的过程，如果你不想自己经历复杂的编译过程，网上有一些编译好的可用的交叉编译工具链可以下载。crosstool工具推荐如下组合：其中14经过我实际验证。
+1、 gcc-3.4.5 cgcc-3.4.5 glibc-2.2.5 binutils-2.15 linux-2.6.8
+2、 gcc-3.4.5 cgcc-3.3.6 glibc-2.3.2 binutils-2.15 linux-2.6.8 hdrs-2.6.12.0
+3、 gcc-3.4.5 cgcc-3.4.5 glibc-2.3.5 binutils-2.15 linux-2.6.8 hdrs-2.6.12.0
+4、 gcc-3.4.5 cgcc-3.4.5 glibc-2.3.6 binutils-2.15 linux-2.6.8 hdrs-2.6.12.0
+5、 gcc-4.0.2 cgcc-3.3.6 glibc-2.3.2 binutils-2.16.1 linux-2.6.15.4 hdrs-2.6.12.0
+6、 gcc-4.0.2 cgcc-4.0.2 glibc-2.3.5 binutils-2.16.1 linux-2.6.15.4 hdrs-2.6.12.0
+7、 gcc-4.0.2 cgcc-4.0.2 glibc-2.3.6 binutils-2.16.1 linux-2.6.15.4 hdrs-2.6.12.0
+8、 gcc-4.1.0 cgcc-3.3.6 glibc-2.3.2 binutils-2.16.1 linux-2.6.15.4 hdrs-2.6.12.0
+9、 gcc-4.1.0 cgcc-3.3.6 glibc-2.3.5 binutils-2.16.1 linux-2.6.15.4 hdrs-2.6.12.0
+10、gcc-4.1.0 cgcc-3.3.6 glibc-2.3.6 binutils-2.16.1 linux-2.6.15.4 hdrs-2.6.12.0
+11、gcc-4.1.1 cgcc-3.3.6 glibc-2.3.5 binutils-2.16.1 linux-2.6.15.4 hdrs-2.6.12.0
+12、gcc-4.1.1 cgcc-3.3.6 glibc-2.3.5 binutils-2.16.1 linux-2.6.15.4 hdrs-2.6.12.0 tls
+13、gcc-4.1.1 cgcc-3.3.6 glibc-2.3.6 binutils-2.16.1 linux-2.6.15.4 hdrs-2.6.12.0
+14、gcc-4.1.1 cgcc-3.3.6 glibc-2.3.6 binutils-2.16.1 linux-2.6.15.4 hdrs-2.6.12.0 tls
+ 
+工具链主要包括binutils, gcc, glibc三个组件，由于各个组件的开发和发布彼此独立，所以并非用各组件的任意版本都能顺利完成建立工作。
+下载内核：
+http://www.cn.kernel.org/pub/linux/kernel/
+下载binutils:
+http://ftp.gnu.org/gnu/binutils/
+下载gcc：
+http://ftp.gnu.org/gnu/gcc/
+下载c连接库(glibc)和补丁：
+http://ftp.gnu.org/gnu/glibc/
+ 
+开发机: Intel(R) Celeron(R) CPU 2.26GHz fedora core 7
+目标板: powerpc/4xx
+ 
+ 
+
+===== 一、准备工作 =====
+cd /home/lsf    这里用的用户名是lsf
+mkdir embedded
+再在这个项目目录 embedded 下建立三个目录 build-tools、kernel 和 tools。
+
+cd embedded
+mkdir build-tools kernel tools
+
+
+build-tools-用来存放你下载的 binutils、gcc 和 glibc 的__源代码__和用来__编译__这些源代码的目录。
+kernel-用来存放你的**内核源代码**和内核补丁。
+tools-用来存放__编译好的__交叉编译工具和库文件。
+为了把源码和编译时生成的文件分开，一般的编译工作不在的源码目录中，要另建一个目录来**专门用于编译**。用以下的命令来建立编译你下载的binutils、gcc和glibc的源代码的目录。
+
+cd $PRJROOT/build-tools
+mkdir build-binutils build-boot-gcc build-gcc build-glibc gcc-patch
+
+
+build-binutils -编译binutils的目录
+build-boot-gcc -编译gcc 启动部分的目录
+build-glibc  -编译glibc的目录
+build-gcc  -编译gcc 全部的目录
+gcc-patch  -放gcc的补丁的目录
+将 binutils-2.10.1、gcc-2.95.3、glibc-2.2.3 和 glibc-linuxthreads-2.2.3 的源代码放入 build-tools 目录中
+ 
+
+export** PRJROOT**=/home/liushaofeng/embedded 
+export **TARGET**=powerpc-linux 
+export **PREFIX**=$PRJROOT/tools
+export** TARGET_PREFIX**=$PREFIX/$TARGET
+export **PATH**=$PREFIX/bin:$PATH
+ 
+ 
+
+===== 二、内核头文件设置 =====
+
+cd $PRJROOT/kernel
+tar zxvf linux-2.4.20.tar.gz
+cd linux-2.4.20
+make **ARCH=powerpc** __CROSS_COMPILE__=**powerpc-linux-**  menuconfig
+
+
+接下来为你的交叉编译环境建立你的**内核头文件**的链接
+
+mkdir -p $TARGET_PREFIX/include
+ln -s $PRJROOT/kernel/linux-2.4.20/include/**linux  **__$TARGET_PREFIX__/include/linux
+ln -s $PRJROOT/kernel/linux-2.4.20/include/**asm-ppc** $TARGET_PREFIX/include/asm
+ln -s $PRJROOT/kernel/linux-2.4.20/include/**asm-generic** $TARGET_PREFIX/include/asm-generic
+也可以把 Linux 内核头文件拷贝过来用
+
+mkdir -p $TARGET_PREFIX/include
+cp -r include/linux $TARGET_PREFIX/include
+cp -r include/asm-ppc $TARGET_PREFIX/include
+cp -r include/asm-generic $TARGET_PREFIX/include
+
+ 
+
+===== 三、建立二进制工具（binutils） =====
+ 
+binutils是一些__二进制工具__的集合，其中包含了我们常用到的as和ld。
+首先，我们解压我们下载的binutils源文件。
+
+cd $PRJROOT/build-tools
+tar -xvzf binutils-2.10.tar.gz
+
+
+然后进入build-binutils目录配置和编译binutils。
+
+cd build-binutils
+../binutils-2.10/configure __--target__=$TARGET __--prefix__=$PREFIX
+
+--target 选项是指出我们生成的是 ppc-linux 的工具，--prefix 是指出我们可执行文件安装的位置。
+会出现很多 check，最后产生 Makefile 文件。有了 Makefile 后，我们来编译并安装 binutils，命令很简单。
+ 
+
+make
+make install
+
+ 
+
+===== 四、建立GCC =====
+ 
+进入 build-tools 目录，将下载 gcc 源代码解压
+
+cd $PRJROOT/build-tools
+tar -xvzf gcc-2.95.3.tar.gz
+
+
+在我们编译并安装 gcc
+
+../gcc-2.95.3/configure **--target**=$TARGET **--prefix**=$PREFIX --without-headers --enable-language=**c** --with-newlib 
+make all-gcc
+make install-gcc
+
+ 
+五、建立c连接库
+
+cd $PRJROOT/build-tools
+tar xvzf glibc-2.2.3.tar.gz
+tar xvzf glibc-linuxthreads-2.2.3.tar.gz --directory=glibc-2.2.3
+cd build-glibc
+
+__CC=powerpc-linux-gcc __  ../glibc-2.2.3/configure --host=$TARGET --prefix=**"/usr"** --enable-add-ons **--with-headers**=$TARGET_PREFIX/include
+
+make
+make **install_root**=$TARGET_PREFIX** prefix**="" install
+
+
+安装过程可能出现有两个文档目录不能成功安装，可以用-i选项略过错误继续安装
+ 
+make -i install_root=$TARGET_PREFIX prefix=" " install
+ 
+ 
+
+===== 六、编译完整的gcc =====
+
+第二次完整编译gcc时，需要**修改生成的lib库中的libc.so文件**
+(/home/liushaofeng/embedded/tools/ppc-linux/lib/libc.so)，
+将 GROUP ( /lib/libc.so.6 /lib/libc_nonshared.a)
+改为GROUP ( libc.so.6 libc_nonshared.a)
+vim $TARGET_PREFIX/lib/libc.so
+在建立boot-gcc 的时候，我们只支持了C。到这里，我们就要建立全套编译器，来支持C和C++。
+--enable-languages=c,c++ 告诉 full gcc 支持 c 和 c++ 语言。然后编译和安装你的 full gcc
+ 
+
+cd $PRJROOT/build-tools/build-gcc
+../gcc-2.95.3/configure --target=$TARGET --prefix=$PREFIX --enable-languages=c,c++
+make all
+make install
+
+到此交叉编译工具链建立完成。
+验证：
+powerpc-linux-gcc simple.c -o simple
+file simple
+
+说明：
+add2line -将你要找的地址转成文件和行号，它要使用 debug 信息。
+ar  -产生、修改和解开一个存档文件
+as  -gnu 的汇编器
+c++filt -c++和java中有一种重载函数，所用的重载函数最后会被编译转化成汇编的标号，c++filt 就是实现这种反向的转化，根据标号得到函数名。
+c++  -gnu的 c++ 编译器。
+cpp  -gnu的 c 的预编译器
+gasp -gnu 汇编器预编译器。
+gcc  -gnu 的 c 语言编译器
+gcov -gcc 的辅助测试工具，可以用它来分析和优程序。
+g++  -gnu的 c++ 编译器。
+ld  -gnu 的连接器
+nm  -列出目标文件的符号和对应的地址
+objcopy  -将某种格式的目标文件转化成另外格式的目标文件
+objdump  -显示目标文件的信息
+ranlib  -为一个存档文件产生一个索引，并将这个索引存入存档文件中
+readelf  -显示 elf 格式的目标文件的信息
+size  -显示目标文件各个节的大小和目标文件的大小
+strings  -打印出目标文件中可以打印的字符串，有个默认的长度为4
+strip  -剥掉目标文件的所有的符号信息
+unprotoize -将 ansi c 的源码转化为 k&r c 的形式，去掉函数原型中的参数类型。
+protoize -与unprotoize相反，将k&r c的源码转化为ansi c的形式，函数原型中加入参数类型。
+ 
+ 
+你如果没定义 -Dinhibit，编译时将会报如下的错误
+../../gcc-2.95.3/gcc/libgcc2.c:41: stdlib.h: No such file or directory
+../../gcc-2.95.3/gcc/libgcc2.c:42: unistd.h: No such file or directory
+make[3]: *** [libgcc2.a] Error 1
+make[2]: *** [stmp-multilib-sub] Error 2
+make[1]: *** [stmp-multilib] Error 1
+make: *** [all-gcc] Error 2 

@@ -1,0 +1,65 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-27T17:12:36+08:00
+
+====== MII、GMII、RMII、SGMII、XGMII ======
+Created Sunday 27 November 2011
+
+http://hi.baidu.com/santi7009/blog/item/9c23a1c2ce3fd95cb319a84b.html
+
+MII即**媒体独立接口**，也叫**介质无关接口**。它是IEEE-802.3定义的以太网行业标准。它包括一个**数据接口**，以及一个MAC和PHY之间的**管理接口(**图1)。数据接口包括分别用于发送器和接收器的两条独立信道。每条信道都有自己的**数据、时钟和控制信号**。MII数据接口总共需16个信号。管理接口是个双信号接口：一个是时钟信号，另一个是数据信号。通过管理接口，上层能监视和控制PHY。
+{{~/sync/notes/zim/Research/MII、GMII、RMII、SGMII、XGMII/mii.jpg}}
+
+MII标准接口 用于连接Fast Ethernet MAC-block与PHY。“介质无关”表明在不对**MAC硬件**重新设计或替换的情况下，任何类型的PHY设备都可以正常工作。在其他速率下工作的与 MII等效的接口有：AUI（10M　以太网）、GMII（Gigabit　以太网）和XAUI（10-Gigabit　以太网）。
+
+===== MII总线 =====
+在IEEE802.3中规定的MII总线是一种用于将不同类型的PHY与相同网络控制器（MAC）相连接的通用总线。网络控制器可以用同样的硬件接口与任何PHY。
+
+===== GMII (Gigabit MII) =====
+GMII是**8bit并行同步收发**接口，采用8位接口数据，工作时钟**125MHz**，因此传输速率可达1000Mbps。同时兼容MII所规定的10/100 Mbps工作方式。
+GMII接口数据结构符合IEEE以太网标准。该接口定义见IEEE 802.3-2000。
+**发送器：**
+◇ GTXCLK——吉比特TX..信号的时钟信号（125MHz）
+◇ TXCLK——10/100M信号时钟
+◇ TXD[7..0]——被发送数据
+◇ TXEN——发送器使能信号
+◇ TXER——发送器错误（用于破坏一个数据包）
+注：在千兆速率下，向PHY提供GTXCLK信号，TXD、TXEN、TXER信号与此时钟信号同步。否则，在10/100M速率下，PHY提供 TXCLK时钟信号，其它信号与此信号同步。其工作频率为25MHz（100M网络）或2.5MHz（10M网络）。
+**接收器：**
+◇ RXCLK——接收时钟信号（从收到的数据中提取，因此与GTXCLK无关联）
+◇ RXD[7..0]——接收数据
+◇ RXDV——接收数据有效指示
+◇ RXER——接收数据出错指示
+◇ COL——冲突检测（仅用于半双工状态）
+**管理配置**
+◇ MDC——配置接口时钟
+◇ MDIO——配置接口I/O
+管理配置接口**控制PHY的特性**。该接口有32个寄存器地址，每个地址16位。其中前16个已经在“IEEE 802.3,2000-22.2.4 Management Functions”中规定了用途，其余的则由各器件自己指定。
+
+===== RMII: =====
+Reduced Media Independant Interface  简化媒体独立接口
+是标准的以太网接口之一，比MII有更少的I/O传输。
+
+MII(Medium Independent Interface)是IEEE802．3u规定的一种介质无关接口，主要作用是连接介质访问控制层(MAC)子层与物理层(PH-Y)之间的标准以太网接口，负责MAC和PHY之间的通信。由于MII需要多达16根信号线，由此产生的I／O口需求及功耗较大，有必要对MII引脚数进行简化，因此提出了RMII(Reduced Medium Independent Interface，精简的介质无关接口)，即简化了的MII。
+
+
+
+* RMII口是用**2根线**来传输数据的，
+* MII口是用**4根线**来传输数据的，
+* GMII是用**8根线**来传输数据的。
+
+MII都是并行传输并需要**随路时钟**，对于10M线速,MII的速率是2.5M，RMII则是5M；对于100M线速，MII的速率是25M，RMII则是50M。
+
+MII/RMII用于传输**以太网包**，在MII/RMII接口是4/2bit的，在以太网的PHY里需要做串并转换、编解码等才能在双绞线和光纤上进行传输，其帧格式遵循IEEE 802.3(10M)/IEEE 802.3u(100M)/IEEE 802.1q(VLAN)。
+
+以太网帧的格式为：前导符+开始位+目的mac地址+源mac地址+类型/长度+数据+padding(optional)+32bitCRC
+如果有vlan，则要在类型/长度后面加上**2个字节的vlan tag**，其中12bit来表示vlan id，另外4bit表示数据的优先级!
+
+===== SGMII =====
+Serial Gigabit Media Independent Interface
+
+SGMII是PHY与MAC之间的接口，类似与GMII和RGMII，只不过GMII和RGMII都是并行的，而且需要随路时钟，PCB布线相对麻烦，而且不适应**背板应用**。而__SGMII是串行__的，不需要提供另外的时钟，MAC和PHY都需要CDR（clock and data recovery）去恢复时钟。另外SGMII是有8B/10b编码的，速率是1.25G
+
+===== XGMII =====
+
+XGMII--10 Gigabit Media Independent Interface 是“10Gb独立于媒体的接口”，X对应罗马数字10

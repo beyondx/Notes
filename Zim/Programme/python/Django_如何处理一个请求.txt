@@ -1,0 +1,170 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-17T21:23:41+08:00
+
+====== Django 如何处理一个请求 ======
+Created Monday 17 October 2011
+http://blog.huyo.org/?p=345
+
+本文翻译自 James Bennett 的 How Django processes a request，对于学习 Django 的朋友，我想能有所助益。翻译有不妥当的地方，请留言告诉我。
+
+在 Jonathan Snook 昨天的评论中，他提出了一个很棒的挑战：说说 Django 是如何处理一个 request 的，从开始到结束，对于内部调用的各种东西要有足够的细节，并且要链接到恰当的文档。
+
+Simon Willison 曾经写过这样的文档，但它是从一个很高层的角度而且从那以来很多东西都有变化，因此我决定自己写一篇，希望它易于理解。
+
+注意：这是第一份草稿，不是完成的产品，也不是完整的列表。随着工作的进行，它会经常改变。理想情况下，我会得到一些帮助来产生一个某种程度上的可视化的文档，但现在我坚持用纯文本。
+
+有 官方文档的条目，我会为它做链接，没有的，我会链接到 Django 仓库中相关代码的位置──这些位置经常改变，特别是因为我总是链接到各自文件的行号，但我会尽力保持它们是最新的。如果你看到错误的地方，或者我遗漏的东 西，或者应该解释的更好的地方，请留言让我知道。
+
+
+我们开始吧。
+
+===== Request 来了！首先发生的是一些和 Django 有关的初始化工作(只执行一次) =====
+分别是：
+
+* 如果是 Apache/mod_python 提供服务，request 由 mod_python 创建的 django.core.handlers.modpython.ModPythonHandler 实例传递给 Django。
+* 如果是其他服务器，则必须兼容 WSGI，这样，服务器将创建一个 django.core.handlers.wsgi.WsgiHandler 实例。
+
+这两个类都继承自 django.core.handlers.base.BaseHandler，它包含对任何类型的 request 来说都需要的公共代码。
+
+当上面其中一个处理器实例化后，紧接着发生了一系列的事情：
+
+* 这个处理器导入你的 Django 配置文件。
+//     240       from django.conf import settings//
+* 这个处理器导入 Django 的自定义例外类。
+* 这个处理器呼叫它自己的 load_middleware 方法，加载所有列在 MIDDLEWARE_CLASSES 中的 middleware 类并且内省它们。
+    250                        self.load_middleware()
+
+最后一条有点复杂，我们仔细瞧瞧。
+
+一 个 middleware 类可以渗入处理过程的四个阶段：__request，view，response 和 exception__。要做到这一点，只需要定义指定的、恰当的方法：process_request，process_view， process_response 和 process_exception。middleware 可以定义其中任何一个或所有这些方法，这取决于你想要它提供什么样的功能。
+
+当处理器内省 middleware 时，它查找上述名字的方法，并__建立四个列表作为处理器的实例变量__：
+
+    _request_middleware 是一个保存 process_request 方法的列表（在每一种情况下，它们是真正的方法，可以直接呼叫），这些方法来自于任一个定义了它们的 middleware 类。
+    _view_middleware 是一个保存 process_view 方法的列表，这些方法来自于任一个定义了它们的 middleware 类。
+    _response_middleware 是一个保存 process_response 方法的列表，这些方法来自于任一个定义了它们的 middleware 类。
+    _exception_middleware 是一个保存 process_exception 方法的列表，这些方法来自于任一个定义了它们的 middleware 类。
+//from base.py
+  33     self._view_middleware = []
+  34      self._template_response_middleware = []
+  35     self._response_middleware = []
+  36    self._exception_middleware = []
+
+  38     request_middleware = []
+
+
+===== 绿灯：现在开始(处理器开始处理request) =====
+
+现在处理器已经准备好真正开始处理了，因此它给调度程序发送一个信号 **request_started**（Django 内部的调度程序允许各种不同的组件声明它们正在干什么，并可以写一些代码监听特定的事件。关于这一点目前还没有官方的文档，但在 wiki 上有一些注释。）。
+//  259      signals.request_started.send(sender=self.__class__)//
+
+接下来它(处理器)实例化一个** django.http.HttpRequest** 的子类。
+根据不同的处理器，可能是**django.core.handlers.modpython.ModPythonRequest** 的一个实例，
+也可能是** django.core.handlers.wsgi.WSGIRequest** 的一个实例。
+需要两个不同的类是因为 mod_python 和 WSGI APIs 以不同的格式传入 request 信息，这个信息需要解析为 Django 能够处理的**一个单独的标准格式**。
+//    237  request_class = WSGIRequest//
+    272  response = self.get_response(request)
+
+一旦一个 HttpRequest 或者类似的东西存在了，处理器就呼叫它自己的__ get_response__ 方法，传入这个 HttpRequest 作为唯一的参数。
+__该方法基本上处理了所有的Django流程__
+
+=== 第一回合:   ===
+
+get_response 做的第一件事就是遍历处理器的** _request_middleware** 实例变量并呼叫其中的每一个方法，传入 HttpRequest 的实例作为参数。
+这些方法可以选择 __短路剩下的处理并立即让 get_response 返回__（如果它们这样做，返回值必须是 django.http.HttpResponse 的一个实例，后面会讨论到）到主处理器代码，get_response 不会等着看其它剩下的 middleware 类想要做什么，然后处理器进入 response 阶段。然而，更一般的情况是，这里应用的 middleware 方法**简单地做一些处理并决定是否增加，删除或补充 request 的属性**。
+
+假设没有一个作用于 request 的** requrest **middleware 直接返回 response，处理器下一步会尝试**解析请求的 URL**。它在配置文件中寻找一个叫做 **ROOT_URLCONF** 的配置，用这个配置加上根 URL /，作为参数来创建 **django.core.urlresolvers.RegexURLResolver **的一个实例，然后呼叫它的 resolve 方法来解析请求的 URL 路径(解析后返回一个view可调用对象及其参数)。
+
+URL resolver 遵循一个相当简单的模式。对于在 URL 配置文件中根据 ROOT_URLCONF 的配置产生的每一个在** urlpatterns** 列表中的条目，它会检查请求的 URL 路径是否与这个条目的正则表达式相匹配，如果是的话，有两种选择：
+
+* 如果这个条目有一个可以呼叫的** include**，resolver __截取__匹配的 URL，转到 include 指定的 URL 配置文件并开始遍历其中 urlpatterns 列表中的每一个条目。根据你 URL 的深度和模块性，这可能重复好几次。
+* 否 则，resolver 返回三个条目：匹配的条目指定的 view function；一个从 URL 得到的**未命名匹配组**（被用来作为 view 的位置参数）；一个关键字参数字典，它由从 URL 得到的任意**命名匹配组**和从 URLConf 中得到的任意其它**关键字参数**组合而成。
+
+注意这一过程会在匹配到**第一个**指定了 view 的条目时停止，因此最好让你的 URL 配置__从复杂的正则过渡到简单的正则__，这样能确保 resolver 不会首先匹配到简单的那一个而返回错误的 view function。
+
+如果没有找到匹配的条目，resolver 会产生 django.core.urlresolvers.**Resolver404** 例外，它是 django.http.Http404 异常的子类。后面我们会知道它是如何处理的。
+
+=== 第二回合, ===
+
+一旦知道了所需的 view function 和相关的参数，处理器就会查看它的__ _view_middleware__ 列表，并呼叫其中的方法，传入 HttpRequst，view function，针对这个 view 的位置参数列表和关键字参数字典。与第一回合类似，任何一个view middleware如果返回的response非None，处理程序会立即返回。
+
+如果处理过程这时候还在继续的话，处理器会呼叫 view function。Django 中的 Views 不很严格因为它只需要满足几个条件：
+
+* 必须可以被呼叫。
+* 必须接受 django.http.HttpRequest 的实例作为第一位值参数。
+* 必须能产生一个异常或返回 django.http.HttpResponse 的一个实例。
+
+view函数只要满足这些条件就可以了。尽管如此，一般来说，views 会使用 Django 的 **database API **来创建，检索，更新和删除数据库的某些东西，还会__加载并渲染__一个模板来呈现一些东西给最终用户。
+
+===== 模板 =====
+Django 的模板系统有两个部分：一部分是给设计师使用的混入少量其它东西的 HTML，另一部分是给程序员使用纯 Python。
+
+从一个 HTML 作者的角度，Django 的模板系统非常简单，需要知道的仅有三个结构：
+
+* 变量引用。
+* 模板过滤。在上面的例子中使用过滤竖线, 通常这用来__格式化输出__（比如：运行 Textile，格式化日期等等）。
+* 模板标签。是这样：{% baz %}。这是模板的“__逻辑__”实现的地方，你可以 {% if foo %}，{% for bar in foo %}，等等，if 和 for 都是模板标签。
+
+1）变量引用以一种非常简单的方式工作。如果你只是要打印变量，模板系统就会输出它。这里唯一的复杂情况是 ，这时模板系统按顺序尝试几件事：
+
+* 首先它尝试一个**字典**方式的查找，看看 foo['bar'] 是否存在。如果存在，则它的值被输出，这个过程也随之结束。
+* 如果字典查找失败，模板系统尝试**属性**查找，看看 foo.bar 是否存在。同时它还检查这个属性是否可以被**呼叫**，如果可以，呼叫之。
+* 如果属性查找失败，模板系统尝试把它作为列表**索引**进行查找。
+
+如果所有这些都失败了，模板系统输出配置 **TEMPLATE_STRING_IF_INVALID** 的值，默认是空字符串.这不会引起异常。
+
+2）模板过滤就是简单的 Python functions，它接受一个值和一个参数，返回一个新的值。比如，date 过滤用一个 Python datetime 对象作为它的值，一个标准的 strftime 格式化字符串作为它的参数，返回对 datetime 对象应用了格式化字符串之后的结果。
+
+3）模板标签用在事情有一点点复杂的地方，它是你了解 Django 的模板系统是如何真正工作的地方。
+
+== Django 模板的结构 ==
+
+在内部，一个 Django 模板体现为 **“nodes” 集合**，它们都是从基本的 django.template.Node 类继承而来。Nodes 可以做各种处理，但有一个共同点：每一个 Node 必须有一个叫做 __render 的方法__，它接受的第二个参数（第一个参数，显然是 Node 实例）是__ django.template.Context__ 的一个实例，这是一个**类似于字典**的对象，包含**所有模板可以获得的变量**。Node 的 render 方法必须返回**一个字符串**，但如果 Node 的工作不是输出（比如，它是要通过增加，删除或修改传入的 Context 实例变量中的变量来修改模板上下文），可以返回**空字符串**。
+
+Django 包含许多 Node 的子类来提供有用的功能。比如，每个**内置的模板标签都被一个 Node 的子类处理**（比如，IfNode 实现了 if 标签，ForNode 实现了 for 标签，等等）。所有内置标签可以在 **django.template.defaulttags **找到。实际上，上面介绍的所有模板结构都是某种形式的 Nodes，纯文本也不例外。变量查找由 VariableNode 处理，出于自然，过滤也应用在 VariableNode 上，标签是各种类型的 Nodes，纯文本是一个 TextNode。
+
+一般来说，一个 view 渲染一个模板要经过下面的步骤，依次是：
+
+* 加载需要渲染的模板。这是由 **django.template.loader.get_template **完成的，它能利用这许多方法中的任意一个来定位需要的模板文件。**get_template** 函数返回一个 django.template.Template 实例，其中包含__经过解析的模板和用到的方法__。
+* 实例化一个 Context 用来**渲染模板**。如果用的是 Context 的子类** django.template.RequestContext**，那么附带的__上下文处理函数__就会自动添加在 view 中没有定义的变量。Context 的构造函数用一个键/值对的字典（对于模板，它将变为名/值变量）作为它唯一的参数，RequestContext 则用 HttpRequest 的一个实例和一个字典。
+* 呼叫 Template 实例的 render 方法，Context 对象作为第一个位置参数。
+
+Template 的 render 方法的返回值是一个字符串，它由 Template 中**所有 Nodes 的 render 方法返回的值连接而成**，呼叫顺序为它们出现在 Template 中的顺序。
+
+关于 Response，一旦一个模板完成渲染，或者产生了其它某些合适的输出，view 就会负责产生一个 **django.http.HttpResponse** 实例，它的构造函数接受两个可选的参数：
+
+* 一个作为 response 主体的**字符串**（它应该是第一位置参数，或者是关键字参数 content）。大部分时间，这将作为渲染一个模板的输出，但不是必须这样，在这里你可以传入**任何有效的 Python 字符串**。
+* 作 为 response 的__ Content-Type header__ 的值（它应该是第二位置参数，或者是关键字参数 mine_type）。如果没有提供这个参数，Django 将会使用配置中 DEFAULT_MIME_TYPE 的值和 DEFAULT_CHARSET 的值，如果你没有在 Django 的全局配置文件中更改它们的话，分别是 “text/html” 和 “utf-8”。
+
+
+===== 第三回合：异常 =====
+
+如果 view 函数，或者其中的什么东西，发生了例外，那么 get_response（我知道我们已经花了些时间深入 views 和 templates，但是一旦 view 返回或产生例外，我们仍将重拾处理器中间的 get_response 方法）将遍历它的 **_exception_middleware** 实例变量并呼叫那里的每个方法，传入 **HttpRequest**和这个 exception 作为参数。如果顺利，这些方法中的一个会实例化一个 HttpResponse 并返回它。
+
+这时候有可能还是没有得到一个 HttpResponse，这可能有几个原因：
+
+* view 可能没有返回值。
+* view 可能产生了例外但没有一个 middleware 能处理它。
+* 一个 middleware 方法试图处理一个例外时自己又产生了一个新的例外。
+
+这时候，get_response 会回到自己的例外处理机制中，它们有几个层次：
+
+* 如果 exception 是 Http404 并且 DEBUG 设置为 True，get_response 将执行 view django.views.debug.technical_404_response，传入 HttpRequest 和 exception 作为参数。这个 view 会展示 URL resolver 试图匹配的模式信息。如果 DEBUG 是 False 并且例外是 Http404，get_response 会呼叫** URL resolver 的 resolve_404 方法**。这个方法查看 URL 配置以判断哪一个 view 被指定用来处理 404 错误。默认是 django.views.defaults.page_not_found，但可以在 URL 配置中给 handler404 变量赋值来更改。
+* 对于任何其它类型的例外，如果 DEBUG 设置为 True，get_response 将执行 view django.views.debug.technical_500_response，传入 HttpRequest 和 exception 作为参数。这个 view 提供了关于例外的详细信息，包括 traceback，每一个层次 stack 中的本地变量，HttpRequest 对象的详细描述和所有无效配置的列表。 如果 DEBUG 是 False，get_response 会呼叫 URL resolver 的 resolve_500 方法，它和 resolve_404 方法非常相似，这时默认的 view 是 django.views.defaults.server_error，但可以在 URL 配置中给 handler500 变量赋值来更改。
+
+此 外，对于除了 django.http.Http404 或 Python 内置的 SystemExit 之外的任何例外，处理器会给调度者发送信号 got_request_exception，在返回之前，构建一个关于例外的描述，把它发送给列在 Django 配置文件的 ADMINS 配置中的每一个人。
+
+===== 最后回合 =====
+
+现在，无论 get_response 在哪一个层次上发生错误，它都会返回一个 HttpResponse 实例，因此我们回到处理器的主要部分。一旦它获得一个 HttpResponse 它做的第一件事就是遍历它的 _response_middleware 实例变量并应用那里的方法，传入 HttpRequest 和 HttpResponse 作为参数。
+
+注意对于任何想改变点什么的 middleware 来说，这是它们的__最后机会__。
+
+The check is in the mail
+
+是该结束的时候了。一旦 response middleware 完成了最后环节，**处理器**将给调度者发送信号** request_finished**，对与想在当前的 request 中执行的任何东西来说，这绝对是最后的呼叫。监听这个信号的处理者会__清空并释放任何使用中的资源__。比如，Django 的 request_finished 监听者会关闭所有数据库连接。
+
+这件事发生以后，处理器会构建一个合适的返回值送返给实例化它的任何东西（现在，是一个恰当的 mod_python response 或者一个 WSGI 兼容的 response，这取决于处理器）并返回。
+
+结束了，从开始到结束，这就是 Django 如何处理一个 request。

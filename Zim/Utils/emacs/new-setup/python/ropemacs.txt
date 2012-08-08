@@ -1,0 +1,14 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-10T16:13:53+08:00
+
+====== ropemacs ======
+Created Tuesday 10 January 2012
+
+Repo: hg clone https://bitbucket.org/agr/ropemacs
+Homepage:  http://rope.sourceforge.net/ropemacs.html
+
+
+**Ropemacs** is a plugin for performing python refactorings in emacs. It uses__ rope__ library and __pymacs__.
+
+You should install** rope** library, **ropemode** and **pymacs** before using** ropemacs**. You can download ropemacs from here. 

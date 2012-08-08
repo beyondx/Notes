@@ -1,0 +1,30 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-30T18:55:59+08:00
+
+====== Xresources ======
+Created Wednesday 30 March 2011
+
+!注意：Xresources 和Xdefault 两文件可以合在一起
+
+!终端xterm的配置
+!~/.Xresources
+!font and locale
+xterm*utf8: 1
+xterm*locale: true
+xterm*utf8Title: true
+xterm*renderFont: true
+xterm*preeditType: Root
+xterm*xftAntialias: true
+xterm*background: 0
+xterm*foreground: #ffffff
+!下面是是刚才推荐的编程用英文字体
+xterm*faceName:Inconsolata:antialias=True:pixelsize=18   
+!中文字体支持，选的是文泉驿
+xterm*faceNameDoublesize: WenQuanYi Zen Hei:pixelsize=14 
+!设置中文输入法
+XTerm*inputMethod: ibus   
+
+然后执行：
+xrdb .Xresources  
+使设置生效

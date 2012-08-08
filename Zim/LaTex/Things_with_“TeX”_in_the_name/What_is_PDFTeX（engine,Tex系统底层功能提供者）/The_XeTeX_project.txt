@@ -1,0 +1,11 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-09-07T21:24:11+08:00
+
+====== The XeTeX project ======
+Created Wednesday 07 September 2011
+
+===== XeTeX引擎 =====
+, by Jonathan Kew, is a successor to the shareware TeX/GX program for Macintoshes. It is a__ Unicode-based__ TeX implementation which is able to make direct use of the __fonts installed on a system__. It supports the advanced **typographical features** available in modern font technology (OpenType, AAT on Mac OS X, Graphite). XeTeX was originally developed for Mac OS X but it is now fully integrated in TeX Live on a wide range of platforms, as well as being available as part of MiKTeX. XeTeX supports Unicode character sets and bidirectional typesetting (via __e-TeX__ primitives). It is popular among linguists and scholars in the humanities, as well as an increasing range of people working in other fields. Support for mathematical Unicode fonts (such as Asana Math and Cambria) is progressing.
+
+The project has an active mailing list; a collection of other information is to be found in a set of links on the TUG web site. 

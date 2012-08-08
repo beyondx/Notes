@@ -1,0 +1,188 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T19:55:20+08:00
+
+====== standford ======
+Created Sunday 27 March 2011
+
+====== Ubuntu系统安装及测试openflow的步骤： ======
+
+一、获得源代码：
+sudo apt-get install git-core automake m4 pkg-config libtool
+git clone git://openflowswitch.org/openflow.git
+cd openflow
+[[./boot.sh]]
+
+或者：
+
+wget http://openflowswitch.org/downloads/openflow-1.0.0.tar.gz
+tar xzf openflow-1.0.0.tar.gz
+cd openflow-1.0.0
+
+二、编译并安装user-space 交换机
+
+./configure
+make
+sudo make install
+
+注意：默认的安装位置是：/usr/local .
+              为了以后测试通过，需把下列文件复制到解压的目录中
+             cp [[/usr/local/bin/controller]]      <OpenFlow ---Directory>/controller/
+             cp [[/usr/local/bin/ofprotocol]]    <OpenFlow----Directory>/secchan/
+             cp [[/usr/local/bin/ofdatapath]]   <OpenFlow----Directory>/udatapath/
+             cp [[/usr/local/bin/dpctl]]                 <OpenFlow----Directory>/utilities/
+             cp  <OpenFlow----Directory>/regress/bin/{veth.map ,of_generic_eth.map}
+
+三、安装Wireshark 协议分析软件
+        
+  sudo apt-get install wireshark libgtk2.0-dev
+  cd utilities/wireshark_dissectors/openflow
+  make
+  sudo make install
+
+四、测试套件设置(Regression Suite)
+
+ 1、  首先安装测试套件依赖的软件
+
+cd ~/<your openflow-dir>
+sudo regress/scripts/install_deps.pl
+sudo regress/scripts/install_perlmods_apt
+
+2、卸载avahi-daemon，它会在测试时发送干扰数据包
+
+sudo apt-get remove avahi-daemon
+ or
+sudo apt-get install sysv-rc-conf
+sudo sysv-rc-conf avahi-daemon off
+
+3、禁用ipv6, 它会在测试时发送干扰数据包
+
+% sudo vi /etc/sysctl.conf
+ 
+net.ipv6.conf.all.disable_ipv6 = 1
+net.ipv6.conf.default.disable_ipv6 = 1
+
+% sudo vi /etc/modprobe.d/blacklist.conf
+ 
+blacklist net-pf-10
+blacklist ipv6
+
+4、为了使上述 设置生效，需要重其电脑
+
+% sudo shutdown -r now
+
+五、执行测试
+
+1、设置环境变量
+
+cd ~/
+cp <openflow-dir>/regress/scripts/env_vars .
+vim env_vars
+
+将其中的" OF_ROOT "设为 <openflow-dir>所在的路径
+
+2、将env_vars中的环境变量导入到当前shell中
+
+su 
+source [[~/env_vars]]
+
+3、加载虚拟网络接口
+
+veth_setup.pl
+
+然后验证是否有veth{0,1...7}出现
+
+/sbin/ifconfig | more
+
+4、开启Wireshark网络流量分析软件
+
+wireshark &
+ 
+设置抓包的网络接口:  Capture->Interfaces and select the lo (loopback) interface.
+
+5、执行user-space交换机、控制器测试
+
+of_user_veth_test.pl
+
+
+6、当安装了openVswitch后，测试方法如下：
+
+       1、设置环境变量
+
+vim env_vars
+
+将其中的"OFT_OVS_ROOT "设为 openvswitch所在的路径
+如：
+
+export OFT_OVS_ROOT=/home/geekard/openvswitch-1.1.0pre2
+
+     2、将env_vars中的环境变量导入到当前shell中
+
+su 
+source [[~/env_vars]]
+
+    3、加载虚拟网络接口
+
+veth_setup.pl
+
+然后验证是否有veth{0,1...7}出现
+
+/sbin/ifconfig | more
+
+4、开启Wireshark网络流量分析软件
+
+wireshark &
+ 
+设置抓包的网络接口:  Capture->Interfaces and select the lo (loopback) interface.
+
+5、测试kernel -space 交换机
+
+ of_ovs_veth_test.pl 
+
+可以通过如下命令查看，交换机内核模块[[/datapath/linux-2.6/openvswitch_mod.ko|openvswitch_mod.ko(位于  ~/openvswitch-1.1.0pre2]][[/datapath/linux-2.6/openvswitch_mod.ko]]
+)是否被装载
+
+lsmod |grep openvswitch  
+
+6、测试用户空间交换机
+
+of_ovs_user_veth_test.pl 
+
+可以通过如下命令查看：
+
+ps auxww
+
+结果可能如下：
+
+root     12866  1.0  0.5  11976  8040 pts/0    S+   23:01   0:00 /usr/bin/perl -w /home/geekard/openflow/regress/bin/of_ovs_user_veth_test.pl
+
+root     13189  0.0  0.0   4232  1524 pts/0    S+   23:01   0:00 /home/geekard/openvswitch-1.1.0pre2/utilities/ovs-openflowd netdev@br0 --ports=veth1,veth3,veth5,veth7 tcp:127.0.0.1:6633 --listen=ptcp:6634 --fail=closed --inactivity-probe=999999
+
+
+root     13199 16.0  0.5  11632  7712 pts/0    S+   23:02   0:00 /usr/bin/perl -w /home/geekard/openflow/regress/projects/black_box/regress/test_packet_out/run.pl --map=/home/geekard/openflow/regress/bin/veth.map --controller=tcp:localhost:6633,tc
+
+
+
+====== 单机测试： ======
+
+1、切换到root账户
+
+su 
+
+2、启动控制器
+controller punix:/var/run/controller.sock &
+
+3、启动user-space交换机
+
+ofdatapath  --no-slicing punix:/var/run/ofdata.sock -i eth0,eth1 &    
+
+注意：eth0,eth1 不能配有IP地址
+dhcpcd  -k eth* 去掉获得的ip地址
+
+ofprotocol unix:/var/run/ofdata.sock unix:/var/run/controller.sock &
+
+然后插在eth0,eth1口的设备就可以互相通信了。
+
+
+
+

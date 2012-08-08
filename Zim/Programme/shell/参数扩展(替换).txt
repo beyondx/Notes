@@ -1,0 +1,94 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-23T12:50:22+08:00
+
+====== 参数扩展(替换) ======
+Created Friday 23 December 2011
+
+===== 参数扩展的几种形式： =====
+* ${#parameter}返回参数的__字符长度__
+* ${parameter:+words} :若参数parameter存在且不为空，则替换结果为__扩展后的字符串words__，否则扩展为参数parameter的值。
+* ${parameter:-words}：若参数parameter不存在或为空，则替换结果为__扩展后的字符串words__，parameter不变；否则为参数parameter的值。
+* ${parameter:=words} ：若参数parameter不存在或为空，则替换结果为__扩展后的字符串words__，parameter同时设置为扩展后的words；否则为参数parameter的值。
+* ${parameter:?words}  ：若参数parameter不存在或为空，则显示结果为parameter: __words(扩展后的字符串)__，同时**终止**当前命令和后续命令的执行；否则为参数parameter的值。
+* ${parameter:offset}
+* ${parameter:offset:length} ：子串扩展，字串在parameter的offset(从0开始)开始，长度为offset
+* ${parameter%pattern} : 从**右向左**删除参数中符合pattern的__最少__字符，替换结果为**删除并扩展**后的字符串
+* ${parameter%%pattern}：从**右向左**删除参数中符合pattern的__最多__字符，替换结果为**删除并扩展**后的字符串
+* ${parameter#pattern}：从**左向右**删除参数中符合pattern的__最少__字符，替换结果为**删除并扩展**后的字符串
+* ${parameter##pattern}：从**左向右**删除参数中符合pattern的__最多__字符，替换结果为**删除并扩展**后的字符串
+* ${parameter/pattern/string}:将参数中符合模式pattern的字符串替换为word，如果从左到右替换则pattern以#开头，如果从右到左匹配模式则pattern以%开头(pattern必须要__完整匹配__)，如果 string 为空，则末尾的 / 可能被忽略，匹配将被删除。
+* ${PARAMETER__//__PATTERN/STRING}	对**所有**的匹配（而不只是第一个匹配）执行替换。
+**注意**：上面的words和pattern都可以使用bash支持的**匹配模式**，bash将words__扩展后__替换${.....}; 同时pattern要__完整匹配__截取的内容,后四个形式非常适合**处理文件名和路径名**的情况。
+
+上面的形式中，如果忽略冒号，则测试的条件是parameter__未初始化__。
+
+[geekard@geekard ~]$ unset i; export bar=test_bar   #将i变量从环境中删去，这样i为未初始化变量
+[geekard@geekard ~]$ echo ${i:-bar}, i=$i   #如果i变量未初始化或初始化为空，则参数扩展为__字符串bar__，__i不变__。
+**bar,** i=
+[geekard@geekard ~]$ echo ${i:=bar}, i=$i   #如果i变量未初始化或初始化为空，则参数扩展为__字符串bar__，i变量__设置为字符串bar__。
+**bar**, i=**bar**
+[geekard@geekard ~]$ unset i; echo ${i:?bar}, i=$i; date   #如果变量i未初始化或初始化为空，则显示**i: =bar**同时__停止当前命令和后续命令的执行__。
+bash:** i: bar**
+[geekard@geekard ~]$ echo ${i:+bar}, i=$i  #如果变量i存在且不为空，则参数扩展为字符串__bar__的值，否则扩展为__空值__。
+, i=
+[geekard@geekard ~]$ export i=i_test; echo ${i:+bar}, i=$i
+bar, i=i_test
+[geekard@geekard ~]$ 
+[geekard@geekard ~]$ **path=/home/geekard/test/line** echo ${path:-No var： path} #${foo}中的变量名foo一定要为当前执行__环境中的变量(不一定是环境变量)__。
+No var： path
+[geekard@geekard ~]$ i=test_i
+[geekard@geekard ~]$ echo ${i:+__ha aha * / __}
+ha aha **bin codes Desktop documents download dumy.c musics notes pictures ppc softwares tmp video vms www** /
+[geekard@geekard ~]$ echo ${i:+__"ha aha * /" __} 
+ha aha * /
+[geekard@geekard ~]$ 
+
+[geekard@geekard ~]$ path=/home/geekard/test/test_dir/test_file
+[geekard@geekard ~]$ echo ${path%**/test**}   #$path字符串中自右向左并__没有完整匹配__模式/test的字符串，所以__没有字符串被删除__。
+/home/geekard/test/test_dir/test_file
+[geekard@geekard ~]$ echo ${path%/test/} #同上
+/home/geekard/test/test_dir/test_file
+[geekard@geekard ~]$ echo ${path%__test*__}  #匹配最短的字符串为test_file
+/home/geekard/test/test_dir/
+[geekard@geekard ~]$ echo ${path%__*test*__} #同上，注意：最左边的*匹配__0个__字符(因为是最少)。
+/home/geekard/test/test_dir/
+[geekard@geekard ~]$ echo ${path%__/*dir*__}
+/home/geekard/test
+[geekard@geekard ~]$ echo ${path%?dir*}  # __只要是bash的模式匹配字符和规则都适用__。
+/home/geekard/test/test
+[geekard@geekard ~]$ echo ${path%**[0-9a-zA-Z]dir***} #没有匹配该规则的字符串
+/home/geekard/test/test_dir/test_file
+[geekard@geekard ~]$ echo ${path%[0-9a-zA-Z_____]dir*}
+/home/geekard/test/test
+[geekard@geekard ~]$ echo ${path%[__^__0-9a-zA-Z]dir*}
+/home/geekard/test/test
+[geekard@geekard ~]$ **path=/home/geekard/*/test_file**
+[geekard@geekard ~]$ echo ${path%**/test***}
+/home/geekard/bin/ /home/geekard/codes/ /home/geekard/Desktop/ /home/geekard/documents/ /home/geekard/download/ /home/geekard/musics/ /home/geekard/notes/ /home/geekard/pictures/ /home/geekard/ppc/ /home/geekard/softwares/ /home/geekard/tmp/ /home/geekard/video/ /home/geekard/vms/ /home/geekard/www/
+
+[geekard@geekard ~]$ echo $file
+the test file is test_file
+[geekard@geekard ~]$ echo __${#file}__
+26
+[geekard@geekard ~]$ echo ${file/test/}  #替换字符为空的话，最后一个/可以省略
+the file is test_file
+[geekard@geekard ~]$ echo ${file/test/__/__}
+the / file is test_file
+[geekard@geekard ~]$ echo ${file/test/**1test/**}  #默认替换从左到右找到的__第一个__符合模式的字符串
+the 1test/ file is test_file
+[geekard@geekard ~]$ echo ${file/test/**1test**}
+the 1test file is test_file
+[geekard@geekard ~]$ echo ${file__//__test/demo} #替换__所有__符合模式的字符串
+the demo file is demo_file
+[geekard@geekard ~]$ echo ${file/__#__test/demo}   #模式前加#时，模式串必须__从左到右完整匹配__。
+the test file is test_file   
+[geekard@geekard ~]$ echo ${file/__#*test__/demo}   #完整匹配，匹配**尽可能多**的字符。
+demo_file
+[geekard@geekard ~]$ echo ${file/%*test/demo}
+the test file is test_file
+[geekard@geekard ~]$ echo ${file/%*test*/demo}
+demo
+[geekard@geekard ~]$ echo ${file/%test*/demo}
+the demo
+[geekard@geekard ~]$ 

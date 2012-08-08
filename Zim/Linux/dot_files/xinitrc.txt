@@ -1,0 +1,16 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T20:19:49+08:00
+
+====== xinitrc ======
+Created Sunday 27 March 2011
+
+Sunday 27/03/2011
+	#urxvt &
+	#xterm &
+	#chromium &
+	xrdb .Xresources &  #这个使设置终端配置(Xdefaults)生效
+	firefox &
+	ibus-daemon --xim &
+	#exec openbox-session
+	exec ck-launch-session dbus-launch awesome 

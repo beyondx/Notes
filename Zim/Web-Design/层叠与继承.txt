@@ -1,0 +1,84 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-16T09:51:50+08:00
+
+====== 层叠与继承 ======
+Created Monday 16 May 2011
+http://www.52css.com/article.asp?id=1160
+一、CSS层叠
+
+　　我们知道文档中的一个元素可能同时被多个css选择器选中，每个选择器都有一些css规则，这就是层叠。这些规则有可能不矛盾的，自然这些规则将会同时起效，然而有些规则是相互冲突的，例如：
+
+div css xhtml xml Example Source Code Example Source Code [www.52css.com]
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>CSS Cascade</title>
+    <style type="text/css">
+    h1{color:Red;}
+    body h1{color:Blue;}
+    </style>
+</head>
+<body>
+<h1>Hello 52CSS.com</h1>
+</body>
+</html>
+
+　　为此需要为每条规则制定特殊性，当发生冲突的时候必须选出一条最高特殊性的规则来应用。CSS规则的特殊性可以用4个整数来表示，例如0，0，0，0.计算规则如下：
+
+div css xhtml xml Example Source Code Example Source Code [www.52css.com]
+对于规则中的每个ID选择符，特殊性加0，1，0，0 
+对于规则中每个类选择符和属性选择符以及伪类，特殊性加0，0，1，0 
+对于规则中的每个元素名或者伪元素，特殊性加0，0，0，1 
+对于通配符，特殊性加0，0，0，0. 
+对于内联规则，特殊性加 1，0，0，0 
+
+　　最终得到结果就是这个规则的特殊性。两个特殊性的比较类似字符串大小的比较，是从左往右依次比较，第一个数字大的规则的特殊性高。上例中两条规则的特殊性分别是0，0，0，1 和 0,0,0,2，显然第二条胜出，因此最终字是蓝色的。
+　　注意，通配符的特殊性0,0,0,0看起来没有作用，实际上不是，还有一种没有特殊性的规则，0，0，0，0要比没有特殊性更特殊，下面会介绍。
+　　css还有一个!important标签，用来改变css规则的特殊性。实际上，在解析css规则特殊性的时候，是将具有!important的规则和没有此标签的规则利用上述方法分别计算特殊性，分别选出特殊性最高的规则。最终合并的时候，具有任何特殊性的带有!important标记的规则胜出。
+
+二、CSS继承
+
+　　所谓继承，就是父元素的规则也会适用于子元素。比如给body设置为color:Red;那么他内部的元素如果没有其他的规则设置，也都会变成红色。继承得来的规则没有特殊性。下面看一个简单的例子：
+
+div css xhtml xml Example Source Code Example Source Code [www.52css.com]
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>CSS Cascade</title>
+    <style type="text/css"> 
+     *{color:Blue;}
+     div{color:Black;}
+     .imp{color:Red !important;}
+     #content{color:Green;}   
+    </style>
+</head>
+<body>
+ <div>Hello <span>52CSS.com</span> </div>
+ <div id="content">
+    <p class="imp">Title</p>
+    Content Goes Here.
+ </div>
+</body>
+</html>
+ 
+　　注意，第一行的Css并没有继承div的黑色，这是因为通配符的缘故。通配符的特殊性虽然是全0，但是还是比继承的特殊性要高。第二行展示了!important标记的作用。
+　　另外，一些明显不应该继承的属性，比如border,margin,padding之类的是不会被继承的，具体可以参考css手册。
+
+三、其他
+
+　　虽然有4个整数来表示一个特殊性，仍然有可能出现两条冲突的规则的特殊性完全一致的情况，此时就按照css规则出现的顺序来确定，在样式表中最后一个出现的规则胜出。一般不会出现这样的情况，只有一个情况例外，考虑如下样式表：
+
+div css xhtml xml Example Source Code Example Source Code [www.52css.com]
+:active{color:Red;}
+:hover{color:Blue;}
+:visited{color:Purple;}
+:link{color:Green;} 
+   
+　　这样页面中的链接永远也不会显示红色和蓝色，因为一个链接要么被访问过，要么没有被访问过。而这两条规则在最后，因此总会胜出。如果改成这样:
+
+div css xhtml xml Example Source Code Example Source Code [www.52css.com]
+:link{color:Green;}  
+:visited{color:Purple;}
+:hover{color:Blue;}
+:active{color:Red;}
+
+　　就能实现鼠标悬停和点击的瞬间变色的效果。这样的顺序的首字母正好连成 “LoVe HA”,这样的顺序被约定俗成的叫做Love Ha 规则。特殊性规则从理论上讲比较抽象和难懂，但在实践中，只要样式表是设计良好的，并不会有太多这方面的困扰，因此本文也不再做深究，更多的技术请参考52CSS.com的文章更新！

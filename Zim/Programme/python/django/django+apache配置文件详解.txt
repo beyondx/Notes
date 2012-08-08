@@ -1,0 +1,48 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-21T22:28:40+08:00
+
+====== django+apache配置文件详解 ======
+Created Friday 21 October 2011
+
+setting.py是django项目的重要配置文件，现将几个重要参数解释一下
+
+#这个是上传文件的“本地”绝对路径。。。
+MEDIA_ROOT = '/home/lion/www/uploads/'
+
+#这个是上传文件的url相对路径，django将通过这个相对路径来生成上传文件的真实的url路径，否则django对上传的文件无法正确定位
+MEDIA_URL = '/uploads/'
+
+#这个也是url相对路径，是和Admin Site（django内置的后台管理页面）相关的资源文件，这个路径设置不正确将导致Admin Site的页面显示不正常
+ADMIN_MEDIA_PREFIX = '/media/'
+
+apache并没有内置对python语言的支持，所以需要安装mod_python插件
+在debian下安装只要以root权限输入以下命令
+apt-get install libapache2-python2.x（2.x是版本，比如说2.5）
+
+httpd.conf是apache的主要配置文件
+以下是我的httpd.conf
+
+#这里设置了在根目录下使用mod_pyhton解释器+django
+<Location "/">使用解释器的url路径
+    SetHandler python-program
+    PythonHandler django.core.handlers.modpython
+    SetEnv DJANGO_SETTINGS_MODULE www.settings
+    #上面的这句重点解释一下，我们用dejango生成的web程序正常是在同一个目录下，这个目录对python来说是一个“模块”－－切记！
+    #因此如果我们的web程序目录名是www,目录下的配置文件是settings.py 那么settings这个"模块"在python中的表示就是 www.settings
+    #于是就有了以上的 www.settings 这个模块了
+    PythonOption django.root /home/lion/#这里要设置成你的web程序“所在”的目录，也就是web目录的父目录
+    PythonDebug On
+    PythonPath "['/home/lion/'] + sys.path"# 一般情况下你的web程序模块不再python的默认搜索目录里面，所以还是把这个web程序“所在”的目录加入python的搜索目录当中才可以。
+</Location>
+
+Alias /media/ /usr/share/python-support/python-django/django/contrib/admin/media/# 定义Admin Site相关资源文件目录为/media/
+Alias /uploads/ /home/lion/www/uploads/# 定义上传目录为/uploads/，注意，要想能够正常上传文件，需要开启apache运行用户对它的写入权限。apache一般以www-data 或者 nobody 用户运行。
+
+<Location "/media/">#设定/media/目录不使用任何解释器（包括python）
+    SetHandler None
+</Location>
+
+<Location "/uploads/">#设定/uploads/目录不使用任何解释器。－－否则无法访问上传后的文件，不信你试试看~~
+    SetHandler None
+</Location>

@@ -1,0 +1,580 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-05T14:38:28+08:00
+
+====== Python for Bash scripters ======
+Created Thursday 05 January 2012
+http://magazine.redhat.com/2008/02/07/python-for-bash-scripters-a-well-kept-secret/
+
+Python for Bash scripters: A well-kept secret
+by Noah Gift
+
+Hey you, ya you! Do you write Bash scripts?
+
+Come here, I have a secret to tell you.
+
+Python is easy to learn, and more powerful than Bash. I wasn’t supposed to tell you this–it’s supposed to be a secret. Anything more than a few lines of Bash could be done better in Python. Python is often just as portable as Bash too. Off the top of my head, **I can’t think of any *NIX operating systems, that don’t include Python**. Even IRIX has Python installed.
+
+If you can write a function in Bash, or even__ piece together__ a few commands into a script and make it executable, then you can learn Python. What usually throws Bash scripters off is they see something object-oriented like this:
+
+class FancyObjectOriented(object):
+    def __init__(self, stuff = "RegularStuff"):
+        self.stuff = stuff
+    def printStuff(self):
+        print "This method prints the %s object" % self.stuff
+
+Object-oriented programming can be a real challenge to get the hang of, but fortunately in Python it is __100% optional__. You don’t need to have a Computer Science degree to program in Python–you can get started immediately if you know a few shortcuts. My goal here is to show Average Joe Bash scripter how to write in Python some of the things they would normally write in Bash. Even though it seems unbelievable, you can be a beginning Python programmer, by the end of this article.
+
+===== Baby steps =====
+
+The very first thing to understand about Python, is that __whitespace is significant__. This can be a bit of a stumbling block for newcomers, but it will be old hat very quickly. Also, the shebang line is different than it should be in Bash:
+
+Python Shebang Line:
+
+#!/usr/bin/env python
+
+Bash Shebang Line:
+
+#!/usr/bin/env bash
+
+Knowing these two things, we can easily create the usual ‘Hello World’ program in Python, although whitespace won’t come into play just yet. Open up your favorite text editor and call the python script, **hello.py**, and the bash script hello.sh.
+
+Python Hello World script:
+
+#!/usr/bin/env python
+print "Hello World"
+
+Bash Hello World script:
+
+#!/usr/bin/env bash
+echo Hello World
+
+Make sure that you make each file **executable **by using chmod +x hello.py, and chmod +x hello.sh. Now if you run either script–./hello.py or ./hello.sh–you will get the obligatory “Hello World.”
+
+===== Toddler: System calls in Python =====
+
+Now that we got ‘Hello World’ out of the way, lets move on to more useful code. __Typically most small Bash scripts are just a bunch of commands either chained together, or run in sequence__. Because Python is also a procedural language, we can easily do the same thing. Lets take a look at a simple example.
+
+In order to take our toddler steps it is important to remember two things:
+
+1. Whitespace is significant. Keep this in mind–I promise we will get to it. It is so important that I want to keep reminding you!
+2. A module called __subprocess__ needs to be imported to make system calls.
+
+It is very easy to import modules in Python. You just need to put this statement at the top of the script to import the module:
+
+import subprocess
+
+Lets take a look at something really easy with the subprocess module. Lets execute an ls -l of the current directory.
+
+//Python ls -l command://
+
+#!/usr/bin/env python
+import subprocess
+subprocess.call("ls -l", shell=True)
+
+If you run this script it will do the exact same thing as running ls -l in Bash. Obviously writing 2 lines of Python to do one line of Bash isn’t that efficient. But let’s run a few commands in sequence, just like we would do in Bash so you can get comfortable with how a few commands run in sequence might look. In order to do that I will need to introduce two new concepts: one for Python __variables__ and the other for__ lists__ (known as ‘arrays’ in Bash). Lets write a very simple script that gets the status of a few important items on your system. Since we can freely mix large blocks of Bash code, we don’t have to completely convert to Python just yet. **We can do it in stages**. We can do this by assigning Bash commands to a variable.
+
+Note:
+    If you are cutting and pasting this text, you MUST preserve the whitespace. If you are using vim you can do that by using paste mode :set paste
+
+//PYTHON//
+//Python runs a sequence of system commands.//
+
+#!/usr/bin/env python
+import subprocess
+
+#Note that Python is much more flexible with equal signs.  There can be spaces around equal signs.
+MESSAGES = "tail /var/log/messages"
+SPACE = "df -h"
+
+#Places variables into a** list/array**
+cmds = [MESSAGES, SPACE]
+
+#**Iterates** over list, running statements for each item in the list
+#Note, that whitespace is absolutely critical and that a consistent indent must be maintained for the code to work properly
+count=0
+for cmd in cmds:
+    count+=1
+    print "Running Command Number %s" % count
+    subprocess.call(cmd, shell=True)
+
+//BASH//
+//Bash runs a sequence of system commands.//
+
+#!/usr/bin/env bash
+
+#Create Commands
+SPACE=`df -h`
+MESSAGES=`tail /var/log/messages`
+
+#Assign to an array(list in Python)
+cmds=("$MESSAGES" "$SPACE")
+
+#iteration loop
+count=0
+for cmd in "${cmds[@]}"; do
+    count=$((count + 1))
+    printf "Running Command Number %s \n" $count
+    echo "$cmd"
+done
+
+Python is much more forgiving about the way you quote and use variables, and lets you create a much less cluttered piece of code.
+
+===== Childhood: Reusing code by writing functions =====
+
+We have seen how Python can implement system calls to run commands in sequence, just like a regular Bash script. Let’s go a little further and organize blocks of code into functions. As I mentioned earlier, Python does not require the use of classes and object-oriented programming techniques, so most of the full power of the language is still at our fingertips—even if we’re only using plain functions.
+
+Let’s write a simple function in Python and Bash and call them both in a script.
+
+Note:
+    These two scripts will deliver identical output in Bash and Python, although Python handles default keyword parameters automatically in functions. With Bash, setting default parameters is much more work.
+
+//PYTHON://
+
+#!/usr/bin/env python
+import subprocess
+
+#Create variables out of shell commands
+MESSAGES = "tail /var/log/messages"
+SPACE = "df -h"
+
+#Places variables into a list/array
+cmds = [MESSAGES, SPACE]
+
+#Create a function, that takes a list parameter
+#Function uses default keyword parameter of cmds
+def runCommands(commands=cmds):
+    #Iterates over list, running statements for each item in the list
+    count=0
+    for cmd in cmds:
+        count+=1
+        print "Running Command Number %s" % count
+        subprocess.call(cmd, shell=True)
+
+#Function is called
+runCommands()
+
+BASH:
+
+#!/usr/bin/env bash
+
+#Create variables out of shell commands
+SPACE=`df -h`
+MESSAGES=`tail /var/log/messages`
+LS=`ls -l`
+#Assign to an array(list in Python)
+cmds=("$MESSAGES" "$SPACE")
+
+function runCommands ()
+{
+    count=0
+    for cmd in "${cmds[@]}"; do
+        count=$((count + 1))
+        printf "Running Command Number %s \n" $count
+        echo "$cmd"
+    done
+}
+
+#Run function
+runCommands
+
+===== Teenager: Making reusable command-line tools =====
+
+Now that you have the ability to translate simple Bash scripts and functions into Python, let’s get away from the nonsensical scripts and actually write something useful. Python has__ a massive standard library__ that can be used by simple importing modules. For this example we are going to create a robust command-line tool with the standard library of Python, by importing the **subprocess** and **optparse** modules.
+
+You can later use this example __as a template__ to build your own tools that combine snippits of Bash inside of the more powerful Python. This is a great way to use your current knowledge to slowly migrate to Python.
+
+Embedding Bash to make Python command-line tools[1]:
+
+#!/usr/bin/env python
+import subprocess
+import optparse
+import re
+
+#Create variables out of shell commands
+#Note triple quotes can embed Bash
+
+#You could add another bash command here
+#HOLDING_SPOT="""fake_command"""
+
+#Determines Home Directory Usage in Gigs
+HOMEDIR_USAGE = """
+du -sh $HOME | cut -f1
+"""
+
+#Determines IP Address
+IPADDR = """
+/sbin/ifconfig -a | awk '/(cast)/ { print $2 }' | cut -d':' -f2 | head -1
+"""
+
+#This function takes Bash commands and returns them
+def runBash(cmd):
+    p = subprocess.__Popen__(cmd, shell=True, __stdout=subprocess.PIPE__)
+    out = p.stdout.read().strip()
+    return out  #This is the stdout from the shell command
+
+VERBOSE=False
+def report(output,cmdtype="UNIX COMMAND:"):
+   #Notice the global statement allows input from outside of function
+   if VERBOSE:
+       print "%s: %s" % (cmdtype, output)
+   else:
+       print output
+
+#Function to control__ option parsing__ in Python
+def controller():
+   __ global__ VERBOSE
+    #Create instance of __OptionParser__ Module, included in Standard Library
+    p = optparse.OptionParser(description='A unix toolbox',
+                                            prog='py4sa',
+                                            version='py4sa 0.1',
+                                            usage= '%prog [option]')
+    p.add_option('--ip','-i', action="store_true", help='gets current IP Address')
+    p.add_option('--usage', '-u', action="store_true", help='gets disk usage of homedir')
+    p.add_option('--verbose', '-v',
+                action = 'store_true',
+                help='prints verbosely',
+                default=False)
+
+    #Option Handling passes correct parameter to runBash
+    options, arguments =__ p.parse_args()__
+    if options.verbose:
+        VERBOSE=True
+    if options.ip:
+        value = runBash(IPADDR)
+        report(value,"IPADDR")
+    elif options.usage:
+        value = runBash(HOMEDIR_USAGE)
+        report(value, "HOMEDIR_USAGE")
+    else:
+        p.print_help()
+
+#R**uns all the functions**
+def main():
+    controller()
+
+#This idiom means the below code only runs when executed from command line
+if __name__ == '__main__':
+    main()
+
+===== Python’s secret sysadmin weapon: IPython =====
+
+The skeptics in the Bash crowd are just about to say, “Python is pretty cool, but it isn’t interactive like Bash.” Actually, this is not true. One of the best kept secrets of the Python world is **IPython**. I asked the creator of IPython, Fernando Perez, how IPython stacks up to classic Unix interactive shells. Rather than trying to replicate what he said, I’ll simply quote directly:
+
+    IPython is a replacement for the Python interactive environment that tries to incorporate the most common shell-like usage patterns in a natural way, while keeping 100% syntactic compatibility with the Python language itself. In IPython, commands like ‘cd’ or ‘ls’ do what you’d expect of them, while still allowing you to type normal Python code. And since IPython is highly customizable, it ships with a special mode that activates even more defaults for shell-like behavior. IPython custom modes are called profiles, and the shell profile can be requested via:
+
+    ipython -p sh
+
+    This will enable all the shell-like features by default. The links below show some basic information about the shell-like usage of IPython, though we still lack a comprehensive guide for all of the features that actually exist under the hood.
+
+    http://ipython.scipy.org/moin/Cookbook/IpythonShell
+    http://ipython.scipy.org/moin/Cookbook/JobControl
+
+    IPython also contains a set of extensions for interactively connecting and manipulating tabular data, called ‘ipipe,’ that enables a lot of sophisticated exploration of filesystem objects and environment variables. More information about ipipe can be found here:
+
+    http://ipython.scipy.org/moin/UsingIPipe 
+
+It is quite possible to use IPython as the only interactive shell for simple systems administration tasks. I recently wrote an article for IBM Developerworks, in which I demonstrated using IPython to perform interactive SNMP queries using Net-SNMP with Python bindings:
+Summary
+
+Even if you can barely string together a few statements in Bash, with a little work you can learn Python and be productive very quickly. Your existing Bash skills can be slowly converted to Python skills. And before you know it, you will be a full-fledged Python programmer.
+
+I find Python easier to program in than Bash; you don’t have to deal with hordes of escaping scenarios, for one. Bash has its place–usually when you don’t have the ability to run Python–as Python beats the pants off Bash as a scripting language.
+
+I have included a link to all of the examples, and will have a souped-up version of the Python command-line tool with a few extra tricks sometime soon.
+
+Let me close with saying that if you are interested in replacing Bash with Python, try to start out on the best possible foot and write tests that validate what you think you wrote actually works. This is a huge leap in thinking, but it can propel your code and productivity to the next level. The easiest way to get started with testing in Python is to use doctests, and I have enclosed a link at the bottom of this article. Good luck!
+References
+
+    Subversion Repository For Examples
+    Checklist Based Testing For SysAdmins
+    Doctests
+    Online Bash Scripting Guide
+    Python Tutorial
+    IPython
+    Jeff Rush Show Me Do Tutorial
+    PEP8
+    Net-SNMP and IPython
+
+[1] This code example has been corrected. Feb 08, 2008, 11AM EST
+About the author
+
+Noah Gift is currently co-authoring a book for O’Reilly, “Python For *Nix Systems Administration,” (working title) due sometime in 2008. He works as a software engineer for Racemi, dealing with Bash, Python, SNMP and a slew of *nix operating systems, including AIX, HP-UX, Solaris, Irix, Red Hat, Ubuntu, Free BSD, OS X, and anything else that has a shell. He is giving a talk at PyCon 2008–the annual Python Programming convention being held in Chicago–on writing *nix command line tools in Python. When not sitting in front of a terminal, you might find him on a 20 mile run on a Sunday afternoon.
+
+This entry was posted by Noah Gift on Thursday, February 7th, 2008 at 6:17 pm and is filed under documentation, Fedora, Red Hat Enterprise Linux, technical. You can follow any responses to this entry through the RSS 2.0 feed. Both comments and pings are currently closed.
+35 responses to “Python for Bash scripters: A well-kept secret”
+
+    Colin Walters says:
+    February 7th, 2008 at 6:49 pm
+
+    Also related to this topic is the Hotwire hypershell:
+    http://hotwire-shell.org/
+
+    You could think of it as a multi-threaded,multi-tab graphical IPipe shell. We’re actually discussing sharing come code.
+    anzan says:
+    February 7th, 2008 at 8:00 pm
+
+    Thank you. I have some of this material in a more complex form. You have presented it very clearly.
+    Jayce says:
+    February 7th, 2008 at 10:00 pm
+
+    I never thought of using Python this way. I have used and seen many Python scripts to replace what could be done in Bash, but these always never looked anything like shell scripts—totally lost the special shell flavor. You have shown how to use Python, while keeping the shell flavor. Thanks for the new perspective.
+
+    A small point: “global” modifier is not required to read a global variable. It is only required if you need to modify a global variable (a safety feature to prevent accidental modification of global variables).
+    Seth Vidal says:
+    February 8th, 2008 at 12:00 am
+
+    Great article. Best to draw people in this way and then we have more python programmers!
+
+    Thanks for the article.
+    Paul W. Frields says:
+    February 8th, 2008 at 12:57 am
+
+    A bash script I wrote many, MANY moons ago, which I rewrote in Python after spending only about two hours on reading other Python scripts and some documentation (http://diveintopython.org/), cut execution time from ~2.5 minutes to about ~5 seconds. I’d say that in itself was worth the trouble. I’m no Pythonista, just a wannabe programmer that wanted to Get Something Done. Python presents the lowest barrier to entry to people who want to learn programming at all, and for object-oriented programming it’s also a great way to get started.
+    Noah Gift says:
+    February 8th, 2008 at 4:52 am
+
+    Colin/Looks interesting I will need to check it out.
+    Anzan/Glad it was helpful.
+    Jayce/Good catch on the totally unnecessary use of global. It was a “solution in search of a problem”, I forgot I left in the code example…woops :)
+
+    Writing articles in which people can comment is always a great way to make an article even better. Here is a link to a more explicit example of using global, which is actually a rarely used idiom:
+
+    http://www.oreillynet.com/onlamp/blog/2007/12/tpt_tiny_python_tip_global_1.html
+
+    I also fixed this in the svn repository, and might be able to get it fixed in the article example.
+
+    Seth/Glad you liked the article
+    Paul/I agree with you. Python is good for almost anything from the web, to scripting, to application development.
+    Malcolm Parsons says:
+    February 8th, 2008 at 5:06 am
+
+    Do we need the Hello World examples twice?
+    Noah Gift says:
+    February 8th, 2008 at 5:08 am
+
+    Malcolm/Good catch, that was a version control problem :) No, it was a mistake.
+    Kris says:
+    February 8th, 2008 at 5:56 am
+
+    I wrote a long post and i’m not going to replace that.. It basically said that it’s more of a rule than an exception that a python app fudges up ime(who’s with me??!), and also that bash is the most unintuitive “language” iv’e come across.
+
+    So please only code python for personal stuff, don’t publish it.
+    Nate says:
+    February 8th, 2008 at 8:06 am
+
+    I think you’re missing the strengths of both languages.
+
+    Bash is exceptional at dealing with the output and exit status of other commands. It may not be the fastest, but I can work with command output and exit statuses effortlessly.
+
+    Python is great at trying things out interactively (even without IPython) before you put the code in a larger program. It also has available to it most of the system calls you would use in a C program. Calling out to “ls” and “df” is silly when you can call readdir() or statvfs() directly.
+    Michael DeHaan says:
+    February 8th, 2008 at 8:22 am
+
+    Always glad to see some more Python advocacy. It really is the perfect tool for sysadmin scripting.
+
+    Some readers will quickly find out subprocess isn’t available on EL4 since that still uses python 2.3. No problem!
+
+    For those folks, use os.system(“command here”).
+
+    Subprocess is of course a lot more flexible, allowing python to quickly replace usage of things like “expect”, for more details, see “pydoc subprocess”. It’s very powerful. The subprocess module actually does work in python 2.3, but you’ll have to copy it over.
+    sqweek says:
+    February 8th, 2008 at 10:01 am
+
+    What the hell? You call those shell scripts?
+    I call them needlessly complicated bastardisations. Allow me to reimplement your toddler script (in sh, because rc is probably a bit esoteric for this crowd).
+
+    #!/bin/sh
+    tail /var/log/messages
+    df -h
+
+    Woah! Now on to the teenager script – a “reusable command-line tool” that does… two wildly different things?
+    NO. You have completely missed the point of the shell. Here’s how it’s done:
+
+    $ cat ~/bin/ip
+    #!/bin/sh
+    /sbin/ifconfig -a | awk ‘/(cast)/ { print $2 }’ | cut -d’:’ -f2 | head -1
+    $ cat ~/bin/usage
+    #!/bin/sh
+    du -sh $HOME | cut -f1
+
+    Do _ONE_ thing, and do it well. The power of the shell lies in its ability to composite _simple_ tools to complete complex tasks.
+
+    Mind you, bourne shell clones certainly make a mess of quoting and add tons of useless features like arithmetic (that’s bc’s job[1]) and line editing (this is forgiven only because unix terminals SUCK). That’s why rc exists.
+    Python _is_ more powerful than bash, but it does not beat the shell at manipulating environments and processes. Just as awk’s grammar makes it well suited to text manipulation, the shell’s grammar makes it well suited to these tasks.
+    If you’re trying to use the shell as a general purpose language then yes, switch to python. But embrace the shell when in its domain and you may be surprised by its elegance.
+    -sqweek
+
+    [1] Of course, bc has its own quirks and pitfalls which shouldn’t exist if it was done right *sigh*.
+    Charlie says:
+    February 8th, 2008 at 10:36 am
+
+    In the third example, I noticed you’re still using “for cmd in cmds:” which works, but I thought it was supposed to show how the local variable commands was set as a parameter. “for cmd in commands:” would show this properly, right?
+
+    BTW, why can one access cmds from inside that function without using the global keyword? Is global implied since it is specified in the parameter?
+    Colin Walters says:
+    February 8th, 2008 at 11:13 am
+
+    > Python _is_ more powerful than bash, but it does not beat the shell at manipulating environments and processes.
+
+    In Hotwire, you can say for example:
+
+    proc | filter ‘badprocess.*foo’ cmd | kill -9
+
+    That kills all processes (with SIGKILL) whose command name matches the regular expression “badprocess.*foo”.
+
+    Absolutely no text parsing of /bin/ps involved.
+    Dejan Lekic says:
+    February 8th, 2008 at 12:05 pm
+
+    Python is a good OO language, there is no doubt about it, but as language for shell scripts… – IMHO not. It will never beat specialized languages like ZSH or BASH. Numerous reasons have already been posted above.
+    However I could not see one very important reason BASH will always win in the shell-battle – it is a _POSIX STANDARD_.
+
+    Do not forget that!
+
+    Python does well in the PERL-killer-wannabe battle of titans (PHP, Ruby, Python). I would always chose Lua for shell apps instead of these 3 languages, plus PERL. Sure it is just a matter of taste. Reasons? Lua is simply fast, lean, and well-designed language. None of them have some cool advantages other languages do not have, or cannot have. It is simply a personal choice what to chose…
+
+    Kind regards
+    _dietrich says:
+    February 8th, 2008 at 1:04 pm
+
+    Nice work Noah!
+    Otheus says:
+    February 8th, 2008 at 1:58 pm
+
+    What kind of shell script is this?
+
+    SPACE=`df -h`
+    MESSAGES=`tail /var/log/messages`
+    LS=`ls -l`
+
+    In SH (and BASH), these are run IMMEDIATELY. In the Python code, the processes are deferred until the loop. In the BASH version shown above, it’s implied these are executed in the loop, but that’s not the case.
+
+    It’s nice to know that python CAN do OS stuff, but I’m not sure what the point is. Execution speed? I can see that of being importance in certain situations, like Nagios handler scripts.
+    Stephen Smoogen says:
+    February 8th, 2008 at 2:23 pm
+
+    I wanted to say great intro to the language. My biggest problem with python on large scale environment is version dependencies. Usually some code will work with a particular version of python, and if your system doesn’t have it.. well you can’t get there from here without a lot of work. [Try running func or newer yum's on RHEL-3 or RHEL-2 :) ]. This is actually a problem with any of the interpreted languages… [Up to last year, I had systems that only have perl4 on them] and why I end up falling back to sh scripts for anything ‘cross-platform’.]
+
+    Now if python were packaged up so I could install python-2.2,2.3,2.4,etc on the same system without much trouble… I would be so much happier :) .
+    Noah Gift says:
+    February 8th, 2008 at 5:00 pm
+
+    Everyone who commented/Thank you so much, there are many excellent points, that I agree with them mostly. If anyone has a better example of the Bash or Python scripts, send me an email noah dot gift at gmail dot com. I will add you to the google code project and you can check in more examples of your own. At worst it is something fun to do on a weekend:
+
+    http://code.google.com/p/python4bash/
+    Michael DeHaan says:
+    February 8th, 2008 at 5:56 pm
+
+    Noah’s examples strike me as more of examples of baby steps to doing things, rather than examples that simply replace shell script one liners in their own right. So if you are new to Python syntax, read them over, but don’t take them as boilerplate. For instance, he showed you how to use optparse and subprocess — now imagine their usage in a more complicated program :)
+
+    If you want to see another interesting systems management project using Python that may appeal to bash+ssh users BTW, check out Func — https://fedorahosted.org/func. There should a Red Hat Magazine article on it coming out pretty soon now too.
+
+    (I see Smooge has already alluded to it… and yes, he’s a bit right regarding versioning. Typically I target my stuff at a base of Python 2.3 and avoid newer functions in 2.4/2.5 — such is the case with many toolsets. That’s more of an issue of coding to the distro though, than the language itself… or in coding to the API of various libraries that are no longer updated for older platforms).
+    Paddy3118 says:
+    February 8th, 2008 at 11:44 pm
+
+    At work we use this excellent tool to manage multiple versions of all types of software – just install to a different area and create a module to update your environment to access the version of Python you require:
+    http://modules.sourceforge.net/
+
+    I could then do:
+    module load python/2.5.1
+    python -V; # shows its python 2.5.1
+    module rm python
+    module load python/2.4
+    python -V; # shows its python 2.4
+
+    - Paddy.
+    Ajay says:
+    February 9th, 2008 at 4:17 am
+
+    dabbling with shell every now and then (I ma not a shell ninja by any means), I have not come across an elegant error handling solution so far.
+    (If someone has it will be nice if you can point me to some documentation/tutorial)
+
+    This starts biting you in case you have large shell scripts (even if broken down to functions) and every line ends with “|| die” where die spits some debug info and as the name suggests dies.
+
+    Python/ruby can be be helpful here, as they have better error handling mechanisms in try/catch/finally
+
+    however, I will stick to shell for my one liners
+    - “pipe is mans best friend”
+    Don Seiler says:
+    February 13th, 2008 at 4:52 pm
+
+    @Charlie, I noticed the same thing with “cmds” vs “commands”. I’d like to see a correction in the article if anyone is paying attention.
+    Wannabe says:
+    February 16th, 2008 at 3:28 am
+
+    the “subprocess” module is specific to the newest version of python. The version that came with my system doesn’t have it, but the version I compiled myself does.
+    Noah Gift says:
+    February 16th, 2008 at 9:23 am
+
+    If you find yourself not having subprocess, you can use popen:
+
+    http://docs.python.org/lib/module-popen2.html
+    PEdroArthur_JEdi says:
+    March 2nd, 2008 at 8:32 am
+
+    Just a little tip…
+
+    count=$((count + 1))
+
+    Do you think this is messy?
+    so, code like this:
+
+    ((count++))
+    www.tagsto.com/trackback/ says:
+    May 11th, 2008 at 12:57 pm
+
+    Hubs of Python for Bash scripters: A well-kept secret
+
+    hubs about Administration IRIX to … “Python For *Nix Systems Administration,” (working title) due sometime in 2008. He works as a software engineer for Racemi, dealing with Bash, Python, SNMP and a slew of *nix operating systems, including AIX, H…
+    OldPro says:
+    July 12th, 2008 at 5:10 am
+
+    I tried to use python, converting several bash tools but I am not convinced. Python is a full-fledged programming language and maybe not a bad one. But BASH scripts look much cleaner if you want to glue together bricks of binaries and shell scripts. As soon as your BASH script looks too complicated, it should be converted into a regular (non-shell) language with heavy type checking and strict compilation settings.
+
+    The fact that in Python I need to import some class “subprocesses” (dependency hell!!!) to do even the most menial of things, that I should embed code into Popen etc. is appalling to me: the full Unix power is transparently in your hands within BASH. As a rule in programming, the necessary and complicated data structures should always be hidden under the hood, i.e., within data files etc. Shell programming is about handling named chunks of information in a processing line, possibly using pipes to avoid the over-use of temporary files. Sadly, this simplicity is lacking in all of the script-use examples of Python I see on the web.
+
+    The importing of modules/classes was a hell in Tcl/Tk, it is in Java and it is in Python. My juniors are losing a lot of time in getting things to work on any other machine (“but the .py worked perfectly on mine!”).
+
+    Let’s keep it simple wherever it can.
+
+    By the way: the line
+    echo “$cmd”
+    will NOT execute the command in the BASH sequence example.
+    Lifestream Updates for 2008-11-03 - By Joerg Hochwald - Lifestream says:
+    November 3rd, 2008 at 6:00 pm
+
+    [...] Red Hat Magazine | Python for Bash scripters: A well-kept secret [...]
+    Lifestream Updates for 2008-11-03 « hochwald.net says:
+    November 3rd, 2008 at 6:29 pm
+
+    [...] Red Hat Magazine | Python for Bash scripters: A well-kept secret [...]
+    Denis says:
+    November 26th, 2008 at 4:29 am
+
+    Yeah, as someone already have told python doesn’t have one very important thing: conveyers.
+    Python for Bash scripters | Madbuda says:
+    January 10th, 2009 at 10:29 am
+
+    [...] Embedding Bash to make Python command-line tools[1]: [...]
+    Madbuda » Blog Archive » Run-levels: Create, use, modify, and master says:
+    January 10th, 2009 at 2:06 pm
+
+    [...] Python for bash scripters: A well-kept secret (RHM, Feb 2008) [...]
+    Nex blog » Blog Archive » Links del giorno: January 27, 2009 says:
+    January 27th, 2009 at 5:46 am
+
+    [...] Python for Bash scripters: A well-kept secret [...]
+    A. Yuryshev says:
+    April 24th, 2009 at 7:40 am
+
+    IPython will definetly beat sh-clones in time.
+
+    I define it like XXI-bash.
+
+    It’s more modern in concepts.
+    In fact IPython made the same thing MS did in PowerShell – OO-shell. But better. And portable.
+
+    The battle is: OO-shells vs file-shells.
+

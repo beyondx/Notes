@@ -1,0 +1,16 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-19T16:58:52+08:00
+
+====== 使用浏览器查看项目 ======
+Created Sunday 19 February 2012
+
+进入项目的根目录运行
+git instaweb --httpd webrick -p1234
+Instance already running. Restarting...
+/usr/local/git/libexec/git-core/git-instaweb: line 112: kill: (1424) - No such process
+[2011-01-22 11:03:12] INFO  WEBrick 1.3.1
+[2011-01-22 11:03:12] INFO  ruby 1.8.6 (2009-06-08) [universal-darwin9.0]
+
+查看diff时通过浏览器访问http://127.0.0.1:1234/既可。点击“summary”，就能查看每次commit的comments，点击"commitdiff"就能直观的看到diff。
+这个工具实际上是启动了一个ruby的http server，然后把所有的diff以web页面的形式展现出来，因此它依赖于ruby。 

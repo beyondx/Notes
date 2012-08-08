@@ -1,0 +1,41 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T19:53:11+08:00
+
+====== LaTex ======
+Created Sunday 27 March 2011
+
+然后 TeX Live 2009 的中文支持主要分为两部分，基于 XeTeX 的，和基于传统 CJK 宏包的。(我这里只讨论 LaTeX的，如果你希望尝试 ConTeXt 和 luatex，可以参考 Li Yanrui 的 blog [3]，他有很详细的介绍。)
+
+基于 XeTeX 的方案
+-----------------
+
+这是我们推荐的方案，又可分为高层与低层两种，分别适用于不同需求的用户。
+
+首先，安装所需的宏包：
+
+sudo tlmgr install xecjk ctex
+
+===== 高层的方案 =====
+是使用 ctex 宏包自带的文档类，例如原来用 article 文档类的就改用 ctexart 文档类，原来用 book文档类的就改用 ctexbook 文档类，这样绝大部分你会遇到的中文问题，比如字体设置、hyperref的调用、章节标题的设置等等，都自动为你解决了。详情可以看 ctex 宏包的文档 [4]。下面是一个小例子：
+
+\documentclass{ctexart}
+\begin{document}
+你好，TeX Live 2009！
+\end{document}
+
+默认情况 (__winfonts__) 下，你需要宋体 (SimSun)、仿宋 (simfang)、黑体 (simhei)、楷体 (simkai)、隶书(LiSu)、幼圆 (YouYuan) 这六套 Windows 字体，如果你的字体不全，可以编辑**ctex-xecjk-winfonts.def** 文件 (用 kpsewhich 来找) 来修改设置，也可以选择 Adobe Reader等软件所带的 Adobe Song Std, Adobe Heiti Std, Adobe Kaiti Std, Adobe FangsongStd 四款字体，这时需要给 ctexart 加上__ [adobefonts]__ 选项。又或者，你可以不用这些预置的字体，使用__ [nofonts]__选项，然后参考 ctex-xecjk-winfonts.def 文件，自己定义对应各个 CJK 字体族的字体。
+
+===== 低层的方案 =====
+则是用原来你自己的宏包，结合 xeCJK 宏包来配置字体，下面是一个小例子：
+
+\documentclass{article}
+\usepackage{xeCJK}
+\setCJKmainfont{SimSun}
+\begin{document}
+你好，TeX Live 2009！
+\end{document}
+
+当然，你得有 SimSun 这个字体。
+
+不管选用高层的还是低层的，都可以直接用 xelatex 命令直接编译你的文档。

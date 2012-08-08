@@ -1,0 +1,27 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-05T17:39:02+08:00
+
+====== 网络操作 ======
+Created Thursday 05 May 2011
+
+上述的命令也适合在emacs中的telnet模式，用 M-x telnet 启动telnet模式
+当执行C-x C-f 时，emacs会自动启动ange-ftp模式：
+	文件名以一个斜线开头
+	斜线后紧跟usename@systemname
+	系统名后是一个冒号，然后是子目录名活文件名
+如输入：/anonymous@ftp.mit.edu:/pub"将打开一个到mit的ftp连接,然后就可以像本地目录一样对其进行操作
+
+===== 邮件命令 =====
+M-x mail 		发送邮件, C-c C-s 发送,C-c C-c 发送并退出 　　
+M-x rmail 		读取邮件
+
+===== IRC命令 =====
+M-x erc-select		启动irc程序
+
+	host: irc.debian.org
+	port: 6667 到 7000 随便用一个
+	username: 先随便填一个，比如 foo
+	password: 还没注册的可以直接回
+	
+ERC> /join #emacs-cn     就进入 #emacs-cn channel 啦!

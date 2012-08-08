@@ -1,0 +1,45 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-05T15:51:52+08:00
+
+====== 查找替换 ======
+Created Thursday 05 May 2011
+
+C-s key			isearch-forward	向前增量搜索 　　
+	C-s 				查找下一个，ENTER 停止搜索 　　
+C-r key 			isearch-backward	反向搜索 　
+C-g				keyboard-quit		取消命令的执行
+
+　
+**C-s C-w 		以光标所在位置到下一个标点符号或空格符间的文本为关键字搜索** 　　
+C-s  C-y			把从光标位置到行尾间的所有文本作为关键字搜索
+C-s	M-y			把删除环中的文本复制到查找字符串中
+　
+C-M-s 		isearch-forward-regexp		向前正则搜索 　　
+C-M-r		isearch-backward-regexp	向后正则搜索 　
+
+C-s C-s 			重复上次搜索 　　
+C-r C-r 			重复上次反向搜索 
+
+C-s ENTER C-w 	进入**单词搜索**模式 (查找时忽略单词间的所有标点和换行符)　　
+C-r ENTER C-w 	进入反向单词搜索模式 　
+　
+M-x replace-string  	从光标到buff尾全局字符串替换
+M-x replace-regexp	从光标到buff尾全局符合正则表达式的字符串替换　　
+M-%  		query-replace	        交互替换，响应如下：
+						y 或SPACE	确定替换当前位置，然后前进到下一个
+						DEL 或 n		不替换，前进到下一位置
+						.			在当前位置替换后退出查询替换操作
+						,			替换并显示替换情况(按空格或y，继续)
+						!			对后面的内容全部替换，不再询问 
+						回车或q		退出查找替换
+
+M-x  query-replace	同上
+M-x query-regexp		交互式正则表达式替换
+C-M-% 				同上
+
+C-r 				在进入查找/替换模式后，该命令进入迭代编辑模式 　　
+C-M-x 			退出迭代编辑模式，返回到查找/替换模式
+M-C-c			同上
+C-]				退出递归编辑和查找替换模式 　
+C-x ESC ESC		重复执行前一个命令，对所有在辅助缓冲区中有补充输入内容的一切命令都有效

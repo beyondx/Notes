@@ -1,0 +1,22 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-09-07T21:08:39+08:00
+
+====== What is TeX(宏包，利用引擎提供高级抽象) ======
+Created Wednesday 07 September 2011
+http://www.tex.ac.uk/cgi-bin/texfaq2html?label=whatTeX
+
+TeX is a **typesetting system(排版系统)** written by Donald E. Knuth, who says in the Preface to his book on TeX (see books about TeX) that it is “intended for the creation of **beautiful books** — and especially for books that contain a lot of mathematics”. (If TeX were only good for mathematical books, much of its use nowadays would not happen: it’s actually a pretty good general typesetting system.)
+
+Knuth is Emeritus Professor of the Art of Computer Programming at Stanford University in California, USA. Knuth developed the first version of TeX in 1978 to deal with revisions to his series “the Art of Computer Programming”. The idea proved popular and Knuth produced a second version (in 1982) which is the basis of what we use today.
+
+Knuth developed a system of __‘literate programming’ __to write TeX, and he provides the literate (WEB) source of TeX free of charge, together with tools for processing the web source into something that can be compiled and something that can be printed; there is (in principle) never any mystery about what TeX does. Furthermore, the WEB system provides mechanisms to port TeX to new operating systems and computers; and in order that one may have some confidence in the ports, Knuth supplied a test by means of which one may judge the fidelity of a TeX system. TeX and its documents are therefore highly portable.
+
+For the interested programmer, the distribution of TeX has some fascination: it’s nothing like the way one would construct such a program nowadays, yet it has lasted better than most, and has been ported to many different computer architectures and operating systems — the sorts of attributes that much modern programming practice aims for. The processed ‘readable’ source of TeX the program may be found in the TDS structured version of the distribution.
+
+Knuth’s source distribution
+    systems/knuth/dist (or browse the directory); catalogue entry 
+Knuth’s sources in TDS layout
+    macros/latex/contrib/latex-tds/knuth.tds.zip 
+
+This answer last edited: 2011-06-01

@@ -1,0 +1,77 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-01T11:41:00+08:00
+
+====== 11从协议中来,到协议中去(上) ======
+Created Sunday 01 July 2012
+
+在struct usb_driver中,.probe和.disconnect的原型如下:
+
+int (*probe) (struct __usb_interface__ *intf,const struct __usb_device_id__ *id);
+
+void (*disconnect) (struct __usb_interface__ *intf);
+
+我们来看其中的参数,struct usb_device_id这个不用说了,刚才已经介绍过,那么struct usb_interface从何而来?还是让我们先从struct usb_device说起.
+
+我们知道每一个device对应一个struct device结构体变量,但是device不可能是万能的,生命是多样性的,就像我们可以用"人"来统称全人类,但是分的细一点,又有男人和女人的区别,那么device也一样,由于有各种各样的设备,于是又出来了更多的词汇(数据结构),比如针对usb设备,开发者们设计了一个叫做struct usb_device的结构体(struct device是一个通用的抽象设备结构，但是具体到某一类型的设备时，一般再定一个结构体，该结构体中包含该设备特有的信息和struct device类型成员，即__具体设备结构封装了抽象设备结构struct device；bus和driver都类似。__).她定义于include/linux/usb.h,
+
+    294 /*
+    295  * struct usb_device - **kernel's representation of a USB device**
+    296  *
+    297  * FIXME: Write the kerneldoc!
+    298  *
+    299  * Usbcore drivers should not set usbdev->state directly.  Instead use
+    300  * usb_set_device_state().
+    301  */
+    302 struct usb_device {
+    303         int             **devnum**;         /* Address on USB bus */
+    304         char            devpath [16];   /* Use in messages: /port/port/... */
+    305         enum usb_device_state   **state**;  /* configured, not attached, etc */
+    306         enum usb_device_speed   **speed**;  /* high/full/low (or error) */
+    307
+    308         struct usb_tt   *tt;            /* low/full speed dev, highspeed hub */
+    309         int             ttport;         /* device port on that tt hub */
+    310
+    311         struct semaphore serialize;
+    312
+    313         unsigned int toggle[2];         /* one bit for each endpoint ([0] = IN, [1] = OUT) */
+    314         int epmaxpacketin[16];          /* INput endpoint specific maximums */
+    315         int epmaxpacketout[16];         /* OUTput endpoint specific maximums */
+    316
+    317         struct usb_device *__parent__;      /* our hub, unless we're the root */
+    318         struct usb_bus *__bus__;            /* Bus we're part of */
+    319
+    320         struct device __dev__;              /* Generic device interface */
+    321
+    322         struct usb_device_descriptor __descriptor__;/* Descriptor */
+    323         struct usb_host_config *config; /* All of the configs */
+    324         struct usb_host_config *actconfig;/* the active configuration */
+    325
+    326         char **rawdescriptors;          /* Raw descriptors for each config */
+    327
+    328         int have_langid;                /* whether string_langid is valid yet */
+    329         int string_langid;              /* language ID for strings */
+    330
+    331         void *hcpriv;                   /* Host Controller private data */
+    332
+    333         struct list_head filelist;
+    334         struct dentry *__usbfs_dentry__;    /* usbfs dentry entry for the device */
+    335
+    336         /*
+    337          * Child devices - these can be either new devices
+    338          * (if this is a hub device), or different instances
+    339          * of this same device.
+    340          *
+    341          * Each instance needs its own set of data structures.
+    342          */
+    343
+    344         int maxchild;                   /* Number of ports if hub */
+    345         struct usb_device *__children__[USB_MAXCHILDREN];
+    346 };
+    347 #define to_usb_device(d) container_of(d, struct usb_device, dev)
+
+看起来很复杂的一个数据结构,不过我们目前不需要去理解她的每一个成员,不过我们可以看到,其中有一个成员struct device dev,没错,这就是前面说的那个属于每个设备的struct device结构体变量.
+
+实际上,U盘驱动里边并不会直接去处理这个结构体,因为对于一个U盘来说,她就是对应这么一个struct usb_device的变量,这个变量由usb core负责申请和赋值.但是我们需要记住这个结构体变量,因为日后我们调用usb core提供的函数的时候,会把这个变量作为参数传递上去,因为很简单,要和usb core交流,总得让人家知道我们是谁吧,比如后来要调用的一个函数,usb_buffer_alloc,它就需要这个参数.
+
+而对U盘设备驱动来说,比这个struct usb_device更重要的数据结构是struct usb_interface.走到这一步,我们不得不去了解一点__usb设备规范__了,或者专业一点说,__usb协议__.因为我们至少要知道什么是usb interface.

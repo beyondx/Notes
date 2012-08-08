@@ -1,0 +1,71 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-23T15:24:57+08:00
+
+====== xargs命令少为人知的细节 ======
+Created Wednesday 23 November 2011
+
+http://www.yayu.org/look.php?id=179
+
+与xargs命令最初相识是在发现一个磁盘满了，具体是在/var/spool/clientmqueue，主要原因是系统中有用户开启了crontab，而crontab中执行的程序有输出内容，输出内容会以邮件形式发给cron的用户，而sendmail没有启动所以就产生了这些文件。关于更详细的原理，可以参考我之前的文章：crontab命令的使用介绍及我的体会。
+
+    仅仅解决出现多文件的方法比较简单，在命令后加上“> /dev/null 2>&1”即可，表示程序员输出和运行错误都放到黑洞里面去，这样就不会产生文件了。
+
+    如果是要解决删除多文件的问题，则进入这个文件夹，执行“ls | xargs rm -f ”即可。xargs可以从管道中循环读取文件，一次一次的把信息输送给后面的“rm -f”。
+
+    请注意以上措辞：“一次一次的”，那么这个一次一次，是指“一个一个”还是“__一批一批__”呢？
+
+    很杯具，当时不求甚解，未能深入学习xargs，误解为“一个一个”。
+
+    最近在写一个程序时，需要处理一个文件中的行数据。平时都是使用php的fopen再fgets解决问题，但这次懒得套用这一套了，于是想使用管道把数据传送给php脚本。
+
+    而php脚本也利用$argv这个数组来获取命令行输入的参数，那么很简单的，获取$argv[1]，就可以了。如“php a.php b”，$argv[0]为文件名a.php，$argv[1]就是后面的参数b了。于是想当然的：cat uid.txt | xargs php a.php 。
+
+    最终发现，uid.txt中有近4千行的数据，但是只处理了4行。那么，既然出现问题就边解决边学习吧！
+
+    使用：cat uid.txt | xargs echo > file.out
+
+    发现 file.out文件果然就是四行，但是每行都很长。。。。。
+
+    如下，uid.txt内容为：（“......”表示很多行）
+
+以下是引用片段：
+1234567890
+......
+2234567890
+......
+3234567890
+......
+4234567890
+......
+
+    那么file.out的结果为：
+
+以下是引用片段：
+第一行：1234567890 ......
+第二行：2234567890 ......
+第三行：3234567890 ......
+第四行：4234567890 ......
+
+    所以，程序处理每一行的第一个了，剩下的全部被忽略。而我期望的结果是xargs每次给我一行。
+
+    那么寻求man的帮助吧：
+
+以下是引用片段：
+
+       --max-chars=max-chars, __-s max-chars   __#限定生成的命令行参数包含的字符数目
+              Use at most max-chars characters **per command line**, including the command and initial-arguments and  the
+              terminating nulls at the ends of the argument strings.  The default is __131072 __characters, not including
+              the size of the environment variables (which are provided for separately so that it doesn’t  matter  if
+              your  environment variables take up more than 131072 bytes).  The operating system places limits on the
+              values that you can usefully specify, and if you exceed these a warning  message  is  printed  and  the
+              value actually used is set to the appropriate upper or lower limit. 
+
+       --max-args=max-args,__ -n max-args   __#限定每次附加到命令行后的从标准输入读取的参数的个数(不包括已有的参数)
+              Use  at  most  max-args  arguments per command line.  Fewer than max-args arguments will be used if the
+              size (see the -s option) is exceeded, unless the -x option is given, in which case xargs will exit.
+
+    更进一步的：
+
+    1：其实每个系统对于参数列表的大小都有限制。比如__ARG_MAX__一般至少定义为4096 bytes。如果超过了ARG_MAX，将产生shell错误：Argument list too lang，这个问题可以用上面说的xargs命令解决问题。
+    2：xargs的-s参数，根据实战的结果，貌似会在指定的值和真实数据中取得平衡，不会只依据-s指定的大小活生生的把源数据的一行撕裂成两行。

@@ -1,0 +1,7 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-30T21:43:28+08:00
+
+====== 嵌入式 ======
+Created Saturday 30 June 2012
+

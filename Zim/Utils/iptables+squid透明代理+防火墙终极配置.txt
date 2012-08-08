@@ -1,0 +1,134 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-11T22:00:31+08:00
+
+====== iptables+squid透明代理+防火墙终极配置 ======
+Created Thursday 11 August 2011
+
+http://chinalbt.blog.51cto.com/439045/90476
+
+系统：
+CentOS4.2，三块网卡，两个内网，一个外网。双至强，2GHz，2GB内存。服务器主要开了squid，sshd，其他的一律闭掉了。
+eth0：192.168.100.1
+eth1：192.168.168.12
+eth2：A.B.C.D —— 外网地址
+
+
+================================================
+squid设定可以根据自己的情况来，我们假设其端口为3128，在三块网卡上都有监听（不要绑定某一个IP或网卡）。
+[[/etc/squid/squid.conf]]
+
+http_port 3128
+cache_mem 1000 MB
+cache_swap_low 90
+cache_swap_high 95
+cache_dir ufs /opt/cache/squid 8000 16 256
+cache_access_log /var/log/squid/access.log
+cache_store_log [[/var/log/squid/store.log]]
+
+dns_nameservers 210.77.192.88
+maximum_object_size 409600 KB
+maximum_object_size_in_memory 64000 KB
+emulate_httpd_log on
+ipcache_size 1024
+ipcache_low 90
+ipcache_high 95
+fqdncache_size 1024
+forwarded_for off
+coredump_dir /opt/cache/squid/coredump
+
+httpd_accel_port 80
+httpd_accel_host virtual
+httpd_accel_with_proxy on
+httpd_accel_single_host off
+httpd_accel_uses_host_header on
+
+acl all src 0.0.0.0/0
+acl lixiaedu100 src 192.168.100.0/24
+acl lixiaedu168 src 192.168.168.0/24
+http_access allow lixiaedu100
+http_access allow lixiaedu168
+http_access deny all
+
+cache_effective_user squid
+cache_effective_group squid
+cache_mgr zhaobing8181@163.com
+
+visible_hostname lixiaedu
+
+
+==================================================
+iptables设定。iptables的设定分为两部分，一是如何进行SNAT，二是在开设了squid的情况下如何进行安全防护的问题。
+一、SNAT
+modprobe ip_tables
+modprobe iptable_nat
+modprobe iptable_filter
+modprobe ip_conntrack_ftp
+modprobe ip_nat_ftp
+加挂一些iptables的必要的模块，以便调用。
+echo 1 > /proc/sys/net/ipv4/ip_forward
+打开“转发”功能。让数据包可以在不同的网卡间“流动”。
+iptables -t nat -A POSTROUTING -s 192.168.100.0/24 -o eth2 -j SNAT --to A.B.C.D
+iptables -t nat -A POSTROUTING -s 192.168.168.0/24 -o eth2 -j SNAT --to A.B.C.D
+iptables -t nat -A PREROUTING -s 192.168.100.0/24 -i eth0 -p tcp --dport 80 -j REDIRECT --to-port 3128
+iptables -t nat -A PREROUTING -s 192.168.168.0/24 -i eth1 -p tcp --dport 80 -j REDIRECT --to-port 3128
+上面这四句比较重要，是进行透明代理的关键。前两句的作用是进行“__源地址转换__”，也就是说要进行内网地址到外网地址的转换。执行了这两句，即使没有squid，内网机器也可以上网了。
+后面两句是对从两个内网网卡进入的、tcp协议的、目的端口号是80的，做“__端口重定向__”。重定向到3128端口。这样，squid就可以接到这个数据包了。
+OK！如果你的squid没有问题，而且你也执行了上面的语句，并且没有报错。那就恭喜你，一个iptables+squid的透明代理做成了。如果你不相信，有两个方法可以测试：一是登录：[url]http://ipid.shat.net[/url] ，这是一个国外网站，可以显示你的外网ip地址，还有是否被代理过。二是在一台内网机器上下载一个文件，或者看一页图片很多而且较慢的网页，然后转到另一台内网机器上下载同样的文件或看刚才的图片网页。比较一下速度，就能感觉出来了。
+
+
+===== 二、firewall =====
+
+如果你把这样一台服务器放到internet上，无异于是想“自杀”。防火墙没有任何的保护机制和过滤功能。很容易被各种攻击所击破。不要迷信Linux的安全性，网管员的安全意识要比空喊Linux安全重要得多。
+
+iptables -F
+iptables -X
+iptables -F -t mangle
+iptables -t mangle -X
+iptables -F -t nat
+iptables -t nat -X
+首先，把三个表清空，把自建的规则清空。
+iptables -P INPUT DROP
+iptables -P OUTPUT DROP
+iptables -P FORWARD ACCEPT
+设定INPUT、OUTPUT的默认策略为DROP，FORWARD为ACCEPT。
+iptables -A INPUT -i lo -j ACCEPT
+iptables -A OUTPUT -o lo -j ACCEPT
+先把“回环”打开，以免有不必要的麻烦。
+iptables -A INPUT -i eth+ -p icmp --icmp-type 8 -j ACCEPT
+iptables -A OUTPUT -o eth+ -p icmp --icmp-type 0 -j ACCEPT
+在所有网卡上打开ping功能，便于维护和检测。
+iptables -A INPUT -i eth0 -s 192.168.100.250 -d 192.168.100.1 -p tcp --dport 22 -j ACCEPT
+iptables -A OUTPUT -o eth0 -d 192.168.100.250 -s 192.168.100.1 -p tcp --sport 22 -j ACCEPT
+打开22端口，允许远程管理。（设定了很多的附加条件：管理机器IP必须是250，并且必须从eth0网卡进入）
+iptables -A INPUT -i eth0 -s 192.168.100.0/24 -p tcp --dport 3128 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A OUTPUT -o eth0 -d 192.168.100.0/24 -p tcp --sport 3128 -m state --state ESTABLISHED -j ACCEPT
+iptables -A INPUT -i eth1 -s 192.168.168.0/24 -p tcp --dport 3128 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A OUTPUT -o eth1 -d 192.168.168.0/24 -p tcp --sport 3128 -m state --state ESTABLISHED -j ACCEPT
+iptables -A INPUT -i eth2 -p tcp --dport 32768:61000 -m state --state ESTABLISHED -j ACCEPT
+iptables -A OUTPUT -o eth2 -p tcp --sport 32768:61000 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A OUTPUT -o eth2 -p udp --dport 53 -j ACCEPT
+iptables -A INPUT -i eth2 -p udp --sport 53 -j ACCEPT
+上面这几句是比较头痛的，我做逐一解释。
+iptables -A INPUT -i eth0 -s 192.168.100.0/24 -p tcp --dport 3128 -m state --state NEW,ESTABLISHED -j ACCEPT
+允许192.168.100.0/24网段的机器发送数据包从eth0网卡进入。如果数据包是tcp协议，而且目的端口是3128（因为REDIRECT已经把80改为3128了。nat表的PREROUTING是在filter表的INPUT前面的。）的，再而且，数据包的状态必须是NEW或者ESTABLISHED的（NEW代表tcp三段式握手的“第一握”，换句话说就是，允许客户端机器向服务器发出链接申请。ESTABLISHED表示通过握手已经建立起链接），通过。
+iptables -A OUTPUT -o eth2 -p tcp --sport 32768:61000 -m state --state NEW,ESTABLISHED -j ACCEPT
+我们先来看这一句。现在你的数据包已经进入到linux服务器防火墙上来了。squid需要代替你去访问，所以这时，服务器就成了客户端的角色，所以它要使用32768到61000的私有端口进行访问。（大家会奇怪应该是1024到65535吧。其实CentOS版的linux所定义的私有端口是32768到61000的，你可以通过cat /proc/sys/net/ipv4/ip_local_port_range，查看一下。）再次声明：这里是squid以客户端的身份去访问其他的服务器，所以这里的源端口是32768:61000，而不是3128！
+iptables -A INPUT -i eth2 -p tcp --dport 32768:61000 -m state --state ESTABLISHED -j ACCEPT
+当然了，数据有去就有回。
+iptables -A OUTPUT -o eth0 -d 192.168.100.0/24 -p tcp --sport 3128 -m state --state ESTABLISHED -j ACCEPT
+数据包还得通过服务器，转到内网网卡上。请注意，这里，是squid帮你去访问了你想要访问的网站。所以在内网中，你的机器是客户端角色，而squid是服务器角色。这与刚才对外访问的过程是不同的。所以在这里，源端口是3128，而不是32768:61000。
+iptables -A OUTPUT -o eth2 -p udp --dport 53 -j ACCEPT
+iptables -A INPUT -i eth2 -p udp --sport 53 -j ACCEPT
+当然，DNS是不可缺少的。
+iptables -A INPUT -i eth+ -p tcp --dport 80 -j LOG --log-prefix "iptables_80_alert" --log-level info
+iptables -A INPUT -i eth+ -p tcp --dport 21 -j LOG --log-prefix "iptables_21_alert" --log-level info
+iptables -A INPUT -i eth+ -p tcp --dport 22 -j LOG --log-prefix "iptables_22_alert" --log-level info
+iptables -A INPUT -i eth+ -p tcp --dport 25 -j LOG --log-prefix "iptables_25_alert" --log-level info
+iptables -A INPUT -i eth+ -p icmp --icmp-type 8 -j LOG --log-prefix "iptables_icmp8_alert" --log-level info
+当然了，来点日志记录会对网管员有所帮助。
+至此，一个完整的访问过程就被我们分析过了。本篇中最主要的就是要说明squid在对内网机器和外网服务器中扮演了两种截然相反的角色。
+这对大家来说不太好理解。我也是摸索了一段时间才成功的。愿我的文章抛砖引玉，能引起大家的共鸣和思索。
+本篇文章欢迎大家转载，请保留作者信息。
+
+一点说明：最近见到过一种情况，就是squid无法启动，或者说起动起来几秒钟就自动停掉。messages中说有squid遇到了signal 25，所以停止。遇到这种问题，要查看squid的日志是不是太大了。我看了一下，access.log有1.6GB，store.log有2GB大小。看来是日至文件偏大。把两个文件转移或者改名后就可以了。

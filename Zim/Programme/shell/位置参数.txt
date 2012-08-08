@@ -1,0 +1,761 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-24T15:03:48+08:00
+
+====== 位置参数 ======
+Created Saturday 24 December 2011
+http://www.ibm.com/developerworks/cn/linux/l-bash-parameters.html
+
+现在，很多 Linux® 和 UNIX® 系统上都有 bash shell，它是 Linux 上常见的__默认 shell__。通过本文，您将了解到如何在 bash 脚本中__处理参数和选项__，以及如何使用 shell 的__参数扩展__检查或修改参数。本文重点介绍 bash，文中的示例都是在以 bash 为 shell 的 Linux 系统上运行。但是，很多其他的 shell 中也有这些扩展，比如 ksh、ash 或 dash，您可以在其他 UNIX 系统或者甚至是 Cygwin 之类的环境中使用这些 shell 和扩展。早前的一篇文章 Linux 技巧：Bash 测试和比较函数 已经对本文中的构建工具进行了介绍。本文中的某些材料摘录自 developerWorks 教程 LPI 102 考试准备，主题 109: Shell、脚本、编程和编译，该教程介绍了很多基本的脚本编程技术。
+
+===== 传递的参数 =====
+
+函数和 shell 脚本的妙处之一是，通过向单个**函数或脚本**传递参数 能够使它们表现出不同的行为。在本节中，您将了解到如何识别和使用传递的参数。
+
+在函数或脚本中，您可以使用表 1 中列出的 bash __特殊变量__来引用参数。您可以给这些变量附上 $ 符号的前缀，然后像引用其他 shell 变量那样引用它们。
+表 1. 函数的 Shell 参数 
+参数			目的
+0, 1, 2, ...		__位置参数__   从__参数 0 开始__。参数 0 引用启动 bash 的__程序的名称__，如果函数在 shell 脚本中运行，则引用 shell __脚本的名称__。有关该参数的其他信息，比如 bash 由 -c 参数启动，请参阅 bash 手册页面。由单引号或双引号包围的字符串被作为一个参数进行传递，__传递时会去掉引号__。如果是双引号，则在调用函数之前将对 $HOME 之类的 shell 变量进行扩展。对于包含嵌入空白或其他字符（这些空白或字符可能对 shell 有特殊意义）的参数，需要使用单引号或双引号进行传递。
+* 位置参数  从__参数 1 开始__。如果在**双引号中进行扩展**，则扩展就是一个词，由 IFS 特殊变量的第一个字符将参数分开，如果 IFS 为空，则没有间隔空格。IFS 的默认值是空白、制表符和换行符。如果没有设置 IFS，则使用空白作为分隔符（仅对默认 IFS 而言）。
+@			位置参数  从__参数 1 开始__。如果**在双引号中进行扩展**，则每个参数都会成为一个词，因此 “$@” 与 “$1” “$2” 等效。__如果参数有可能包含嵌入空白，那么您将需要使用这种形式。__
+#			参数数量（不包含参数 0）。
+
+注意：如果您拥有的参数多于 9 个，则不能使用 $10 来引用第十个参数。首先，您必须处理或保存第一个参数（$1），然后使用__ shift 命令__删除参数 1 并将所有剩余的参数下移一位，因此 $10 就变成了 $9，依此类推。__$# __的值将被更新以反映参数的剩余数量。在实践中，最常见的情况是将参数迭代到函数或 shell 脚本，或者迭代到命令替换使用 for 语句创建的列表，因此这个约束基本不成问题。
+
+现在，您可以定义一个简单函数，其用途只是告诉您它所拥有的参数数量并显示这些参数，如清单 1 所示。
+
+清单 1. 函数参数
+
+                
+[ian@pinguino ~]$ testfunc () { echo "__$# __parameters"; echo__ "$@"__; }
+[ian@pinguino ~]$ testfunc
+0 parameters
+
+[ian@pinguino ~]$ testfunc a b c
+3 parameters
+a b c
+[ian@pinguino ~]$ testfunc a "b c"
+2 parameters
+a b c
+
+
+Shell __脚本处理参数的方式与函数处理参数的方式相同__。实际上，您会经常发现，脚本往往由很多小型的函数装配而成。清单 2 给出了一个 shell 脚本 testfunc.sh，用于完成相同的简单任务，结果是要使用上面的一个输入来运行这个脚本。记住使用 chmod +x 将脚本标记为可执行。
+
+清单 2. Shell 脚本参数
+                
+[ian@pinguino ~]$ cat testfunc.sh
+#!/bin/bash
+echo "$# parameters"
+echo "$@";
+[ian@pinguino ~]$ ./testfunc.sh a "b c"
+2 parameters
+a b c
+
+在表 1 中您会发现，shell 可能将传递参数的列表引用为 $* 或 $@，而__是否将这些特殊位置变量用引号引用将影响它们的解释方式__。对于上面的函数而言，使用 $*、“$*”、$@ 或 “$@” 输出的结果差别不大，但是如果函数更复杂一些，就没有那么肯定了，当您希望分析参数或将一些参数传递给其他函数或脚本时，使用或不用引号的差别就很明显。清单 3 给出了一个函数，用于打印参数的数量然后根据这四种可选方案打印参数。清单 4 给出了使用中的函数。__IFS __默认变量使用一个空格作为它的第一个字符，因此清单 4 添加了一条竖线作为 IFS 变量的第一个字符，更加清楚地显示了在 “$*” 扩展中的何处使用这个字符。
+
+清单 3. 一个探究参数处理差别的函数
+                
+[ian@pinguino ~]$ type testfunc2
+testfunc2 is a function
+testfunc2 ()
+{
+    echo "$# parameters";
+    echo Using '$*';
+    for p in $*;
+    do
+        echo "[$p]";
+    done;
+    echo Using __'"$*"'__;
+    for p in "$*";
+    do
+        echo "[$p]";
+    done;
+    echo Using '$@';
+    for p in $@;
+    do
+        echo "[$p]";
+    done;
+    echo Using '"$@"';
+    for p in "$@";
+    do
+        echo "[$p]";
+    done
+}
+
+
+
+清单 4. 使用 testfunc2 打印参数信息
+                
+[ian@pinguino ~]$__ IFS="|${IFS}"__ testfunc2 abc "a bc" "1 2
+> 3"
+3 parameters
+Using $*
+[abc]
+[a]
+[bc]
+[1]
+[2]
+[3]
+Using "$*"
+__[abc|a bc|1 2__
+__3]__
+Using $@
+[abc]
+[a]
+[bc]
+[1]
+[2]
+[3]
+Using "$@"
+[abc]
+[a bc]
+[1 2
+3]
+
+
+仔细研究二者的差别，尤其要注意加引号的形式和包含空白（如空格字符和换行符）的参数。在一个 [] 字符对中，注意：“$*” 扩展实际上是一个词。
+
+===== 选项和 getopts =====
+
+传统的 UNIX 和 Linux 命令将一些传递的参数看作选项。过去，这些参数是单个的字符开关，与其他参数的区别在于拥有一个前导的连字符或负号。为方便起见，若干个选项可以合并到 ls -lrt 命令中，它提供了一个按修改时间（-t 选项）反向（-r 选项）排序的长（-l 选项）目录清单。
+
+您可以对 shell 脚本使用同样的技术，getopts 内置命令可以简化您的任务。要查看此命令的工作原理，可以考虑清单 5 所示的示例脚本 testopt.sh。
+
+清单 5. testopt.sh 脚本
+
+                
+#!/bin/bash
+echo "OPTIND starts at $OPTIND"
+while getopts ":pq:" optname
+  do
+    case "$optname" in
+      "p")
+        echo "Option $optname is specified"
+        ;;
+      "q")
+        echo "Option $optname has value $OPTARG"
+        ;;
+      "?")
+        echo "Unknown option $OPTARG"
+        ;;
+      ":")
+        echo "No argument value for option $OPTARG"
+        ;;
+      *)
+      # Should not occur
+        echo "Unknown error while processing options"
+        ;;
+    esac
+    echo "OPTIND is now $OPTIND"
+  done
+
+
+getopts 命令使用了两个预先确定的变量。OPTIND 变量开始被设为 1。之后它包含待处理的下一个参数的索引。如果找到一个选项，则 getopts 命令返回 true，因此常见的选项处理范例使用带 case 语句的 while 循环，本例中就是如此。getopts 的第一个参数是一列要识别的选项字母，在本例中是 p 和 r。选项字母后的冒号 (:) 表示该选项需要一个值；例如，-f 选项可能用于表示文件名，tar 命令中就是如此。此例中的前导冒号告诉 getopts 保持静默（silent）并抑制正常的错误消息，因为此脚本将提供它自己的错误处理。
+
+此例中的第二个参数 optname 是一个变量名，该变量将接收找到选项的名称。如果预期某个选项应该拥有一个值，而且目前存在该值，则会把该值放入 OPTARG 变量中。在静默模式下，可能出现以下两种错误情况。
+
+    如果发现不能识别的选项，则 optname 将包含一个 ? 而 OPTARG 将包含该未知选项。
+    如果发现一个选项需要值，但是找不到这个值，则 optname 将包含一个 : 而 OPTARG 将包含丢失参数的选项的名称。
+
+如果不是在静默模式，则这些错误将导致一条诊断错误消息而 OPTARG 不会被设置。脚本可能在 optname 中使用 ? 或 : 值来检测错误（也可能处理错误）。
+
+清单 6 给出了运行此简单脚本的两个示例。
+
+清单 6. 运行 testopt.sh 脚本
+
+                
+[ian@pinguino ~]$ ./testopt.sh -p -q
+OPTIND starts at 1
+Option p is specified
+OPTIND is now 2
+No argument value for option q
+OPTIND is now 3
+[ian@pinguino ~]$ ./testopt.sh -p -q -r -s tuv
+OPTIND starts at 1
+Option p is specified
+OPTIND is now 2
+Option q has value -r
+OPTIND is now 4
+Unknown option s
+OPTIND is now 5
+
+
+如果您需要这样做，可以传递一组参数给 getopts 计算。如果您在脚本中已经使用一组参数调用了 getopts，现在要用另一组参数来调用它，则需要亲自将 OPTIND 重置为 1。有关更多详细内容，请参阅 bash 手册或信息页面。
+
+
+
+参数扩展
+
+您已经了解了如何将参数传递给函数或脚本以及如何识别选项，现在开始处理选项和参数。如果在处理选项后可以知道留下了哪些参数，那应该是一种不错的事情。接下来您可能需要验证参数值，或者为丢失的参数指派默认值。本节将介绍一些 bash 中的参数扩展。当然，您仍然拥有 Linux 或 UNIX 命令（如 sed 或 awk）的全部功能来执行更复杂的工作，但是您也应该了解如何使用 shell 扩展。
+
+我们开始使用上述的选项分析和参数分析函数来构建一个脚本。清单 7 中给出了 testargs.sh 脚本。
+
+清单 7. testargs.sh 脚本
+
+                
+#!/bin/bash
+
+showopts () {
+  while getopts ":pq:" optname
+    do
+      case "$optname" in
+        "p")
+          echo "Option $optname is specified"
+          ;;
+        "q")
+          echo "Option $optname has value $OPTARG"
+          ;;
+        "?")
+          echo "Unknown option $OPTARG"
+          ;;
+        ":")
+          echo "No argument value for option $OPTARG"
+          ;;
+        *)
+        # Should not occur
+          echo "Unknown error while processing options"
+          ;;
+      esac
+    done
+  return $OPTIND
+}
+
+showargs () {
+  for p in "$@"
+    do
+      echo "[$p]"
+    done
+}
+
+optinfo=$(showopts "$@")
+argstart=$?
+arginfo=$(showargs "${@:$argstart}")
+echo "Arguments are:"
+echo "$arginfo"
+echo "Options are:"
+echo "$optinfo"
+
+
+尝试运行几次这个脚本，看看它如何运作，然后再对它进行详细考察。清单 8 给出了一些样例输出。
+
+清单 8. 运行 testargs.sh 脚本
+
+                
+[ian@pinguino ~]$ ./testargs.sh -p -q qoptval abc "def ghi"
+Arguments are:
+[abc]
+[def ghi]
+Options are:
+Option p is specified
+Option q has value qoptval
+[ian@pinguino ~]$ ./testargs.sh -q qoptval -p -r abc "def ghi"
+Arguments are:
+[abc]
+[def ghi]
+Options are:
+Option q has value qoptval
+Option p is specified
+Unknown option r
+[ian@pinguino ~]$ ./testargs.sh "def ghi"
+Arguments are:
+[def ghi]
+Options are:
+
+
+
+注意这些参数与选项是如何分开的。showopts 函数像以前一样分析选项，但是使用 return 语句将 OPTIND 变量的值返回给调用语句。调用处理将这个值指派给变量 argstart。然后使用这个值来选择原始参数的子集，原始参数包括那些没有被作为选项处理的参数。这个过程使用参数扩展
+${@:$argstart} 来完成。
+记住在这个表达式的两侧使用引号使参数和嵌入空格保持在一起，如清单 2 后部所示。
+
+如果您是使用脚本和函数的新手，请记住以下说明：
+
+    return 语句返回 showopts 函数的 exit 值，调用方使用 $? 来访问该函数。您也可以将函数的返回值和 test 或 while 之类的命令结合使用来控制分支和循环。
+    Bash 函数包括一些可选的词 —— “函数”，例如：
+    function showopts ()
+    这不是 POSIX 标准的一部分，不受 dash 之类的 shell 的支持，因此如果您要使用它，就不要将 shebang 行设为
+    #!/bin/sh
+    因为这会给您提供系统的默认 shell，而它可能不按您希望的方式运行。
+    函数输出，例如此处两个函数的 echo 语句所产生的输出，不会被打印出来，但是调用方可以访问该输出。如果没有将该输出指派给一个变量，或者没有在别的地方将它用作调用语句的一部分，则 shell 将会尝试执行输出而不是显示输出。
+
+子集和子字符串
+
+此扩展的一般形式为 ${PARAMETER:OFFSET:LENGTH}，其中的 LENGTH 参数是可选参数。因此，如果您只希望选择脚本参数的特定子集，则可以使用完整版本来指定要选择多少个参数。例如，${@:4:3} 引用从参数 4 开始的 3 个参数，即参数 4、5 和 6。您可以使用此扩展来选择除那些使用 $1 到 $9 可立即访问的参数之外的单个参数。${@:15:1} 是一种直接访问参数 15 的方法。
+
+您可以将此扩展与单个参数结合使用，也可以与 $* 或 $@ 表示的整个参数集结合使用。在本例中，参数被作为一个字符串及引用偏移量和长度的数字来处理。例如，如果变量 x 的值为 “some value”，则
+${x:3:5}
+的值就是 “e val”，如清单 9 所示。
+
+清单 9. shell 参数值的子字符串
+
+                
+[ian@pinguino ~]$ x="some value"
+[ian@pinguino ~]$ echo "${x:3:5}"
+e val
+
+
+长度
+
+您已经知道 $# 表示参数的数量，而 ${PARAMETER:OFFSET:LENGTH} 扩展适用于单个参数以及 $* 和 $@，因此，可以使用一个类似的结构体 ${#PARAMETER} 来确定单个参数的长度也就不足为奇了。清单 10 中所示的简单的 testlength 函数阐明了这一点。自己去尝试使用它吧。
+
+清单 10. 参数长度
+
+                
+[ian@pinguino ~]$ testlength () { for p in "$@"; do echo ${#p};done }
+[ian@pinguino ~]$ testlength 1 abc "def ghi"
+1
+3
+7
+
+
+模式匹配
+
+参数扩展还包括了一些模式匹配功能，该功能带有在文件名扩展或 globbing 中使用的通配符功能。注意：这不是 grep 使用的正则表达式匹配。
+表 2. Shell 扩展模式匹配 扩展	目的
+${PARAMETER#WORD}	shell 像文件名扩展中那样扩展 WORD，并从 PARAMETER 扩展后的值的开头删除最短的匹配模式（若存在匹配模式的话）。使用 ‘@’ 或 ‘$’ 即可删除列表中每个参数的模式。
+${PARAMETER##WORD}	导致从开头删除最长的匹配模式而不是最短的匹配模式。
+${PARAMETER%WORD}	shell 像文件名扩展中那样扩展 WORD，并从 PARAMETER 扩展后的值末尾删除最短的匹配模式（若存在匹配模式的话）。使用 ‘@’ 或 ‘$’ 即可删除列表中每个参数的模式。
+${PARAMETER%%WORD}	导致从末尾删除最长的匹配模式而不是最短的匹配模式。
+${PARAMETER/PATTERN/STRING}	shell 像文件名扩展中那样扩展 PATTERN，并替换 PARAMETER 扩展后的值中最长的匹配模式（若存在匹配模式的话）。为了在 PARAMETER 扩展后的值开头匹配模式，可以给 PATTERN 附上前缀 #，如果要在值末尾匹配模式，则附上前缀 %。如果 STRING 为空，则末尾的 / 可能被忽略，匹配将被删除。使用 ‘@’ 或 ‘$’ 即可对列表中的每个参数进行模式替换。
+${PARAMETER//PATTERN/STRING}	对所有的匹配（而不只是第一个匹配）执行替换。
+
+清单 11 给出了模式匹配扩展的一些基本用法。
+
+清单 11. 模式匹配示例
+
+                
+[ian@pinguino ~]$ x="a1 b1 c2 d2"
+[ian@pinguino ~]$ echo ${x#*1}
+b1 c2 d2
+[ian@pinguino ~]$ echo ${x##*1}
+c2 d2
+[ian@pinguino ~]$ echo ${x%1*}
+a1 b
+[ian@pinguino ~]$ echo ${x%%1*}
+a
+[ian@pinguino ~]$ echo ${x/1/3}
+a3 b1 c2 d2
+[ian@pinguino ~]$ echo ${x//1/3}
+a3 b3 c2 d2
+[ian@pinguino ~]$ echo ${x//?1/z3}
+z3 z3 c2 d2
+
+
+回页首
+
+整合
+
+在介绍其余要点之前，先来观察一下参数处理的实际示例。我构建了 developerWorks 作者程序包（有关 Linux 系统使用 bash 脚本的信息，请参阅 参考资料）。我们将所需的各种文件存储在 developerworks/library 库的子目录中。该库的最新发行版是 5.7 版，因此，模式文件位于 developerworks/library/schema/5.7 中、XSL 文件位于 developerworks/library/xsl/5.7 中，而示例模板则位于 developerworks/library/schema/5.7/templates 中。很明显，一个提供版本（本例中为 5.7）的参数即可满足脚本构建指向所有这些文件的路径的需要。因此脚本获取的 -v 参数必须有值。稍后对这个参数执行验证，方法是构建路径然后使用 [ -d "$pathname" ] 检查它是否存在。
+
+这种方法对产品构建而言非常有效，但是在开发期间，文件被存储在不同的目录中：
+
+    developerworks/library/schema/5.8/archive/test-5.8/merge-0430
+    developerworks/library/xsl/5.8/archive/test-5.8/merge-0430 和
+    developerworks/library/schema/5.8/archive/test-5.8/merge-0430/templates-0430
+
+这些目录中的当前版本为 5.8，0430 则表示最新测试版本的日期。
+
+为了处理这一情况，我添加了一个参数 -p，它包含了一段补充的路径信息 —archive/test-5.8/merge-0430。现在，我（或者别的什么人）可能忘记了前导斜杠或末尾斜杠，而一些 Windows 用户可能使用反斜杠而不是正斜杠，因此我决定在脚本中对此进行处理。另外，您还注意到指向模板目录的路径包含了两次日期，因此需要在运行时设法摘除日期 0430。
+
+清单 12 给出了用来处理两个参数和根据这些需求清理部分路径的代码。-v 选项的值存储在 ssversion 变量中，清理后的 -p 变量存储在 pathsuffix 中，而日期（连同前导连字符）则存储在 datesuffix 中。注释解释了每一步执行的操作。即使在这样一小段脚本中，您也可以找到一些参数扩展，包括长度、子字符串、模式匹配和模式替换。
+
+清单 12. 分析用于 developerWorks 作者程序包构建的参数
+
+                
+while getopts ":v:p:" optval "$@"
+  do
+    case $optval in
+      "v")
+        ssversion="$OPTARG"
+      ;;
+      "p")
+        # Convert any backslashes to forward slashes
+        pathsuffix="${OPTARG//\\//}"
+        # Ensure this is a leading / and no trailing one
+        [ ${pathsuffix:0:1} != "/" ] && pathsuffix="/$pathsuffix"
+        pathsuffix=${pathsuffix%/}
+        # Strip off the last hyphen and what follows
+        dateprefix=${pathsuffix%-*}
+        # Use the length of what remains to get the hyphen and what follows
+        [ "$dateprefix" != "$pathsuffix" ] && datesuffix="${pathsuffix:${#dateprefix}}"
+        ;;
+      *)
+        errormsg="Unknown parameter or option error with option - $OPTARG"
+        ;;
+    esac
+  done
+
+
+像 Linux 中的大多数内容一样，也许通常对编程而言，这并非解决此问题的惟一解决方案，但它确实展示了您了解的扩展的一种更实际的用法。
+
+回页首
+
+默认值
+
+在上一节中您已经了解了如何为 ssversion 或 pathsuffix 之类的变量指派选项值。在这种情况下，稍后将检测到空值，产品构建时会出现空路径后缀，因此这是可以接受的。如果需要为尚未指定的参数指派默认值怎么办？表 3 所示的 shell 扩展将帮助您完成这个任务。
+表 3. 默认值相关的 Shell 扩展 扩展	目的
+${PARAMETER:-WORD}	如果 PARAMETER 没有设置或者为空，则 shell 扩展 WORD 并替换结果。PARAMETER 的值没有更改。
+`${PARAMETER:=WORD}	如果 PARAMETER 没有设置或者为空，则 shell 扩展 WORD 并将结果指派给 PARAMETER。这个值然后被替换。不能用这种方式指派位置参数或特殊参数的值。
+${PARAMETER:?WORD}	如果 PARAMETER 没有设置或者为空，shell 扩展 WORD 并将结果写入标准错误中。如果没有 WORD 则写入一条消息。如果 shell 不是交互式的，则表示存在这个扩展。
+${PARAMETER:+WORD}	如果 PARAMETER 没有设置或者为空，则不作替换。否则 shell 扩展 WORD 并替换结果。
+
+清单 13 演示了这些扩展以及它们之间的区别。
+
+清单 13. 替换空变量或未设置的变量。
+
+                
+[ian@pinguino ~]$ unset x;y="abc def"; echo "/${x:-'XYZ'}/${y:-'XYZ'}/$x/$y/"
+/'XYZ'/abc def//abc def/
+[ian@pinguino ~]$ unset x;y="abc def"; echo "/${x:='XYZ'}/${y:='XYZ'}/$x/$y/"
+/'XYZ'/abc def/'XYZ'/abc def/
+[[ian@pinguino ~]$ ( unset x;y="abc def"; echo "/${x:?'XYZ'}/${y:?'XYZ'}/$x/$y/" )\
+>  >so.txt 2>se.txt
+[ian@pinguino ~]$ cat so.txt
+[ian@pinguino ~]$ cat se.txt
+-bash: x: XYZ
+[[ian@pinguino ~]$ unset x;y="abc def"; echo "/${x:+'XYZ'}/${y:+'XYZ'}/$x/$y/"
+//'XYZ'//abc def/
+
+
+回页首
+
+传递参数
+
+关于参数传递有一些微妙之处，如果不小心，可能会犯错误。您已经了解了使用引号的重要性以及引号对使用 $* 和 $@ 的影响，但是考虑以下的例子。假设您想要一个脚本或函数来操作当前工作目录中的所有文件或目录。为了说明这个例子，考虑清单 14 所示的 ll-1.sh 和 ll-2.sh 脚本。
+
+清单 14. 两个示例脚本
+
+                
+#!/bin/bash
+# ll-1.sh
+for f in "$@"
+  do
+    ll-2.sh "$f"
+  done
+
+#!/bin/bash
+ls -l "$@"
+
+
+脚本 ll-1.sh 只是将它的每个参数依次传递给脚本 ll-2.sh 而 ll-2.sh 执行传递的参数的一个长目录清单。我的测试目录包含了两个空文件 “file1” 和 “file 2”。清单 15 显示了脚本的输出。
+
+清单 15. 运行脚本 - 1
+
+                
+[ian@pinguino test]$ ll-1.sh *
+-rw-rw-r-- 1 ian ian 0 May 16 15:15 file1
+-rw-rw-r-- 1 ian ian 0 May 16 15:15 file 2
+
+
+到目前为止，一切进展得还不错。但是如果您忘记使用 * 参数，则脚本不会执行任何操作。它不会像 ls 命令那样自动执行当前工作目录的内容。可以做一个简单的修正，当没有给 ll1-sh 提供数据时为 ll-1.sh 中的这个条件添加检查并使用 ls 命令的输出来生成 ll-2.sh 的输入。清单 16 给出了一个可能的解决方案。
+
+清单 16. 修正后的 ll-1.sh
+
+                
+#!/bin/bash
+# ll-1.sh - revision 1
+for f in "$@"
+  do
+    ll-2.sh "$f"
+  done
+[ $# -eq 0 ] && for f in "$(ls)"
+  do
+    ll-2.sh "$f"
+  done
+
+
+注意：我们小心地将 ls 命令的结果用引号引用起来，确保可以正确地处理 “file 2”。清单 17 给出了运行带 * 和不带 * 的新 ll-1.sh 的结果。
+
+清单 17. 运行脚本 - 2
+
+                
+[ian@pinguino test]$ ll-1.sh *
+-rw-rw-r-- 1 ian ian 0 May 16 15:15 file1
+-rw-rw-r-- 1 ian ian 0 May 16 15:15 file 2
+[ian@pinguino test]$ ll-1.sh
+ls: file1
+file 2: No such file or directory
+
+
+很奇怪吧？当您传递参数时，尤其当这些参数是命令的输出时，处理起来可能需要些技巧。错误消息提示文件名被换行符分隔，这就给我们提供了线索。有很多种方法可以处理这个问题，但是有一种简单的方法就是，使用清单 18 所示的内置 read。自己可以试用一下。
+
+清单 17. 运行脚本 - 2
+
+                
+#!/bin/bash
+# ll-1.sh - revision 2
+for f in "$@"
+  do
+    ll-2.sh "$f"
+  done
+[ $# -eq 0 ] && ls | while read f
+  do
+    ll-2.sh "$f"
+  done
+
+
+这个例子的目的就是要说明：注意细节并使用一些不常见的输入来进行测试可以使脚本更加可靠。祝您编程顺利！
+
+回页首
+
+结束语
+
+如果您想了解有关 Linux 中 bash 脚本编程的更多内容，请阅读教程 “LPI 102 考试准备，主题 109: Shell、脚本、编程和编译”，本文中的某些内容就是摘录自该教程。要了解有关一些其他可用来分析文本（如参数值）的命令，请参阅教程 “LPI 101 考试准备: GNU 和 UNIX 命令”，您可以找到下面的其他 参考资料。最后，别忘了 对本文进行评价。
+
+参考资料
+
+学习
+
+    您可以参阅本文在 developerWorks 全球站点上的 英文原文。
+
+    请参阅教程 “ "LPI 102 考试准备，主题 109: Shell、脚本、编程和编译”（developerWorks，2007 年 1 月）获得在 Linux 上进行 Bash shell 定制和脚本编程的更多信息。它是大型 LPI 考试准备教程系列 的一部分，介绍了 Linux 基础原理以及通过系统管理员认证所需的知识。
+
+    请阅读 developerWorks 的文章了解使用 Bash 的其他方式：
+        Bash 实例，第 1 部分：Bourne again shell (bash) 基本编程
+        Bash 实例，第 2 部分：更多的 bash 基本编程
+        Bash 实例，第 3 部分：探讨 ebuild 系统
+        系统管理员工具包：充分利用 bash
+        在 Bash shell 中工作
+
+    “Shell Command Language” 定义了开放组织和 IEEE 规定的 shell 命令语言。
+
+    可以在 developerWorks developerWorks Linux 专区 中找到更多面向 Linux 开发人员的资源，包括上个月 读者最喜欢的 Linux 文章和教程。
+
+    随时关注 developerWorks 技术活动和网络广播。
+
+获得产品和技术
+
+    使用可直接从 developerWorks 下载的 IBM 试用软件 构建您的下一个 Linux 开发项目。
+
+讨论
+
+    参与论坛讨论。
+
+    通过新的 developerWorks 空间 中的开发者博客、论坛、网络广播和社区主题参与 developerWorks 社区。
+
+关于作者
+Ian Shields
+
+Ian Shields 为 developerWorks Linux 专区的许多 Linux 项目工作。他是 IBM 北卡罗莱那州 Research Triangle Park 的一名高级程序员。他于 1973 年作为一名系统工程师加入 IBM 位于澳大利亚堪培拉的子公司。之后，在加拿大蒙特利尔和北卡罗莱那州 RTP 从事通信系统和普及运算。他拥有多项专利并发表了若干篇论文。他毕业于 Australian National University，本科学位是纯数学和哲学。他拥有北卡罗来纳州立大学的计算机硕士和博士学位。
+
+为本文评分
+
+平均分 4 星 共 9 个评分 平均分 (9个评分)
+1 星1 星1 星
+2 星2 星2 星
+3 星3 星3 星
+4 星4 星4 星
+5 星5 星5 星
+
+评论
+
+添加评论:
+
+请 登录 或 注册 后发表评论。
+
+注意：评论中不支持 HTML 语法
+
+
+有新评论时提醒我剩余 1000 字符
+
+
+
+
+快来添加第一条评论
+
+回页首
+内容
+
+    传递的参数
+    选项和 getopts
+    参数扩展
+    整合
+    默认值
+    传递参数
+    结束语
+    参考资料
+    关于作者
+    建议
+
+标签
+Help
+使用搜索文本框在 My developerWorks 中查找包含该标签的所有内容。热门标签 显示了特定专区最受欢迎的标签（例如 Java technology，Linux，WebSphere）。我的标签 显示了特定专区您标记的标签（例如 Java technology，Linux，WebSphere）。
+
+搜索所有标签  
+
+热门文章标签 | 
+我的文章标签跳转到标签列表
+热门标签
+
+    1 (6)  
+    3 (5)  
+    awk (6)  
+    bash (8)  
+    boot (5)  
+    buffer (5)  
+    c (30)  
+    eclipse (24)  
+    elf (5)  
+    emacs (5)  
+    file_systems (13)  
+    ftp (7)  
+    hadoop (23)  
+    kernel (19)  
+    klx.marks (8)  
+    kvm (9)  
+    lamp (8)  
+    linux (347)  
+    linux_kernel (6)  
+    linux_on_powe... (13)  
+    linux_virtuali... (12)  
+    linux_入门 (11)  
+    linux环境进程间通信 (8)  
+    linux系统调用 (5)  
+    lvm (6)  
+    lvs (5)  
+    makefile (6)  
+    network (7)  
+    on_demand_busi... (7)  
+    perl (21)  
+    php (7)  
+    php_(hypertext... (10)  
+    posix (9)  
+    python (58)  
+    resource_virt... (18)  
+    rpm (7)  
+    shell (21)  
+    shells (11)  
+    socket (15)  
+    system_p (7)  
+    tools (6)  
+    vim (18)  
+    windows (6)  
+    安全 (27)  
+    安装 (14)  
+    编程 (8)  
+    编码 (10)  
+    部分 (6)  
+    存储 (16)  
+    代码库 (12)  
+    调试 (13)  
+    多线程 (7)  
+    发行版 (6)  
+    负载均衡 (8)  
+    管理 (90)  
+    集群 (28)  
+    脚本编程 (13)  
+    开发工具 (37)  
+    开放源码 (13)  
+    内核 (93)  
+    配置 (19)  
+    迁移 (10)  
+    驱动程序 (6)  
+    认证 (7)  
+    使用 (8)  
+    数据库和数据管理 (14)  
+    通用编程 (9)  
+    图形 (12)  
+    网络 (16)  
+    网络编程 (6)  
+    文档和文本管理 (6)  
+    系统脚本 (10)  
+    线程 (9)  
+    性能 (33)  
+    学习 (8)  
+    移动和嵌入式系统 (21)  
+    应用开发 (19)  
+    硬件平台 (52)  
+    云计算 (13)  
+    桌面环境 (22)  
+
+热门标签结束
+我的标签
+要访问我的标签，请登录
+
+查看热门标签
+
+我的标签结束
+
+更多更少
+
+    1 (6)  
+    3 (5)  
+    awk (6)  
+    bash (8)  
+    boot (5)  
+    buffer (5)  
+    c (30)  
+    eclipse (24)  
+    elf (5)  
+    emacs (5)  
+    file_systems (13)  
+    ftp (7)  
+    hadoop (23)  
+    kernel (19)  
+    klx.marks (8)  
+    kvm (9)  
+    lamp (8)  
+    linux (347)  
+    linux_kernel (6)  
+    linux_on_powe... (13)  
+    linux_virtuali... (12)  
+    linux_入门 (11)  
+    linux环境进程间通信 (8)  
+    linux系统调用 (5)  
+    lvm (6)  
+    lvs (5)  
+    makefile (6)  
+    network (7)  
+    on_demand_busi... (7)  
+    perl (21)  
+    php (7)  
+    php_(hypertext... (10)  
+    posix (9)  
+    python (58)  
+    resource_virt... (18)  
+    rpm (7)  
+    shell (21)  
+    shells (11)  
+    socket (15)  
+    system_p (7)  
+    tools (6)  
+    vim (18)  
+    windows (6)  
+    安全 (27)  
+    安装 (14)  
+    编程 (8)  
+    编码 (10)  
+    部分 (6)  
+    存储 (16)  
+    代码库 (12)  
+    调试 (13)  
+    多线程 (7)  
+    发行版 (6)  
+    负载均衡 (8)  
+    管理 (90)  
+    集群 (28)  
+    脚本编程 (13)  
+    开发工具 (37)  
+    开放源码 (13)  
+    内核 (93)  
+    配置 (19)  
+    迁移 (10)  
+    驱动程序 (6)  
+    认证 (7)  
+    使用 (8)  
+    数据库和数据管理 (14)  
+    通用编程 (9)  
+    图形 (12)  
+    网络 (16)  
+    网络编程 (6)  
+    文档和文本管理 (6)  
+    系统脚本 (10)  
+    线程 (9)  
+    性能 (33)  
+    学习 (8)  
+    移动和嵌入式系统 (21)  
+    应用开发 (19)  
+    硬件平台 (52)  
+    云计算 (13)  
+    桌面环境 (22)  
+
+查看方式云 | 列表

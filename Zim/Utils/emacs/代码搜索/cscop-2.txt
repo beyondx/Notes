@@ -1,0 +1,47 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-18T09:29:00+08:00
+
+====== cscop-2 ======
+Created Monday 18 April 2011
+
+cscope只针对C语言。
+在.emacs里加入这一句：
+
+(require 'xcscope)
+
+在工程的目录里设置cscope的工作目录，并在该目录下生成cscope.file和scope.out文件：
+
+M-x cscope-set-initial-directory
+M-x cscope-create-list-of-files-to-index
+
+好了，如果要找一个符号的定义，那么就执行：
+
+M-x cscope-find-global-definition
+
+找调用某个函数的函数，执行：
+
+M-x cscope-find-functions-calling-this-function
+
+生成 **project 文件列表**，可以用如下命令完成。例如kernel代码,找出所以 .h, .c, .S文件
+　　find -type f | grep -E '\.[chS]$' > cscope.files
+生成 cscope 索引文件， -k 专门用于生成 linux kernel 源码的索引
+　　cscope -b -k
+
+cscope是我感觉比较合适的一个工具。它其实是一个独立的软件，完全可以脱离vi和emacs使用。但是结合emacs的强大功能，cscope就显得更加方便了。GNU Emacs默认自带cscope的支持。在使用之前，cscope也需要对代码进行索引。在emacs中可以这样做：
+
+C-c s a             设定初始化的目录，一般是你代码的根目录
+C-s s I             对目录中的相关文件建立列表并进行索引
+
+建完索引之后，你就可以用cscope在代码里游荡了。常用的一些命令如下：
+C-c s s             查找符号
+C-c s g             寻找该符号的全局定义
+C-c s c             看看指定函数被哪些函数所调用
+C-c s C             看看指定函数调用了哪些函数
+C-c s e             寻找正则表达式
+C-c s f             寻找该符号定义所在的文件
+C-c s i             看看指定的文件被哪些文件include
+C-c s C-h 	查看所有的 cscope 相关的按键
+
+
+

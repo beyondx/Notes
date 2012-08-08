@@ -1,0 +1,9 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-16T22:30:07+08:00
+
+====== firefox ======
+Created Monday 16 May 2011
+
+**my Firefox Sync Key:**
+w-z3dgt-jd9u2-k2es8-88vcq-ievme

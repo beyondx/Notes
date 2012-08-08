@@ -1,0 +1,140 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-22T10:28:39+08:00
+
+====== Bash and the process tree ======
+Created Thursday 22 December 2011
+http://wiki.bash-hackers.org/scripting/processtree
+
+The processes in UNIX® are - unlike in other systems you may have seen - __organized in a tre__e. Every process has a parent process that started it or is responsible for it. Also, every process has an own __context memory__ (I don't mean the memory where the process stores its data, I mean memory where data is stored that doesn't directly belong to the process, but is needed to run the process): __The environment__.
+
+To make it really clear I want to repeat it:__ Every process has its own environment space__.
+
+The environment stores, beside other stuff, data that's useful for us: **The environment variables**. These are strings in the common NAME=VALUE form, but they are not related to shell variables. A variable named LANG, for example, is used by every program that looks it up in its environment to determinate the current locale.
+
+Attention: A variable that is set, like with MYVAR=Hello, is **not automatically** part of the environment. You need to put it into the environment with the __export utility__:
+
+**export MYVAR**
+
+Common system variables like PATH or HOME usually already are part of the environment (as set by login scripts or programs).
+
+===== Executing programs =====
+
+All the diagrams of the process tree use names like "xterm" or "bash", but that's just for you to understand what's going on, it doesn't mean it really runs processes with these names.
+
+Let's take a short look what happens when you "execute a program" from the Bash prompt, a program like "ls":
+
+$ ls
+
+Bash will now perform two steps:
+
+* It will make a** copy** of itself
+* The copy will **replace** itself with the "ls" program
+
+The copy of Bash will __inherit the environment__ from the "main Bash" process: All environment variables will also be copied to the new process. This step is called** forking**.
+
+For a short moment, you have a process tree that might look like this...
+
+xterm ----- bash ----- bash(copy)
+
+...and after the "second Bash" (the copy) replaced itself by the ls-program (it execs it), it might look like
+
+xterm ----- bash ----- ls
+
+If everything was okay, the two steps resulted in one program being run. The copy of the environment from the first step (forking) results in the environment for the final running program (ls in this case).
+
+What is so important about it? Well, in our example, __whatever the program ls will do inside its own environment, it can't have any effect to the environment of its parent process__ (bash here). The environment was copied when ls was executed. That's a one-way! Nothing will "copy it back" when ls terminates!
+
+===== Bash playing with pipes =====
+
+Pipes are a very powerful tool. **You can connect the out- and inputstreams of two separate programs, and thus create a new utility - or better: a new functionality**. Well, we're not here to explain piping, we just want to see how they look in the process tree. Again, we execute some commands - ls and grep:
+
+$ ls | grep myfile
+
+It results in a tree like this:
+
+	                    +-- ls
+xterm ----- bash --|
+	                    +-- grep
+
+Just to be boring again: ls can't influence the environment of grep, grep can't influence the environment of ls, neither grep nor ls can influence the environment of bash.
+
+===== How is that related to shell programming?!? =====
+
+Well, imagine some Bash-code that reads data from a pipe. Let's take the internal command read, which reads data from stdin and puts it into a variable. We run it in a loop here - we count input lines...:
+
+counter=0
+cat /etc/passwd | while read; do __((counter++))__; done  
+echo "Lines: $counter"
+#**注意**：counter变量并没有被执行while的shell继承，对于$(())、(())中的变量__即使没定义__，其默认值为0或空NULL
+
+What? __It's 0__? Yes! The number of lines might not be 0, but the variable $counter still is 0. Why? Remember the diagram from above? I'll rewrite it a bit:
+
+                  	  +-- cat /etc/passwd
+xterm ----- bash --|
+	                    +-- bash (while read; do ((counter++)); done)
+
+See the relation? The forked Bash will count the lines like a charm. It will also set the variable counter like you wanted it. But if everything ends, **this extra process will be terminated - your variable is gone** - R.I.P. You see a 0 because in the main shell it always was 0 and never something else!
+
+Aha! And now, how to count those lines? Easy: __Avoid the subshell__. How you do it in detail doesn't matter, the important thing is that the shell that sets the counter must be the "main shell". For example, do it like this:
+
+counter=0
+while read; do ((counter++)); done __</etc/passwd__
+echo "Lines: $counter"
+#while语句块中的命令可以__作为一个整体__，其输入、输出可以被重定向(对于__管道线连接起来的各命令__也类似，它们也可以作为一个整体被重定向)。
+
+It's nearly self-explaining. The while-loop runs in the current shell, the counter is increased in the current shell, everything vital happens in the current shell, also the read-command sets the variable REPLY (the default if nothing is given), though we don't use it here. This small script should work.
+
+===== Actions that create a subshell =====
+
+Bash creates subshells or subprocesses on various actions it performs:
+
+=== • Executing commands ===
+
+As shown above, Bash will create subprocesses everytime it executes commands. That's nothing new.
+
+But imagine your command actually is a script that sets variables you want to use in your main script. __This won't work__.
+
+For exactly this purpose, there's the **source** command (also: the dot **.** command). It doesn't really actually execute the script like it would execute any other program - it's more like **including the other script's source code into the current shell**:
+
+**source** ./myvariables.sh
+# equivalent to:
+. ./myvariables.sh
+
+__shell在执行命令或脚本文件前，会fork一个sub shell来运行它，然后该sub shell再对脚本中的每一个命令fork shell来运行。__
+
+								                        ........
+												  |---bash(exec commandi)
+xterm----->bash----->bash(脚本对应的main shell)----->bash(exec commandj)
+										              |---bash(exec commandk)
+												 .......
+
+
+===== Pipes =====
+
+The last big section was about pipes, so no example here...
+
+===== Explicit subshell =====
+
+If you __group commands by enclosing them in parentheses__, these commands are run inside a subshell:
+
+(echo PASSWD follows; cat /etc/passwd; echo GROUP follows; cat /etc/group) >output.txt
+默认情况下：命令行中的每个命令都有一个不同的子shell来执行如：
+# date; w; uptime
+以上三个命令由三个不同的子shell来运行，而
+#(date; w; uptime)
+则由**一个shell**来运行。
+
+=== Command substitution ===
+
+With command substitution you** re-use the output of another command as text in your commandline**, for example to set a variable. This other command is run in a subshell:
+
+number_of_users=$(cat /etc/passwd | wc -l)
+
+Note that, in this example, you create a second subshell by using a pipe in the command substitution (just as sidenote):
+
+                                            +-- cat /etc/passwd
+xterm ----- bash ----- bash (cmd. subst.) --|
+                                            +-- wc -l
+
+FIXME to be continued

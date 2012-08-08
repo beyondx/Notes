@@ -1,0 +1,173 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-23T18:04:14+08:00
+
+====== 关于进程的休眠和唤醒 ======
+Created Tuesday 23 August 2011
+http://blogold.chinaunix.net/u2/79914/showart_1911762.html
+
+LKD中的讲解: 休眠(被阻塞, 注意不是被停止)的进程处于一个特殊的不可执行状态。
+
+这点非常重要，否则，没有这种特殊状态的话，调度程序就可能选出一个本不愿意被执行的进程，更糟糕的是，休眠就必须以__轮询__的方式实现了。进程休眠有各种原因，但肯定都是为了__等待一些事件__。事件可能是一段时间、从文件I/O读更多数据，或者是某个硬件事件。一个进程还有可能在尝试获得一个已经占用的内核信号量时被迫进入休眠。休眠的一个常见原因就是文件I/O -- 如进程对一个文件执行了read()操作，而这需要从磁盘里读取。还有，进程在获取键盘输入的时候也需要等待。
+
+无论哪种情况，__内核的操作__都相同:进程把它__自己__标记成休眠状态，把自己从可执行队列移出，放入等待队列，然后调用schedule()选择和执行一个其他进程。唤醒的进程刚好相反:进程被设置为可执行状态，然后再从等待队列中移到可执行队列。
+
+休眠有两种相关的进程状态:TASK_INTERRUPTIBLE and TASK_UNINTERRUPTIBLE。它们的惟一区别是处于TASK_UNINTERRUPTIBLE状态的进程会忽略信号，而处于 TASK_INTERRUPTIBLE状态的进程如果收到信号__会被唤醒并处理信号__(然后再次进入等待睡眠状态)。两种状态的进程位于同一个等待队列上，等待某些事件，不能够运行。
+   
+休眠通过__等待队列__进行处理。等待队列是由等待某些事件发生的进程组成的简单__链表__。(注意，等待队列是__与具体事件相关__的，不同事件可以定义不同的等待队列)  内核用wake_queue_head_t来代表等待队列。等待队列可以通过DECLARE_WAITQUEUE()静态创建，也可以有init_waitqueue_head()动态创建。进程把自己放入等待队列中并设置成不可执行状态(这里的放入后休眠以及唤醒操作都是系统调用的代码中实现，在__内核空间__中执行的)。等与等待队列相关的事件发生的时候，队列上的__所有进程__会被唤醒。为了避免产生竞争条件，休眠和唤醒的实现不能有纰漏。
+    
+针对休眠，以前曾经使用过一些简单的接口。但那些接口会带来__竞争条件__；有可能导致在判断条件变为真后进程却开始了休眠，那样就会使进程无限期地休眠下去。所以，在内核中进行休眠的推荐操作相对复杂一些.
+
+
+进程通过执行下面几步将自己加入到一个等待队列中：
+---------------------------------------------------------
+
+===== 1. =====
+ 调用DECLARE_WAITQUEUE()为当前进程(处于内核中的进程上下文)创建一个等待__队列的项__
+|------------------------------------------------|
+|/* 'q' is the wait queue we wish to sleep on */ |
+|DECLARE_WAITQUEUE(wait, current);               |
+|------------------------------------------------|
+注意：内核可以看作一个有很多函数定义的、运行与一个单独的地址空间的__大过程__（模块），q是调用这个系统调用的__所有__进程共享的外部(或全局)变量。
+
+===== 2.  =====
+调用add_wait_queue()把自己加入到队列中。该队列在进程等待的条件满足时唤醒它。当然我们必须在__其他地方__撰写相关代码，在事件发生时，对等待队列执行wake_up()操作
+|-----------------------------|
+|add_wait_queue(q, &wait);    |
+|-----------------------------|
+
+while (!condition) {     /* condition is the event that we are waiting for */
+
+===== 3.  =====
+将进程的状态变更为TASK_INTERRUPTIBLE or TASK_UNINTERRUPTIBLE
+|----------------------------------------------|
+|       /* or TASK_UNINTERRUPTIBLE */          |
+|       set_current_state(TASK_INTERRUPTIBLE); |
+|----------------------------------------------|
+
+===== 4. =====
+ 如果状态被设置为TASK_INTERRUPTIBLE，则信号可以唤醒(由发送信号的系统调用实现)进程(信号和事件都可以唤醒该进程)。这就是所谓的__伪唤醒__(唤醒不是因为事件的发生，而是由信号唤醒的)，因此检查并处理信号。
+
+注: 信号和等待事件都可以唤醒处于TASK_INTERRUPTIBLE状态的进程，信号唤醒该进程为伪唤醒；该进程被唤醒后，如果(!condition)结果为真，则说明该进程不是由等待事件唤醒的，而是由信号唤醒的。所以该进程处理信号后将__再次让出__CPU控制权继续休眠。
+|----------------------------------------------|
+|       if (signal_pending(current))           |
+|               /* handle signal */            |
+|----------------------------------------------|
+
+===== 5.  =====
+Tests whether the condition is true. If it is, there is no need to sleep. If it is not true, the task calls schedule().
+本进程在此处交出CPU控制权，如果该进程再次被唤醒，将从while循环__结尾__处继续执行(因为上次该进程就是从这里调度出去的)，因而将回到while循环的开始处while (!condition)，进测等待事件是否真正发生.
+|----------------------------------------------|
+|       schedule();                            |
+|----------------------------------------------|
+}
+
+===== 6. =====
+ Now that the condition is true, the task can set itself to TASK_RUNNING and remove itself from the wait queue via remove_wait_queue().
+|----------------------------------------------|
+|set_current_state(TASK_RUNNING);              |
+|remove_wait_queue(q, &wait);                  |
+|----------------------------------------------|
+
+如果在进程开始睡眠之前条件就已经达成了，那么循环会退出，进程不会存在错误的进入休眠的倾向(但不管怎样，开始时进程都需要把自己加入到等待队列中)。需要注意的是，内核代码在循环体内常常需要完成一些其他的任务，比如，它可能在调用schedule()之前需要释放掉锁，而在这以后再重新获取它们，或者响应其他的事件。
+ 
+
+
+ 唤醒操作通过函数wake_up()进行，它会唤醒__指定的等待队列上的所有进程__。它调用函数try_to_wake_up()，该函数负责将进程设置为TASK_RUNNING状态，调用activate_task()将此进程放入可执行队列，如果被唤醒的进程优先级比当前正在运行的进程的优先级高，还有设置need_resched标志。通常__哪段代码促使等待条件达成，它就负责随后调用wake_up()函数__。(如设备驱动程序)
+ 
+关于休眠有一点需要注意，存在虚假的唤醒。有时候进程被唤醒并不是因为它所等待的条件达成了(而是接受到了信号)，所以才需要用一个__循环处理__来保证它等待的条件真正达成。
+
+wait_event_interruptible  的实现
+
+> include/linux/wait.h:
+> 
+> #define wait_event_interruptible(wq, condition)         
+>         \
+> ({                                 
+>     \
+>     int __ret = 0;                         
+>     \
+>     if (!(condition))                     
+>     \
+>         __wait_event_interruptible(wq, condition, 
+> __ret);    \
+>     __ret;                             
+>     \
+> })
+> 
+
+
+> #define __wait_event_interruptible(wq, condition, ret)     
+>         \
+> do {                                 
+>     \
+>     DEFINE_WAIT(__wait);                     
+>     \
+>                                  
+>     \
+>     for (;;) {                         
+>     \
+>         prepare_to_wait(&wq, &__wait, 
+> TASK_INTERRUPTIBLE);    \
+>         if (condition)                     
+>     \
+>             break;                     
+>     \
+>         if (!signal_pending(current)) {             
+>     \
+>             schedule();                 
+>     \
+>             continue;                 
+>     \
+>         }                         
+>     \
+>         ret = -__ERESTARTSYS__;                 
+>     \
+>         break;                         
+>     \
+>     }                             
+>     \
+>     finish_wait(&wq, &__wait);                 
+>     \
+> } while (0)
+> 
+
+
+
+> kernel/wait.c:
+> 
+> void fastcall
+> prepare_to_wait(wait_queue_head_t *q, wait_queue_t *wait, int state)
+> {
+>     unsigned long flags;
+> 
+>     wait->flags &= ~WQ_FLAG_EXCLUSIVE;
+>     spin_lock_irqsave(&q->lock, flags);
+>     if (list_empty(&wait->task_list))
+>         __add_wait_queue(q, wait);
+>     /*
+>      * don't alter the task state if this is just going to
+>      * queue an async wait queue callback
+>      */
+>     if (is_sync_wait(wait))
+>         set_current_state(state);
+>     spin_unlock_irqrestore(&q->lock, flags);
+> }
+
+等待队列中的进程有两种，一种是exclusive的进程，另一种是nonexclusive的进程。所谓exclusive是指唤醒的进程等待的资源是互斥的，每次只唤醒一个（唤醒多个也可以，不过最后还是只有一个会被唤醒，其余的又被重新添加到等待队列中，这样效率会大打折扣）。一般，等待函数会把进程设为nonexclusive和uninterruptible，带“interruptible”的会专门指定状态为interruptible；而带“timeout”的会在超时后退出，因为它会调用schedul
+e_timeout()；带“exclusive”的则会把进程设为exclusive。
+
+总之，wait_event_interruptible是把进程状态设为TASK_INTERRUPTIBLE，nonexclusive，等待某事件的来临。
+
+举例：
+假设A进程占有一个系统共享资源,它在对共享资源进行操作之前,会先将共享资源上锁.但A进程一直都有对此共享资源的控制权,直到对此共享资源的操作结束为止.
+
+在A进程的代码操作共享资源的过程中,由于__时钟中断__或是其它原因,sched()执行,A进程被切换出去,sched()调度B进程执行,由于共享资源已上锁,故而B进程只能休眠,B进程休眠时再次执行sched()调度程序（注意B休眠和执行调度程序其实都是由__加锁系统调用__执行的）.
+
+经过一段时间后,A进程再次执行,由于A进程占有共享资源,故而A进程往下执行,当A 释放资源时，__释放锁的系统调用__对相应锁等待队列上的所有进程执行wake_up(),经过唤醒,其它进程也就拥有占用共享资源的权利.
+
+结论:
+1、任何一个进程先占有共享资源,对共享资源上锁，直到对此共享资源操作完成后才会释放此共享资源。没有操作完成时，就一直占有此共享资源。
+2、一个共享资源被先来的进程先占用了，后来的进程若要访问它，只能休眠等待。
+3、先占有共享资源的进程操作完成后解锁共享资源，最先执行唤醒（wake_up()），让后来的进程拥有机会占用共享资源。
+4、对于共享资源的操作，各个进程是__互斥__的。

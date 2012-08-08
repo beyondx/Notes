@@ -1,0 +1,221 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-12T18:26:50+08:00
+
+====== SSH and SSH详解 ======
+Created Wednesday 12 October 2011
+http://www.ws-ping.com/support/ws_ftp/guide/wsftpug76/08sslutil.html
+Chapter 8: Security
+
+This chapter describes the two security protocols found in WS_FTP Pro: SSL and SSH. It also explains how to configure WS_FTP Pro to use these protocols to make secure connections.
+
+===== SSL =====
+
+SSL (Secure Socket Layer) is a protocol for encrypting and decrypting data sent across direct internet connections. When a client makes an SSL connection with a server, all data sent to and from that server is encoded with a complex mathematical algorithm that makes it extremely difficult to decode anything that is intercepted.
+
+The following is a step by step illustration of how SSL works.
+
+**Step 1. **The client makes the initial connection with the server and requests that an SSL connection be made. 
+客户端发起SSL连接请求。
+
+**Step 2.** If the server is properly configured, the server will send to the client its certificate and public key.
+ 服务器支持SSL的话就返回自己的证书(证书里包含有自己的公钥)。
+
+**Step 3. **The client compares the certificate from the server to a **trusted authorities database**. If the certificate is listed there, it means the client trusts the server and will move to step 4. If the certificate is not listed there, the user must **add the certificate** to the trusted authorities database before going to step 4. 
+客户端会对服务器发过来的证书进行比较验证(一般是将签名该证书的根证书与本地信任的根证书列表进行查找比较)，若失败，则客户端必须将该证书添加到本地数据库后才能继续与服务器建立连接。
+
+**Step 4. **The client uses that public key to encrypt a session key and sends the session key to the server. If the server asks for the client's certificate in Step 2, the client must send it at this point.
+客户端用收到证书里的公钥加密一个标识这次连接会话的key然后将其发送给服务器。如果服务器要求验证客户端的证书，这时客户端也必须同时将自己的证书发给服务器。
+
+**Step 5. **If the server is **set up** to receive certificates, it compares the certificate it received with those listed in its trusted authorities database and either accepts or rejects the connection.
+服务器同样对客户端发过来的证书进行比较验证。
+
+If the connection is rejected, a **fail message** is sent to the client. If the connection is accepted, or if the server is not set up to receive certificates, it decodes the session key from the client with its own private key and sends a success message back to the client, thereby opening a secure data channel.
+如果服务器接受连接，会用自己的私钥对客户端发过来的session key进行解密，如果成功则发送一条消息给客户端，安全通道正式建立。
+
+===== PS： =====
+**SSL一般用于client-server环境，而且对服务器的认证是必须的，但是对客户端的认证是可选的，这是因为一般是对客户端发往服务器的信息(如帐号、密码等)进行加密。**
+
+The key to understanding how SSL works is in understanding the parts that make SSL itself work. The following is a list of these parts and the role each plays.
+
+**Client.** In this case, the client is WS_FTP Pro.
+
+**Certificate.** The Certificate file **holds** the identification information of the client or server. This file is used during **connection negotiations** to identify the parties involved. In some cases, the client's certificate must **be signed** by the server's certificate in order to open an SSL connection. Certificate files have the__ .crt__ ending.
+
+**Session Key. **The session key is what both the client and the server use to encrypt data. It is created by the** client**.
+客户端创建该key然后用服务器的公钥对其加密后发给服务器，服务器用自己的私钥对其解密。成功后用客户端的公钥(若有的话)对其加密，然后发给客户端，客户端用自己的私钥对其解密验证。
+
+**Public Key. **The public key is the **device **with which the client encrypts a session key. __It does not exist as a file, but is a by-product of the creation of a certificate and private key. __Data encrypted with a public key can only be decrypted by the private key that made it.
+
+**Private Key.** The private key decrypts the client's session key that is encrypted by a public key. The private key file has the __.key __ending. Private keys should NEVER be distributed to anyone.
+
+**Certificate Signing Request.** A certificate signing request is generated each time a certificate is created. This file is used when you need to have your certificate signed. Once the Certificate Signing Request file is signed, a new certificate is made and can be used to replace the unsigned certificate.
+证书签名请求文件是和证书文件一起生成的，而且是配对使用的。该文件一旦被签名，就会重新生成一个新的已签名证书。
+
+===== How to make an SSL connection =====
+
+To make an SSL connection with a server** configured for SSL**.
+
+* Be sure to select the Secure (SSL) option when you follow the directions for configuring a site.
+* After you click Connect, WS_FTP Pro tells the server that you want to make an SSL connection. The server then transmits to you an **identifying certificate**, letting the client know **who the server is.** If that certificate is already listed in your __Trusted Authority database__, the connection is made.
+* If that certificate is not listed as a trusted authority, the Non-Trusted Authority dialog box appears. 
+      对于服务器发送的证书，客户端不信任的话，必须手动将其添加到本地数据库中。
+* Select the option you need and click OK. If the server does not require a certificate to be returned, the secure connection will be established. All data transmitted between you and the server will be encrypted. 
+
+If the server you are attempting to make a connection to asks WS_FTP Pro to send back a certificate, follow the direction for Client Certificate Verification.
+
+===== Client Certificate Verification 服务器对客户端证书认证 =====
+
+If the server you are attempting to make a connection to __requires__ your client to send an identifying certificate back to the server, you must:
+
+* Configure the site with the Secure (SSL) option selected.
+* Create a certificate. Refer to the section "Generating a Certificate" for more information.
+       手动生成一个证书。
+* Send the **Certificate Signing Request file **to your server administrator.
+      将和该证书同时生成的证书签名请求文件发送给系统管理员，请求其签名。
+* Once the server administrator **signs **the Certificate Signing Request, it will be sent back to you.
+      管理员对该文件签名后会生成一个新的证书(以前的可以不使用)会发送给客户端
+* When you receive the file, follow the directions for "Selecting a Certificate", selecting the new certificate to go in the Certificate box.
+      客户端可以使用该证书连接服务器
+* Connect to the server. 
+
+===== Generating a Certificate =====
+
+To create an SSL certificate:
+
+    From the Options menu, select Configure SSL. The **SSL Utilities** window appears.
+    Click the Certificate Creation tab. 
+
+    Enter a name in the **Certificate Set Name box**. This will be the name of the certificate that is generated by WS_FTP Pro.
+    Click the Browse (...) button in the **Output Location box** to select the folder you want the certificate created in.
+    Enter information in all of the **Certificate Information boxes**:
+
+ 
+
+ //  City/Town.// City or town where you are located. (Ex. Augusta)
+
+//    State/Province. //State or Province where you are located. (Ex. Georgia)
+
+//    Organization.// Company or individual user name.
+
+//    Common Name.// This can be either the **name of the person** creating the certificate or the** fully qualified domain name **of the server associated with the host.
+
+    __Pass Phrase. __Pass phrase that is to be used to **encrypt the private key**. It is important to remember this pass phrase. The pass phrase can be any combination of words, symbols, spaces, or numbers.
+
+//    Pass Phrase Confirmation.// Re-enter the same pass phrase as above.
+
+//    Country. //The country you are in. This must be a valid two letter country code. (Ex. US)
+
+//    E-mail.// E-mail address of the person the certificate belongs to.
+
+//    Unit. //Name of organizational unit. (Ex. Research and Development)
+
+    After all of the boxes are filled in correctly, click Create to generate the __keys, certificate, and certificate signing request.__ If all of the boxes are not filled in, you cannot create the certificate. 
+
+If you are creating a certificate to be used by WS_FTP Pro, you should send the **certificate signing request **(by E-mail) to your server administrator. If they require it, they will sign the certificate and return it to you. The returned certificate should be the one you identify in the Certificate Selection tab.
+
+===== Selecting a Certificate =====
+
+The Certificate Selection tab is used to choose__ which private key and certificate __you want to use during __SSL connection negotiations__. If a new certificate has not been created, follow the directions for "Generating a Certificate".
+
+To select an SSL Certificate:
+
+    Click the Browse (...) button next to the** Private Key box** to select the private key you want to use during SSL negotiation.
+    Click the Browse (...) button next to the** Certificate box **to select the certificate you want to use during SSL negotiation. The certificate you use must have been created using the key you selected for the Private Key box.
+
+	注意：私钥和证书必须要配对使用。
+    Enter the __pass phrase associated with that certificate__ in both the Pass Phrase and the Pass Phrase Confirmation boxes. A pass phrase can be any combination of words, symbols, spaces or numbers. It is case sensitive and must be written exactly the same way each time it is used.
+
+    Without the correct pass phrase in both boxes, the certificate and private key cannot be verified and the selection cannot be saved.
+    Click Apply to save your entries.
+
+    Clicking the Reset button erases what you have done since the last time new settings were applied.
+
+====== Trusted Authorities ======
+
+The Trusted Authorities tab stores **a list of certificate names** that are recognized by WS_FTP Pro.
+
+Certificate Display:
+
+**Issued To.** Who the certificate was issued to.
+
+**Issued By.** Who the certificate was__ signed__ by.
+
+**Expires**. Date on which the certificate expires.
+
+==== Adding a Certificate(添加本地信任的证书，一般为根证书) ====
+
+To add a certificate to the database:
+
+    Click the Import button and select the path and file name for the certificate. The **Add Certificate? dialog box** appears. 
+
+    Review the information on that dialog box and click Yes to add the certificate to the database. 
+
+===== Exporting a Certificate =====
+
+To export a certificate from the** Trusted Authorities database**:
+
+    Select the certificate you want to copy out of your database.
+    Click the Export button.
+
+    Select the folder you want to copy the certificate to and enter the name you want to save the certificate file as.
+    Click OK. 
+
+===== Removing a Certificate =====
+
+To remove a certificate:
+
+    Select the certificate to be removed.
+    Click Remove.
+    A warning appears advising you to export the certificate before you remove it. Removing the certificate deletes the certificate file.
+    Click OK to remove the certificate. 
+
+====== Non-Trusted Certificate ======
+
+When you connect to a server using the SSL connection option, that server sends you a certificate. __If that certificate is not listed on the Trusted Authority tab, or if it was not signed by a certificate on this list__, this dialog box appears.
+
+Certificate Information:
+
+**Issued To. **Name of the person or company who the certificate belongs to.
+
+**Issued By. **Name of the person or company who signed the certificate.
+
+**Active From. **The date on which this certificate was activated.
+
+**Expires On. **The date the displayed certificate will no longer be a valid certificate.
+
+Options
+
+Allow this connection only. If this option is selected, the connection will be made, but WS_FTP Pro will still not recognize the certificate as a trusted authority. The next time you attempt to connect to this server, this dialog box appears once again.
+
+**Trust this certificate.** If this option is selected, the connection will be made and the certificate will be added to the trusted authority database in the Trusted Authority tab, so future connections can be made without you being prompted.
+
+Do not allow this connection. If this option is selected, the connection will be terminated.
+
+====== SSH ======
+
+SSH (Secure Shell) is a security protocol that allows you to make a secure connection to a server that has the **SSH and SFTP** (Secure File Transfer Protocol) protocols installed. Where FTP servers usually `listen' on port 21 for connection, SSH servers use port **22**.
+
+__Where SSL attempts to make a connection with unencrypted channels, SSH encrypts all communications to and from the client and server.__
+
+When an SSH connection is made, SFTP is the protocol that is used to perform all tasks on that single secure connection.
+
+===== How to make an SSH connection =====
+
+Making an SSH connection requires little additional configuration to new or your existing site profiles.
+
+When creating a new site profile through the New Site Wizard, simply change the Server Type to SFTP/SSH when prompted by the wizard.
+
+If editing an existing site profile:
+
+    Select the site from the configured sites list.
+    Click the Edit button.
+    Click the Advanced tab.
+    In the Server type pull-down, select SFTP/SSH.
+    Click OK. 
+
+When you use that profile to make a connection, the client will automatically attempt to make an SSH connection on port 22 of that server.
+
+===== SSL vs. SSH =====
+
+With both SSL and SSH, it is up to the administrator of the server you are trying to make a connection with to tell you which server type is being run at that address. If you do not know, and attempt to make an SSL connection or an insecure connection to an SSH server, the connection will fail, even if you change the port to 22 in the Site Profile. 

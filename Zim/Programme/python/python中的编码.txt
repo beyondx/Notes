@@ -1,0 +1,73 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-07T18:42:52+08:00
+
+====== python中的编码 ======
+Created Friday 07 October 2011
+http://yibin.us/archives/6817
+
+在一些python讨论版里，经常会见到一些“月经帖”，类似于“我用python读取一个文件乱码”，然后就会抱怨python的编码很麻烦，其实不是python编码难搞定，而是没有真正理解python的编码。
+
+如在windows环境下的以下示例代码：
+
+#!/usr/bin/env python
+import sys
+import os
+def do():
+    f = open('./ansi.txt')
+    for a in [x.strip() for x in f]:
+        print a
+if __name__=='__main__':
+    do()
+
+此时的ansi.txt编码为ansi,我们在cmd窗口执行，看到如下结果：
+{{~/sync/notes/zim/python/python中的编码/1.png}}
+此时一切正常，但，如果还是用上面的脚本去读取utf8.txt，文件是utf8编码，就会得到下面的结果：
+{{~/sync/notes/zim/python/python中的编码/2.png}}
+经典的“乱码”出现了，有朋友可能会说了，我在python脚本里指定编码应该就解决了，于是：
+	
+#!/usr/bin/env python
+#coding=utf-8     #在这里指定编码
+import sys
+import os
+ 
+def do():
+ 
+    f = open('./utf8.txt')
+    for a in [x.strip() for x in f]:
+        print a
+if __name__=='__main__':
+    do()
+
+再次运行：
+{{~/sync/notes/zim/python/python中的编码/3.png}}
+OMG，还是乱码。。。。
+
+能不能正常输出中文不取决于#coding=utf-8，也不取决于目标文件的编码，而是取决于你的__终端输出设备__，这里就是CMD窗口，CMD窗口是不支持UTF-8的，它只支持__GBK__，所以，我们要转码。
+
+那为什么第一个示例中，它能正确输出？因为目标文件本身就是GBK编码，所以不需要做任何转码就能正常输出。
+
+在第二个示例中，我们只需要做一个小的改动，就可输出UTF8编码的文件：
+帮助
+	
+#!/usr/bin/env python
+#coding=utf-8
+import sys
+import os
+ 
+def do():
+ 
+    f = open('./utf8.txt')
+    for a in [x.strip() for x in f]:
+        print a.decode('UTF-8').encode('GBK')      #在这里转码
+if __name__=='__main__':
+    do()
+
+结果：
+{{~/sync/notes/zim/python/python中的编码/4.png}}
+正常输出。
+
+做一个小结：
+* python脚本中的#coding=utf-8并不是决定最终输出的编码，而是指定python__脚本本身使用的编码__；如果你的脚本本身内部有非ASCII码，那就应该指定编码#coding=gbk
+* 如果文件的编码是GBK，你操作的终端也是支持GBK的，那就不需要编码，直接输出即可。
+* 如果文件的编码不是GBK，但你的操作终端只支持GBK，不支持UTF-8，那么，你就需要对这些字符做转码操作。如文件编码是UTF-8，就需要先decode成UNICODE编码再encode成GBK

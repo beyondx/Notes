@@ -1,0 +1,294 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-04T14:15:54+08:00
+
+====== 7. Input and Output ======
+Created Wednesday 04 January 2012
+
+There are several ways to present the output of a program; data can be **printed in a human-readable form**, or written to** a file **for future use. This chapter will discuss some of the possibilities.
+
+===== 7.1. Fancier Output Formatting =====
+
+So far we’ve encountered two ways of writing values: **expression statements and the print statement**. (A third way is using the __write() method of file objects__; the standard output file can be referenced as **sys.stdout**. See the Library Reference for more information on this.)
+
+Often you’ll want more control over the** formatting of your output **than simply printing space-separated values. There are two ways to format your output; the first way is to do all the string handling yourself;** using string slicing and concatenation operations** you can create any layout you can imagine. The string types have some methods that perform useful operations for padding strings to a given column width; these will be discussed shortly. The second way is to use the __str.format()__ method.
+
+The string module contains a** Template class **which offers yet another way to substitute values into strings.
+
+One question remains, of course: how do you **convert values to strings**? Luckily, Python has ways to convert any value to a string: pass it to the__ repr() or str()__ functions.
+
+The str() function is meant to **return representations of values which are fairly human-readable, while repr() is meant to generate representations which can be read by the interpreter **(or will force a SyntaxError if there is not equivalent syntax). For objects which don’t have a particular representation for human consumption, str() will return the same value as repr(). Many values, such as** numbers **or structures like** lists **and **dictionaries**, have the same representation using either function.__ Strings__ and__ floating point__ numbers, in particular, have two distinct representations.
+
+Some examples:
+>>>
+
+>>> s = 'Hello, world.'
+>>> str(s)
+**'Hello, world.'**
+>>> repr(s)
+__"'Hello, world.'"__
+>>> str(1.0/7.0)
+'0.142857142857'
+>>> repr(1.0/7.0)
+__'0.14285714285714285'__
+>>> x = 10 * 3.25
+>>> y = 200 * 200
+>>> s = 'The value of x is ' + repr(x) + ', and y is ' + repr(y) + '...'
+>>> print s
+The value of x is 32.5, and y is 40000...
+>>> # __The repr() of a string adds string quotes and backslashes:__
+... hello = 'hello, world\n'
+>>> hellos = repr(hello)
+>>> print hellos   __#如果是str则，print的结果没有引号和转义字符。__
+**'hello, world\n'**
+>>> # __The argument to repr() may be any Python object:__
+... repr((x, y, ('spam', 'eggs')))
+"(32.5, 40000, ('spam', 'eggs'))"
+
+Here are two ways to write a table of squares and cubes:
+>>>
+
+>>> for x in range(1, 11):   
+...     	print repr(x).__rjust(2)__, repr(x*x).rjust(3)__,__
+...     # Note trailing comma on previous line
+...  		print repr(x*x*x).rjust(4)
+...
+ 1      1    1
+ 2      4    8
+ 3      9   27
+ 4    16   64
+ 5    25  125
+ 6    36  216
+ 7    49  343
+ 8    64  512
+ 9    81  729
+10 100 1000
+
+字符串的rjust(n)方法用于表示，__字符串至少占n位字符空间，不足n位的右对齐__。
+>>> for x in range(1,11):
+...     print '{0:2d} {1:3d} {2:4d}'__.format__(x, x*x, x*x*x)
+...
+ 1   1    1
+ 2   4    8
+ 3   9   27
+ 4  16   64
+ 5  25  125
+ 6  36  216
+ 7  49  343
+ 8  64  512
+ 9  81  729
+10 100 1000
+
+(Note that in the first example, one space between each column was added by the way print works: **it always adds spaces between its arguments.**)
+
+This example demonstrates the__ str.rjust() __method of string objects, which **right-justifies a string in a field of a given width by padding it with spaces on the left.** There are similar methods __str.ljust() and str.center()__. These methods do not write anything, they just __return a new string__. If the input string is too long, they don’t truncate it, but return it unchanged; this will mess up your column lay-out but that’s usually better than the alternative, which would be lying about a value. (If you really want truncation you can always add a slice operation, as in __x.ljust(n)[:n]__.)
+
+There is another method, __str.zfill()__, which pads a numeric string on the left with zeros. It understands about **plus and minus** signs:
+>>>
+
+>>> '12'.zfill(5)
+'00012'
+>>> '-3.14'.zfill(7)
+'-003.14'   #符号和小数点各占一位。
+>>> '3.14159265359'.zfill(5)
+'3.14159265359'
+
+Basic usage of the__ str.format() __method looks like this:
+>>>
+
+>>> print 'We are the {} who say "{}!"'.format('knights', 'Ni')
+We are the knights who say "Ni!"
+
+The brackets and characters within them (called __format fields__) are** replaced **with the objects passed into the str.format() method. A number in the brackets refers to the **position of the object** passed into the str.format() method.
+>>>
+
+>>> print '{0} and {1}'.format('spam', 'eggs')
+spam and eggs
+>>> print '{1} and {0}'.format('spam', 'eggs')
+eggs and spam
+
+If **keyword arguments** are used in the str.format() method, their values are referred to by using the name of the argument.
+>>>
+
+>>> print 'This {food} is {adjective}.'.format(
+...       __food='spam', adjective='absolutely horrible'__)
+This spam is absolutely horrible.
+
+Positional and keyword arguments can be **arbitrarily combined**:
+>>>
+
+>>> print 'The story of {0}, {1}, and {other}.'.format('Bill', 'Manfred',
+...                                                    other='Georg')
+The story of Bill, Manfred, and Georg.
+
+__'!s' __(apply str()) and__ '!r'__ (apply repr()) can be used to **convert the value before it is formatted**.
+>>>
+
+>>> import math
+>>> print 'The value of PI is approximately {}.'.format(math.pi)
+The value of PI is approximately 3.14159265359.
+>>> print 'The value of PI is approximately__ {!r}__.'.format(math.pi)
+The value of PI is approximately 3.141592653589793.
+
+An optional__ ':' and format specifier __can follow the field name. This allows greater control over how the value is formatted. The following example rounds Pi to three places after the decimal.
+>>>
+
+>>> import math
+>>> print 'The value of PI is approximately__ {0:.3f}__.'.format(**math.pi**)
+The value of PI is approximately 3.142.
+
+Passing an integer after the ':' will cause that field to be a** minimum number of characters wide**. This is useful for making tables pretty.
+>>>
+
+>>> table = {'Sjoerd': 4127, 'Jack': 4098, 'Dcab': 7678}
+>>> for name, phone in table.items():
+...     print '{0:10} ==> {1:10d}'.format(name, phone)
+...
+Jack       ==>         4098
+Dcab       ==>       7678
+Sjoerd     ==>       4127
+
+If you have a really long format string that you don’t want to split up, it would be nice if you could reference the variables to be **formatted by name instead of by position**. This can be done by simply passing the __dict__ and __using square brackets '[]' to access the keys__
+>>>
+
+>>> table = {'Sjoerd': 4127, 'Jack': 4098, 'Dcab': 8637678}
+>>> print ('Jack: {__0[Jack]__:d}; Sjoerd: {0[Sjoerd]:d}; '
+...        'Dcab: {0[Dcab]:d}'.format(table))  #因为只有一个参数所以所有的位置参数为0.  {n[key]:format-spec},n表示format()的第n个参数，它是一个dict，n[key]表示该key对应的值。
+Jack: 4098; Sjoerd: 4127; Dcab: 8637678
+
+This could also be done by passing the table as **keyword arguments with the ‘**’ notation**.
+>>>
+
+>>> table = {'Sjoerd': 4127, 'Jack': 4098, 'Dcab': 8637678}
+>>> print 'Jack: {Jack:d}; Sjoerd: {Sjoerd:d}; Dcab: {Dcab:d}'.format(**table)
+Jack: 4098; Sjoerd: 4127; Dcab: 8637678
+
+This is particularly useful in combination with the__ built-in function vars()__, which returns a dictionary containing **all local variables**.
+
+For a complete overview of string formatting with str.format(), see Format String Syntax.
+
+==== 7.1.1. Old string formatting ====
+
+The % operator can also be used for string formatting. It interprets the __left argument much like a sprintf()-style format string__ to be applied to the right argument, and returns the string resulting from this formatting operation. For example:
+>>>
+
+>>> import math
+>>> print 'The value of PI is approximately %5.3f.' % math.pi
+The value of PI is approximately 3.142.
+
+Since str.format() is quite new, a lot of Python code still uses the % operator. However, because this old style of formatting will eventually be** removed from** the language, __str.format() should generally be used__.
+
+More information can be found in the String Formatting Operations section.
+
+===== 7.2. Reading and Writing Files =====
+
+open() returns a __file object__, and is most commonly used with two arguments: open(filename, mode).
+>>>
+
+>>> f = open('/tmp/workfile', 'w')
+>>> print f
+<open file '/tmp/workfile', mode 'w' at 80a0960>
+
+The first argument is a string containing the filename. The second argument is another string containing a few characters describing the way in which the file will be used. mode can be__ 'r'__ when the file will only be read,__ 'w'__ for only writing (an existing file with the same name will be erased), and__ 'a'__ opens the file for appending; any data written to the file is automatically added to the end. __'r+'__ opens the file for both reading and writing. The mode argument is optional; 'r' will be assumed if it’s omitted.
+
+On Windows,__ 'b' __appended to the mode opens the file in binary mode, so there are also modes like '__rb', 'wb', and 'r+b'__. Python on Windows makes a distinction between text and binary files; the __end-of-line__ characters in text files are automatically altered slightly when data is read or written. This behind-the-scenes modification to file data is **fine for ASCII text files**, but it’ll corrupt binary data like that in JPEG or EXE files. Be very careful to __use binary mode__ when reading and writing such files. On Unix, it doesn’t hurt to append a 'b' to the mode, so you can use it platform-independently for all binary files.
+
+==== 7.2.1. Methods of File Objects ====
+
+The rest of the examples in this section will assume that **a file object** called f has already been created.
+
+To read a file’s contents, call__ f.read(size)__, which reads some quantity of data and** returns it as a string**. size is an optional numeric argument. When size is omitted or negative, the __entire __contents of the file will be read and returned; it’s your problem if the file is twice as large as your machine’s memory. Otherwise, **at most size bytes **are read and returned. If the end of the file has been reached, f.read() will return __an empty string ("")__.
+>>>
+
+>>> f.read()
+'This is the entire file.\n'
+>>> f.read()
+''
+
+__f.readline()__ reads a single line from the file; a newline character (\n)__ is left__ at the end of the string, and is only omitted on the** last line** of the file if the file doesn’t end in a newline. This makes the return value unambiguous; if f.readline() returns **an empty string**, the end of the file has been reached, while a blank line is represented by '\n', a string containing only a single newline.
+>>>
+
+>>> f.readline()
+'This is the first line of the file.\n'
+>>> f.readline()
+'Second line of the file\n'
+>>> f.readline()
+''
+
+__f.readlines()__ returns __a list__ containing all the lines of data in the file. If given an optional parameter** sizehint**, it reads that many** bytes **from the file and enough more** to complete** a line, and returns the lines from that. This is often used to allow efficient reading of a large file by lines, but without having to load the entire file in memory. __Only complete lines will be returned__.
+>>>
+
+>>> f.readlines()
+['This is the first line of the file.\n', 'Second line of the file\n']
+
+An alternative approach to reading lines is __to loop over the file object.__ This is memory efficient, fast, and leads to simpler code:
+>>>
+
+>>> for line in f:  #line字符串包含行尾的换行符，所以用print打印该行时可以省略换行符。
+        print__ line,__
+
+This is the first line of the file.
+Second line of the file
+
+The alternative approach is simpler but does not provide as **fine-grained** control. Since the two approaches manage line buffering differently, they should not be mixed.
+
+__f.write(string)__ writes the contents of __string__ to the file, returning__ None__.
+>>>
+
+>>> f.write('This is a test\n')
+
+To write something other than a string, it needs to be **converted to a string first**:
+>>>
+
+>>> value = ('the answer', 42)
+>>> s = str(value)
+>>> f.write(s)
+
+__f.tell()__ returns an integer giving the **file object’s current position** in the file, measured in **bytes **from the beginning of the file. To change the file object’s position, use __f.seek(offset, from_what)__. The position is computed from **adding offset to a reference point;** the reference point is selected by the from_what argument. A from_what value of 0 measures from the beginning of the file, 1 uses the current file position, and 2 uses the end of the file as the reference point. from_what can be omitted and __defaults to 0__, using the beginning of the file as the reference point.
+>>>
+
+>>> f = open('/tmp/workfile', **'r+'**)
+>>> f.write('0123456789abcdef')
+>>> f.seek(5)     # Go to the 6th byte in the file
+>>> f.read(1)
+'5'
+>>> f.seek(-3, 2) # Go to the 3rd byte before the end
+>>> f.read(1)
+'d'
+
+When you’re done with a file, call __f.close()__ to close it and free up any system resources taken up by the open file. After calling f.close(), attempts to use the file object will automatically fail.
+>>>
+
+>>> f.close()
+>>> f.read()
+Traceback (most recent call last):
+  File "<stdin>", line 1, in ?
+ValueError: I/O operation on closed file
+
+It is good practice to use the __with keyword when dealing with file objects__. This has the advantage that the file is properly closed after its suite finishes, even if an exception is raised on the way. It is also much shorter than writing equivalent **try-finally** blocks:
+>>>
+
+>>>__ with open('/tmp/workfile', 'r') as f:__
+...     read_data = f.read()
+>>> f.closed
+True
+
+File objects have some additional methods, such as **isatty()** and **truncate()** which are less frequently used; consult the Library Reference for a complete guide to file objects.
+
+==== 7.2.2. The pickle Module ====
+
+Strings can easily be written to and read from a file. Numbers take a bit more effort, since the** read() method only returns strings**, which will have to be passed to a function like int(), which takes a string like '123' and returns its numeric value 123. However, when you want to save **more complex data types** like lists, dictionaries, or class instances, things get a lot more complicated.
+
+Rather than have users be constantly writing and debugging code__ to save complicated data types__, Python provides a standard module called** pickle**. This is an amazing module that** can take almost any Python object** (even some forms of Python code!), and convert it to__ a string representation__; this process is called **pickling**.__ Reconstructing __the object from the string representation is called unpickling. Between pickling and unpickling, the string representing the object may have been** stored in a file or data**, or sent over a network connection to some distant machine.
+
+If you have an object x, and a file object f that’s been **opened for writing**, the simplest way to pickle the object takes only one line of code:
+
+__pickle.dump(x, f)__
+
+To unpickle the object again, if f is a file object which has been opened for reading:
+
+__x = pickle.load(f)__
+
+(There are other variants of this, used when pickling many objects or when you don’t want to write the pickled data to a file; consult the complete documentation for pickle in the Python Library Reference.)
+
+pickle is the__ standard way__ to make Python objects which can be** stored and reused **by other programs or by a future invocation of the same program; the technical term for this is__ a persistent object__. Because pickle is so widely used, many authors who write Python extensions take care to ensure that new data types such as matrices can be properly pickled and unpickled.

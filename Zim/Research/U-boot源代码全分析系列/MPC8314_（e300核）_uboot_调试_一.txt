@@ -1,0 +1,302 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-15T19:29:55+08:00
+
+====== MPC8314 （e300核） uboot 调试 一 ======
+Created Sunday 15 January 2012
+http://blog.csdn.net/gorilla0123/article/details/5899452
+
+历经2个多月，完成了MPC8314最小系统（uboot）及Linux内核和根文件系统的调试。这是我第一次从头开始做小系统和内核的移植工作，虽然调试的比较辛苦，但是收获还是很多的。下面就介绍一下调试的过程和一些原理性的东西。
+
+1 MPC8314 上电流程
+
+系统上电后，经过若干个时钟后，MPC8314会检测复位配置输入信号CFG_RESET_SOURCE[0：3]来确定硬件配置字源选择，在目标板上可以设置跳线来改变CFG_RESET_SOURCE[0：3]，选择硬件配置字源。本系统中的硬件配置字存放在CPLD模拟的Flash空间中。
+{{./1.gif}}
+从相应的地方读取硬件配置字（RCWL，RCWH）后，会设置相应的寄存器。其中RCWH中的BMS位值为1，定义了e300核心的MSR[IP]位初始值，如上图所示，MSR[IP]为1决定中断向量的前缀为0xFFF，启动存储空间的位置为0xFF80_0000~0xFFFF_FFFF;SWEN位为0，禁止软件看门狗；ROMLOC位为0b110，RLEXT位为0b00确定了选择local bus GPCM-16bit ROM为启动ROM。复位向量和本地地址映射的默认启动ROM访问将直接指向ROMLOC指定的接口。选中的启动ROM的本地访问窗口（LBLAW0）将被使能，并初始化基地址LBLAWBAR0为0xFF80_0000，窗口大小为8M。这时，Local Bus上的片选CS0的寄存器值为BR0：0000_0000,OR0：0000_0000。整个4G空间全是ROM，每16M重复一次。
+
+中断向量的前缀为0xFFF，复位向量为100，决定了系统复位后的第一条指令从0xFFF0_0100处获得。
+
+/cpu/mpc83xx/u-boot.lds文件时连接器脚本文件，其中
+
+.text      :
+
+  {
+
+    cpu/mpc83xx/start.o (.text)
+
+    。 。 。 。 。
+
+   }
+
+。 。 。 。 。 。
+
+ENTRY(_start)
+
+规定了代码段从/cpu/mpc83xx/start.s开始。而ENTRY(_start)这一句告诉编译器uboot.bin的镜像入口点为start.s中的_start标号。
+
+所以，我们要将UBOOT的代码烧写到16M Flash中偏移15M的地方，保证了从0xFFF0_0100的空间取到的指令为uboot代码。并且还需要保证0xFFF0_0100为start标号。
+
+
+2 uboot启动流程
+2.1 uboot启动概述
+
+     Uboot的启动是从/cpu/mpc83xx/start.s中的_start标号开始的，经历了 /cpu/mpc83xx/start.s，/cpu/mpc83xx/cpu_init.c ，/lib_ppc/Board.c等几个文件中的多个汇编和C函数，最后会在/lib_ppc/Board.c中的board_init_r函数中进入命令死循环，等待执行键入的命令。其具体的流程如下图所示：
+{{./2.gif}}
+ 
+
+ 
+
+ 
+
+2.2 init_e300_core 函数
+
+ 
+
+    初始化e300核心，禁止中断响应，只允许machine check中断和system reset中断，禁止指令和数据地址转换，即关闭MMU，进行实地址转换，设置为supervisor级别，禁止看门狗，无效指令和数据cache，等，为系统创建一个干净可靠的初始环境。
+
+ 
+
+2.3 窗口重映射
+
+ 
+
+从前面MPC8314上电流程可以看出，上电之后，第一条代码是从0xFFF0_0100的地方开始执行的，但是flash并不一定会分配在0xFF00_0000到0xFFFF_FFFF的地方（以我们16M的为例）。在本系统中，Flash的地址就被分配到了0xFE00_0000到0xFEFF_FFFF的地方。所以这其中需要做一个跳转，这正是这段代码中map_flash_by_law1，remap_flash_by_law0等函数要做的，具体的流程可以由下面的五张图来说明：
+
+ 
+
+1 开始时，BR0，OR0为全零，4G全是重复的Flash，CPU通过LBLAW0访问Flash
+
+空间 FF80_0000到 FFFF_FFFF。
+
+ {{./3.gif}}
+
+ 
+
+2 map_flash_by_law1函数使用LBLAW1映射FE00_0000到FEFF_FFFF这段空间。
+{{./4.gif}}
+ 
+
+ 
+
+3 跳转到FE00_0000这段空间执行代码，由于4G空间重复，只要偏移地址计算正确就
+
+会顺序执行。
+{{./5.gif}}
+ 
+
+ 
+
+4  remap_flash_by_law0函数设置BR0为FE00_0000，OR0大小为16M。
+{{./6.gif}}
+5 remap_flash_by_law0函数设置LBLAW0窗口映射FE00_0000到FE7F_FFFF区域，并
+
+ {{./7.gif}}
+
+清除LBLAW1。
+
+ 
+
+ 
+
+2.4 Dcache 中分配空间做堆栈
+
+ 
+
+ 
+
+程序跑到这里，就要进入第一个C函数了，C函数的运行需要堆栈空间，但这时，RAM还没有初始化，只能在Dcache中锁定一定的空间，用于C的堆栈空间。
+
+lock_ram_in_cache函数在Dcache中锁定4k的空间。
+
+下面的几行代码将堆栈指针指向刚刚分配好的Dcache空间。
+
+lis r1, (CFG_INIT_RAM_ADDR + CFG_GBL_DATA_OFFSET)@h
+
+ori r1, r1, (CFG_INIT_RAM_ADDR + CFG_GBL_DATA_OFFSET)@l
+
+li  r0, 0      
+
+stwu    r0, -4(r1)
+
+ 
+
+ 
+
+ 
+
+2.5 cpu_init_f 函数
+
+   
+
+    该函数是系统执行的第一个C语言的函数，主要是做一些CPU 寄存器的初始化，其中最重要的部分是初始化Local Access Windows的值和Local Bus上的片选BR，OR的值。这些值需要在/include/configs/MPC8315ERDB.h中配置好。
+
+ 
+
+2.6 board_init_f 函数
+
+ 
+
+该函数为板级初始化的第一个函数，会对板子上很多硬件外设做初始化，其中最重要的为init_sequence数组，该数组里面包含了很多板级的硬件初始化函数，在board_init_f函数中会依次的调用该数组中的函数去初始化各个硬件，该数组如下：
+
+init_fnc_t *init_sequence[] = {
+
+ 
+
+#if defined(CONFIG_BOARD_EARLY_INIT_F)
+
+    board_early_init_f,
+
+#endif
+
+ 
+
+#if !defined(CONFIG_8xx_CPUCLK_DEFAULT)
+
+    get_clocks,     /* get CPU and bus clocks (etc.) */
+
+#if defined(CONFIG_TQM8xxL) && !defined(CONFIG_TQM866M) /
+
+    && !defined(CONFIG_TQM885D)
+
+    adjust_sdram_tbs_8xx,
+
+#endif
+
+    init_timebase,
+
+#endif
+
+#ifdef CFG_ALLOC_DPRAM
+
+#if !defined(CONFIG_CPM2)
+
+    dpram_init,
+
+#endif
+
+#endif
+
+#if defined(CONFIG_BOARD_POSTCLK_INIT)
+
+    board_postclk_init,
+
+#endif
+
+    env_init,
+
+#if defined(CONFIG_8xx_CPUCLK_DEFAULT)
+
+    get_clocks_866,     /* get CPU and bus clocks according to the environment variable */
+
+    sdram_adjust_866,   /* adjust sdram refresh rate according to the new clock */
+
+    init_timebase,
+
+#endif
+
+    init_baudrate,
+
+    serial_init,
+
+    console_init_f,
+
+    display_options,
+
+#if defined(CONFIG_8260)
+
+    prt_8260_rsr,
+
+    prt_8260_clks,
+
+#endif /* CONFIG_8260 */
+
+#if defined(CONFIG_MPC83XX)
+
+    prt_83xx_rsr,
+
+#endif
+
+    checkcpu,
+
+#if defined(CONFIG_MPC5xxx)
+
+    prt_mpc5xxx_clks,
+
+#endif /* CONFIG_MPC5xxx */
+
+#if defined(CONFIG_MPC8220)
+
+    prt_mpc8220_clks,
+
+#endif
+
+    checkboard,
+
+    INIT_FUNC_WATCHDOG_INIT
+
+#if defined(CONFIG_MISC_INIT_F)
+
+    misc_init_f,
+
+#endif
+
+    INIT_FUNC_WATCHDOG_RESET
+
+#if defined(CONFIG_HARD_I2C) || defined(CONFIG_SOFT_I2C)
+
+    init_func_i2c,
+
+#endif
+
+#if defined(CONFIG_DTT)     /* Digital Thermometers and Thermostats */
+
+    dtt_init,
+
+#endif
+
+#ifdef CONFIG_POST
+
+    post_init_f,
+
+#endif
+
+    INIT_FUNC_WATCHDOG_RESET
+
+    init_func_ram,
+
+#if defined(CFG_DRAM_TEST)
+
+    testdram,
+
+#endif /* CFG_DRAM_TEST */
+
+    INIT_FUNC_WATCHDOG_RESET
+
+ 
+
+    NULL,           /* Terminate this list */
+
+};
+
+可以看到时钟，内存，串口，控制台等初始化函数的调用，其中串口的初始化要先于内存初始化。
+
+ 
+
+2.7 relocate_code 函数
+
+ 
+
+到目前为止，boot代码都是在Flash中运行，但是代码最终是要到RAM中运行的，在上面的board_init_f函数中已经将RAM初始化好了，具备了在RAM中运行程序的能力，现在relocate_code函数需要做两个事情：
+
+1 从Flash中拷贝uboot的代码到RAM
+
+    2 记下现在执行代码的偏移，跳转到RAM中相应的位置执行。
+
+ 
+
+2.8 board_init_r 函数
+
+   
+
+    该函数为板级初始化的第二阶段，主要是初始化PCI，PCIE，网口，Flash等设备，关闭看门狗，把前面借dcache做堆栈的空间解锁，还给cache。在一切设备都初始化好后，便会进去main_loop的死循环中。
+

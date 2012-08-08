@@ -1,0 +1,80 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-31T13:40:14+08:00
+
+====== Qt学习之路(5)：组件布局 ======
+Created Monday 31 October 2011
+
+原创作品，允许转载，转载时请务必以超链接形式标明文章 原始出处 、作者信息和本声明。否则将追究法律责任。http://devbean.blog.51cto.com/448512/194616
+
+同Swing类似，Qt也提供了几种__组件定位__的技术。其中就包括__绝对定位和布局定位__。
+ 
+顾名思义，绝对定位就是使用最原始的定位方法，给出这个组件的__坐标和长宽值__。这样，Qt就知道该把组件放在哪里，以及怎么设置组件的大小了。但是这样做的一个问题是，如果用户改变了**窗口大小**，比如点击了最大化或者拖动窗口边缘，这时，你就要自己编写相应的函数来响应这些变化，以避免那些组件还只是静静地呆在一个角落。或者，更简单的方法是直接__禁止用户改变大小__。
+ 
+不过，Qt提供了另外的一种机制，就是布局，来解决这个问题。你只要把**组件放入某一种布局**之中，当需要调整大小或者位置的时候，Qt就知道该怎样进行调整。这类似于Swing的布局管理器，不过Qt的布局没有那么多，只有有限的几个。
+ 
+来看一下下面的例子：
+ 
+#include <QtGui/QApplication>
+#include <QtGui/QWidget>
+#include <QtGui/QSpinBox>
+#include <QtGui/QSlider>
+#include <QtGui/QHBoxLayout>
+
+int main(int argc, char *argv[])
+{
+        QApplication app(argc, argv);
+        QWidget *window = new QWidget;
+        window->setWindowTitle("Enter your age");
+
+        QSpinBox *spinBox = new QSpinBox;
+        QSlider *slider = new QSlider(Qt::Horizontal);
+        spinBox->setRange(0, 130);
+        slider->setRange(0, 130);
+
+        QObject::connect(slider, SIGNAL(valueChanged(int)), spinBox, SLOT(setValue(int)));
+        QObject::connect(spinBox, SIGNAL(valueChanged(int)), slider, SLOT(setValue(int)));
+        spinBox->setValue(35);
+
+        QHBoxLayout *layout = new QHBoxLayout;
+        layout->addWidget(spinBox);
+        layout->addWidget(slider);
+        window->setLayout(layout);
+
+        window->show();
+
+        return app.exec();
+}
+ 
+这里使用了两个新的组件：QSpinBox和QSlider，以及一个新的__顶级窗口__QWidget。QSpinBox是一个有上下箭头的微调器，QSlider是一个滑动杆，只要运行一下就会明白到底是什么东西了。
+ 
+代码并不是那么难懂，还是来简单的看一下。首先创建了一个QWidget的实例，调用setWindowTitle函数来设置窗口标题。然后创建了一个QSpinBox和QSlider，分别设置了它们值的范围，使用的是setRange函数。然后进行信号槽的链接。这点后面再详细说明。然后是一个QHBoxLayout，就是一个水平布局，按照从左到右的顺序进行添加，使用addWidget添加好组件后，调用QWidget的setLayout把QWidget的layout设置为我们定义的这个Layout，这样，程序就完成了！
+ 
+编译运行一下，可以看到效果：
+ {{~/sync/notes/zim/Programme/Qt学习之路/Qt学习之路(5)：组件布局/1.png}}
+ 
+如果最大化的话：
+ 
+ {{~/sync/notes/zim/Programme/Qt学习之路/Qt学习之路(5)：组件布局/2.png}}
+虽然我并没有添加任何代码，但是那个layout就已经明白该怎样进行布局。
+ 
+或许你发现，那两个信号槽的链接操作会不会产生无限递归？因为steValue就会引发valueChanged信号！答案是不会。这两句语句实现了，当spinBox发出valueChanged信号的时候，会回调slider的setValue，以更新slider的值；而slider发出valueChanged信号的时候，又会回调slider的setValue。但是，如果新的value和旧的value是__一样__的话，是不会发出这个信号的，因此避免了无限递归。
+ 
+迷糊了吧？举个例子看。比如下面的spinBox->setValue(35)执行的时候，首先，spinBox会将自己的值设为35，这样，它的值与原来的不一样了(在没有setValue之前的时候，默认值是0)，于是它发出了valueChanged信号。slider接收到这个信号，于是回调自己的setValue函数，将它的值也设置成35，它也发出了valueChanged信号。当然，此时spinBox又收到了，不过它发现，这个35和它本身的值是一样的，于是它就不发出信号，所以信号传递就停止了。
+ 
+那么，你会问，它们是怎么知道值的呢？答案很简单，因为你的信号和槽都接受了一个int参数！新的值就是通过这个进行传递的。实际上，我们利用Qt的信号槽机制完成了一个__数据绑定__，使两个组件或者更多组件的状态能够__同步变化__。
+ 
+Qt一共有三种主要的layout，分别是：
+ 
+QHBoxLayout- 按照水平方向从左到右布局；
+ 
+QVBoxLayout- 按照竖直方向从上到下布局；
+ 
+QGridLayout- 在一个__网格__中进行布局，类似于HTML的table。
+ 
+layout使用addWidget添加组件，使用addLayout可以添加__子布局__，因此，这就有了无穷无尽的组合方式。
+ 
+我是在Windows上面进行编译的，如果你要是在其他平台上面，应用程序就会有不同的样子：
+ {{~/sync/notes/zim/Programme/Qt学习之路/Qt学习之路(5)：组件布局/3.png}}
+ 
+还记得前面曾经说过，Qt不是使用的原生组件，而是自己绘制模拟的本地组件的样子，不过看看这个截图，它模拟的不能说百分百一致，也可说是惟妙惟肖了… :)

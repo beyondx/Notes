@@ -1,0 +1,7 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-30T13:10:20+08:00
+
+====== 算法导论 ======
+Created Saturday 30 July 2011
+

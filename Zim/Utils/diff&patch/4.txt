@@ -1,0 +1,71 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-14T17:06:09+08:00
+
+====== 4 ======
+Created Saturday 14 May 2011
+
+patch 命令用于打补丁，补丁文件是使用diff产生的
+ 
+
+patch 命令语法
+
+patch [  -b [ -B Prefix ] ] [  -f ] [ -l ] [ -N ] [ -R ] [  -s ] [  -v ] [  -c | -e | -n ] [  -d Directory ] [  -D Define ] [  -F Number ] [  -i PatchFile ] [  -o OutFile ] [  -p Number ] [  -r RejectFile ] [  -x Number ] [ File ]
+
+patch 命令失败或拒绝接受补丁时，会产生一个和原文件同名，以".rej"为后缀的差异文件。
+　　　当知道 -b 时，会产生一个和原文件同名，以".orig"为后缀的备份文件。
+
+常使用的 patch 参数：
+
+ -p 指定目录级别（从路径全称中除去几层目录）
+
+ 如，如果补丁文件包含路径名称 /curds/whey/src/blurfl/blurfl.c，那么：
+
+  -p 0 使用完整路径名
+  -p 1 除去前导斜杠，留下 curds/whey/src/blurfl/blurfl.c。
+  -p 4 除去前导斜杠和前三个目录，留下 blurfl/blurfl.c。
+
+
+    -d Directory 打补丁前，更改当前目录到指定目录
+
+ -i PatchFile 从指定文件，而不是从标准输入中读取补丁信息
+
+ -R 逆向补丁，这个选项在防止打错补丁很有用处
+
+
+补丁的产生一般用
+
+diff -Nrua   a  b > c.patch
+
+如：
+
+#diff -Nrua linux-2.6.14/Makefile  linux-2.6.26/Makefile >c.patch
+#cat c.patch
+
+--- linux-2.6.14/Makefile 2008-07-30 16:54:20.000000000 +0800
++++ linux-2.6.26/Makefile 2008-07-14 05:51:29.000000000 +0800
+@@ -1,8 +1,8 @@
+ VERSION = 2
+ PATCHLEVEL = 6
+-SUBLEVEL = 14
++SUBLEVEL = 26
+ EXTRAVERSION =
+-NAME=Affluent Albatross
++NAME = Rotary Wombat
+ 
+ # *DOCUMENTATION*
+ # To see a list of typical targets execute "make help"
+
+ 
+
+--- 的文件表示将被打补丁的文件　如：linux-2.6.14/Makefile
++++ 的文件表示补丁来源文件　　　如：linux-2.6.26/Makefile
+
+
+应用 patch
+ #ls
+ c.patch  linux-2.6.14  linux-2.6.26
+ #cd linux-2.6.14
+ #patch -p1 <../c.patch
+
+如果有多个补丁要打，则应该注意打补丁的顺序!

@@ -1,0 +1,256 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-30T13:36:33+08:00
+
+====== 6.第七章 快速排序 ======
+Created Saturday 30 July 2011
+
+其实这一篇我老早就写过了，只不过最近在总结《算法导论》，而第七章就是快速排序，我当初总结的快排也是根据算法导论来的，为了方便大家阅读，我在这里把曾经写过的重新再贴一遍。
+前几天写过一个堆排序的文章(http://www.wutianqi.com/?p=1820)，里面谢了很多讲解和代码注释，个人感觉快速排序不是很难，所以不想写讲解，也不需要写注释，大家如果不明白什么是快速排序，可以去看下文章最后我推荐的几个链接。
+ 
+我查过网上很多关于快排的文章和代码，但是基本都是最原始的快排，即霍尔(Hoare)快排。想必大家也没有注意这些，我准备把霍尔快排，算法导论上的快排和随机化快排的代码一起发出来，供大家对比与学习，欢迎大家和我探讨
+
+代码一.霍尔快排：
+/*
+ * Author: Tanky Woo
+ * Blog:   www.WuTianQi.com
+ * Note:   快速排序版本1 --- Hoare-Partition
+ */
+ 
+#include <iostream>
+using namespace std;
+ 
+int num;
+ 
+void swap(int &a, int &b)
+{
+    int temp = a;
+    a = b;
+    b = temp;
+}
+ 
+void PrintArray(int *arr)
+{
+    for(int i=1; i<=num; ++i)
+        cout << arr[i] << " ";
+    cout << endl;
+}
+ 
+int Partition1(int *arr, int beg, int end)
+{
+    int low = beg, high = end;
+    int sentinel = arr[beg];
+    while(low < high)
+    {
+        while(low<high && arr[high]>=sentinel)
+            --high;
+        arr[low] = arr[high];
+        while(low<high && arr[low]<=sentinel)
+            ++low;
+        arr[high] = arr[low];
+    }
+    arr[low] = sentinel;
+ 
+    cout << "排序过程:";
+    PrintArray(arr);
+    return low;
+}
+ 
+void QuickSort(int *arr, int beg, int end)
+{
+    if(beg < end)
+    {
+        int pivot = Partition1(arr, beg, end);
+        QuickSort(arr, beg, pivot-1);
+        QuickSort(arr, pivot+1, end);
+    }
+}
+ 
+int main()
+{
+    int arr[100];
+    cout << "Input the num of the elements:\n";
+    cin >> num;
+    cout << "Input the elements:\n";
+    for(int i=1; i<=num; ++i)
+        cin >> arr[i];
+    QuickSort(arr, 1, num);
+    cout << "最后结果:";
+    PrintArray(arr);
+    return 0;
+}
+
+代码二.《算法导论》里讲的快排：
+/*
+ * Author: Tanky Woo
+ * Blog:   www.WuTianQi.com
+ * Note:   快速排序版本2---《算法导论》
+ */
+ 
+#include <iostream>
+using namespace std;
+ 
+int num;
+ 
+void swap(int &a, int &b)
+{
+    int temp = a;
+    a = b;
+    b = temp;
+}
+ 
+void PrintArray(int *arr)
+{
+    for(int i=1; i<=num; ++i)
+        cout << arr[i] << " ";
+    cout << endl;
+}
+ 
+int Partition2(int *arr, int beg, int end)
+{
+    int sentinel = arr[end];
+    int i = beg-1;
+    for(int j=beg; j<=end-1; ++j)
+    {
+        if(arr[j] <= sentinel)
+        {
+            i++;
+            swap(arr[i], arr[j]);
+        }
+    }
+    swap(arr[i+1], arr[end]);
+ 
+    cout << "排序过程:";
+    PrintArray(arr);
+    return i+1;
+}
+ 
+void QuickSort(int *arr, int beg, int end)
+{
+    if(beg < end)
+    {
+        int pivot = Partition2(arr, beg, end);
+        QuickSort(arr, beg, pivot-1);
+        QuickSort(arr, pivot+1, end);
+    }
+}
+ 
+int main()
+{
+    int arr[100];
+    cout << "Input the num of the elements:\n";
+    cin >> num;
+    cout << "Input the elements:\n";
+    for(int i=1; i<=num; ++i)
+        cin >> arr[i];
+    QuickSort(arr, 1, num);
+    cout << "最后结果:";
+    PrintArray(arr);
+    return 0;
+}
+
+代码三.随机快排：
+/*
+ * Author: Tanky Woo
+ * Blog:   www.WuTianQi.com
+ * Note:   快速排序版本3 --- 随机化版本
+ * 解决待排序元素相差很大的情况
+ */
+ 
+ 
+#include <iostream>
+#include <cstdlib>
+using namespace std;
+ 
+int num;
+ 
+void swap(int &a, int &b)
+{
+    int temp = a;
+    a = b;
+    b = temp;
+}
+ 
+void PrintArray(int *arr)
+{
+    for(int i=1; i<=num; ++i)
+        cout << arr[i] << " ";
+    cout << endl;
+}
+ 
+int Partition3(int *arr, int beg, int end)
+{
+    int sentinel = arr[end];
+    int i = beg-1;
+    for(int j=beg; j<=end-1; ++j)
+    {
+        if(arr[j] <= sentinel)
+        {
+            i++;
+            swap(arr[i], arr[j]);
+        }
+    }
+    swap(arr[i+1], arr[end]);
+ 
+    cout << "排序过程:";
+    PrintArray(arr);
+    return i+1;
+}
+ 
+int RandomPartition(int *arr, int beg, int end)
+{
+    int i = beg + rand() % (end-beg+1);
+    swap(arr[i], arr[end]);
+    return Partition3(arr, beg, end);
+}
+ 
+ 
+void RandomQuickSort(int *arr, int beg, int end)
+{
+    if(beg < end)
+    {
+        int pivot = RandomPartition(arr, beg, end);
+        RandomQuickSort(arr, beg, pivot-1);
+        RandomQuickSort(arr, pivot+1, end);
+    }
+}
+ 
+int main()
+{
+    int arr[100];
+    cout << "Input the num of the elements:\n";
+    cin >> num;
+    cout << "Input the elements:\n";
+    for(int i=1; i<=num; ++i)
+        cin >> arr[i];
+    RandomQuickSort(arr, 1, num);
+    cout << "最后结果:";
+    PrintArray(arr);
+    return 0;
+}
+
+最后，我想说下，随机化的快排一般适用于待排序的数据之间相差较大的情况下。
+
+这里给出几篇网上讲得不错的文章：
+
+1.http://bbs.chinaunix.net/viewthread.php?tid=1011316
+
+算是一个讨论帖。很给力！
+
+2.http://www.javaeye.com/topic/561718
+
+讲得比较详细，不过代码是Java的。
+
+3.http://tayoto.blog.hexun.com/25048556_d.html
+
+4.http://www.360doc.com/content/10/1106/11/1317564_67067368.shtml
+
+概念上很详细。
+
+5.http://blog.csdn.net/wssxy/archive/2008/12/05/3448642.aspx
+
+一篇讲快排的佳作！
+
+6.http://www.cnblogs.com/chinazhangjie/archive/2010/12/09/1901491.html
+
+小杰的文章，用C++模板类写的。大家可以去学习学习。 

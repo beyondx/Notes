@@ -1,0 +1,179 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-11T22:44:52+08:00
+
+====== Squid 3.1.0.16 配置透明代理和普通代理功能 ======
+Created Thursday 11 August 2011
+
+http://smallfish01.blog.51cto.com/3565/282393
+配置为普通代理（需要客户端在浏览器里设置服务器地址，端口）
+
+1. install:
+shell#wget  ftp://ftp.cuhk.edu.hk/pub/packages/info-systems/www/squid/squid-3.1.0.16.tar.gz
+shell#gzip -dc squid-3.1.0.16.tar.gz  | tar xvf -
+shell#ulimit -n
+1024
+shell#./configure --prefix=/usr/local/squid --sysconfdir=/etc --enable-arp-acl --enable-linux-netfilter --enable-auth="basic" --enable-underscore
+可选的编译配置:
+#--sysconfdir=/etc 配置squid.conf 安装到/etc下
+#--enable-storeio=ufs,null 使用的文件系统通常是默认的ufs，不过如果想要做一个不缓存任何文件的代理服 务器，就需要加上null文件系统。
+#--enable-arp-acl 设置客户端可以通过MAC地址进行管理，防止IP欺骗
+#--enable-err-languages="Simplify_Chinese"
+#--enable-default-err-languages="Simplify_Chinese" 编入使用简体中文的错误信息
+#--enable-underscore 允许URL中出现下划线，默认URL带下划线是非法地址
+#--enable-linux-netfilter 使用透明代理功能
+shell#make
+shell#make install
+2. configure:
+shell# useradd squid  #增加一个默认用户
+shell# chown -R squid.squid /var/squid
+shell# vi /etc/squid.conf
+http_port 192.168.2.1:3128 #设置客户端使用的代理服务器地址
+cache_mgr admin@admin.com    #设置管理员信箱，便于错误信息接收
+cache_dir ufs /var/squid 1024 16 256 # 缓存保存目录,ufs为存储机制，1024表示1024M空间，16表示一级目录树的数量为16，256表示二级目录树的数量为256，如果L1和L2的值比较小，那么使用squid -z创建交换目录的过程，会执行更快。这样，假如你的cache文件确实小，你也许该减少L1和L2目录的数量。
+cache_mem 32MB   #设置cache使用的内存，不要设置太大
+cache_swap_low 90  #如果磁盘缓存使用率低于90%就不会删除cache
+cache_swap_high 95  #如果磁盘缓存使用率高于95%则删除cache
+#如果不想squid使用缓存，可以设置cache_dir null /tmp
+cache_effective_user squid #可以用root来运行squid,设置cache_effective_user告诉squid用root执行完特别权限任务后切换到哪个用户，推荐建立一个新用户squid,cache_effective_user不能设置为root，否则不能启动squid
+cache_access_log /var/log/squid/access.log #设置日志文件路径，access.log包含了客户发起的请求记录，如果不想记录该日志，就指定路径为/dev/null
+cache_log /var/log/squid/cache.log  #cache.log包含调试和状态信息，刚开始设置运行squid的时候必须关注
+cache_store_log /var/log/squid/store.log #store.log并不是都很有用，一般用来记录进入和离开缓存的每个目标的记录，如果不想记录，只要将路径设置为none即可
+visible_hostname 192.168.2.1   #设置squid主机名，如果squid不能自动发现它的主机名，这个设置非常有用，而且也能协助用户在出现故障的时候发现源头
+client_netmask 255.255.255.255   #告诉squid，每个用户请求的IP都当做独立主机处理
+dns_nameservers 10.155.3.250   #设置DNS服务器地址
+3.运行squid
+
+shell# squid -z #产生缓存目录
+shell# ./squid
+shell# netstat -an|grep 3128
+# netstat -an|grep 3128
+tcp        0      0 10.155.30.202:3128          0.0.0.0:*                   LISTEN     
+
+到目前为止，一个简单的squid代理服务器即完成!
+4.问题
+[root@localhost sbin]# ./squid
+2010/02/22 16:43:55| http(s)_port: missing Port: 192.168.2.1
+FATAL: Bungled squid.conf line 64: http_port 192.168.2.1 3128
+Squid Cache (Version 3.1.0.16): Terminated abnormally.
+CPU Usage: 0.008 seconds = 0.004 user + 0.004 sys
+Maximum Resident Size: 0 KB
+Page faults with physical i/o: 0
+解决：
+shell# vi /etc/squid.conf
+将http_port 192.168.2.1 3128改成http_port 192.168.2.1:3128
+[root@localhost sbin]# ./squid
+FATAL: Bungled squid.conf line 71: cache_dir ufs /var/squid
+Squid Cache (Version 3.1.0.16): Terminated abnormally.
+CPU Usage: 0.009 seconds = 0.005 user + 0.004 sys
+Maximum Resident Size: 0 KB
+Page faults with physical i/o: 0
+解决：
+cache_dir ufs /var/squid 改成：cache_dir ufs /var/squid 1024 16 256
+
+[root@localhost sbin]# ./squid
+2010/02/22 16:51:38| WARNING: No units on 'cache_mem 32M', assuming 32.00 bytes
+WARNING: Cannot write log file: /var/log/squid/cache.log
+/var/log/squid/cache.log: Permission denied
+         messages will be sent to 'stderr'.
+解决：
+将cache_mem 32M 改为cache_mem 32 MB， 并且给/var/log/squid增加权限为777
+
+shell# ./squid -z
+2010/02/22 17:31:33| Creating Swap Directories
+2010/02/22 17:31:33| /var/squid exists
+FATAL: Failed to make swap directory /var/squid/00: (13) Permission denied
+解决：
+因为squid.conf 缺少cache_effective_user，在squid.conf里增加cache_effective_user squid
+不能使用root，否则会出错
+useradd squid
+chown -R squid.squid /var/squid
+然后再运行squid -z
+./squid -z
+2010/02/22 17:43:36| Creating Swap Directories
+2010/02/22 17:43:36| /var/squid exists
+2010/02/22 17:43:36| Making directories in /var/squid/00
+2010/02/22 17:43:36| Making directories in /var/squid/01
+2010/02/22 17:43:36| Making directories in /var/squid/02
+2010/02/22 17:43:36| Making directories in /var/squid/03
+2010/02/22 17:43:36| Making directories in /var/squid/04
+2010/02/22 17:43:36| Making directories in /var/squid/05
+2010/02/22 17:43:36| Making directories in /var/squid/06
+2010/02/22 17:43:36| Making directories in /var/squid/07
+2010/02/22 17:43:36| Making directories in /var/squid/08
+2010/02/22 17:43:37| Making directories in /var/squid/09
+2010/02/22 17:43:37| Making directories in /var/squid/0A
+2010/02/22 17:43:37| Making directories in /var/squid/0B
+2010/02/22 17:43:37| Making directories in /var/squid/0C
+2010/02/22 17:43:37| Making directories in /var/squid/0D
+2010/02/22 17:43:37| Making directories in /var/squid/0E
+2010/02/22 17:43:37| Making directories in [[/var/squid/0F]]
+
+
+
+配置为透明代理(客户机不需要做任何设置)
+1.安装步骤同上
+2.设置开启Linux IP转发功能
+shell# echo 1 > /proc/sys/net/ipv4/ip_forward
+3.编辑/etc/squid.conf,修改或增加以下选项：
+http_port 192.168.2.1:3128 transparent
+4.配置iptables
+shell# iptables -t nat -A PREROUTING -i eth1 -p tcp --dport 80 -j REDIRECT --to-ports 3128 #把80端口的包全部转向3128端口
+shell# iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE #动态地址转换
+shell# service iptables save
+5.打开客户端，不要在IE里做任何设置即可上网
+调试：
+1.在squid服务器上通过tcpdump 监控客户端发起或者受到的数据包：
+shell# tcpdump -n -i eth1 port 80
+ 
+ 
+
+参考网站：
+http://wiki.ubuntu.org.cn/Squid%E9%85%8D%E7%BD%AE%E8%AF%A6%E8%A7%A3
+squid 权威中文指南： http://home.arcor.de/pangj/squid/
+http://www.oschina.net/p/squid
+squid faq: http://www.comfsm.fm/computing/squid/FAQ.html#toc11
+
+启动时查看信息输出
+./squid -N -d1
+看到Ready to serve reques信息输出表示服务器启动正常，可以使用代理功能
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+将LINUX 设置为网关
+Linux Server
+Eth0: 10.155.30.202 255.255.255.0 10.155.30.254 连接外部玩了过
+Eth1: 192.168.2.1 255.255.255.0 192.168.2.1 连接内网
+如果测试成功，在内网客户机192.168.2.2上能够ping通192.168.2.1，192.168.30.254
+配置：
+Linux:
+shell# echo 1 > /proc/sys/net/ipv4/ip_forward
+shell# iptables -F
+shell# iptables -X
+shell# iptables -Z
+shell# iptables -F -t nat
+shell# iptables -X -t nat
+shell# iptables -Z -t nat
+shell# iptables -P INPUT        ACCEPT
+shell# iptables -P OUTPUT       ACCEPT
+shell# iptables -P FORWARD   ACCEPT
+shell# iptables -t nat -P PREROUTING        ACCEPT
+shell# iptables -t nat -P POSTROUTING      ACCEPT
+shell# iptables -t nat -P OUTPUT                   ACCEPT
+shell# iptables -t nat -A  POSTROUTING  -s  192.168.2.0/24  -o  eth0 -j  MASQUERADE           
+shell# iptables -t nat -A  POSTROUTING  -s  192.168.20/24   -j  SNAT  --to  10.155.30.202
+shell#route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+192.168.2.0     0.0.0.0         255.255.255.0   U     0      0        0 eth1
+10.155.30.0     0.0.0.0         255.255.255.0   U     0      0        0 eth0
+0.0.0.0         10.155.30.254   0.0.0.0         UG    0      0        0 eth0
+如果没有默认路由，则增加一条默认路由：
+route add -net 0.0.0.0 netmask 0.0.0.0 gateway 10.155.30.254
+
+客户机：
+IP:192.168.2.2 255.255.255.0 192.168.2.1

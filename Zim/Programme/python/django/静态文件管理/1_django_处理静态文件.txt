@@ -1,0 +1,156 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-24T11:02:36+08:00
+
+====== 1 django 处理静态文件 ======
+Created Monday 24 October 2011
+
+用Django框架时静态文件如CSS/JS/IMG的处理分为两种方式：
+1.使用Django处理。
+2. 使用Web服务器如Apace/Ngix等处理。
+
+第一种方式不推荐在生产环境中使用，因为它的性能很差。Django本身应该只用于处理动态页面请求。
+
+下面分别介绍两种方式的配置方式：
+
+===== 1.使用Django处理静态文件请求： =====
+
+ 不管如何配置，Django处理静态文件请求时会搜索INSTALLED_APPS中各APP的static目录以及
+STATICFILES_DIRS中列出的目录，因此只要静态文件包含在这些路径中，Django就可以找到它们。
+
+STATIC_ROOT只用于生产环境，STATICFILES_DIRS用于测试环境
+
+使用Django处理静态文件请求时，需要配置三个文件：settings.py、urls.py以及模板文件中对这些
+静态文件的引用方式。
+
+==== settings.py配置选项： ====
+
+import os.path,logging, sys
+from os.path import join
+#通过运行时确定静态文件的路径而不是将路径硬编码，这可以提高灵活性。
+settings_path = os.path.abspath(os.path.dirname(__file__))   
+
+#MEDIA_ROOT用于指定__用户上传__的静态文件所放的绝对路径
+# Absolute path to the directory that holds media.
+# Example: "/home/media/media.lawrence.com/"
+#指定为本配置文件所在目录的media/目录下放置用户上传的静态文件。
+**MEDIA_ROOT** = join(settings_path, 'media/')
+
+MEDIA_URL有两种用途：
+1. 可以用作模板文件中CSS/JS/IMG等与用户有关的静态文件如头像等的路径前缀。
+2. 定义请求URL中的静态文件命名空间(MEDIA_URL后的所有内容为静态文件在
+MEDIA_ROOT中的文件路径)。
+
+MEIDA_URL可以有两种定义方式：
+1. 若本地的模板文件使用远程文件服务器(没有使用Django)上的静态文件，则其定义形式为
+    MEDIA_URL = "http://example.com/media/"
+2.若模板文件使用本地MEDIA_ROOT中的文件(一般是用户上传的静态文件)，则其定义形式为
+    MEDIA_URL = "/media/"
+注意：Django在生成动态页面时会用该设置值替换模板文件中MEIDA_URL变量，所以客户端浏览器
+在收到返回的动态页面文件后，可能向example.com文件服务器或Django框架请求CSS/JS/IMG等静态
+文件。但是Django默认是不提供静态文件服务的，所以需要配置(如下文所示)。第一种形式一般用于生产环境，
+第二种形式一般用于开发、测试（如果文件服务器和Django位于同一台主机，则对静态文件的引用需要使用
+第二种方式，详见下文）。
+
+# URL that handles the media served from MEDIA_ROOT. Make sure to use a
+# trailing slash if there is a path component (optional in other cases).
+# Examples: "http://media.lawrence.com", "http://example.com/media/"
+#指定以/media/为前缀的URL地址空间访问本地MEDIA_ROOT中的静态文件
+**MEDIA_URL** = '/media/'
+#示例：
+     如果用户浏览器向本机发送： http://127.0.0.1/media/css/style.css%E8%AF%B7%E6%B1%82
+     则Django会将/media/去掉后的css/style.css作为MEDIA_ROOT中的文件名，然后
+     将读取的内容返给客户端。
+ #将MEDIA_URL指定为远程文件服务器中静态文件所在的目录
+ #客户端浏览器在收到动态页面后，会向该URL指定的主机请求静态文件。
+** MEDIA_URL** = "http://example.com/media/"
+ 
+**STATIC_ROOT**中存放的是Django从**INSTALLED_APPS和STATICFILES_DIRS **中收集到的
+静态文件(然后将它们删除)，这样便于在生产环境中部署项目(只需把STATIC_ROOT拷贝到文件服
+务器上然后将STATIC_URL指向该服务器和该目录即可, 当然文件服务器可能与Django框架运行在
+同一台主机上)。
+
+注意：STATIC_ROOT__ 只用于生产环境__中且不能与STATICFILES_DIRS指向同一个目录（因为colletcstatic
+命令会将后者的内容放到前者位置）。用户不应该在STATIC_ROOT中放置自己的文件，自己的文件应该放在
+STATICFILES_DIRS中。当开发结束后运行collectstatic命令将**INSTALLED_APPS和**
+** STATICFILES_DIRS **中的文件统一收集到本地**STATIC_ROOT**中，并将其拷贝到Web服务器能找
+到的目录中(同时要配置STATIC_URL指向Web服务器的静态文件目录)。
+
+各APP的静态文件一般存放在APP根目录下的static/app-name目录中，这样运行 
+python manage.py collectstatic命令时Django会将app-name目录放到STATIC_ROOT下
+(注意，此时对APP的静态文件引用的方式是STATIC_URL/app-name/)。
+
+当在开发、测试的过程中为了方便一般使用Django处理静态请求，但要注意__一定不要运行__
+collectstatic命令，因为STATIC_ROOT位于project的根目录中，project 目录一般不会被加入
+到INSTALLED_APPS中，因此其下的STATIC_ROOT不会被Django搜索到(同时由于APP中的staitc目录
+都被转移到STATIC_ROOT目录中，因此Django会出现搜索不到任何静态文件的现象)。
+这时有两种解决办法：
+1.把project目录加入到INSTALLED_APPS中。
+2.把STATIC_ROOT加入到STATICFILES_DIRS
+但是这两种方法都不太好,因此用Django处理静态文件请求的__最好方法__是将静态文件放在INSTALLED_APPS的static或
+STATICFILES_DIRS的目录列表中。
+
+# Absolute path to the directory static files should be collected to.
+# Don't put anything in this directory yourself; store your static files
+# in s' "static/" subdirectories and in STATICFILES_DIRS.
+# Example: "/home/media/media.lawrence.com/static/"
+**STATIC_ROOT** = join(settings_path, 'static/')
+
+#STATIC_URL的定义方式和用途与MEDIA_URL类似，只不过前者定义的命名空间与用户上传
+的文件无关。STATIC_URL一般用于定义模板中CSS/IMG/JS对象的位置。当Django收到用户浏览器
+对STATIC_URL定义的命名空间中的文件请求时，Django会查找INSTALLED_APPS和STATICFILES_DIRS
+中的目录文件。如果将STATIC_URL指定为远程主机，则Django在生成动态页面时会将其中的静态文件访问
+地址设置为STATIC_URL,这时客户端浏览器会向STATIC_URL中指定的主机请求静态文件。
+
+# URL prefix for static files.
+# Example: "http://media.lawrence.com/static/"
+**STATIC_URL** = '/static/'
+
+#STATICFILES_DIRS用于定义**用户额外**(非INSTALLED_APPS中各APP/static)的静态文件存放位置。
+# Additional locations of static files
+**STATICFILES_DIRS** = (
+    # Put strings here, like "/home/html/static" or "C:/www/django/static".
+    # Always use forward slashes, even on Windows.
+    # Don't forget to use absolute paths, not relative paths.
+     "./static/",
+)
+
+#下面两个变量用于定义admin页面的静态文件地址和URL命名空间前缀。
+#注意：Django对admin media的处理是__单独进行__的(这可以从urls.py中对admin命名空间的匹配看出来。)
+#Django默认(不改变ADMIN_MEDIA_PREFIX值)使用__系统自带__的admin media，但是一旦改变ADMIN_MEDIA_PREFIX
+的值，Django将使用该变量的值来查找admin media.
+#ADMIN_MEDIA_PREFIX默认值为 '/static/admin/'，使用该值时ADMIN_MEDIA_ROOT可以设为__任意值__
+甚至不设置也行。但是一旦将该值更改，则对应的目录中必须要有admin的各CSS/JS/IMG文件。
+
+# URL prefix for admin static files -- CSS, JavaScript and images.
+# Make sure to use a trailing slash.
+# Examples: "http://foo.com/static/admin/", "/static/admin/".
+**ADMIN_MEDIA_PREFIX** = '/static/' + "grappelli/"
+
+#ADMIN_MEDIA_ROOT变量暂时没有发现其用途。
+ADMIN_MEDIA_ROOT = join(settings_path, 'static/admin/')
+
+#如果使用Django处理静态文件，一定要把staticfiles添加到INSTALLED_APPS列表中。
+**INSTALLED_APPS** = (   
+    "django.contrib.staticfiles",
+ )
+
+===== urls.py设置： =====
+
+     #用于处理admin系统
+    (r'^admin/', include(admin.site.urls)),
+
+     #注意这里的static前缀一定要与STATIC_URL项匹配,但是document_root可以任意设置，
+      甚至为空字符串(因为staticfiles将负责查找这些静态文件)。这里的URL用来匹配客户端
+       浏览器发来的静态文件请求。
+     (r'^**static**/(?P<path>.*)$', 'django.views.static.serve', 
+        {'document_root': settings.STATIC_ROOT}),
+     
+     #用来匹配用户上传文件的URL，也就是查找用户浏览器请求以前上传的静态文件。
+     #注意这里的documetn_root__一定要设为__MEDIA_ROOT即用户上传的文件保存地址。
+    (r'^media/(?P<path>.*)$', 'django.views.static.serve', 
+        {'document_root': settings.**MEDIA_ROOT**}),
+
+==== 模板中对这些静态文件的引用 ====
+
+

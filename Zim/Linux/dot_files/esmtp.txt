@@ -1,0 +1,24 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-23T14:44:06+08:00
+
+====== esmtp ======
+Created Monday 23 May 2011
+
+identity =  geekard@gmail.com
+    hostname = smtp.gmail.com:587
+    username = 'geekard@gmail.com'
+    password = '701178zj12912'
+    starttls required
+    default
+
+identity = geekard@qq.com
+    hostname smtp.qq.com:587
+    username = 'geekard'
+    password = 'ho4o44'
+    starttls required
+
+mda = '/usr/lib/procmail -d %T'
+#mda = '/usr/bin/mail'
+
+

@@ -1,0 +1,47 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-02T20:24:17+08:00
+
+====== linux中常见守护进程 ======
+Created Monday 02 May 2011
+https://wiki.archlinux.org/index.php/Daemon
+List of Daemons
+
+(Here is a list of daemons. Any package can use a daemon if it needs to, so this list will never be complete. Please feel free to add any missing daemons here, in alphabetical order.)
+
+**Daemon	Description**
+acpid			Delivers ACPI events.
+alsa				Advanced Linux Sound Architecture; provides device drivers for sound cards.
+atd				run jobs queued for later execution.	
+avahi-daemon	Allows programs to automatically find local network services.
+avahi-dnsconfd	
+crond			Daemon to schedule and time events.
+cups			Common UNIX Printing System daemon.
+dbus			Message bus system for software communication.
+fam				File Alteration Monitor.
+fbsplash			Graphical boot splash screen for the user.
+gensplash		(see fbsplash)
+hal				Hardware Abstraction Layer.
+mdadm			MD Administration (Linux Software RAID).
+mpd			Music Player Daemon.
+mysqld			MySQL database server.
+netfs			Mounts network file systems.
+network			To bring up the network connections.
+networkmanager	Combine with HAL to replace network, and provide configuration and detection for automatic network connections.
+nsyslogd	
+ntpd			Network Time Protocol daemon (client and server).
+openntpd		alternate Network Time Protocol daemon (client and server).
+pure-ftpd			FTP server.
+rsyslogd			The latest version of a system logger.
+slim				Simple Login Manager
+samba			File and print services for Microsoft Windows clients.
+saned			To share the scanner system over network.
+sensors			Hardware (temperature, fans etc) monitoring.
+sshd			OpenSSH (secure shell) daemon.
+stbd				This daemon was previously necessary for gnome-system-tools. However, as of gnome-tools 2.28, it is no longer 					needed.
+syslogd			This was the older and basic system logger.
+syslog-ng		System logger next generation.
+timidity++		Software synthesizer for MIDI.
+vsftpd			FTP server.
+wicd			Combine with dbus to replace network, a lightweigh alternative to networkmanager.
+

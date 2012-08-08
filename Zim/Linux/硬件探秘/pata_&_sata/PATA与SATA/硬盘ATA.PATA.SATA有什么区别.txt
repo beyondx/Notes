@@ -1,0 +1,19 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-21T21:45:15+08:00
+
+====== 硬盘ATA.PATA.SATA有什么区别 ======
+Created Monday 21 November 2011
+
+http://zhidao.baidu.com/question/5290976
+
+ATA是AT Attachment的缩写，意思是AT计算机上的附加设备。ATA可以使用户方便地在PC机上连接硬盘。 ATA标准从1994年至今共经历了7代标准，现在简述如下： ATA-1（1994）：是最早的IDE标准。 ATA-2（1996）：是EIDE的标准，支持PIO3,4和DMA 1,2传输方式，最大数据传输速度为16MB/s。 ATA-3（1997）：引入了SMART和安全特性，没有制定新的传输标准。 ATA-4（1998）：著名的“UDMA33”标准。引入了新的ATA命令和协议，最大数据传输速度为33MB/s。 ATA-5（2000）：增加了一些新的ATA命令。最大数据传输速度为66MB/s。 ATA-6（2000）：**UDMA100**。 ATA-7（2002）：UDMA133。 
+
+你所说的ATA是广为使用的IDE和EIDE设备的相关标准。 
+其中就包含了 PATA和SATA 
+PATA就是Parallel ATA:并行ATA 
+__Ultra ATA/133之前(包括Ultra ATA/133)都是PATA __
+SATA 就是Serial ATA :点对点串行ATA 
+它因为有更轻薄、更灵活的的接线 
+支持热插拔、功耗更低、安装简便性、内部散热以及驱动器配置方面带来很多的好处、数据传输速率更快等优点 
+将慢慢代替PATA成为硬盘接口的主流.

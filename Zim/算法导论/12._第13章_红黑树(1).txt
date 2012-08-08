@@ -1,0 +1,83 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-30T13:47:34+08:00
+
+====== 12. 第13章 红黑树(1) ======
+Created Saturday 30 July 2011
+本章内容颇多，所以我分三篇来写，这一篇是关于一些基本的概念和选择，后面两篇分别是插入和删除。
+
+上一章总结过BST(http://www.wutianqi.com/?p=2430)%EF%BC%8CBST%E5%9C%A8%E9%AB%98%E5%BA%A6%E8%BE%83%E5%B0%8F%E6%97%B6%EF%BC%8C%E5%8F%AF%E4%BB%A5%E8%8E%B7%E5%BE%97%E5%BE%88%E5%A5%BD%E7%9A%84%E6%80%A7%E8%83%BD(%E5%9B%A0%E4%B8%BABST%E7%9A%84%E6%93%8D%E4%BD%9C%E7%9A%84%E5%B9%B3%E5%9D%87%E6%97%B6%E9%97%B4%E4%B8%BAO(lgn))，但是在高度较大时，则性能就一般。而红黑树“近似平衡”，于是降低了平均时间，再者，红黑树并不追求“完全平衡”——它只要求部分地达到平衡要求，降低了对旋转的要求，从而提高了性能。
+
+谈到红黑树的用途，最广为人知的应该就是红黑树在C++ STL中的应用了，在set, multiset, map, multimap等中，都应用了红黑树(具体大家可以去网上搜搜)。
+
+
+下面给出红黑树和黑高度的定义：
+
+满足下面几个条件(红黑性质)的二叉搜索树，称为红黑树：
+1. 每个结点或是红色，或是是黑色。
+2. 根结点是黑的。
+3. 所有的叶结点(NULL)是黑色的。（NULL被视为一个哨兵结点，所有应该指向NULL的指针，都看成指向了NULL结点。）
+4. 如果一个结点是红色的，则它的两个儿子节点都是黑色的。
+5. 对每个结点，从该结点到其子孙结点的所有路径上包含相同数目的黑结点。
+
+黑高度的定义：
+从某个结点出发(不包括该结点)到达一个叶结点的任意一条路径上，黑色结点的个数成为该结点x的黑高度。
+
+下面就是一个红黑树：
+{{./rbt1_thumb.png}}
+rbt1
+
+红黑树是二叉搜索树的一种。它与普通二叉搜索树不同的是，红黑树的每个节点都附加了另一个属性――颜色，可以是红色，也可以是黑色。通过对于每条路径上节点颜色的规则进行限定，红黑树可以保证任何两条从根部到树叶的路径节点个数相差不超过2倍。所以，红黑树是一种近似平衡的二叉搜索树。
+
+红黑树的查找、最大值、最小值、前趋、后继等操作，与普通的二叉搜索树没有什么区别。插入和删除操作需要重新实现。仅仅用普通的二叉搜索树的插入和删除动作，可能会破坏红黑树本身的一些性质，因此，需要进行额外的处理。这些额外的处理主要是改变树节点的颜色，或是改变树的结构。
+
+关于旋转：
+
+我把13-2手动画了一次并添加了一些注释：
+{{./xuanzhuan_thumb.jpg}}
+xuanzhuan 
+
+旋转其实比较简单，就不多说了，以下是代码：
+void LeftRotate(RBTree &T, Node *x)
+{
+    Node *y = x->rchild;
+    x->rchild = y->lchild;
+    if(y->lchild != NULL)
+        y->lchild->parent = x;
+    y->parent = x->parent;
+    if(x->parent == NULL)
+        T = y;
+    else
+    {
+        if(x == x->parent->lchild)
+            x->parent->lchild = y;
+        else
+            x->parent->rchild = y;
+    }
+    y->lchild = x;
+    x->parent = y;
+}
+ 
+void RightRotate(RBTree &T, Node *x)
+{
+    Node *y = x->rchild;
+    x->rchild = y->lchild;
+    if(y->lchild != NULL)
+        y->lchild->parent = x;
+    y->parent = x->parent;
+    if(x->parent == NULL)
+        T = y;
+    else
+    {
+        if(x == x->parent->lchild)
+            x->parent->lchild = y;
+        else
+            x->parent->rchild = y;
+    }
+    y->lchild = x;
+    x->parent = y;
+}
+
+ 
+
+下一篇是关于插入。

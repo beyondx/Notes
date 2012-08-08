@@ -1,0 +1,70 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-23T15:23:04+08:00
+
+====== xargs详解 ======
+Created Wednesday 23 November 2011
+
+http://www.linuxsense.org/archives/118.html
+
+Linux Shell真的是一个比较好玩的东西，以前也会经常写一些，不过都是些简单的东西，或者称之为批处理，估计也只能叫批处理，只是一些简单的命令的堆积。:)。
+
+今天稍微看了一下xargs，一个简单的示例应用如下：
+[root@TestServer haha]#ls
+a.class b.class c.class
+a.java b.java c.java
+[root@TestServer haha]#ls |xargs rm
+[root@TestServer haha]#ls
+[root@TestServer haha]#
+
+呵呵，虽然有点避简就烦，但是能说明了xargs的功能：它将输入输出给xargs后面的命令，作为那个命令的参数。
+
+也就是说，上面的命令执行相当于：
+rm a.class b.class c.class a.java b.java c.java
+
+xargs将前面的ls的结果交给了xargs后面的rm命令，作为rm命令的参数。它真正的含义可以用xargs自己来解释：
+
+[root@TestServer haha]# cat a
+first line
+second line
+[root@TestServer haha]# cat a |xargs
+**first line second line**
+[root@TestServer haha]# cat a |xargs __–verbose__
+**/bin/echo first line second line**
+first line second line third line
+[root@TestServer haha]# cat a |xargs –verbose__ –max-args=1__
+/bin/echo first
+first
+/bin/echo line
+line
+/bin/echo second
+second
+/bin/echo line
+line
+
+
+——————————————————————————–
+
+还有人这样解释xargs：
+xargs的作用是用来回避对命令行长度的限制，它通过使用一个参数多次调用一个命令实现这一功能，而不是一次使用多个参数
+。这句话的意思是：xargs永远一次只传给他后面的命令一个参数，然后不停的将所有参数一一传完，然而，这个说法是错误的！下面的试验将证明这个说法是不正确的：
+
+[root@TestServer haha]# ll
+total 12
+-rw-r–r– 1 root root 34 Aug 19 20:43 a
+-rw-r–r– 1 root root 34 Aug 19 20:45 b
+drwxr-xr-x 2 root root 4096 Aug 19 20:54 c_folder
+[root@TestServer haha]# ll c_folder/
+total 0
+[root@TestServer haha]# **ls| xargs cp**
+[root@TestServer haha]# ll
+total 12
+-rw-r–r– 1 root root 34 Aug 19 20:43 a
+-rw-r–r– 1 root root 34 Aug 19 20:45 b
+drwxr-xr-x 2 root root 4096 Aug 19 20:54 c_folder
+[root@TestServer haha]# ll c_folder/
+total 8
+-rw-r–r– 1 root root 34 Aug 19 20:54 a
+-rw-r–r– 1 root root 34 Aug 19 20:54 b
+[root@TestServer haha]#
+从这个试验可以看到，xargs确实是将a b c_folder三个参数__同时__传给了cp命令，不然不可能出现这样的结果。

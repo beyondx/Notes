@@ -1,0 +1,76 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-21T15:16:51+08:00
+
+====== TeXlive 2011安装使用 ======
+Created Sunday 21 August 2011
+
+代码链接:
+
+https://github.com/live5156go51/code/blob/master/Tex/xetexzh-cn.tex
+
+===== 1 简介 =====
+
+ TEX Live 是一个完整的 TEX 系统,它的主页在 http://tug.org/texlive/
+
+==== 2 下载TeXlive2011 ====
+厦门大学开源软件镜像:http://mirrors.xmu.edu.cn/CTAN/systems/texlive/Images/
+
+===== 3 安装 =====
+命令挂载到本地磁盘: sudo mount -t iso9660 -o loop /pathto/texlive2011-
+20110705.iso /mnt/
+图形介面安装:sudo ./install-tl -gui
+
+==== 4 关于环境变量设置 ====
+如果安装时候选择了在标准路径下创建符号连接,那就不需要设置环境变量了。否
+则,应该将使用的平台下TeX二进制程序的目录加入搜索路径,编辑用户目录 /̃.bash_profile
+PATH=/usr/local/texlive/2011/bin/i386-linux:$PATH; export PATH
+MANPATH=/usr/local/texlive/2011/texmf/doc/man:$MANPATH; export MANPATH
+INFOPATH=/usr/local/texlive/2011/texmf/doc/info:$INFOPATH; export IN-
+FOPATH
+
+==== 5 解决XeTeX中文配置 ====
+参照TEX Live 指南 TEX Live 2011:
+1. 将 texlive-fontconfig.conf 文件复制到 /etc/fonts/conf.d/09-texlive.conf。
+2. 运行 __fc-cache -fsv__。
+以下是测试XeTeX中文环境代码。
+
+\ documentclass { article }
+\ usepackage { fontspec }
+\ setmainfont { WenQuanYi Zen Hei Sharp }
+\ begin { document }
+Hello 中文,
+\ end { document }
+
+第2行使用fontspec宏包以使用setmainfont命令设置导言区字体。
+linux 系统用命令:__fc-list :lang=zh-cn__ 查看setmainfont可设置的中文字体。
+
+另外可以从Windows/Fonts/里复制些中文字体到/usr/share/fonts, 然后再用命令fc-cache更新字体系统,这样fc-list就可以识别了。
+
+===== 6 XeTex beamer做slide =====
+
+\ documentclass { beamer } 幻灯片宏包
+\ usepackage { beamerthemesplit } 主题风格
+\ usepackage { fontspec }
+\ setmainfont { AR PL UKai CN }
+__\ setsansfont { WenQuanYi Zen Hei Sharp }__
+\ usepackage { graphics }
+\ begin { document }
+\ title{ 创建slide } %添加标题
+
+\ subtitle{副标题}% 附标题
+
+\ author{李俊鹏} %添加作者
+
+\ institute{hello}
+\ date {\ today {}} %添加日期
+\ frame {\ titlepage {}} %添加主题幻灯片
+\ frame {\ frametitle第一张幻灯片标题{}
+\ pause {}
+\ begin { itemize }
+\ item 第一名
+\ end { itemize }
+}
+\ end { document }
+
+很多时候排Beamer幻灯片时,中文汉字显示为空白,是因为因为 __beamer 默认使用sans 字体__。所以加上第五行setsansfont字体即可解决中文beamer。

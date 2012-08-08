@@ -1,0 +1,187 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-20T17:01:46+08:00
+
+====== socket ======
+Created Wednesday 20 April 2011
+http://bbs.chinaunix.net/thread-2278881-1-2.html
+TCP/IP编程实现远程文件传输
+  
+    在TCP/IP网络结构中，为了保证网络安全，网络人员往往需要在路由器上添加防火墙，禁止非法用户用ftp等安全危害较大的TCP/IP协议访问主机。而有时系统维护人员需要用ftp将一些文件从中心机房主机传到前端网点主机上，比如应用程序的替换升级。如果每次传输文件时都要打开防火墙，未免显得有些繁琐，要是在自己的应用程序中增加一个专门的文件传输模块，那将是十分愉快的事情。
+
+　　UNIX网络程序设计一般都采用套接字(socket)系统调用。针对目前十分流行的客户/服务器模式，其程序编写步骤如下：
+　　1.Socket系统调用
+　　为了进行网络I/O，服务器和客户机两端的UNIX进程要做的第一件事是调用socket()系统调用，建立软插座，指明合适的通讯协议。格式为：
+　　＃include<sys/types.h>;
+　　＃include<sys/socket.h>;
+　　int socket(int family,int type,int protocol)
+　　其中：(1)family指明套节字族，其值包括：
+　　AF_UNIX　　 (UNIX内部协议族)
+　　AF_INET　　 (Iternet协议)
+　　AF_NS (XeroxNs协议，TCP/IP编程取该值)
+　　AF_IMPLINK　 (IMP链接层)
+　　(2)type 指明套接字类型，取值有：
+　　SOCK_STREAM 　　　　(流套接字)
+　　SOCK_DGRAM 　　　　(数据报套接字)
+　　SOCK_RAW　 　　　　(原始套接字)
+　　SOCK_SEQPACKET　　 (定序分组套接字)
+　　一般情况下，前两个参数的组合就可以决定所使用的协议，这时第三个参数被置为0，如果第一个参数为AF_INET，第二个参数选SOCK_STREAM，则使用的协议为TCP；第二个参数选SOCK_DGRAM，则使用的协议为UDP；当第二个参数选SOCK_RAW时，使用的协议为IP。值得指出的是并不是所有的族和类型的组合都是合法的，具体请查阅相关资料。该系统调用若成功则返回一个类似文件描述符，成为套节字描述字，可以像文件描述符那样用read和write对其进行I/O操作。当一个进程使用完该软插座时，需用close(<描述符>关闭(具体见后面内容)。
+　　2.服务器端Bind系统调用
+　　软插座创建时并没有与任何地址相关联，必须用bind()系统调用为其建立地址联系。其格式为：
+　　＃include<sys/types.h>;
+　　＃include<sys/socket.h>;
+　　int bind(int socketfd,struct sockaddr_in ＊localaddr,sizeof(localaddr));
+　　其中：(1)第一个参数socketfd是前步socket()系统调用返回的套节字描述符。
+　　(2)第二个参数被捆向本地地址的一种结构，该结构在sys/netinet/in.h中定义：
+　　struct sockaddr_in{
+　　　short sin_family;/＊socket()系统调用的协议族如AF_INET＊/
+　　　u_short sin_port;/＊网络字节次序形式的端口号码＊/
+　　　struct in_addr sin_addr;/＊网络字节次序形式的网络地址＊/
+　　　char sin_zero[8];
+　　}
+　　一台机器上的每个网络程序使用一个各自独立的端口号码，例如：telnet程序使用端口号23，而ftp文件传输程序使用端口号21。我们在设计应用程序时，端口号码可以由getservbyname()函数从/etc/services库文件中获取，也可以由htons (int portnum)函数将任意正整数转换为网络字节次序形式来得到，有些版本的UNIX操作系统则规定1024以下的端口号码只可被超级用户使用，普通用户程序使用的端口号码只限于1025到32767之间。网络地址可以由gethostbyname(char＊hostname)函数得到(该函数和getservbyname()一样都以网络字节次序形式返回所有在他们结构中的数据)，参数hostname为/etc/hosts文件中某一网络地址所对应的机器名。该函数返回一个类型为hostent的结构指针，hostent结构在netdb.h中定义：
+　　struct hostent{
+　　 char ＊h_name;
+　　 char ＊＊h_aliases;
+　　 int h_addrtype;
+　　 int h_length;　　/＊地址长度＊/
+　　 char ＊＊h_addr_list;
+　　 ＃define h_addr h_addr_list[0];/＊地址＊/
+　　}
+　　(3)第三个参数为第二个结构参数的长度，如果调用成功，bind返回0，否则将返回－1并设置errno。
+　　3.服务器端系统调用listen，使服务器愿意接受连接
+　　格式：int listen(int socketfd,int backlong)
+　　它通常在socket和bind调用后在accept调用前执行。第二个参数指明在等待服务器执行accept调用时系统可以排队多少个连接要求。此参数常指定为5，也是目前允许的最大值。
+　　4.服务器调用accept,以等待客户机调用connect进行连接。格式如下：
+　　int newsocket=(int socketfd,struct sockaddr_in ＊peer,int＊addrlen);
+　　该调用取得队列上的第一个连接请求并建立一个具有与sockfd相同特性的套节字。如果没有等待的连接请求，此调用阻塞调用者直到一连接请求到达。连接成功后，该调用将用对端的地址结构和地址长度填充参数peer和addlen，如果对客户端的地址信息不感兴趣，这两个参数用0代替。
+　　5.客户端调用connect()与服务器建立连接。格式为：
+　　connect(int socketfd,struct sockaddr_in ＊servsddr,int addrlen)
+　　客户端取得套接字描述符后，用该调用建立与服务器的连接，参数socketfd为socket()系统调用返回的套节字描述符，第二和第三个参数是指向目的地址的结构及以字节计量的目的地址的长度(这里目的地址应为服务器地址)。调用成功返回0，否则将返回－1并设置errno。
+　　6.通过软插座发送数据
+　　一旦建立连接，就可以用系统调用read和write像普通文件那样向网络上发送和接受数据。Read接受三个参数：一个是套节字描述符；一个为数据将被填入的缓冲区，还有一个整数指明要读的字节数，它返回实际读入的字节数，出错时返回－1，遇到文件尾则返回0。Write也接受三个参数：一个是套节字描述符；一个为指向需要发送数据的缓冲区，还有一个整数指明要写入文件的字节个数，它返回实际写入的字节数，出错时返回－1。当然，也可以调用send和recv来对套节字进行读写，其调用与基本的read和write系统调用相似，只是多了一个发送方式参数。
+　　7.退出程序时，应按正常方式关闭套节字。格式如下：
+　　int close(socketfd)
+　　前面介绍了UNIX客户/服务器模式网络编程的基本思路和步骤。值得指出的是socket编程所涉及的系统调用不属于基本系统调用范围，其函数原形在libsocket.a文件中，因此，在用cc命令对原程序进行编译时需要带－lsocket选项。
+　　现在，我们可以针对文章开头提出的问题着手进行编程了。在图示的网络结构中，为使中心机房的服务器能和网点上的客户机进行通信，需在服务器端添加通过路由器1112到客户机的路由，两台客户机也必须添加通过路由器2221到服务器的路由。在服务器的/etc/hosts文件中应该包含下面内容：
+　　1.1.1.1　　server
+　　2.2.2.2　　cli1
+　　2.2.2.3　　cli2
+　　客户机的/etc/hosts文件中应该有本机地址信息和服务器的地址信息，如cli1客户机的/etc/hosts文件：
+　　2.2.2.2　　cli1
+　　1.1.1.1　　server
+　　网络环境搭建好后，我们可以在服务器端编写fwq.c程序，负责接受客户机的连接请求，并将从源文件中读取的数据发送到客户机。客户机程序khj.c向服务器发送连接请求，接收从服务器端发来的数据，并将接收到的数据写入目标文件。源程序如下：
+/＊服务器源程序fwq.c＊/
+＃include<stdio.h>;
+＃include<sys/types.h>;
+＃include<sys/fcntl.h>;
+＃include<sys/socket.h>;
+＃include<sys/netinet/in.h>;
+＃include<netdb.h>;
+＃include<errno.h>;
+main()
+{
+　　char c,buf[1024],file[30];
+　　int fromlen,source;
+　　register int k,s,ns;
+　　struct sockaddr_in sin;
+　　struct hostent ＊hp;
+　　system(″clear″);
+　　printf(″\n″);
+　　
+　　printf(″\n\n\t\t输入要传输的文件名：″)；
+　　scanf(″％s″,file);
+　　if ((source=open(file,O_RDONLY))<0){
+　　　perror(″源文件打开出错″)；
+　　　exit(1);
+　　}
+　　printf(″\n\t\t在传送文件，稍候…″)；
+　　hp=gethostbyname(″server″);
+　　if (hp==NULL){
+　　 perror(″返回主机地址信息错!!!″)；
+　　 exit(2);
+　　}
+　　s=socket(AF_INET,SOCK_STREAM,0);
+　　if(s<0){
+　　 perror(″获取SOCKET号失败!!!″)；
+　　 exit(3);
+　　}
+　　sin.sin_family=AF_INET;
+　　sin.sin_port=htons(1500);/＊使用端口1500＊/
+　　bcopy(hp－>;h_addr,＆sin.sin_addr,hp－>;h_length);
+　　if(bind(s,＆sin,sizeof(sin))<0){
+　　　perror(″不能将服务器地址捆绑到SOCKET号上!!!″)；
+　　　colse(s);
+　　　exit(4);
+　　}
+　　if(listen(s，5)<0{
+　　　perror(″sever:listen″);
+　　　exit(5);
+　　}
+while(1){
+　　if((ns=accept(s,＆sin,＆fromlen))<0){
+　　　perror(″sever:accept″)；
+　　　exit(6);
+　　}
+　　lseek(source,OL,0);/＊每次接受客户机连接，应将用于读的源文件指针移到文件头＊/
+　　write(ns,file,sizeof(file))； /＊发送文件名＊/
+　　while((k=read(source,buf,sizeof(buf)))>;0)
+　　 write(ns,buf,k);
+　　printf(″\n\n\t\t传输完毕!!!\n″);
+　　close(ns);
+}
+　　close(source);
+　　exit(0);
+　　/＊客户机源程序khj.c＊/
+　　＃include<stdio.h>;
+　　＃include<sys/types.h>;
+　　＃include<sys/fcntl.h>;
+　　＃include<sys/socket.h>;
+　　＃include<sys/netinet/in.h>;
+　　＃include<netdb.h>;
+　　＃include<errno.h>;
+　　＃include <string.h>;
+　　main()
+　　{
+　　　char buf[1024],file[30];
+　　　char ＊strs=″\n\n\t\t正在接收文件″；
+　　　int target;
+　　　register int k,s;
+　　　struct sockaddr_in sin;
+　　　struct hostent ＊hp;
+　　　system(″clear″);
+　　　printf(″\n″);
+　　　
+　　　hp=gethostbyname(″server″);
+　　　if(hp==NULL){
+　　　　　　　　　　perror(″返回服务器地址信息错!!!″)；
+　　 　exit(1);
+　　　}
+　　　s=socket(AF_INET，SOCK_STREAM,0);
+　　　if(s<0){
+　　　　perror(″获取SOCKET号失败!!!″)；
+　　　　exit(2);
+　　　}
+　　　sin.sin_family=AF_INET;
+　　　sin.sin_port=htons(1500);/＊端口号需与服务器程序使用的一致＊/
+　　　bcopy(hp－>;h_addr,＆sin.sin_addr,hp－>;h_length);
+　　　printf(″\n\n\t\t正在与服务器连接…″)；
+　　　if(connect(s,＆sin,sizeof(sin),0)<0){
+　　　　perror(″不能与服务器连接!!!″)；
+　　　　exit(3);
+　　　}
+　　　while((k=read(s,file,sizeof(file)))<=0/＊接收文件名＊/
+　　 if((target=open(file,o_WRONLY|O_CREAT|O_TRUNC,0644))<0){
+　　　　perror(″不能打开目标文件!!″)；
+　　　　exit(4);
+　　}
+　　strcat(strs,file);
+　　strcat(strs,″，稍候…″)；
+　　write(1,strs,strlen(strs));
+　　while((k=read(s,buf,sizeof(buf)))>;0)
+　　　write(tatget,buf,k);
+　　printf(″\n\n\t\t接收文件成功!!!\n″);
+　　close(s);
+　　close(target);
+　　}
+　　上述程序在Sco Unix System v3.2及Sco TCP/IP Rumtime环境下调试通过。

@@ -1,0 +1,150 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-14T19:20:12+08:00
+
+====== 交叉编译： --host --build --target到底什么意思？ ======
+Created Wednesday 14 December 2011
+http://blog.chinaunix.net/space.php?uid=20634420&do=blog&id=3027812
+
+从交叉工具链的情况来看，可以总结如下
+
+--build= 谁在这里编译？ 意思说你目前的__编译动作在哪里跑的__ ？ 如果是编译一个arm工具链，虽然工具链为为arm弄的，但是构建工具链的时候是在主机上进行的。所以 --build=i686-pc-linux-gnu
+
+--host= 目前编译出来的程序__在哪里跑__ ？ 所以工具链好了之后，给目标系统编译程序全部是设置host为arm的。
+
+--target=__为谁编译程序__，这在交叉编译的时候跟host一个意思，一般是guess的，而且configure 脚本会说是 =--host.
+
+通常我们编译复杂的情况就是交叉编译了，据说还有一种很复杂的情况，三个平台：
+
+比较，我现在在 i686机器上，想编译一个在 ppc上运行的交叉工具链，然后这个交叉工具链为arm生产程序，这个就算比较复杂了。
+
+应该是binutils，gcc，libc的时候这个三个--要很谨慎的设置了。
+
+可能是
+
+    --build=i686-pc-linux-gnu
+    --host=ppc-xxx
+    --target=arm-xxx
+
+没有实验过，可以改天实验下，学习下。
+
+续：三平台交叉编译实验
+
+对binutils源码解压，配置如下：
+
+../binutils-2.21.1/configure__ --build__=i686-pc-linux-gnu __--host__=armv5l-jztech-linux-gnueabi __--target__=mips-linux --__prefix__=/home/dbh/workspace/linux-dev/nmru/prjhome/sources/bin-build/dest
+
+然后make，发现编译的时候大部分时候调用的armv5l-xx-gcc,顺利完成，
+
+make install，装到dest下面：
+
+然后 ls dest
+
+bin  lib  mips-linux  share
+
+看来target的确是mips，然后file 下：
+
+file bin/mips-linux-as
+bin/mips-linux-as: ELF 32-bit LSB executable, ARM, version 1 (SYSV), dynamically linked (uses shared libs), for GNU/Linux 2.6.16, not stripped
+
+mips-linux-as是个交叉编译器哦，在arm上跑的，不过target是mips，哈哈，看来有点感觉了。
+
+这下可以明白，其实编译的时候编译系统根据合适的 host, build 来调用合适的gcc来做事情，可以看出来，在三个平台的时候，--build平台是跑编译脚本或者说make的，会调用 host的编译器，而且显而易见的是 host指定的一定是个交叉编译器。
+
+
+根据原文 http://hi.baidu.com/jrkaho/blog/item/253c6ced4f08c13bacafd5c6.html%EF%BC%8C%E7%A8%8D%E4%BD%9C%E4%BF%AE%E6%94%B9。
+
+
+1. build、 host 和 target 初步
+
+
+在交叉编译中比较常见的一些参数就是build、host 和 target了，正确的理解这三者的含义对于交叉编译是非常重要的，下面就此进行解释
+
+
+--build=编译该软件__所使用__的平台
+--host=该软件__将运行__的平台
+--target=该软件所处理的目标平台
+
+
+2. 以 gcc 为例子来讲解这三者的作用
+
+
+在gcc编译中我们使用
+
+
+./configure --build=编译平台　--host=运行平台　--target=目标平台　[各种编译参数]
+
+
+来配置gcc的源代码，以让其编译出我们需要的gcc编译器。
+
+
+那么在这组配置参数中：
+
+
+--build：
+
+表示目前我们正在运行的平台名称是什么，如果当前我们是在intel的pentium机器中编译该系统，那么我们的--build就可能是 i686-pc-linux-gnu！
+当然如果我们在其它种类的机器上编译那么这个build就应该是那个机器所对应的平台名称。
+该参数在不指定的情况下将__自动猜测__目前平台的名称。
+
+--host：
+
+表示我们把这个__编译好的gcc在什么样的平台下__运行，在交叉编译过程中这个需要我们来指定，
+
+因为机器自己是不能知道我们心里是怎么想的， 那么我们可以明确的告诉它，我们要做出来的程序是运行在“龙芯”上的，但是目前还不能直接指定“龙芯”。
+
+因此我们这里指定为 **mips64el- unknown-linux-gnu**（如果你省点事情那么就用这个名字好了，如果你想用个有个性的名字，那么请你想明白它的含义再动手，
+
+并且做好后面的过程需要多出一些手续的麻烦的心理准备）。
+
+
+--host也可以不指定，那么__host将自动使用build来定义自己__，不过那将不再是交叉编译。
+
+注：--build 和 --host 在不同的时候就被配置文件认定为交叉编译方式。
+
+
+--target：
+
+
+该参数的目的是让配置程序知道这个软件被编译后使用来__处理什么平台上的文件__的。
+
+target这个参数只有在为数不多的几个包中有用处，虽然在 ./configure --help中经常能看到该参数，但实际上绝大多数软件包都是不需要该参数的。
+
+从这个参数的含义来看，说明其处理的目标只有在不同平台下表现为不同的时候才有作用，而这些文件通常都跟目标平台 的__指令系统__直接或间接有关：
+
+比如可执行文件，对于不同平台下使用的可执行文件的编码可以是完全不同的，因此必须使用 对应能处理该编码的程序才能正确处理，而如果错误的使用则可能导致程序错误或者破坏文件，对于这样要处理不同平台下会 出现不同编码的软件，我们就应当对它指定目标平台，以免另其错误处理；
+
+而对于文本文件，对于不同的平台同样的内容表达的 含义都是相同的，因此我们不需要专门针对平台来处理，这样的软件我们就可以不必对它指定需要处理的平台了。
+
+
+3. 总结一下
+
+
+build：__自动测试__在用平台名称，若无法检测出来则需要指定。
+host：若无指定，**自动使用 build 的结果**。
+build 和 host 相同时表示本地编译，若不相同则表示交叉编译。
+target：表示需要处理的目标平台名称，若无指定使用 host 相同名称，gcc、binutils 等于平台指令相关软件有此参数，多 数软件此参数无用处。
+
+
+下面举几个例子，虽然是英文，但是很好理解。
+
+
+	1. `./configure --build=mipsel-linux --host=mipsel-linux  
+    --target=mipsel-linux' will build native mipsel-linux binutils on  
+    mipsel-linux.  
+       
+	2. `./configure --build=i386-linux --host=mipsel-linux  
+    --target=mipsel-linux' will__ cross-build__ native mipsel-linux binutils on  
+    i386-linux.  
+       
+	3. `./configure --build=i386-linux --host=i386-linux  
+    --target=mipsel-linux' will build mipsel-linux cross-binutils on  
+    i386-linux.  
+       
+	4. `./configure --build=mipsel-linux --host=i386-linux  
+    --target=mipsel-linux' will cross-build mipsel-linux cross-binutils for  
+    i386-linux on mipsel-linux.  
+
+
+
+

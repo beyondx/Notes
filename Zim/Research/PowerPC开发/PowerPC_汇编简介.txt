@@ -1,0 +1,253 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-03T15:35:55+08:00
+
+====== PowerPC 汇编简介 ======
+Created Saturday 03 December 2011
+http://www.ibm.com/developerworks/cn/linux/hardware/ppc/assembly/index.html
+
+通常，高级语言都具有向程序员__隐藏__许多普通的和重复性__细节__这一非常好的优点，这样程序员就可以专注于他们的目标。然而，有时程序员必须使用较低级语言，例如当编写直接处理硬件的代码或编写对性能极其敏感的代码的时候。汇编语言是最接近硬件的编程语言，这就很自然使它成为上述那些情况下最终使用的一种语言。
+
+本文假设您对计算机设计（例如，您应该知道处理器中有寄存器并能访问内存）和操作系统（系统调用、异常和进程堆栈）有基本了解。本文对于不熟悉汇编的 PowerPC 程序员以及已知道 ia32 汇编并想扩展眼界的程序员都很有用。
+
+===== PowerPC 简介 =====
+
+**PowerPC 体系结构规范**（PowerPC Architecture Specification）发布于 1993 年，它是一个 64 位规范 ( 也包含 32 位子集 )。几乎所有常规可用的 PowerPC（除了新型号 IBM RS/6000 和所有 IBM pSeries 高端服务器）都是 32 位的。
+
+PowerPC 处理器有广泛的实现范围，包括从诸如 Power4 那样的高端服务器 CPU 到嵌入式 CPU 市场（任天堂 Gamecube 使用了 PowerPC）。PowerPC 处理器有**非常强的嵌入式表现**，因为它具有优异的性能、较低的能量损耗以及较低的散热量。除了象串行和以太网控制器那样的__集成 I/O__，该嵌入式处理器与“台式机”CPU 存在非常显著的区别。例如，4xx 系列 PowerPC 处理器缺乏浮点运算，并且还使用一个受软件控制的 TLB 进行内存管理，而不是象台式机芯片中那样采用反转页表。
+
+PowerPC 处理器有 32 个（32 位或 64 位）__GPR__（通用寄存器）以及诸如 __PC__（程序计数器，也称为 IAR／指令地址寄存器或 NIP／下一指令指针）、__LR__（链接寄存器）、__CR__（条件寄存器）等各种其它寄存器。有些 PowerPC CPU 还有 32 个 64 位 __FPR__（浮点寄存器）。
+
+===== RISC =====
+
+PowerPC 体系结构是 RISC（精简指令集计算）体系结构的一个示例。因此：
+
+* 所有 PowerPC（包括 64 位实现）都使用__定长的 32 位指令__。
+* PowerPC 处理模型要从内存检索数据、在寄存器中对它进行操作，然后将它存储回内存。几乎没有指令（除了装入和存储）是直接操作内存的。
+
+
+===== 应用程序二进制接口（ABI） =====
+
+从技术而言，开发人员可以__将任一 GPR 用于任何操作__。例如，由于不存在“堆栈指针寄存器”；为此程序员就可以使用任何寄存器。实际上，定义**一组约定**很有用，这样二进制对象间就可以与不同的编译器和预先编写好的汇编代码进行__互操作__。
+
+__调用约定__是由使用的 ABI（应用程序二进制接口）决定的。ppc32 Linux 和 NetBSD 实现使用 SVR4（System V R4）ABI，而 ppc64 Linux 仿效了 AIX，使用 PowerOpen ABI。ABI 还指定当调用子例程时哪些寄存器被认为是__易失型的__（调用者保存(caller-save)）以及哪些被认为是__非易失型的__（被调用者保存(callee-save)），以及许多其它内容。
+
+SVR4 ABI 指定了一些行为的具体示例：
+
+* 由于 PowerPC 拥有如此多的 GPR（32 个，而相比之下 ia32 只有 8 个），所以__传递参数的寄存器__从 gpr3 开始。
+* 寄存器 gpr3 到 gpr12 是易失型的（调用者保存）寄存器，如果需要的话，在调用子例程之前必须先保存它们并在返回之后恢复它们。
+* 寄存器 gpr1 用来作为__栈帧指针__。
+
+SVR4 的许多特性与 PowerOpen ABI 的相同，这样非常有助于互操作性。
+
+===== 何时使用汇编 =====
+
+在“Assembly HOWTO”（请参阅 参考资料获取链接）中列出的所有优缺点 PowerPC 都有。
+
+=== 机器特定的寄存器 ===
+
+有时您必须接触较高级的语言完全不了解的 CPU 寄存器。尤其在编写操作系统的过程中会碰到这样的情况。一个简单示例是为您的代码分配它自己的堆栈 — 在 PowerPC 上，您**必须设置 r1** 。C 编译器将只对 r1 递增或递减，所以如果您的应用程序直接在硬件上运行，那么在调用 C 代码之前您必须设置 r1 。另一个示例是操作系统的异常处理程序，它必须很仔细地保存和恢复状态，每次只对一个寄存器进行操作，直到调用较高级代码是安全的为止。
+
+但是，当您面临必须使用低级硬件特性的情况时，您应该__尽可能不使用汇编实现__：
+
+* C 代码是可移植的并为大量开发人员所了解；汇编代码（尤其是 PowerPC 汇编）却不是。
+* 较高级代码的调试常常比汇编容易得多。
+* 较高级代码在定义上比汇编更易于表达；换句话说，您可以使用较少代码（在较短时间内）完成较多任务。
+
+如果您发现您在用汇编编写诸如循环或 C 结构那样的高级构造，那么请后退一步，先考虑使用其它语言是否会更容易完成。一般规则是使用足够恰当的汇编就可以允许您使用较高级语言来完成。
+
+=== 优化 ===
+
+人们想要使用汇编语言的最普遍原因之一是为了使慢程序运行得更快。但在这样的情况中，汇编绝对应该是您最后的选择。
+
+对优化的一般建议已超出了本文的范围，不过以下是一些着手点：
+
+* 概要分析
+    在开始任何优化工作之前您 __必须概要分析您的代码__。这不仅告诉您“热点”在哪里（它们常常不在您所期望的地方！），而且它还在您完成时向您证明您已对一切进行了优化。一旦您找到了热点，您就可以开始优化高级代码（而不是尝试用汇编对它重写）。
+
+* 算法优化
+    不管您的汇编是如何紧凑，如果您使用 n 4算法，那么您的代码运行起来还会令人难以置信的慢。您应该先尝试包括使用__更合适的数据结构__在内的一些其它技术。如果您通过链表进行重复迭代，那么请考虑使用散列表、二叉树或适合您应用程序的任何方法。
+
+**编译器所能做的工作几乎总是比您编写汇编所能做的要好得多！**__不要尝试用汇编重写高级代码__，请明智地利用诸如 -O3 之类的优化选项和象 __inline__ 那样的 C 伪指令。编译器知道象指令调度之类的诀窍，它考虑到处理器的内部结构并尝试使所有流水线总是维持全满。那样可能涉及在指令流里移动指令要比所要求的移动时间还要发生得早，这样做可以使在 CPU 等待内存完成读写时避免流水线的延迟。除非您使用汇编编写代码已经有许多年了，否则大多数人都不能亲手正确地执行这些任务。
+
+
+===== 如何学习汇编 =====
+
+gcc 是开始学习汇编的最佳工具（适用于任何体系结构）。 gcc -O3__ -S__ file.c 将调用 gas 汇编程序将源代码便以为 file.s （ gas 是 GNU 汇编程序）。在您喜爱的编辑器中打开 file.s ，您就会看见 C 代码的汇编输出。
+
+您可能会看到您不理解的指令。可以在 The PowerPC Architecture: A Specification for a New Family of RISC Processors, 2nd. Ed以及 PowerPC Microprocessor Family: The Programming Environments for 32-bit Microprocessors（请参阅 参考资料获取这些文档的链接）中进行查阅。不过，就象学习任何（口语）语言一样，某些单词很重要，您应该知道这些单词，而其它的可以被安全地忽略，直到您弄清了代码更为重要的特性。一个重要指令的典型示例就是分支系列的指令，例如 blr 。
+
+===== 汇编示例 =====
+
+== Hello World — ia32 汇编 ==
+
+清单 1 直接复制自 Assembly HOWTO 中的 gas 示例，糟糕的是它完全特定于 ia32。它进行两个__直接的系统调用__：第一个写到标准输出；第二个退出应用程序（包含返回代码 0 ）。
+
+直接进行系统调用非常少见；一般情况下，__应用程序与一个封装所有系统调用的 libc 库相连__。
+
+清单 1. ia32 汇编 ( 下载此代码样本)
+
+	.data                # **section declaration**
+msg:
+	.string "Hello, world!\n"
+	len = . - msg   # length of our dear string
+.text                        # section declaration
+                                 # we must __export__ the __entry point__ to the ELF __linker__ or
+    .global _start     # __loader__. They conventionally recognize** _start **as their
+                                 # entry point. Use** ld -e foo** to override the default.
+_start:
+# write our string to stdout
+	movl    **$len**,%edx   # third argument: message length
+	movl    **$msg**,%ecx   # second argument: pointer to message to write
+	movl    $1,%ebx     # first argument: file handle (stdout)
+	movl    $4,%eax     # system call number (sys_write)
+	__int__     $0x80       # call kernel
+                                    # and exit
+	movl    $0,%ebx     # first argument: **exit code**
+	movl    $1,%eax     # system call number (sys_exit)
+	__int __    $0x80            # call kernel
+	
+
+== Hello World — PPC32 汇编 ==
+
+清单 2 是将相同代码直接转换成 PowerPC 汇编代码。
+
+	.data                       # section declaration - **variables only**
+msg:
+	__.string  __"Hello, world!\n"
+	len = . - msg       # length of our dear string
+.text                                # section declaration - **begin code**
+	__.global__ _start
+_start:
+# write our string to stdout
+	li      0,4         # syscall number (sys_write)
+	li      3,1         # first argument: file descriptor (stdout)
+	                      # second argument: pointer to message to write
+	lis     4,msg@ha    # load top 16 bits of &msg
+	addi    4,4,msg@l   # load bottom 16 bits
+	li      5,len       # third argument: message length
+	__sc __                 # call kernel
+# and exit
+	li      0,1         # syscall number (sys_exit)
+	li      3,1         # first argument: exit code
+	sc                  # call kernel
+	
+
+
+== 有关清单 2 的一般说明 ==
+
+PowerPC 汇编需要一个__目标寄存器__用于所有寄存器到寄存器的操作（因为它是 RISC 体系结构）。该寄存器总是位于参数列表的第一个。
+
+在 PPC Linux 中，系统调用是通过 __gpr0 中的系统调用（syscall）号和以 gpr3 开始的参数进行的__。系统调用号、参数序列以及参数个数在其它 PowerPC 操作系统（NetBSD、Mac OS 等）中可能会有所不同，这是程序员通常利用 libc 库（它处理特定于 OS 的细节）进行系统调用的一个原因。
+
+=== 寄存器表示法 ===
+__PowerPC 寄存器有编号，而没有名称__。对于初学者来说，有时这会使人混淆，因为 tts 无法轻易地与寄存器区分开。“ 3 ”可以表示值 3 或者寄存器 gpr3 ，或者浮点 fpr3 ，或者**特殊用途的寄存器 spr3** 。习惯了就好了。:)
+
+=== 立即指令 ===
+li 表示“__立即装入__”（load instance），它是表示“在编译时获取已知的常量值并将它存储到寄存器中”的一种方法。立即指令的另一个示例是 addi ，例如， addi 3,3,1 会按照 1 来递增 gpr3 的内容，然后将结果存储回 gpr3 。将之与 add 3,3,1 进行对照，后者将按照 gpr1 的内容 来递增 gpr3 的内容，并将结果存储回 gpr3 。
+
+__以“i”结束的指令通常是立即指令。__
+
+=== 助记符 ===
+li 实际上不是一条指令；它真正的含义是助记符。 助记符有点象**预处理器宏**：它是汇编程序接受的但__秘密转换成其它指令__的一条指令。在这种情况中， li 3,1 实际上被定义为 addi 3,0,1 。
+
+眼尖的读者会注意到那些指令没有必要完全相同： addi 实际上向 gpr0 的 内容加 1，将结果存储到 gpr3 ，是这样吗？的确是的，不过 PowerPC 规范指出 gpr0 有时具有值，而有时当作 0，这取决于__环境__。在这种情况中（而且 addi 描述显式地声明了这一点），0 表示值 0，而不是寄存器 gpr0 。
+
+助记符对汇编程序开发人员以外的其它任何人根本不重要，但当您查看反汇编输出时助记符会使人迷惑。不过，GNU __objdump -d __可以非常有效地显示原始的助记符，而不是实际出现在文件中的指令。例如， objdump 将显示助记符 nop ，而不是 ori 0,0,0 （真正使用的指令）。
+
+=== 装入指针 ===
+Hello World 示例最有趣部分是我们如何装入 msg 的地址。正如前面提到的，__PowerPC 使用定长的 32 位指令__（与 ia32 相反，后者使用可变长度的指令）。这个 32 位指令恰好是一个 32 位的整数。该整数被分成**大小不同的字段**：
+清单 3. addi 机器代码格式
+
+--------------------------------------------------------------------------
+|    opcode    | src register | dest register |     immediate value      |
+|    6 bits   	|   5 bits        |    5 bits           |         16 bits                   |
+--------------------------------------------------------------------------
+
+字段的数量及其大小根据指令的不同而不同，但这里的要点是__这些字段会占用指令空间__。就 addi 而言，在将上述清单的三个字段放入指令之后，就**只剩下 16 位**供您添加即时值！
+
+那意味着 li 只能装入 16 位即时值。您不能只通过一条指令就将一个 32 位的指针装入 GPR。您必须使用两条指令，首先装入高 16 位，然后是低 16 位。那恰恰就是__ @ha （“高”）和 @l （“低”）__后缀的用途。（ @ha 的“a”部分处理__符号扩展__。）为方便起见， lis （表示“**装入即时移位**” ）将直接装入到 GPR 的高 16 位。然后余下的所有操作是添加较低位。
+
+每当您装入一个绝对地址（或任何 32 位即时值）时，请__务必使用这个诀窍__。在引用全局地址时它是最常用的。
+
+lis r2 0x12345678
+寄存器位：    		     0 1 2 3       4 5 6 7
+立即数       		0X1 2 3 4  — 5 6 7 8 
+立即数左移16位     0X5 6 7 8 ----0 0 0 0 
+（存到r2中）
+
+lis r2 0x12345678@h
+寄存器位：    		     0 1 2 3       4 5 6 7
+立即数       		0X1 2 3 4  — 5 6 7 8 
+0x12345678@h    0X1 2 3 4 （只取立即数的高16位）
+立即数左移16位     0X1 2 3 4 ----0 0 0 0 
+（存到r2中）
+
+addi    2,2,0X12345678@l   # load bottom 16 bits
+寄存器位：    		     0 1 2 3       4 5 6 7
+立即数       		0X1 2 3 4  — 5 6 7 8 
+0x12345678@l     0X0 0 0 0 ----5 6 7 8 (只取立即数的低16位)
+
+== 清单 4. Hello World — PPC64 汇编 ==
+
+清单 4 与上面的 32 位 PowerPC 示例（清单 2）几乎相同。PowerPC 被设计成带 32 位实现的 64 位规范，不仅如此，PowerPC 用户级程序在那些实现上或多或少都与二进制兼容。在 Linux 下，**ppc32 二进制在 64 位硬件上可以完美地运行**（在各处做少许更改以使 32 位的用户区和 64 位内核都能看到变量类型）。
+
+清单 4. PPC64 汇编 ( 下载此代码样本)
+
+	.data                       # section declaration - variables only
+msg:
+	.string "Hello, world!\n"
+	len = . - msg       # length of our dear string
+.text                       # section declaration - begin code
+        .global _start
+       ** .section        ".opd","aw"**
+        **.align 3**
+_start:
+        .quad   ._start,.TOC.@tocbase,0
+        .previous
+        .global  ._start
+._start:
+# write our string to stdout
+	li      0,4         # syscall number (sys_write)
+	li      3,1         # first argument: file descriptor (stdout)
+	                       # second argument: pointer to message to write
+	# load the address of 'msg':
+	                    # load high word into the **low word** of r4:
+	lis 4,msg@highest   # load msg bits 48-63 into r4 bits 16-31
+	ori 4,4,msg@higher  # load msg bits 32-47 into r4 bits  0-15
+	rldicr  4,4,32,31   # rotate r4's low word into r4's high word
+	                    # load low word into the low word of r4:
+	oris    4,4,msg@h   # load msg bits 16-31 into r4 bits 16-31
+	ori     4,4,msg@l   # load msg bits  0-15 into r4 bits  0-15
+	# done loading the address of 'msg'
+	li      5,len       # third argument: message length
+	sc                  # call kernel
+# and exit
+	li      0,1         # syscall number (sys_exit)
+	li      3,1         # first argument: exit code
+	sc                  # call kernel
+	
+
+
+ppc32 代码（清单 2）和 ppc64 代码（清单 4）之间只有两个区别。第一个是我们装入指针的方法，第二个是那些有关 .opd section 的汇编程序伪指令。当将 ppc32 代码编译成 ppc32 二进制时，它在 ppc64 Linux 下工作得相当完美。
+
+=== 装入指针 ===
+在 ppc32 上，将 32 位即时值装入寄存器需要两条指令。在 ppc64 上，需要 5 条！为什么？
+
+我们__还是使用 32 位固定长度的指令__，它一次只能装入 16 位即时值。这时，您至少需要四条指令（64 位／每条指令 16 位 = 4 条指令）。但没有指令能直接装入到 64 位 GPR 的高位字。所以我们必须先装载到低位字，将它移到高位字，然后再次装入低位字。
+
+__旋转指令__（象这里看到的 rlicr ）是臭名昭著地复杂，并被开玩笑地称为图灵完成（Turing-complete）。如果您所需的全部就是装入 64 位即时值，那么不必担心 — 只要将这五条指令转换成宏，就不必再考虑这些指令了。
+
+最后一个注意点：我们在这里使用了 @h 来替代 ppc32 示例中的 @ha ，因为我们后面提供低 16 位时使用了 ori ，而不是 addi 。在 RISC 机器上，经常可能用许多不同的方法来完成某项任务（例如，对于 nop ，就有许多可能的方法）。
+
+=== 函数描述符 — .opd 节 ===
+在 ppc64 Linux 下，当您定义并调用 C 函数 foo 时，那实际上**不是该函数代码的地址**。在汇编中，如果您尝试使用__ bl __foo ，那么您很快会发现您的程序崩溃了。__标号 foo 确实是 foo 函数描述符的地址__。ppc64 ELF ABI（请参阅 参考资料）中详细描述了函数描述符，但是如果从 C 代码调用您的汇编，则您必须临时使用一个函数描述符（它只是包含** 3 个指针的结构**），因为编译器希望使用它。
+
+我们这里没有包含任何 C 代码，但是 ELF ABI 还是显示 ELF 文件的入口点（缺省情况下是 _start ）指向一个函数描述符。所以我们必须使用一个函数描述符，并且它应该在 .opd 节中。
+
+那些汇编程序伪指令几乎都从 gcc -S 的输出中直接复制而来。这是您汇编代码中用于预处理器宏的另一个极佳候选指令。
+
+
+===== 到哪里了解更多 =====
+
+对于那些有兴趣学习更多有关 PowerPC 的读者而言，可以通过使用 __gcc -S__ （假如您手边有 PowerPC 机器）编译小型程序作为开始。如果您手边没有 PowerPC 机器，则请查阅参考资料一节中列出的 PPC 交叉编译 mini-howto，以及其它站点和文档。还请尝试使用 gdb 的 psim（PowerPC 模拟器）目标进行实验。它比你想象的要容易！也希望您能从中获得乐趣。

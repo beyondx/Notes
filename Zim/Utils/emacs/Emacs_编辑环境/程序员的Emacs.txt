@@ -1,0 +1,139 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-18T08:56:01+08:00
+
+====== 程序员的Emacs ======
+Created Monday 18 April 2011
+
+===== 加载自己的LISP程序 =====
+针对程序设计语言的编辑模式可以把emacs从根本上改造为一个语法指导的或语言敏感的(即能够识别和理解某种程序语言语法)的编辑器，从而
+帮助用户俺自己的风格写出格式整齐，方便阅读的代码。
+各种编辑模式其实由两大部分组成：用来实现这个编辑模式的LISP程序文件(包)，和用来启动这个编辑模式的函数。
+
+要加载自己定义的函数可以用load函数，但load函数需察看load-path变量的值以确定查找该函数所在程序包的目录：
+(setq load-path (append load-path (list "~/yourname/lisp"))) 或
+(setq load-path (cons "~yourname/lisp" load-path))
+前面一个是将自己的目录添加到load-path的后面，而后一个是插入到load-path的前面。
+注意：cons后面的参数可以是一个原子项(如字符、字符串、数字)，如果想让emacs查找工作目录，该load-path加上一个nil即可如：
+(setq load-path (cons nil "~yourname/lisp" load-path)
+由于load-path为一列表型变量，故还可以使用add-to-list函数为其赋值如：
+(add-to-list 'load-path  "~yourname/lisp")
+
+然后让emacs加载自己的LISP程序包：
+(load "packagename")  ;;注意参数为不带后缀名(.el , .elc )的字符串，emacs启动时自动加载。
+(autoload ’function "packagename" )  ;; 在执行给定函数时emacs自动加载相应的程序包。
+还可以用load-file , load-library 等函数。
+
+有些函数是emacs内置的，它们控制emacs的特性(feature).
+features变量保存了emacs可以使用的特性，可以用require函数从文件中加载特性。
+**(require FEATURE &optional FILENAME NOERROR)**
+
+If feature FEATURE is not loaded, load it from FILENAME.
+If FEATURE is not a member of the list `features', then the feature is not loaded; so load the file FILENAME.
+If FILENAME is omitted, the printname of FEATURE is used as the file name,and `load' will try to load this name appended with the suffix `.elc' or
+`.el', in that order.  The name without appended suffix will not be used.
+If the optional third argument NOERROR is non-nil, then return nil if the file is not found instead of signaling an error.
+Normally the return value is FEATURE. The normal messages at start and end of loading FILENAME are suppressed.
+
+**(provide FEATURE &optional SUBFEATURES)**
+
+Announce that FEATURE is a feature of the current Emacs.
+The optional argument SUBFEATURES should be a list of symbols listing
+particular subfeatures supported in this version of FEATURE.
+
+Emacs能识别的语言元素：
+单词，如标示符和数字
+标点符号：包括运算符和语句分割符如分号
+字符串：字符序列
+括号：各种括号
+空白：如空格、制表符
+注释：注释分隔符中的字符序列
+
+Emacs可以识别文本编辑时的单词、句子、段落，他允许以这些语言学元素为单位来移动或删除文本，他还知道某些标点符号的用法，如括号的配对高亮。
+Emacs把语法信息保存在语法表(syntax tables)中，有供全体缓冲区用的全局语法表，每个缓冲区还有一个局部语法表。程序语言的编辑模式还能识别和理解依赖于具体语言的语法如:语句、语句块、函数、子例程、LISP中的S-表达式等。
+
+==== 基本缩进命令 ====
+
+TAB    调整当前行的缩进知道与当前环境上下文的格式规则一直，编辑点的位置不变，因此可以在当前行的任意位置使用该键。
+LINEFEED 命令时TAB+ENTER或C-ENTER，与位于行尾时的C-j一致，都是使新输入的一行自动缩进
+M-C-q   重新缩进一对匹配的花括号中的所有行，该命令必须位于左花括号所在的行且假设做花括号已经恰当的缩进
+M-C \   indent-region 对光标和文本块间的每一行按照定义的编程风格进行缩进。
+M-m	back-to-indentation	把光标移动到当前行的第一个非空白字符
+M-^   	delete-indentaion		把当前行合并到上一行去
+
+Emacs能识别各种语言元素，语句中的分号、冒号、逗号、或括号和井号能字符都是自动缩进的，也就是说在输入这些字符时，emacs会自动的对当前行缩进。
+
+ M-x c-set-style：选择编码风格。内建的cc-mode缩进风格
+        bsd：Style used in code for BSD-derived versions of Unix.
+        cc-mode：The default coding style, from which all others are derived .
+        ellemtel：Style used in C++ documentation from Ellemtel Telecommunication Systems Laboratories in Sweden .
+        gnu：Style used in C code for Emacs itself and other GNU-related programs .
+        java：Style used in Java code (the default for Java mode).
+        k&r：Style of the classic text on C, Kernighan and Ritchie's The C Programming Language .
+        linux：Style used in C code that is part of the Linux kernel.
+        python：Style used in python extensions.
+        stroustrup：C++ coding style of the standard reference work, Bjarne Stroustrup's The C++ Programming Language .
+        user：Customizations you make to .emacs or via Custom (see Chapter 10). All other styles inherit these customizations if you set them.
+        whitesmith：Style used in Whitesmith Ltd.'s documentation for their C and C++ compilers .
+
+ C-c C-a ：打开/关闭自动换新行，对应的命令是c-toggle-auto-state，默认为禁用状态。启用后当输入分号、花括号、冒号时emacs自动加上一个换行符并
+		对新行自动缩进
+ C-c C-d：打开/关闭c-toggle-hungry-state。在Del(maybe BackSpace)时，是否自动删除左边所有空格。
+ C-c C-t：同时打开/关闭auto-newline和hungry-delete-key功能
+ M-x check-parens  检查代码中的括号匹配情况
+    
+C++ mode中：
+    C-c :：插入域操作符::
+
+==== 基本注释命令 ====
+M-； ident-for-commit  按照comment-colunmn的值进行缩进注释，如果这一行上的文本超过了这一列的值，它将从最后一个字符的位置再右移一个空格
+然后插入一个注释分隔符并把光标放在分隔符的里面。如果当前行已经存在一个注释但其位置不再commnet-column，则该命令将其重新在这列对齐注释。
+             另外若作用的时一个region，M-;就可以注释或者反注释该区域
+
+C-M ； 将commnet-colmn设置为编辑点之后的列，左边界为0列
+M-x uncomment-region   取消文本块的注释
+
+C-c C-c comment-region 注释文本块
+C-u C-c C-c  uncomment-region  取消文本块的注释
+M-x kill-comment    清除当前行上的注释
+
+另外还可以使用emacs的矩形区域填充和剪切功能实现函数块和文本块的快速注释：
+1.选中一段区域(例如用M-C-h选中一个函数)到最后一行__行首__然后按 __c-x r t__  输入注释符如//，这时所有行的行首都有这个字符串。
+2.去除注释可以同样选择区域(由于上一步给行首添加的注释是一个矩形，故这一次只需再选中这个矩形区域即可)，最后一行要选择到注释内容后的那个字符，然后__ c-x r k__
+
+C-j 或M-j   自动缩进式换行注释，注意换行注释时由变量comment-multi-line控制是下一行继续同一条注释还是另外创建一组新的注释分割符
+M-q    若光标在注释文本中间，则自动进行段落重排，保留缩进和前导字符
+m-x align 文本的自动对齐
+
+===== 代码中移动命令 =====
+M-a  移动到当前语句的开头,注意是语句而不是行首
+M-e  移动到语句的结尾
+C-M-f  向前移过某个表达式，命令的执行依赖与光标处的字符(编辑点右边)：
+		如果第一个非空白字符为开始分隔符如各种括号，编辑点移到相匹配的结束分隔符之后
+		如果第一个非空白字符为一个记号(如关键字，数字，字符串的引号)，编辑点就移到极好的末尾
+C-M-b    向后移过某个表达式
+C-M-k    向前剪切某个表达式，剪切后编辑点与C-M-f相同
+C-M-@  向前编辑C-M-f移动过的区域
+C-M-_    同上
+
+C-M-a   将光标移动到最近的函数定义的开始
+C-M-e  将光标移动到下一个函数定义的结尾
+C-M-h   将光标所在的函数标记为区域
+
+C-c C-u   移动到当前预处理器条件的开始位置
+C-c C-n   移动到下一个预处理调剂
+C-c C-p  移动到上一个预处理条件
+C-c C-e  c-macro-expand  对包含预处理条件的文本块执行实际的预处理过程，可以用于确定有哪些代码是真正会被编译的，其结果放到*Macroexpansion*的窗口中。预处理器由变量c-macro-preprocessor设置。
+
+===== TAGS的使用 =====
+:Linux:Utils:emacs:代码搜索
+
+===== 括号自动补全 =====
+       emacs可以利用skeleton-pair-insert-maybe来实现，添加一下代码到.emacs中。这对编写lisp很方便但是在写c/c++ java的时候就没有多大的用处了。当然有更好用的yasnippet，但是需要按一个扩展snippet的键。
+
+( setq skeleton-pair-alist nil)
+(global-set-key (kbd "[") 'skeleton-pair-insert-maybe)
+(global-set-key (kbd "(") 'skeleton-pair-insert-maybe)
+(global-set-key (kbd "{") 'skeleton-pair-insert-maybe)
+(global-set-key (kbd "<") 'skeleton-pair-insert-maybe)
+(global-set-key (kbd "\"") 'skeleton-pair-insert-maybe)

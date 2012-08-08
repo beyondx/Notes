@@ -1,0 +1,16 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-06T15:39:45+08:00
+
+====== turor ======
+Created Friday 06 May 2011
+
+===== 1. Starting Gnus =====
+If your system administrator has set things up properly, starting Gnus and reading news is extremely easy--you just type __M-x gnus__ in your Emacs. If not, you should customize the variable** gnus-select-method** as described in 1.1 Finding the News. For a minimal setup for posting should also customize the variables **user-full-name** and **user-mail-address.**
+
+If you want to start Gnus in a different frame, you can use the command __M-x gnus-other-frame__ instead.
+
+If things do not go smoothly at startup, you have to twiddle some variables in your `**~/.gnus.el**' file. This file is similar to `~/.emacs', but is read when Gnus starts.
+
+===== 1.1 Finding the News =====
+

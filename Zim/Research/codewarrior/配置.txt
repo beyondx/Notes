@@ -1,0 +1,57 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-19T19:36:32+08:00
+
+====== 配置 ======
+Created Tuesday 19 June 2012
+
+本文假设CodeWarrior的安装位置位于/opt/freescale/CodeWarrior/EPPC_8.8目录下。
+
+[geekard@kb310 ~]$ ls -F /opt/freescale/EPPC_8.8/CodeWarriorIDE/
+__ccs__/
+CodeWarrior/
+CodeWarrior Ethernet TAP EPPC Quick Start.pdf*
+CodeWarrior Ethernet TAP Quick Start.pdf*
+__cwide__*
+Examples/
+gcc_paths.cfg*
+INSTALL.TXT*
+License/
+Linux Platform Edition Quick Start.pdf*
+Release_Notes/
+Release_Notes_Linux_EPPC_8.8.3.txt*
+Release_Notes_Linux_EPPC_8.8.txt*
+SimRun*
+SimRun.000*
+Welcome.txt*
+[geekard@kb310 ~]$
+上面的cwide文件即为CodeWarrior IDE的启动程序，ccs/bin目录中含有USB-TAP与IDE通信的辅助程序。
+
+1. 启动CodeWarrior IDE，然后新建一个工程:
+  # cd  [[/opt/freescale/EPPC_8.8/CodeWarriorIDE/]]
+  # [[./cwide]]
+{{./Selection_001.png}}
+
+2. 配置工程使用的Debuger为USBTAP：
+{{./Selection_002.png}}
+
+3.配置工程使用的交叉编译工具链：
+{{./Selection_004.png}}
+
+4.将USB-TAP的排线连接到目标板的JTAG接口，注意红线和接口的P1指示相对应。然后将USB接口连到电脑上，接着给目标板加电。
+
+5.尝试编译和连接目标板：
+{{./Selection_005.png}}
+如果出现上述让人抓狂的提示，则说明CodeWarrior和USB-TAP的通信出了问题。一番苦逼的Google和折腾后，终于在USB_TAP_Users_Guide.pdf的Troubleshooting部分发现了如下提示：
+If you are having problems with Linux permissions during the installation of the CodeWarrior software on your Linux operating system, please try the following:
+1. If you are not able to connect to the USB TAP emulator, run CCS as root. With 
+root access, run the command:
+__<CodeWarrior Installation>/ccs/bin/ccs__
+Leave this instance of CCS running and try connecting via the CodeWarrior software. If this works then there is probably an issue with the USB TAP emulator’s permissions.
+按照上面的提示，以管理员的身份执行ccs文件。
+  # cd  [[/opt/freescale/EPPC_8.8/CodeWarriorIDE/ccs/bin]]
+  #sudo [[./ccs]]
+
+然后再执行编译和调试调试，如果出现类是于下面的含有accepted from.....输出，同时USB-TAP的RUN/PAUSE红灯亮，则说明连接成功：
+{{./CodeWarrior Connection Server_006.png}}
+

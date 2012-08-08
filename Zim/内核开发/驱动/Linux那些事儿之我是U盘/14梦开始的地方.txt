@@ -1,0 +1,133 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-01T15:53:46+08:00
+
+====== 14梦开始的地方 ======
+Created Sunday 01 July 2012
+
+对于整个usb-storage模块,__usb_stor_init()__是它的开始,然而, 对于U盘驱动程序来说,它真正驱使U盘工作却是始于__storage_probe()__.
+
+两条平行线只要相交,就注定开始纠缠一生,不管中间是否短暂分离. usbcore为设备找到了适合她的驱动程序,或者为驱动程序找到了他所支持的设备,但这只是表明双方的第一印象还可以,但彼此是否真的适合对方还需要进一步的了解.毋庸置疑,了解对方的第一步是,知道她有哪些爱好,她的生日,她的星座,喜欢吃什么,而__U盘driver则会调用函数storage_probe()去认识对方__,她是个什么样的设备,她的生活习惯是?她的联系方式是?这里调用了四个函数:
+* get_device_info,
+* get_protocol,
+* get_transport,
+* get_pipes. 
+当然还有一些别人并不了解的冬冬你也会知道,比如她的三围,这里对应的就是usb_stor_Bulk_man_lun(). 
+
+整个U盘驱动这部大戏,**由storage_probe开始,由storage_disconnect结束**.其中,storage_probe这个函数占了相当大的篇幅.我们一段一段来看.这两个函数都来自drivers/usb/storage/usb.c中:
+
+    926 /* **Probe to see if we can drive a newly-connected USB device** */
+    927 static int storage_probe(struct __usb_interface__ *intf,
+    928                          const struct __usb_device_id__ *id)
+    929 {
+    930         struct us_data *us;
+    931         const int id_index = id - storage_usb_ids;
+    932         int result;
+    933
+    934         US_DEBUGP("USB Mass Storage device detected/n");
+    935
+    936         /* Allocate the us_data structure and initialize the mutexes */
+    937         us = (struct us_data *) kmalloc(sizeof(*us), GFP_KERNEL);
+    938         if (!us) {
+    939                 printk(KERN_WARNING USB_STORAGE "Out of memory/n");
+    940                 return -ENOMEM;
+    941         }
+    942         memset(us, 0, sizeof(struct us_data));
+
+首先先贴出这么几行,两个参数不用多说了,struct usb_interface和struct usb_device_id的这两个指针都是前面介绍过的,来自usb core那一层,我们整个故事里用到的就是这么一个,不是说一会指向你,一会指向他,这两个指针的指向是定下来的.
+
+930行,最重要的一个数据结构终于在这种神不知鬼不觉的地方惊艳亮相了.整个usb-storage模块里边自己定义的数据结构不多,但是us_data算一个.这个数据结构是跟随我们的代码一直走下去的,如影随形,几乎处处都可以看见她的身影.先把它的代码贴出来,来自drivers/usb/storage/usb.h:
+
+    105 /* we allocate one of these for every device that we remember */
+    106 __struct us_data__ {
+    107         /* The device we're working with
+    108          * It's important to note:
+    109          *    (o) you must hold dev_semaphore to change pusb_dev
+    110          */
+    111         struct semaphore        dev_semaphore;   /* protect pusb_dev */
+    112         struct usb_device       __*pusb_dev__;       /* this usb_device */
+    113         struct usb_interface    __*pusb_intf__;      /* this interface */
+    114         struct us_unusual_dev   *unusual_dev;    /* device-filter entry     */
+    115         unsigned long           flags;           /* from filter initially */
+    116         unsigned int            send_bulk_pipe;  /* cached pipe values */
+    117         unsigned int            recv_bulk_pipe;
+    118         unsigned int            send_ctrl_pipe;
+    119         unsigned int            recv_ctrl_pipe;
+    120         unsigned int            recv_intr_pipe;
+    121
+    122         /* information about the device */
+    123         char                    __vendor__[USB_STOR_STRING_LEN];
+    124         char                    __product__[USB_STOR_STRING_LEN];
+    125         char                    serial[USB_STOR_STRING_LEN];
+    126         char                    *transport_name;
+    127         char                    *protocol_name;
+    128         u8                      subclass;
+    129         u8                      protocol;
+    130         u8                      max_lun;
+    131
+    132         u8                      __ifnum__;           /* interface number   */
+    133         u8                      ep_bInterval;    /* interrupt interval */
+    134
+    135         /* function pointers for this device */
+    136         trans_cmnd              transport;       /* transport function     */
+    137         trans_reset             transport_reset; /* transport device reset */
+    138         proto_cmnd              proto_handler;   /* protocol handler       */
+    139
+    140         /* SCSI interfaces */
+    141         struct Scsi_Host        *host;           /* our dummy host data */
+    142         struct scsi_cmnd        *srb;            /* current srb         */
+    143
+    144         /* thread information */
+    145         int                     pid;             /* control thread       */
+    146
+    147         /* control and bulk communications data */
+    148         struct urb              *current_urb;    /* USB requests         */
+    149         struct usb_ctrlrequest  *cr;             /* control requests     */
+    150         struct usb_sg_request   current_sg;      /* scatter-gather req.  */
+    151         unsigned char           *iobuf;          /* I/O buffer           */
+    152         dma_addr_t              cr_dma;          /* buffer DMA addresses */
+    153         dma_addr_t              iobuf_dma;
+    154
+    155         /* mutual exclusion and synchronization structures */
+    156         struct semaphore        sema;            /* to sleep thread on   */
+    157         struct completion       notify;          /* thread begin/end     */
+    158         wait_queue_head_t       dev_reset_wait;  /* wait during reset    */
+    159         wait_queue_head_t       scsi_scan_wait;  /* wait before scanning */
+    160         struct completion       scsi_scan_done;  /* scan thread end      */
+    161
+    162         /* subdriver information */
+    163         void                    *extra;          /* Any extra data          */
+    164         extra_data_destructor   extra_destructor;/* extra data destructor   */
+    165 };
+
+不难发现,Linux内核中每一个重要的数据结构都很复杂,这体现了内核代码编写者们的一种清高,仿佛不用点复杂的数据结构不足以体现他们是个腕儿.这可就苦了我们这些读代码的了,尤其是中国的学生,毕竟谭浩强的书里边翻多少遍也翻不出这么一变态的数据结构吧.所以,此刻,每一个有志青年都应该倍感责任重大,只有我们国家强大了,我们才能把谭浩强的书籍向全世界推广,从而告诉那些写内核代码的家伙,不要写那么复杂的冬冬,要按照谭浩强的书里的规矩来设计数据结构,来编写代码.这才是造福全人类的做法.不是吗?
+
+先不说这些了,总之,这个令人头疼的数据结构是每一个device都有的,换句话说,我们会为每一个device申请一个us_data,因为这个结构里边的冬冬我们之后一直会用得着的.至于怎么用,每个成员什么意思,以后用上了再细说.930行,struct us_data *us,于是,日后我们会非常频繁的看到us的.另,us什么意思?尼采说:us者,usb storage是也.
+
+937行,就是为us申请内存空间,而938行就是判断内存空间是否申请成功,成功的话us就不会为0,或者说为NULL,如果为NULL那么就是失败了,那么别再浪费表情了,整部戏就这么提前夭折了.在这里需要强调的是,整个内核代码中,像这种判断内存申请是否成功的语句是无处不在,每次有内存申请的语句,其后边一定会跟随一句判断申请成功与否的语句.写过代码的人都该知道,这样做是很有必要的,因为你没有申请到内存,那么继续下去就是没有意义的,除了可能让人见识计算机是如何崩溃之外,没有别的好处.而内存申请不管申请了多大,都有可能失败,写代码的人这样做无非是想告诫我们,我们的计算机并不总像人民币那般坚挺,她很脆弱.当你真正用计算机写代码的时候你就会发现计算机多么的脆弱和无力。
+
+942行,给us初始化为全0.
+
+934行这个US_DEBUGP,是一个宏,来自drivers/usb/storage/debug.h,接下来很多代码中我们也会看到这个宏,她无非就是打印一些调试信息.debug.h中有这么一段,
+
+     54 #ifdef CONFIG_USB_STORAGE_DEBUG
+     55 void usb_stor_show_command(struct scsi_cmnd *srb);
+     56 void usb_stor_show_sense( unsigned char key,
+     57                 unsigned char asc, unsigned char ascq );
+     58 #define US_DEBUGP(x...) printk( KERN_DEBUG USB_STORAGE x )
+     59 #define US_DEBUGPX(x...) printk( x )
+     60 #define US_DEBUG(x) x
+     61 #else
+     62 #define US_DEBUGP(x...)
+     63 #define US_DEBUGPX(x...)
+     64 #define US_DEBUG(x)
+     65 #endif
+     66
+     67 #endif
+这里一共定义了几个宏,US_DEBUGP,US_DEBUGPX,US_DEBUG,差别不大,只是形式上略有不同罢了.
+
+需要注意的是,这些调试信息得是我们打开了编译选项CONFIG_USB_STORAGE_DEBUG才有意义的,这里也看出来了,如果这个选项为0,那么这几个宏就什么也不干,因为它们被赋为空了.关于US_DEBUG系列的这几个宏,就讲这么多,之后再碰上,将直接过滤掉,不予多说.
+
+关于prink和kmalloc,这两个函数也没有太多需要说的,对大多数人来讲,就把printk当成printf,把kmalloc当成malloc即可,只不过是这两个函数是专门用于内核代码中的.一个是打印一些东西,一个是申请内存空间.
+
+931行呢?id_index干嘛用的?让我们在下节不见不散吧.Be there or be square!-孙楠如是说. 

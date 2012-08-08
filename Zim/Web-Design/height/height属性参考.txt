@@ -1,0 +1,44 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-15T22:03:16+08:00
+
+====== height属性参考 ======
+Created Sunday 15 May 2011
+http://www.w3school.com.cn/css/pr_dim_height.asp
+CSS height 属性
+
+CSS 参考手册
+定义和用法
+
+height 属性设置元素的高度。
+说明
+
+这个属性定义元素内容区的高度，在内容区外面可以增加内边距、边框和外边距。
+
+行内非替换元素会忽略这个属性。
+默认值： 	auto
+继承性： 	no
+版本： 	CSS1
+JavaScript 语法： 	object.style.height="50px"
+实例
+
+设置段落的高度和宽度：
+
+p
+  {
+  height:100px;
+  width:100px;
+  }
+
+TIY
+浏览器支持
+
+所有主流浏览器都支持 height 属性。
+
+注释：任何版本的 Internet Explorer （包括 IE8）都不支持属性值 "inherit"。
+可能的值
+值 	描述
+auto 	默认。浏览器会计算出实际的高度。
+length 	使用 px、cm 等单位定义高度。
+% 	基于包含它的块级对象的百分比高度。
+inherit 	规定应该从父元素继承 height 属性的值。

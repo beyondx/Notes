@@ -1,0 +1,442 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+
+====== DNS ======
+Created Sunday 27 March 2011
+
+全球路由DNS服务器
+
+　　全球只有13台路由DNS根服务器，在13台路由服务器中，名字分别为“A”至“M”，其中10台设置在美国，另外各有一台设置于英国、瑞典和日本。下表是这些机器的管理单位、设置地点及最新的IP地址。
+
+　　名称　　管理单位及设置地点　　　　IP地址
+　　A INTERNIC.NET（美国，弗吉尼亚州） 198.41.0.4
+　　B 美国信息科学研究所（美国，加利弗尼亚州） 128.9.0.107
+　　C PSINet公司（美国，弗吉尼亚州） 192.33.4.12
+　　D 马里兰大学（美国马里兰州） 128.8.10.90
+　　E 美国航空航天管理局[NASA]（美国加利弗尼亚州） 192.203.230.10
+　　F 因特网软件联盟（美国加利弗尼亚州） 192.5.5.241
+　　G 美国国防部网络信息中心（美国弗吉尼亚州） 192.112.36.4
+　　H 美国陆军研究所（美国马里兰州） 128.63.2.53
+　　I Autonomica公司（瑞典，斯德哥尔摩） 192.36.148.17
+　　J VeriSign公司（美国，弗吉尼亚州） 192.58.128.30
+　　K RIPE NCC（英国，伦敦） 193.0.14.129
+　　L IANA （美国，弗吉尼亚州） 198.32.64.12
+
+
+http://www.nuo.cn/domain1-3.php
+1、什么是DNS？ 
+
+'''
+    DNS是指：域名服务器(Domain Name Server)。在Internet上域名与IP地址之间是一一对应的，域名虽然便于人们记忆，但机器之间只能互相认识IP地址，它们之间的转换工作称为域名解析，域名解析需要由专门的域名解析服务器来完成，DNS就是进行域名解析的服务器。 
+'''
+
+2、为什么要注册DNS，有什么意义？ 
+
+'''
+    申请了DNS后，客户可以自己为域名作解析,或增设子域名.客户申请DNS时，建议客户一次性申请两个。 
+'''
+
+3、DNS注册成功需要多长时间? 
+
+'''
+    在系统中提交注册DNS的申请，款到后注册的时间为2个工作日左右。
+'''
+
+4、域名修改DNS是否收费？ 
+
+'''
+    国际英文域名、国内英文域名可以修改DNS，这项服务是免费的。 
+'''
+
+5、为什么DNS注册成功，但仍无法使用？ 
+
+'''
+    注册DNS服务器，必须同时在该域名的DNS服务器上，为将要进行注册的DNS服务器主机名设置好域名解析，解析生效且注册成功后，新注册的DNS服务器才可以正式使用。
+'''
+
+'''
+    例如：要注册名为 dns1.abc.com（IP: 1.1.1.1）和 dns2.abc.com（IP: 2.2.2.2）的DNS服务器，则在提交注册申请后，须尽快在abc.com的现DNS服务器上，设置dns1.abc.com指向1.1.1.1，dns2.abc.com指向2.2.2.2。另外如果将来abc.com变更DNS服务器了，也要在新的DNS服务器上设置以上两条记录，DNS才能继续使用。
+'''
+
+6、怎样检查域名的DNS是否已经设置为有效的DNS服务器？ 
+
+'''
+    您可以在DNS-DIY 2.0操作平台页面的右边区域，来检查DNS是否设置正确。或者在域名列表里也可以看到DNS是否正确。
+'''
+
+'''
+    如果您要修改域名的DNS需要到注册商的域名管理界面操作。 
+'''
+
+7、已经在注册商修改了DNS，为什么DNS检查的还是旧的DNS？
+
+'''
+    我们的DNS检查是根据DNS的根服务器的当前数据为依据的，在注册商修改DNS可能需要12-72小时才能反映在根服务器上。域名解析是否能生效，以我们的DNS检查为准。
+'''
+
+
+
+域名注册-分类    
+英文域名注册
+由于Internet最初是在美国发源的，因此最早的域名并无国家标识，人们按用途把它们分为几个大类，它们分别以不同的后缀结尾：.com（用于商业公司）；.net（用于网络服务）；.org（用于组织协会等）；.gov（用于政府部门）； .edu（用于教育机构）；.mil（用于军事领域）；.int（用于国际组织）。最初的域名体系也主要供美国使用，因此美国的企业、机构、政府部门等所用的都是“国际域名”，随着Internet向全世界的发展，.edu、.gov、.mil一般只被美国专用外，另外三类常用的域名.com、.org、.net则成为全世界通用，因此这类域名通常称为“国际域名”，直到现在仍然为世界各国所应用。
+地理顶级域名，共有243个国家和地区的代码，例如.CN代表中国，.UK代表英国。这样以.CN为后缀的域名就相应地叫做“国内域名”。与国际域名的后缀命名类似，在.cn顶级域名下也分设了不同意义的二级域，主要包括类别域和行政区域，这样就是通常说的二级域名：可以在.com.cn或.net.cn等二级域下三级注册域名，三级域名可分为两类：类别域名和行政区划域名。
+类别域名是依照申请机构的性质划分出来的域名，具体包括：AC 科研机构、COM 工、商、金融等企业、EDU 教育机构、GOV 政府部门、NET 互联网络、接入网络的信息中心(NIC)和运行中心（NOC)）、ORG 各种非盈利性的组织。
+行政区划域名是按照中国的各个行政区划划分而成的，其划分标准依照原国家技术监督局发布的国家标准而定，包括“行政区域名”34个，适用于中国的各省、自治区、直辖市。 
+ 中国34个顶级域名之行政区域名分别为：
+BJ-北京市；　SH-上海市； TJ-天津市； 
+CQ-重庆市；　HE-河北省； SX-山西省； 
+NM -内蒙古自治区； LN-辽宁省；　JL-吉林省； 
+HL-黑龙江省；　JS-江苏省；　ZJ-浙江省； 
+AH-安徽省；　FJ-福建省；　JX-江西省； 
+SD-山东省；　HA-河南省； HB-湖北省； 
+HN-湖南省； GD-广东省；　GX-广西壮族自治区； 
+HI-海南省； SC-四川省； GZ-贵州省； 
+YN -云南省； XZ-西藏自治区； SN-陕西省； 
+GS-甘肃省； QH-青海省； NX-宁夏回族自治区； 
+XJ-新疆维吾尔自治区； 
+TW-台湾；　HK-香港； MO-澳门。[1]
+域名注册-期限    
+域名注册管理体系
+域名注册过期删除期限 
+1、国际域名过期30天内可以提交续费试试但不保证成功，过期后30-60天为赎回期(redemptionPeriod)可以交赎回费用进行赎回，但是也不保证成功，过期后 60-75天为删除期(pendingDelete)这种状态只有等待删除后重新注册，建议您在域名到期之前30天联系"太给网络"办理相关续费手续。
+2、如果国际域名过期后进入赎回期状态：（REDEMPTION PERIOD），您只能选择办理赎回或者等待域名释放后重新注册。
+国内顶级域名(如：.cn）的注册到期删除、续费及赎回规则：
+根据中国互联网络信息中心（CNNIC）的要求，从2007年12月20日起，CN英文域名的续费规则进行了相应的调整：CN英文域名到期未办理续费业务，域名会进入续费期，在此期间您的域名将可能暂停原来的解析，直到您成功续费后方可恢复。cn到期后30天可续费。续费期内如仍未完成续费，域名会进入高价赎回期，域名状态变为“pendingDelete”，无法进行信息修改、转移和解析等操作。如您仍想要该域名，则需要按规定另外缴纳赎回域名的费用；若赎回期内域名没有被赎回，赎回期结束后60-75天为删除期，该域名将被删除。
+
+如何进行域名解析？
+发布时间2010-05-22    
+首先登录您的帐号，在您的域名业务列表中，选择要解析的域名
+
+1、选择“解析”即可进入续费页面。
+2、登陆解析页面后您可以根据一下文档对您的域名进行管理。 
+（1）新建子域名 - 子域名 填写您的子域名。如：abc.123.com ;填写 “abc”即可。 - 类 型 默认为“IP地址” - 数 据 填写子域名所绑定的IP地址。如：203.171.230.1 
+（2）子域名 - 数 据 填写域名所绑定的IP地址。如：203.171.230.1 点击“更新”保存设置。 
+（3）NS记录 - 服务器名 如果您使用我公司的DNS域名解析服务器，请确定此处为： dns1.zzidc.com. 和 dns2.zzidc.com 
+注意；当您对域名进行修改或创建以后，您需要点击“重新加载”您修改的信息才可以生效。 
+·什么是DNS记录？ 
+每个域名解析都应当有至少一个DNS服务器。DNS服务器记录应当填写主机名，而且是正式注册过的合法的DNS服务器。在修改DNS记录时请务必慎重，否则有可能造成域名不能正常解析。 
+·什么是邮件记录？ 
+每个域名解析都应当有至少一个邮件服务器记录。邮件服务器记录应当填写主机名。通常是mail，然后在下面的子域名解析中有一个mail子域名的IP地址记录，最终指向邮件服务器的IP。 ·什么是IP地址记录？ 
+IP地址记录就是将一个子域名解析到某个IP地址。常用的IP地址记录有www等。同一个子域名可以有多个IP地址记录。此时，DNS服务器会随机回答多个IP当中的一个，通常用于负载均衡。
+·什么是别名记录？ 
+别名记录就是将一个子域名解析为另一个网络名称的别名。 
+·相对主机名vs绝对主机名？ 
+域名解析的NS，邮件和别名记录都应当填写主机名。在填写主机名时，如果最后不加“.”，就是相对主机名，加“.”的是绝对主机名。相对主机名的实际地址要加上域名才是真正的主机名。如abc.com的邮件记戮繿il，实际上是mail.abc.com.。 
+·我的域名abc.com的邮件要发到另外的邮件服务器，应该怎么做？ 
+如果直接知道对方瞪鯬，邮件记录不用更改，只改mail子域名的IP地址记录为对方瞪鯬；如果只知道对方的主机名如mail.otherdomain.com，或者对方的邮件服务器有好多IP，那么，需要把邮件记录改为mail.otherdomain.com.，注意最后的“.”。 
+·泛解析应该怎么做？ 
+泛解析，又称无限子域名，就是*.domain.com都解析到某个IP。可以在添加子域名时在子域名栏中填“*”，这样即使不显性地添加abc.domain.com，也可以解析。
+
+
+管理专题—我可以自主修改域名的哪些信息？
+发布时间2010-06-01    
+国际域名信息包括：域名所有者信息、域名管理联系人信息、域名技术联系人信息和域名缴费人信息，您可以通过域名管理界面—修改联系人信息来修改，除了注册所有者的单位名称的中英文以外，其他信息都可以修改。
+注：联系人信息，应该保证信息的真实、有效、完整，不能不存在的、非法的信息。如：
+Whois Server Version 2.0
+
+Domain names in the .com and .net domains can now be registered
+with many different competing registrars. Go to http://www.internic.net
+for detailed information.
+
+Domain Name:	ZZIDC.COM
+Registrar:	 HICHINA ZHICHENG TECHNOLOGY LTD.
+Whois Server:	grs.hichina.com
+Referral URL:	 http://www.net.cn
+Name Server:	DNS7.HICHINA.COM
+Name Server:	DNS8.HICHINA.COM
+Status:	 ok
+Updated Date:	 20-mar-2010
+Creation Date:	 23-apr-2004
+Expiration Date:	 23-apr-2013
+>>> Last update of whois database: Tue, 21 Sep 2010 15:30:06 UTC <<<
+
+NOTICE: The expiration date displayed in this record is the date the
+registrar's sponsorship of the domain name registration in the registry is
+currently set to expire. This date does not necessarily reflect the expiration
+date of the domain name registrant's agreement with the sponsoring
+registrar. Users may consult the sponsoring registrar's Whois database to
+view the registrar's reported date of expiration for this registration.
+
+TERMS OF USE: You are not authorized to access or query our Whois
+database through the use of electronic processes that are high-volume and
+automated except as reasonably necessary to register domain names or
+modify existing registrations; the Data in VeriSign Global Registry
+Services' ("VeriSign") Whois database is provided by VeriSign for
+information purposes only, and to assist persons in obtaining information
+about or related to a domain name registration record. VeriSign does not
+guarantee its accuracy. By submitting a Whois query, you agree to abide
+by the following terms of use: You agree that you may use this Data only
+for lawful purposes and that under no circumstances will you use this Data
+to: (1) allow, enable, or otherwise support the transmission of mass
+unsolicited, commercial advertising or solicitations via e-mail, telephone,
+or facsimile; or (2) enable high volume, automated, electronic processes
+that apply to VeriSign (or its computer systems). The compilation,
+repackaging, dissemination or other use of this Data is expressly
+prohibited without the prior written consent of VeriSign. You agree not to
+use electronic processes that are automated and high-volume to access or
+query the Whois database except as reasonably necessary to register
+domain names or modify existing registrations. VeriSign reserves the right
+to restrict your access to the Whois database in its sole discretion to ensure
+operational stability. VeriSign may restrict or terminate your access to the
+Whois database for failure to abide by these terms of use. VeriSign
+reserves the right to modify these terms at any time.
+
+The Registry database contains ONLY .COM, .NET, .EDU domains and
+Registrars.Domain Name ..................... zzidc.com
+Name Server ..................... dns7.hichina.com
+dns8.hichina.com
+Registrant ID ................... hc229769019-cn
+Registrant Name ................. xiao long
+Registrant Organization ......... xiao long yang
+Registrant Address .............. HuaYuanLu 144Hao XinXiDaSha 701
+Registrant City ................. zhengzhou
+Registrant Province/State ....... henan
+Registrant Postal Code .......... 450002
+Registrant Country Code ......... CN
+Registrant Phone Number ......... +86.037163335506 -
+Registrant Fax .................. +86.037163335504 -
+Registrant Email ................ @vip.sina.com
+Technical ID .................... hichina001-cn
+Technical Name .................. hichina
+Technical Organization .......... HiChina Web Solutions Limited
+Technical Address ............... 3/F., HiChina Mansion
+No.27 Gulouwai Avenue
+Dongcheng District
+Technical City .................. Beijing
+Technical Province/State ........ Beijing
+Technical Postal Code ........... 100011
+Technical Country Code .......... CN
+Technical Phone Number .......... +86.01064242299 -
+Technical Fax ................... +86.01064258796 -
+Technical Email ................. @hichina.com
+Administrative ID ............... hichina001-cn
+Administrative Name ............. hichina
+Administrative Organization ..... HiChina Web Solutions Limited
+Administrative Address .......... 3/F., HiChina Mansion
+No.27 Gulouwai Avenue
+Dongcheng District
+Administrative City ............. Beijing
+Administrative Province/State ... Beijing
+Administrative Postal Code ...... 100011
+Administrative Country Code ..... CN
+Administrative Phone Number ..... +86.01064242299 -
+Administrative Fax .............. +86.01064258796 -
+Administrative Email ............ @hichina.com
+Billing ID ...................... hichina001-cn
+Billing Name .................... hichina
+Billing Organization ............ HiChina Web Solutions Limited
+Billing Address ................. 3/F., HiChina Mansion
+No.27 Gulouwai Avenue
+Dongcheng District
+Billing City .................... Beijing
+Billing Province/State .......... Beijing
+Billing Postal Code ............. 100011
+Billing Country Code ............ CN
+Billing Phone Number ............ +86.01064242299 -
+Billing Fax ..................... +86.01064258796 -
+Billing Email ................... @hichina.com
+Expiration Date ................. 2013-04-23 05:52:41
+
+
+
+域名状态查询
+
+作者：客服中心    文章来源：中国万网    点击数：10848    更新时间：2007-8-24
+
+为便于我们查询域名的状态和信息，向大家推荐以下查询地址：
+
+常用官方whois地址
+VeriSign: .com/.net/.cc/.tv/.edu/.jobs
+http://registrar.verisign-grs.com/cgi-bin/whois
+CNNIC 国内英文域名: .cn
+http://ewhois.cnnic.cn/
+CNNIC 国内中文域名: .中国/.网络/.公司
+http://cwhois.cnnic.cn/
+ 
+另外提供cn域名各个状态说明：
+以client开头的状态表示由客户端(注册商)可以增加的状态
+以server开头的状态表示服务器端(CNNIC)操作增加的状态
+既不以client开头也不以server开头的状态由服务器端管理
+域名的状态解释：
+ 
+ok 正常状态 
+inactive 非激活状态(注册的时候没有填写域名服务器，不能进行解析) 
+clientDeleteProhibited 禁止删除 
+serverDeleteProhibited 禁止删除 
+clientUpdateProhibited 禁止修改 
+serverUpdateProhibited 禁止修改 
+pendingDelete 正在删除过程中 
+pendingTransfer 正在转移过程中 
+clientTransferProhibited 禁止转移 
+serverTransferProhibited 禁止转移 
+clientRenewProhibited 禁止续费 
+serverRenewProhibited 禁止续费 
+clientHold 停止解析 
+serverHold 停止解析 
+pendingVerification 注册信息正在确认过程中
+
+晕哟,现在快5点了,刚才4:30的时候想趁现在.cn域名只1元一年我也想抢注个好点的域名,在cnnic发现了几个好点的域名很有几个,都还蛮可以,可是在4:30的时候只提交成功了199199.cn这个域名,其它好几个都没有成功.. ,那些人太快了,根本就抢不赢他们,更可恨的是最后来查199199.cn也被捷足先登了,还害得我到5点了还没有睡觉,哎 ,以后再也不去抢了,他们太厉害了我只能说.
+不过以下知识我们了解了解也是好的,权当是增长点知识吧!(其实是给自己找点安慰而已 )
+国际域名状态介绍(普及域名知识) 
+Active : 正常状态 
+
+Registry-hold: 注册局暂停，域名没有解析，不能正常使用，可以续费； 
+
+Registry-lock : 注册局锁定，域名有解析，正常使用，不能更改，可以续费； 
+
+Registrar-hold : 注册商暂停，停止解析，不能正常使用，可以续费； 
+
+Registrar-lock: 注册商锁定，可以正常使用，不能更改、转移； 
+
+Redemptionperiod: 偿还期，域名过期后由注册商申请删除域名，域名进入偿还期，偿还期30天内不能正常使用，但可以交纳赎回费用（$40）恢复域名，否则进入删除期 
+
+Pendingretore: 域名进入偿还期后，由注册商申请恢复，交费后进入恢复期，提交报告后，域名可以恢复正常。 
+
+Pendingdelete: 域名30天偿还期后进入5天的删除期，删除期不允许其他人注册，此状态表明域名即将被删除释放。 
+
+Inactive: 域名没有解析，不能正常使用。一般是由于域名的dns没有填写，或填写不完整造成的，最少需要填写1个dns才能正常解析。 
+Status: clientTransferProhibited 域名禁止转让 
+Status: clientDeleteProhibited 域名禁止删除 
+Status: clientUpdateProhibited 域名禁止更新
+
+国内域名状态介绍： 
+
+Active：正常状态。域名解析正常，可以更改，可以转移； 
+
+Ok：正常状态。域名续费成功； 
+
+Pendingtransfer:转移中状态。已经由新注册商提出转入申请，等待原注册商同意转出操作。此状态不能更改任何信息，但域名解析正常。 
+
+Inactive：非正常状态。表明域名没有解析，无法正常使用。 PendingDelete：等待删除状态。表明域名欠费，已经停止解析。此状态从过期开始保留15天。超过15天域名被删除。 
+
+ClientTransferProhibited：注册商限制转移. 
+域名删除时间:
+ 引用内容
+CN COM NET域名 删除及可注册时间
+
+
+CN过期后删除时间为16天      北京时间早4点左右(大概是4:30开始)
+
+
+
+COM则约75天左右  将在北京时间早2点左右开始到4点，一般删除
+
+
+
+net65天左右    将在北京时间早2点左右开始到4点，一般删除 
+
+附在百度看到的解释:
+域名删除规律及域名状态解释  
+分析一下域名删除规律及域名状态解释——这篇文章对于站长保护自己的域名不被恶意抢注很好帮助，值得一看。  
+　　A、域名过期后第一阶段即域名过期后1～45天内将处于注册商保留状态。whois英文状态:REGISTRAR-HOLD。 
+
+　　B、域名过期后第二阶段即注册商保留期结束之后，域名将进入30天赎回期。whois英文状态:REDEMPTION-PERIOD。 
+
+　　C、域名过期后第三阶段即赎回期结束之后域名将进入6天的删除未决期，6天期满后域名删除。whois英文状态:PENDING-Delete。 
+
+　　D、whois英文状态:REGISTRAR-LOCK是域名锁定状态，过期后防止被转移注册商。 
+
+
+　　1、比如域名aaa.com到期时间为2003年03月01日; 
+
+　　2、从2003年03月02日开始，域名的ns将会被系统自动删除，域名无法解析，注册公司会继续保留该域名30天，用户可以在这30天的期限内续费; 
+
+　　3、如果在2所述的30天期限内没有续费，即从2003年03月31日开始，域名将变成RedemptionPeriod状态，该状态将会保持30天，在此期间该域名不会掉下来，但是除了restore命令以外的所有命令对此域名无效; 
+
+　　4、域名在RedemptionPeriod状态下可以restore回来，但每restore一次需要支付费用; 
+
+　　5、如果域名在RedemptionPeriod状态下的30天没有restore，从2003.04.29开始域名变成PendingDelete状态(5天)，2003年05月04日该域名将会删除。 
+
+　　VeriSign于2003年1月在其Registry Whois (.COM和.NET)中加了3个字段: 
+
+　　Status、Creation Date、Expiration Date 
+
+　　其中 Status 目前发现有8种状态，分别是: 
+
+　　1、ACTIVE:活动状态。由Registry设置;该域名可以由Registrar更改;可以续费;至少被指派一个DNS。 
+
+　　2、REGISTRY-LOCK:注册局锁定。由注册局设置;该域名不可以由注册商更改、删除;必须由注册局解除此状态才可以由注册商更改域名畔ⅲ挥蛎 梢孕 眩蝗绻 蛎 恢概芍辽僖桓鯠NS则可以包含在(域名根服务器)的区域中(可以正常使用)。 
+
+　　3、REGISTRY-HOLD:注册局保留。由注册局设置;该域名不可以由注册商更改、删除;必须由注册局解除此状态才可以由注册商更改域名信息;域名可以续费;该域名不包括在(域名根服务器)的区域中(不能正常使用)。 
+
+　　4、REGISTRAR-LOCK:注册商锁定。由该域名的原始注册商设置;该域名不可以被更改或删除;必须由注册商解除此状态才可以更改域名信息;该域名可以续费。该域名包含在(域名根服务器)的区域中(可以正常使用)。 
+
+　　5、REGISTRAR-HOLD:注册商保留。由该域名的原始注册商设置;该域名不可以被更改或删除;必须由注册商解除此状态才可以更改域名信息;该域名可以续费。该域名不包括在(域名根服务器)的区域中(不能正常使用)。 
+
+　　6、REDEMPTIONPERIOD:宽限期。当注册商向注册局提出删除域名请求后，由注册局将域名设置称此状态，不过，条件是该域名已经注册了5天以上(如果该域名注册时间不足5天，则立即删除);该域名不包括在(域名根服务器)的区域中(不能正常使用);该域名不可以被更改或清除，只可以被恢复;任何其他注册商提出对此域名的更改或其他请求都将被拒绝;该状态最多保持30天。 
+
+　　7、PENDINGRESTORE:恢复未决。当注册商提出将处于REDEMPTIONPERIOD的域名恢复请求后，由注册局设置;该域名包含在(域名根服务器)的区域中(可以正常使用);注册商提出的更改或任何其他请求都将被拒绝;在7天之内，有注册商向注册局提供必需的恢复文件，如果注册商在7天之内提供了这些文件，该域名将被置为ACTIVE状态，否则，该域名将重新返回到REDEMPTIONPERIOD状态。 
+
+　　8、PENDINGDelete:删除未决。如果一个域名在被设置成REDEMPTIONPERIOD状态期间内，注册商没有提出恢复请求，那么，域名将被置于PENDINGDelete状态，注册商对此域名的任何请求都将被拒绝;5天之后清除。 
+、.COM/.NET域名状态包括：  
+
+(1) ACTIVE(激活状态):域名处于此状态时可以正常使用、正常续费、可以转移、可以更改DNS和域名信息，在此状态时用户还可自行设置为锁定状态。 
+
+(2) Customer-LOCK(用户锁定):当域名在ACTIVE状态时可由用户自行设置，用户可自行取消，域名处于此状态时可以正常使用、正常续费、不可以转移、不可以更改DNS和域名信息，此状态也可以由注册商取消；  
+
+(3) Registrar-LOCK(注册商锁定):由注册商设置，用户不能取消。域名处于此状态时可以正常使用、正常续费、不可以转移、不可以更改DNS和域名信息，此状态也可以由注册商取消；  
+
+(4) Autorenew-HOLD(欠费保留):由注册商设置，用户不能取消。域名由于过期欠费而被设置为此状态，域名处于此状态时不能正常使用、不可以被更改或删除；必须续费后才能自动解除此状态。 
+
+(5) Registrar-HOLD(注册商保留):由注册商设置，用户不能取消。域名处于此状态时不能正常使用、不可以删除、不可以转移、更改DNS和域名信息，可以续费，必须由注册商解除此状态。  
+
+2、.ORG域名状态包括： 
+(1) OK(正常状态):域名处于此状态时可以正常使用、正常续费、可以转移、可以更改DNS和域名信息，此状态不与下面的其他状态同时存在。 
+
+(2) Customer-DeleteProhibited(用户限制删除):由用户自行设定的限制删除，用户可自行取消，域名处于此状态时可以正常使用、正常管理、正常续费、不可以被删除，此状态也可以由注册商取消，同时，若域名欠费后会自动按删除周期删除； 
+
+(3) Registrar-DeleteProhibited(注册商限制删除):由注册商设定的限制删除，域名处于此状态时可以正常使用、正常管理、正常续费、不可以被删除，此状态不可以由用户自行取消，同时，若域名欠费后会自动按删除周期删除； 
+
+(4) Customer-TransferProhibited(用户限制转移):由用户自行设定的限制转移，用户可自行取消，域名处于此状态时不可以转移、可以正常使用、正常管理、正常续费，此状态也可以由注册商取消； 
+
+(5) Registrar-TransferProhibited(注册商限制转移):由注册商设定的限制转移，域名处于此状态时不可以转移、可以正常使用、正常管理、正常续费，用户不可以自行取消该状态； 
+
+(6) Customer-UpdateProhibited(用户限制更改):由用户自行设定的限制更改，用户可自行取消，域名处于此状态时不可以更改域名信息和DNS、可以正常使用、正常续费，此状态也可以由注册商取消；  
+
+(7) Registrar-UpdateProhibited(注册商限制更改):由注册商设定的限制更改，域名处于此状态时不可以更改域名信息和DNS、可以正常使用、正常续费，用户不可以自行取消该状态； 
+
+(8) Autorenew-HOLD(欠费保留):由注册商设置，用户不能取消。域名由于过期欠费而被设置为此状态，域名处于此状态时不能正常使用、不可以被更改或删除；必须续费后才能自动解除此状态。 
+
+(9) Registrar-HOLD(注册商保留):由注册商设置，用户不能取消。域名处于此状态时不能正常使用、不可以删除、不可以转移，可以续费，必须由注册商解除此状态。 
+
+国际域名删除域名的规律： 
+
+域名过期后第一阶段  
+域名过期后1～45天内  
+将处于注册商保留状态  
+whois英文状态：REGISTRAR-HOLD  
+
+域名过期后第二阶段  
+注册商保留期结束之后  
+域名将进入30天赎回期  
+whois英文状态：REDEMPTION-PERIOD  
+
+域名过期后第三阶段  
+赎回期结束之后域名将  
+进入6天的删除未决期  
+6天期满后域名删除  
+
+解析专题—域名做了指向为什么还无法访问？
+发布时间2010-06-01    
+域名解析的过程非常复杂，是一个全球域名系统逐级更新的方式，加上用户上网调用的DNS服务器也有缓存，只有缓存过期重新读取根数据库的解析记录，解析的IP地址才能被浏览者看到，所以即使网络时代的所有解析服务都是立即生效的，但是如果要正常访问，还需要各地服务器的刷新，如果是修改DNS，一般刷新时间是24－48小时，如果是修改的指向，一般是1－2小时。（和各地服务器刷新速度有关）
+
+解析专题—域名记录能添加哪些？需要收费吗？
+发布时间2010-06-01    
+解析记录可以自由添加和修改、删除，包括：A记录、MX记录、CNAME记录和URL转发、泛域名解析。不需要收费。
+
+解析专题—解析记录有个数限制吗？
+发布时间2010-06-01    
+有个数限制，在解析各项记录加起来总数不能超过100条。
+
+域名注册成功后还可以申请那些后续服务？
+发布时间2010-06-01    
+域名注册成功以后，您可以申请一个虚拟主机来存放您的网页，以便您的客户可以访问到您的网站。
+您可以登录http://www.abcde.com.cn/－电信主机，选择一款适合您的虚拟主机，与您的域名绑定，然后上传您制作好的网页。这样您建立的网站就可以被用户访问了。
+为了业务的开展，您还需要一个企业邮箱，可以登录http://www.abcde.com.cn/－企业邮局，选择一款邮箱，申请成功后，就可以以您的域名为后缀，收发邮件了。
+
+
+如何确定我所注册的域名已经生效？
+发布时间2010-06-01    
+您可以通过http://www.internic.net%E6%A0%B9%E5%BA%93%E7%BD%91%E7%AB%99%EF%BC%8C%E7%82%B9%E5%87%BB%E7%BD%91%E7%AB%99%E4%B8%8A%E7%9A%84%E2%80%9Dwhois%E2%80%9D%EF%BC%8C%E5%8D%B3%E5%8F%AF%E8%BF%9B%E5%85%A5%E6%9F%A5%E8%AF%A2%E3%80%82%E6%AD%A4%E5%A4%84%E5%8F%AA%E8%83%BD%E6%9F%A5%E8%AF%A2%E5%88%B0%E5%9F%9F%E5%90%8D%E6%89%80%E5%B1%9E%E6%9C%8D%E5%8A%A1%E5%95%86%E3%80%81%E7%94%9F%E6%95%88%E6%97%A5%E6%9C%9F%E3%80%81%E5%88%B0%E6%9C%9F%E6%97%A5%E8%B5%B7%E3%80%81DNS%E3%80%81%E6%9C%8D%E5%8A%A1%E5%95%86WHOIS地址等信息，无法查询域名的具体联系人信息。
+__http://www.internic.net/whois.html__
+

@@ -1,0 +1,23 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-22T21:32:23+08:00
+
+====== 2 ======
+Created Sunday 22 May 2011
+
+(gnus-agentize)
+
+(setq smtpmail-default-smtp-server "mail.cc.umanitoba.ca") 
+(setq smtpmail-smtp-server "mail.cc.umanitoba.ca") 
+(setq smtpmail-smtp-service 587) 
+(setq message-send-mail-function 'smtpmail-send-it)
+(setq send-mail-function 'smtpmail-send-it)
+(setq gnus-select-method '(nntp "news.cc.umanitoba.ca"))
+(setq gnus-secondary-select-methods '((nnimap "gmail" 
+										(nnimap-address "imap.gmail.com") 
+										(nnimap-server-port 993) 
+										(nnimap-stream ssl)) 
+									(nnimap "uofm" (nnimap-address "mail.cc.umanitoba.ca") 
+										(nnimap-server-port 993)
+										(nnimap-stream ssl)) 
+									(nntp "freenews.netfront.net") )) 

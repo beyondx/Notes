@@ -1,0 +1,69 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-17T11:16:07+08:00
+
+====== 在MySQL中使用外键 ======
+Created Monday 17 October 2011
+http://msq.iteye.com/blog/47610
+昨晚用Mysql建外键约束，始终没有成功，今天找到这个，原来只有InnoDB类型的表才可以使用外键.
+
+只有InnoDB类型的表才可以使用外键
+
+CREATE TABLE person (
+id SMALLINT UNSIGNED NOT NULL AUTO_INCREMENT,
+name CHAR(60) NOT NULL,
+PRIMARY KEY (id)
+)type=innoDB;
+
+CREATE TABLE shirt (
+id SMALLINT UNSIGNED NOT NULL AUTO_INCREMENT,
+style ENUM('t-shirt', 'polo', 'dress') NOT NULL,
+color ENUM('red', 'blue', 'orange', 'white', 'black') NOT NULL,
+owner SMALLINT UNSIGNED NOT NULL,
+FOREIGN KEY (owner) REFERENCES PERSON(id)
+ON DELETE CASCADE
+ON UPDATE CASCADE,
+PRIMARY KEY (id)
+)type=innoDB;
+
+然后打开MySQL Administrator终于看到 FOREIGN KEY有东西了，尝试手工删除后再用MySQL Administrator建立，成功：）
+
+INSERT INTO person VALUES (NULL, 'Antonio Paz');
+
+SELECT @last := LAST_INSERT_ID();
+
+INSERT INTO shirt VALUES
+(NULL, 'polo', 'blue', @last),
+(NULL, 'dress', 'white', @last),
+(NULL, 't-shirt', 'blue', @last);
+
+INSERT INTO person VALUES (NULL, 'Lilliana Angelovska');
+
+SELECT @last := LAST_INSERT_ID();
+
+INSERT INTO shirt VALUES
+(NULL, 'dress', 'orange', @last),
+(NULL, 'polo', 'red', @last),
+(NULL, 'dress', 'blue', @last),
+(NULL, 't-shirt', 'white', @last);
+
+SELECT * FROM person;
+
+SELECT * FROM shirt;
+
+测试UPDATE关联
+UPDATE PERSON SET id=3 WHERE id=1;
+SELECT * FROM shirt;
+
+测试DELETE关键
+DELETE FROM PERSON WHERE id=3;
+SELECT * FROM shirt;
+
+看到有文章简单使用owner SMALLINT UNSIGNED NOT NULL REFERENCES person(id),进行连接，但这样的连接好像没任何意义，担看到“MySQL 3.23.7-alpha手册”有这样一句话“一些应用程序要求他们存在”或者“插入强制约束”、“级联删除”、“级联更新”这些特性是在MySQL甘个版本中才有吧
+
+还有有文章说要建立INDEX (owner) 才可以，但我经测试并不需要，这可能是和MYSQL版本不同有关，我用的是MySQL4.1
+
+PS.查看Mysql手册才知道从MySQL 4.1.2开始会自动建立这个INDEX (owner)
+
+参考：
+http://dev.mysql.com/doc/mysql/en/innodb-foreign-key-constraints.html 

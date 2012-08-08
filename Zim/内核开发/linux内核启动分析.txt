@@ -1,0 +1,7 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-16T11:06:12+08:00
+
+====== linux内核启动分析 ======
+Created Saturday 16 June 2012
+

@@ -1,0 +1,501 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-05T15:01:08+08:00
+
+====== Python如何使用urllib2获取网络资源 ======
+Created 星期二 05 七月 2011
+
+ 
+
+blog.csdn.net/b2b160/archive/2009/03/27/4030702.aspx
+
+ 
+
+相关文章：
+
+    你同样可以在以下文章找到获取网络资源的相关资料
+
+    Python里的例子：一个基础验证相关的教程
+
+urllib2是Python的一个获取URLs(Uniform Resource Locators)的组件。他以urlopen函数的形式提供了一个非常简单的接口，
+
+这是具有利用不同协议获取URLs的能力，他同样提供了一个比较复杂的接口来处理一般情况，例如：基础验证，cookies,代理和其他。
+
+它们通过handlers和openers的对象提供。
+
+urllib2支持获取不同格式的URLs(在URL的":"前定义的字串,例如："ftp"是"ftp:python.ort/"的前缀),它们利用它们相关网络协议(例如FTP,HTTP)
+
+进行获取。这篇教程关注最广泛的应用--HTTP。
+
+对于简单的应用，urlopen是非常容易使用的。但当你在打开HTTP的URLs时遇到错误或异常，你将需要一些超文本传输协议(HTTP)的理解。
+
+最权威的HTTP文档当然是RFC 2616(http://rfc.net/rfc2616.html)%E3%80%82%E8%BF%99%E6%98%AF%E4%B8%80%E4%B8%AA%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3%EF%BC%8C%E6%89%80%E4%BB%A5%E5%B9%B6%E4%B8%8D%E6%98%93%E4%BA%8E%E9%98%85%E8%AF%BB%E3%80%82%E8%BF%99%E7%AF%87HOWTO%E6%95%99%E7%A8%8B%E7%9A%84%E7%9B%AE%E7%9A%84%E6%98%AF%E5%B1%95%E7%8E%B0%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8urllib2,
+
+并提供足够的HTTP细节来帮助你理解。他并不是urllib2的文档说明，而是起一个辅助作用。
+
+获取 URLs
+
+最简单的使用urllib2将如下所示
+
+ 
+view plaincopy to clipboardprint?
+
+    import urllib2  
+      
+    response = urllib2.urlopen('http://python.org/')  
+      
+    html = response.read()  
+
+ 
+
+urllib2的很多应用就是那么简单(记住，除了"http:",URL同样可以使用"ftp:","file:"等等来替代)。但这篇文章是教授HTTP的更复杂的应用。
+
+HTTP是基于请求和应答机制的--客户端提出请求，服务端提供应答。urllib2用一个Request对象来映射你提出的HTTP请求,在它最简单的使用形式中你将用你要请求的
+
+地址创建一个Request对象，通过调用urlopen并传入Request对象，将返回一个相关请求response对象，这个应答对象如同一个文件对象，所以你可以在Response中调用.read()。
+
+ 
+view plaincopy to clipboardprint?
+
+    import urllib2  
+      
+    req = urllib2.Request('http://www.voidspace.org.uk')  
+      
+    response = urllib2.urlopen(req)  
+      
+    the_page = response.read()  
+
+ 
+
+记得urllib2使用相同的接口处理所有的URL头。例如你可以像下面那样创建一个ftp请求。
+
+req = urllib2.Request('ftp://example.com/')
+
+在HTTP请求时，允许你做额外的两件事。首先是你能够发送data表单数据，其次你能够传送额外的关于数据或发送本身的信息("metadata")到服务器，此数据作为HTTP的"headers"来发送。
+
+接下来让我们看看这些如何发送的吧。
+
+Data数据
+
+有时候你希望发送一些数据到URL(通常URL与CGI[通用网关接口]脚本，或其他WEB应用程序挂接)。在HTTP中,这个经常使用熟知的POST请求发送。这个通常在你提交一个HTML表单时由你的浏览器来做。
+
+并不是所有的POSTs都来源于表单，你能够使用POST提交任意的数据到你自己的程序。一般的HTML表单，data需要编码成标准形式。然后做为data参数传到Request对象。编码工作使用urllib的函数而非
+
+urllib2。
+
+ 
+view plaincopy to clipboardprint?
+
+    import urllib  
+      
+    import urllib2  
+      
+       
+      
+    url = 'http://www.someserver.com/cgi-bin/register.cgi'  
+      
+    values = {'name' : 'Michael Foord',  
+      
+              'location' : 'Northampton',  
+      
+              'language' : 'Python' }  
+      
+       
+      
+    data = urllib.urlencode(values)  
+      
+    req = urllib2.Request(url, data)  
+      
+    response = urllib2.urlopen(req)  
+      
+    the_page = response.read()  
+
+ 
+
+记住有时需要别的编码(例如从HTML上传文件--看http://www.w3.org/TR/REC-html40/interact/forms.html#h-17.13 HTML Specification, Form Submission的详细说明)。
+
+如ugoni没有传送data参数，urllib2使用GET方式的请求。GET和POST请求的不同之处是POST请求通常有"副作用"，它们会由于某种途径改变系统状态(例如提交成堆垃圾到你的门口)。
+
+尽管HTTP标准说的很清楚POSTs通常会产生副作用，GET请求不会产生副作用，但没有什么可以阻止GET请求产生副作用，同样POST请求也可能不产生副作用。Data同样可以通过在Get请求
+
+的URL本身上面编码来传送。
+
+可看如下例子
+
+ 
+view plaincopy to clipboardprint?
+
+    >>> import urllib2  
+      
+    >>> import urllib  
+      
+    >>> data = {}  
+      
+    >>> data['name'] = 'Somebody Here'  
+      
+    >>> data['location'] = 'Northampton'  
+      
+    >>> data['language'] = 'Python'  
+      
+    >>> url_values = urllib.urlencode(data)  
+      
+    >>> print url_values  
+      
+    name=Somebody+Here&language=Python&location=Northampton  
+      
+    >>> url = 'http://www.example.com/example.cgi'  
+      
+    >>> full_url = url + '?' + url_values  
+      
+    >>> data = urllib2.open(full_url)  
+
+ 
+
+Headers
+
+我们将在这里讨论特定的HTTP头，来说明怎样添加headers到你的HTTP请求。
+
+有一些站点不喜欢被程序（非人为访问）访问，或者发送不同版本的内容到不同的浏览器。默认的urllib2把自己作为“Python-urllib/x.y”(x和y是Python主版本和次版本号,例如Python-urllib/2.5)，
+
+这个身份可能会让站点迷惑，或者干脆不工作。浏览器确认自己身份是通过User-Agent头，当你创建了一个请求对象，你可以给他一个包含头数据的字典。下面的例子发送跟上面一样的内容，但把自身
+
+模拟成Internet Explorer。
+
+ 
+view plaincopy to clipboardprint?
+
+    import urllib  
+      
+    import urllib2  
+      
+       
+      
+    url = 'http://www.someserver.com/cgi-bin/register.cgi'  
+      
+    user_agent = 'Mozilla/4.0 (compatible; MSIE 5.5; Windows NT)'  
+      
+    values = {'name' : 'Michael Foord',  
+      
+              'location' : 'Northampton',  
+      
+              'language' : 'Python' }  
+      
+    headers = { 'User-Agent' : user_agent }  
+      
+       
+      
+    data = urllib.urlencode(values)  
+      
+    req = urllib2.Request(url, data, headers)  
+      
+    response = urllib2.urlopen(req)  
+      
+    the_page = response.read()  
+
+ 
+
+response应答对象同样有两个很有用的方法。看下面的节info and geturl，我们将看到当发生错误时会发生什么。
+
+Handle Exceptions处理异常
+
+当urlopen不能够处理一个response时，产生urlError（不过通常的Python APIs异常如ValueError,TypeError等也会同时产生）。
+
+HTTPError是urlError的子类，通常在特定HTTP URLs中产生。
+
+URLError
+
+通常，URLError在没有网络连接(没有路由到特定服务器),或者服务器不存在的情况下产生。这种情况下，异常同样会带有"reason"属性，它是一个tuple，包含了一个错误号和一个错误信息。
+
+例如
+
+ 
+view plaincopy to clipboardprint?
+
+    >>> req = urllib2.Request('http://www.pretend_server.org')  
+      
+    >>> try: urllib2.urlopen(req)  
+      
+    >>> except URLError, e:  
+      
+    >>>    print e.reason  
+      
+    >>>  
+      
+    (4, 'getaddrinfo failed')  
+
+ 
+
+HTTPError
+
+服务器上每一个HTTP 应答对象response包含一个数字"状态码"。有时状态码指出服务器无法完成请求。默认的处理器会为你处理一部分这种应答(例如:假如response是一个"重定向"，需要客户端从别的地址获取文档
+
+，urllib2将为你处理)。其他不能处理的，urlopen会产生一个HTTPError。典型的错误包含"404"(页面无法找到)，"403"(请求禁止)，和"401"(带验证请求)。
+
+请看RFC 2616 第十节有所有的HTTP错误码
+
+HTTPError实例产生后会有一个整型'code'属性，是服务器发送的相关错误号。
+
+Error Codes错误码
+
+因为默认的处理器处理了重定向(300以外号码)，并且100-299范围的号码指示成功，所以你只能看到400-599的错误号码。
+
+BaseHTTPServer.BaseHTTPRequestHandler.response是一个很有用的应答号码字典，显示了RFC 2616使用的所有的应答号。这里为了方便重新展示该字典。（译者略）
+
+当一个错误号产生后，服务器返回一个HTTP错误号，和一个错误页面。你可以使用HTTPError实例作为页面返回的应答对象response。这表示和错误属性一样，它同样包含了read,geturl,和info方法。
+
+ 
+view plaincopy to clipboardprint?
+
+    >>> req = urllib2.Request('http://www.python.org/fish.html')  
+      
+    >>> try:  
+      
+    >>>     urllib2.urlopen(req)  
+      
+    >>> except URLError, e:  
+      
+    >>>     print e.code  
+      
+    >>>     print e.read()  
+      
+    >>>  
+      
+    404  
+      
+    <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"  
+      
+        "http://www.w3.org/TR/html4/loose.dtd">  
+      
+    <?xml-stylesheet href="./css/ht2html.css"  
+      
+        type="text/css"?>  
+      
+    <html><head><title>Error 404: File Not Found</title>  
+      
+    ...... etc...  
+
+ 
+
+Wrapping it Up包装
+
+所以如果你想为HTTPError或URLError做准备，将有两个基本的办法。我则比较喜欢第二种。
+
+第一个：
+
+ 
+view plaincopy to clipboardprint?
+
+    from urllib2 import Request, urlopen, URLError, HTTPError  
+      
+    req = Request(someurl)  
+      
+    try:  
+      
+        response = urlopen(req)  
+      
+    except HTTPError, e:  
+      
+        print 'The server couldn/'t fulfill the request.'  
+      
+        print 'Error code: ', e.code  
+      
+    except URLError, e:  
+      
+        print 'We failed to reach a server.'  
+      
+        print 'Reason: ', e.reason  
+      
+    else:  
+      
+        # everything is fine  
+
+ 
+
+注意：except HTTPError 必须在第一个，否则except URLError将同样接受到HTTPError。
+
+第二个：
+
+ 
+view plaincopy to clipboardprint?
+
+    from urllib2 import Request, urlopen, URLError  
+      
+    req = Request(someurl)  
+      
+    try:  
+      
+        response = urlopen(req)  
+      
+    except URLError, e:  
+      
+        if hasattr(e, 'reason'):  
+      
+            print 'We failed to reach a server.'  
+      
+            print 'Reason: ', e.reason  
+      
+        elif hasattr(e, 'code'):  
+      
+            print 'The server couldn/'t fulfill the request.'  
+      
+            print 'Error code: ', e.code  
+      
+    else:  
+      
+        # everything is fine  
+
+ 
+
+info and geturl 
+
+urlopen返回的应答对象response(或者HTTPError实例)有两个很有用的方法info()和geturl()
+
+geturl -- 这个返回获取的真实的URL，这个很有用，因为urlopen(或者opener对象使用的)或许
+
+会有重定向。获取的URL或许跟请求URL不同。
+
+info -- 这个返回对象的字典对象，该字典描述了获取的页面情况。通常是服务器发送的特定头headers。目前是httplib.HTTPMessage 实例。
+
+经典的headers包含"Content-length"，"Content-type"，和其他。查看Quick Reference to HTTP Headers(http://www.cs.tut.fi/~jkorpela/http.html)
+
+获取有用的HTTP头列表，以及它们的解释意义。
+
+Openers和Handlers
+
+当你获取一个URL你使用一个opener(一个urllib2.OpenerDirector的实例，urllib2.OpenerDirector可能名字可能有点让人混淆。)正常情况下，我们
+
+使用默认opener -- 通过urlopen,但你能够创建个性的openers，Openers使用处理器handlers，所有的“繁重”工作由handlers处理。每个handlers知道
+
+如何通过特定协议打开URLs，或者如何处理URL打开时的各个方面，例如HTTP重定向或者HTTP cookies。
+
+如果你希望用特定处理器获取URLs你会想创建一个openers，例如获取一个能处理cookie的opener，或者获取一个不重定向的opener。
+
+要创建一个 opener,实例化一个OpenerDirector，然后调用不断调用.add_handler(some_handler_instance).
+
+同样，可以使用build_opener，这是一个更加方便的函数，用来创建opener对象，他只需要一次函数调用。
+
+build_opener默认添加几个处理器，但提供快捷的方法来添加或更新默认处理器。
+
+其他的处理器handlers你或许会希望处理代理，验证，和其他常用但有点特殊的情况。
+
+install_opener 用来创建（全局）默认opener。这个表示调用urlopen将使用你安装的opener。
+
+Opener对象有一个open方法，该方法可以像urlopen函数那样直接用来获取urls：通常不必调用install_opener，除了为了方便。
+
+Basic Authentication 基本验证
+
+为了展示创建和安装一个handler，我们将使用HTTPBasicAuthHandler，为了更加细节的描述本主题--包含一个基础验证的工作原理。
+
+请看Basic Authentication Tutorial（http://www.voidspace.org.uk/python/articles/authentication.shtml）
+
+当需要基础验证时，服务器发送一个header(401错误码) 请求验证。这个指定了scheme 和一个‘realm’，看起来像这样：Www-authenticate: SCHEME realm="REALM".
+
+例如
+
+Www-authenticate: Basic realm="cPanel Users"
+
+客户端必须使用新的请求，并在请求头里包含正确的姓名和密码。这是“基础验证”，为了简化这个过程，我们可以创建一个HTTPBasicAuthHandler的实例，并让opener使用这个
+
+handler。
+
+HTTPBasicAuthHandler使用一个密码管理的对象来处理URLs和realms来映射用户名和密码。如果你知道realm(从服务器发送来的头里)是什么，你就能使用HTTPPasswordMgr。
+
+通常人们不关心realm是什么。那样的话，就能用方便的HTTPPasswordMgrWithDefaultRealm。这个将在你为URL指定一个默认的用户名和密码。这将在你为特定realm提供一个其他组合时
+
+得到提供。我们通过给realm参数指定None提供给add_password来指示这种情况。
+
+最高层次的URL是第一个要求验证的URL。你传给.add_password()更深层次的URLs将同样合适。
+
+ 
+view plaincopy to clipboardprint?
+
+    # 创建一个密码管理者  
+      
+    password_mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()  
+      
+       
+      
+    # 添加用户名和密码  
+      
+    # 如果知道 realm, 我们可以使用他代替 ``None``.  
+      
+    top_level_url = "http://example.com/foo/"  
+      
+    password_mgr.add_password(None, top_level_url, username, password)  
+      
+       
+      
+    handler = urllib2.HTTPBasicAuthHandler(password_mgr)  
+      
+       
+      
+    # 创建 "opener" (OpenerDirector 实例)  
+      
+    opener = urllib2.build_opener(handler)  
+      
+       
+      
+    # 使用 opener 获取一个URL  
+      
+    opener.open(a_url)  
+      
+       
+      
+    # 安装 opener.  
+      
+    # 现在所有调用 urllib2.urlopen 将用我们的 opener.  
+      
+    urllib2.install_opener(opener)  
+      
+       
+
+ 
+
+注意：以上的例子我们仅仅提供我们的HHTPBasicAuthHandler给build_opener。默认的openers有正常状况的handlers--ProxyHandler,UnknownHandler,HTTPHandler,HTTPDefaultErrorHandler, HTTPRedirectHandler, FTPHandler, FileHandler, HTTPErrorProcessor。
+
+
+top_level_url 实际上可以是完整URL(包含"http:",以及主机名及可选的端口号)例如：http://example.com/%EF%BC%8C%E4%B9%9F%E5%8F%AF%E4%BB%A5%E6%98%AF%E4%B8%80%E4%B8%AA%E2%80%9Cauthority”(即主机名和可选的
+
+包含端口号)例如：“example.com” or “example.com:8080”(后者包含了端口号)。权限验证，如果递交的话不能包含"用户信息"部分,例如:
+
+“joe@password:example.com”是错误的。
+
+
+Proxies代理urllib 将自动监测你的代理设置并使用他们。这个通过ProxyHandler这个在正常处理器链中的对象来处理。通常，那工作的很好。但有时不起作用
+
+。其中一个方法便是安装我们自己的代理处理器ProxyHandler，并不定义代理。这个跟使用Basic Authentication 处理器很相似。
+
+ 
+view plaincopy to clipboardprint?
+
+    >>> proxy_support = urllib.request.ProxyHandler({})  
+    >>> opener = urllib.request.build_opener(proxy_support)  
+    >>> urllib.request.install_opener(opener)  
+
+ 
+
+注意：
+此时urllib.request不支持通过代理获取https地址。但，这个可以通过扩展urllib.request达到目的。
+
+
+Sockets and Layers
+Python支持获取网络资源是分层结构。urllib 使用http.client库，再调用socket库实现。
+
+在Python2.3你可以指定socket的等待回应超时时间。这个在需要获取网页的应用程序里很有用。默认的socket模型没有超时和挂起。现在，socket超时没有暴露
+
+给http.client或者urllib.request层。但你可以给所有的sockets设置全局的超时。
+
+ 
+view plaincopy to clipboardprint?
+
+    import socket  
+    import urllib.request  
+      
+    # 以秒计算的超时时间  
+    timeout = 10  
+    socket.setdefaulttimeout(timeout)  
+      
+    # 这个调用urllib.request.urlopen 使用我们在socket模型里设置的默认超时时间。  
+    req = urllib.request.Request('http://www.voidspace.org.uk')  
+    response = urllib.request.urlopen(req)  
+

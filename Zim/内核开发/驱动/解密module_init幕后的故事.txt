@@ -1,0 +1,72 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-05-01T12:59:59+08:00
+
+====== 解密module init幕后的故事 ======
+Created Tuesday 01 May 2012
+http://www.embexperts.com/forum.php/forum.php?mod=viewthread&tid=39&extra=page%3D1
+
+在Linux底下写过driver模块的对这个宏一定不会陌生。module_init宏在__MODULE宏__有没有定义的情况下展开的内容是不同的，如果这个宏没有定义，基本上表明阁下的模块是要__编译进内核的__(obj-y)。
+
+1.在MODULE没有定义这种情况下，module_init定义如下：
+
+#define module_init(x)        **__initcall**(x);
+因为
+#define __initcall(fn)                               device_initcall(fn)
+#define device_initcall(fn)                __define_initcall(**"6"**,fn,6)
+#define __define_initcall(level,fn,id) \
+        static initcall_t  __initcall_##fn##id  __used \
+        __attribute__((__section__(".initcall" level ".init"))) = fn
+
+所以，module_init(x)最终展开为：
+static initcall_t  __initcall_##fn##id  __used \
+        __attribute__((__section__(".initcall" level ".init"))) = fn
+
+更直白点，假设阁下driver所对应的模块的初始化函数为int gpio_init(void)，那么module_init(gpio_init)实际上等于:
+
+static initcall_t  **__initcall_gpio_init_6** __used __attribute__((__section__(**".initcall6.init"**))) = gpio_init;
+
+就是声明一类型为initcall_t（**typedef int (*initcall_t)(void)**）函数指针类型的变量 __initcall_gpio_init_6并将gpio_init赋值与它。
+
+这里的函数指针变量声明比较特殊的地方在于，将这个变量放在了一名为".initcall6.init"节中。接下来结合**vmlinux.lds**中的
+.initcall.init : AT(ADDR(.initcall.init) - (0xc0000000 -0x00000000)) {
+  __initcall_start = .;
+  *(.initcallearly.init) __early_initcall_end = .; 
+ *(.initcall0.init) *(.initcall0s.init) *(.initcall1.init) *(.initcall1s.init) *(.initcall2.init) *(.initcall2s.init) *(.initcall3.init) *(.initcall3s.init) *(.initcall4.init) *(.initcall4s.init) *(.initcall5.init) *(.initcall5s.init)   //*// **(.initcallrootfs.init)** ***(.initcall6.init)** *(.initcall6s.init) *(.initcall7.init) *(.initcall7s.init)
+  __initcall_end = .;
+  }
+
+以及do_initcalls：
+
+static void __init __do_initcalls__(void)
+{
+        initcall_t *call;
+
+        for (call = **__initcall_start**; call < **__initcall_end**; call++)
+                __do_one_initcall__(*call);
+
+        /* Make sure there is no pending stuff from the initcall sequence */
+        flush_scheduled_work();
+}
+
+
+那么就不难理解阁下模块中的module_init中的初始化函数何时被调用了：在系统启动过程中：
+**start_kernel()->rest_init()->kernel_init()->do_basic_setup()->do_initcalls()**
+
+
+2.在MODULE被定义的情况下（大部分可动态加载的driver模块都属于此, obj-m），module_init定义如下：
+
+#define module_init(initfn)                                        \
+        static inline initcall_t __inittest(void)                \
+        { **return** initfn; }                                        \
+        int init_module(void) __attribute__((alias(#initfn)));
+
+这段宏定义关键点是后面一句，**通过alias将initfn别名为init_module**。前面那个__inittest的定义其实是种技巧，用来对initfn进行某种**静态的类型检查**，如果阁下将模块初始化函数定义成，比如，void gpio_init(void)或者是int gpio_init(int)，那么在编译时都会有类似下面的warning:
+GPIO/fsl-gpio.c: In function '__inittest':
+GPIO/fsl-gpio.c:46: warning: return from incompatible pointer type
+
+正确的定义类型应该为int gpio_init(void)。
+
+通过module_init将模块初始化函数**统一别名为init_module**，这样以后insmod时候，在系统内部会通过**系统调用sys_init_module（）**去找到init_module函数的入口地址。
+
+如果objdump -t gpio.ko，就会发现init_module和gpio_init位于相同的地址偏移处。简言之，这种情况下模块的初始化函数在insmod时候被调用。

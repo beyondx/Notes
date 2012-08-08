@@ -1,0 +1,45 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-04T22:28:33+08:00
+
+====== 2 ======
+Created Saturday 04 February 2012
+
+** special form和macro
+
+  稍加尝试就会发现，之前给出的function计算模型是有问题的。
+                                                                                                                   
+比如(setq value 5)。如果value是一个从未被赋过值的symbol，那在                                                        
+setq调用之前整个计算过程就发生错误了。这是一个悖论啊。
+                                                                                                                       
+
+  如果上面这个例子还是比较容易搞定的话，这个就更难一点。                                                               
+
+                                                                                                                       
+  (if (< 3 2)                                                                                                          
+      (message "true")                                                                                                 
+    (message "false"))                                                                                                 
+
+
+  如果elisp是纯粹的function programming language的话，我们不用在                                                       
+乎那两个message有没有被求值，我们只要关心整个函数求值返回的结果就
+对了。但是问题是，__elisp不是纯粹的函数式编程语言，它容许存在side__
+__effect__；上面的例子中，我们关心的，恰恰不是函数求值的结果，而是它
+的side effect。
+
+
+  当functional和imperative发生矛盾的时候，我们必须有一点折衷的办
+法，elisp的办法是对setq或者if一类的函数特殊处理，所以它们被称为
+__sepcial form__。Elisp Manual中有一节介绍elisp中所有的special form，
+其实也就寥寥几个。
+
+                                                                                                                       
+  而当我们想要扩展special form的时候，比如我们想用cond来实现一个
+自己的if的时候，函数依然不能来插一腿。这个时候就会用到宏。
+                                                                                                                       
+  现在概念已经比较清楚了。最基本的function是整个elisp中最常见的形                                                      
+式，__我们在emacs每次击键，都会对某一个函数求值__(不信的话，C-h k a看
+看)，可以说函数无处不在。special form虽然数量很少，但是没有它们的
+话，我们就没法在elisp里面简单的套用习惯的imperative的编程方法了，
+所以它们依然很重要。至于macro，它可以帮助你把elisp改造的越来越象
+某一门其他的语言。

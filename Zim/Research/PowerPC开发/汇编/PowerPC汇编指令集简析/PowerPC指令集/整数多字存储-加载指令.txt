@@ -1,0 +1,18 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-04T22:12:43+08:00
+
+====== 整数多字存储-加载指令 ======
+Created Sunday 04 December 2011
+http://hi.baidu.com/power_nq/blog/item/b3df6522f702c349ad34de93.html
+
+
+表3 整数多字存储/加载指令
+
+名称			助记符				语法格式
+
+多字加载			lmw				rD，d（rA）
+多字存储			stmw				rS，d（rA）
+
+（1） lmw rD，d（rA） ；EA＝rA＋d。以EA起始的__n个连续的字加载到通用寄存器GPRs rD到r31处，n＝32－rD。__EA必须为4的倍数，如果rA＝0，则指令格式无效。指令执行时间长。
+（2） stmw rS，d（rA） ；EA＝rA＋d。__把通用寄存器从GPRs rS到GPRs r31，存储到以EA起始的n个连续的字存储器__，EA必须是4的倍数。指令执行时间长。

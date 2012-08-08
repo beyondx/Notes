@@ -1,0 +1,138 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-05T22:36:23+08:00
+
+====== gnus ======
+Created Thursday 05 May 2011
+
+一个较好的.gnus.el配置文件（中文说明，能看新闻组）
+;;Gnus 是个古老的,强大的邮件,新闻阅读lisp程序.
+;;设置头像文件可惜我一直没搞定
+;(setq message-required-news-headers
+; (nconc message-required-news-headers
+; (list '(X-Face . gnus-random-x-face))))
+
+;;用户资料设定
+(setq user-full-name "YouName")
+(setq user-mail-address "YouEmail@gmail.com")
+
+;;服务器的设定
+(setq gnus-select-method '(nntp "news.yaako.com"))
+(add-to-list 'gnus-secondary-select-methods '(nntp "news.newsfan.net"))
+(add-to-list 'gnus-secondary-select-methods '(nntp "news.php.net"))
+;(add-to-list 'gnus-secondary-select-methods '(nntp "news.newsgroup.com.hk"))
+;(add-to-list 'gnus-secondary-select-methods '(nntp "news.CN99.com"))
+;(add-to-list 'gnus-secondary-select-methods '(nntp "groups.google.com"))
+
+;;开启代理功能，为了能让gnus支持离线浏览，gnus 5.10.x会自动开启该功能。
+(gnus-agentize)
+
+;;自动换行功能。
+(add-hook 'message-mode-hook
+(lambda ()
+(setq fill-column 72);;这里的72是等一行到了72个字符后开始换行
+(turn-on-auto-fill)))
+(setq message-cite-function 'message-cite-original-without-signature)
+
+;; 设定帖子的字符集
+;(setq gnus-summary-show-article-charset-alist '((1 . cn-gb-2312) (2 . big5)))
+(setq gnus-default-charset 'cn-gb-2312) ;; 默认编码
+(setq gnus-group-name-charset-group-alist '((".*" . cn-gb-2312))) ;; 组名编码
+(setq gnus-summary-show-article-charset-alist '((1 . cn-gb-2312) (2 . big5))) ;; 刷新编码
+(setq gnus-newsgroup-ignored-charsets '(unknown-8bit x-unknown iso-8859-1)) ;; 忽略编码
+
+;; 改变阅读新闻时窗口的布局，窗口划分为上4下6（比例）
+(gnus-add-configuration '(article
+(vertical 1.0
+(summary .4 point)
+(article 1.0))))
+
+;;开启记分
+(setq gnus-use-adaptive-scoring t)
+(setq gnus-save-score t)
+(add-hook 'mail-citation-hook 'sc-cite-original)
+(add-hook 'message-sent-hook 'gnus-score-followup-article)
+(add-hook 'message-sent-hook 'gnus-score-followup-thread)
+
+(defvar gnus-default-adaptive-score-alist
+'((gnus-kill-file-mark (from -10))
+(gnus-unread-mark)
+(gnus-read-mark (from 10) (subjnnect 30))
+(gnus-catchup-mark (subject -10))
+(gnus-killed-mark (from -1) (subject -30))
+(gnus-del-mark (from -2) (subject -15))
+(gnus-ticked-mark (from 10))
+(gnus-dormant-mark (from 5))))
+
+(setq gnus-score-find-score-files-function
+'(gnus-score-find-hierarchical gnus-score-find-bnews bbdb/gnus-score)
+gnus-use-adaptive-scoring t)
+
+;;;
+(setq gnus-confirm-mail-reply-to-news t
+message-kill-buffer-on-exit t
+message-elide-ellipsis "[...]\n"
+)
+
+;;排序
+(setq gnus-thread-sort-functions
+'(
+(not gnus-thread-sort-by-date)
+(not gnus-thread-sort-by-number)
+))
+
+;; 新闻组分组
+;; 有时订阅了很多新闻组，堆在一起不好管理。这个功能可以创建目录来分层管理
+;; 这些新闻组。
+;; group topic
+(add-hook 'gnus-group-mode-hook 'gnus-topic-mode)
+;; 现在可以在group buffer里面M-x gnus-topic-create-topic来创建一个"topic"，
+;; 然后将某个新闻组或者其他topic给C-k掉，再移动到你创建的topic下C-y，就可以
+;; 将它们收到这个topic下。
+;; topic的好处除了分层之外，还有就是可以将不常看的topic折叠起来，不要显示。
+;; 就像下面这样。
+;;
+;; [ Gnus -- 0 ]
+;; [ MAIL -- 3 ]...
+;; [ NEWS -- 0 ]
+;; [ emacs -- 0 ]
+;; *: nntp+binghe.6600.org: gnu.emacs.help
+;; *: nntp+binghe.6600.org:gnu.emacs.gnus
+;; [ 人文与社会 -- 0 ]
+;; [ 语言 -- 0 ]
+;; *: nntp+news.newsfan.net:教育就业.外语.日语
+;; *: nntp+news.newsfan.net: 教育就业.外语.英语
+;; [ misc -- 0 ]...
+;;
+;; 参考 gnus info -> Group Buffer -> Group Topics
+
+;;中文设置
+(setq gnus-summary-show-article-charset-alist
+'((1 . cn-gb-2312) (2 . big5) (3 . gbk) (4 . utf-8)))
+
+(setq
+gnus-default-charset 'cn-gb-2312
+gnus-group-name-charset-group-alist '((".*" . cn-gb-2312))
+gnus-newsgroup-ignored-charsets
+'(unknown-8bit x-unknown iso-8859-1 ISO-8859-15 x-gbk GB18030 gbk DEFAULT_CHARSET))
+
+;另外，有些用web方式发出的邮件里有html，加入下面的设置，只看其中的
+;plain text部分：
+(eval-after-load "mm-decode"
+'(progn
+(add-to-list 'mm-discouraged-alternatives "text/html")
+(add-to-list 'mm-discouraged-alternatives "text/richtext")))
+
+;;设置头像文件
+(setq gnus-posting-styles
+'((".*"
+(name "YouName")
+(face "")
+;;这个我都是抄老外的，自己找去,在Gnus里看到好的头像，然后到
+;;groups.google里把他的字符串贴过来 -_-!
+(address "YouEmail@gmail.com")
+(organization "www.emacs.cn")
+(signature "
+My name is K T")
+)
+))

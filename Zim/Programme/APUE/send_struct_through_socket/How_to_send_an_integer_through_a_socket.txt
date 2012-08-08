@@ -1,0 +1,40 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-05T00:09:05+08:00
+
+====== How to send an integer through a socket ======
+Created 星期日 05 六月 2011
+
+I am trying to send an integer through a socket. I am using this code to do so; however, my C code will not compile. The compiler complains that myInt has not been declared.
+
+int tmp = htonl(myInt);
+write(socket, &tmp, sizeof(tmp));
+
+How do I declare myInt? Thanks.
+
+------------
+Are you sure that it was properly declared in your program ?
+
+Try like this:
+
+int myInt = something;    
+int tmp = htonl((uint32_t)myInt);
+write(socket, &tmp, sizeof(tmp));
+
+-------------
+One simple solution is __typecase the integer to char and send 4bytes of the char buffer__
+
+int myInt char * ptr = &myInt; write(socket, ptr, sizeof(int));
+
+at the recieving end read the 4bytes.. u wont have any problem with the endianess.
+link|edit|flag
+	
+answered May 1 at 20:17
+maheshgupta024
+824
+	
+1 	 
+	
+You certainly will have endian-ness problems if the two hosts are of different endian-ness. – Andrew Medico May 1 at 20:20
+	
+@maheshgupta024 - I think what you meant was to convert the integer to a textual representation (Such as you would see in XML or JSON). The problem is what you just posted ... doesn't do that. You'd need to use sprintf() for example to do the conversion. – Brian Roach May 1 at 20:36

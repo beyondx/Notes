@@ -1,0 +1,122 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-01T16:29:00+08:00
+
+====== 16冰冻三尺非一日之寒 ======
+Created Sunday 01 July 2012
+
+罗马不是一天建成的.在让U盘工作之前,其实我们的驱动作了很多准备工作.
+
+我们继续跟着感觉走,storage_probe(),943行至948行,一系列的以init_*命名的函数在此刻被调用,这里涉及了一些锁机制,等待机制,不过只是初始化,暂且不理睬,到后面用到的时候再细说,不过请记住,这几行每一行都是有用的.后面自然会用得着.此时,我们先往下走,951行associate_dev()和962行get_device_info(),这两个函数是我们目前需要看的,一个一个来.
+
+先看associate_dev(),定义于drivers/usb/storage/usb.c,
+
+429 /* Associate our private data with the **USB device** */
+    430 static int associate_dev(struct __us_data__ *us, struct __usb_interface__ *intf)
+    431 {
+    432         US_DEBUGP("-- %s/n", __FUNCTION__);
+    433
+    434         /* Fill in the device-related fields */
+    435         us->pusb_dev = interface_to_usbdev(intf);
+    436         us->pusb_intf = intf;
+    437         us->ifnum = intf->cur_altsetting->desc.bInterfaceNumber;
+    438         US_DEBUGP("Vendor: 0x%04x, Product: 0x%04x, Revision: 0x%04x/n",
+    439                         us->pusb_dev->descriptor.idVendor,
+    440                         us->pusb_dev->descriptor.idProduct,
+    441                         us->pusb_dev->descriptor.bcdDevice);
+    442         US_DEBUGP("Interface Subclass: 0x%02x, Protocol: 0x%02x/n",
+    443                         intf->__cur_altsetting__->desc.bInterfaceSubClass,
+    444                         intf->cur_altsetting->desc.bInterfaceProtocol);
+    445
+    446         /* Store our private data in the interface */
+    447         usb_set_intfdata(intf, us);
+    448
+    449         /* Allocate the device-related DMA-mapped buffers */
+    450         us->cr = usb_buffer_alloc(us->pusb_dev, sizeof(*us->cr),
+    451                         GFP_KERNEL, &us->cr_dma);
+    452         if (!us->cr) {
+    453                 US_DEBUGP("usb_ctrlrequest allocation failed/n");
+    454                 return -ENOMEM;
+    455         }
+    456
+    457         us->iobuf = usb_buffer_alloc(us->pusb_dev, US_IOBUF_SIZE,
+    458                         GFP_KERNEL, &us->iobuf_dma);
+    459         if (!us->iobuf) {
+    460                 US_DEBUGP("I/O buffer allocation failed/n");
+    461                 return -ENOMEM;
+    462         }
+    463         return 0;
+    464 }
+
+我们首先来关注函数associate_dev的参数, struct us_data *us,传递给它的是us,这个不用多说了吧,此前刚刚为它申请了内存,并且初始化各成员为0. 这个us将一直陪伴我们走下去,直到我们的故事结束.所以其重要性不言而喻. 
+
+struct usb_interface *intf,这个也不用说,storage_probe()函数传进来的两个参数之一.总之,此处郑重申明一次,struct us_data的结构体指针us,struct usb_interface结构体的指针intf,以及struct usb_device结构体和struct usb_device_id结构体在整个U盘驱动的故事中是唯一的,每次提到都是那个. 而以后我们会遇上的几个重要的数据结构,struct urb urb,struct scsi_cmnd srb这也非常重要,但是它们并不唯一,也许每次遇上都不一样,就像演戏一样.前边这几个数据结构的变量就像那些主角,而之后遇见的urb啊,srb啊,虽然频繁露面,但是只是群众演员,只不过这次是路人甲,下次是路人乙. 所以,以后我们将只说us,不再说struct us_data *us,struct usb_interface * intf也将只用intf来代替.
+
+us之所以重要,是因为接下来很多函数都要用到它以及它的各个成员.实际上目前这个函数,__associate_dev所做的事情就是为us的各成员赋值__,毕竟此刻us和我们之前提到的那些struct usb_device啊,struct usb_interface啊,还没有一点关系.因而,这个函数,以及这之后的好几个函数都是为了给us的各成员赋上适当的值,之所以如此兴师动众去为它赋值,主要就是因为后面要利用它.所谓天下没有免费的午餐.
+
+432行,本来无须多讲,因为只是一个debug语句,不过提一下__FUNCTION__这个"宏",gcc 2.95以后的版本支持这么一个冬冬,这个"宏"在编译的时候会被转换为函数名(字符串),这里自然就是"associate_dev"这么一个字符串,于是函数执行到这里就会打印一句话告诉世人我们执行到这个函数来了,这种做法显然会有利于咱们调试程序.不过这个冬冬实际上不是宏,因为预处理器对她一无所知.她的心只有编译器才懂.
+
+435行,pusb_dev,就是__point of usb device__的意思.struct us_data中的一个成员,按照我们刚才约定的规矩,此刻我将说us的一个成员,us->pusb_dev= interface_to_usbdev(intf), interface_to_usbdev我们前面已经讲过,其含义正如字面表示的那样,把一个struct interface结构体的指针转换成一个struct usb_device的结构体指针.前面我们说过,struct usb_device对我们没有什么用,但是usb core层的一些函数要求使用这个参数,所以我们不得已而为止,正所谓人在江湖身不由己.
+
+436行,把intf赋给us的pusb_intf.
+
+437行,us的ifnum, 先看intf的cur_altsetting,这个容易令外行混淆.usb设备有一个**configuration**的概念,这个我们前面讲协议的时候说了,而这里又有一个**setting**,咋一看有些奇怪,这两个词不是一回事吗.这时候,就体现出外语水平了,上过新东方没上过新东方,背没背过俞敏洪的GRE红宝书,在这时候就体现出差距了. 还是拿我们最熟悉的手机来打比方,configuration不说了,setting,一个手机可能各种配置都确定了,是振动还是铃声已经确定了,各种功能都确定了,但是声音的大小还可以变吧,通常手机的音量是一格一格的变动,大概也就5,6格,那么这个可以算一个setting吧.这里cur_altsetting就是表示的当前的这个setting,或者说设置__.cur_altsetting是一个struct usb_host_interface的指针__**,**这个结构体定义于include/linux/usb.h:
+
+51 /* host-side wrapper for one interface setting's parsed descriptors */
+     52 struct usb_host_interface {
+     53         struct usb_interface_descriptor desc;
+     54
+     55         /* array of desc.bNumEndpoint endpoints associated with this
+     56          * interface setting.  these will be in no particular order.
+     57          */
+     58         struct usb_host_endpoint *endpoint;
+     59
+     60         unsigned char *extra;   /* Extra descriptors */
+     61         int extralen;
+     62 };
+
+它的成员desc是一个struct usb_interface_descriptor结构体变量,这个结构体的定义是和usb协议直接对应的,定义于include/linux/usb_ch9.h.(这里取名为"ch9"是因为这个文件很多东西对应于usb spec 2.0中的第九章,chapter 9.):
+    242 /* USB_DT_INTERFACE: Interface descriptor */
+    243 struct __usb_interface_descriptor__ {
+    244         __u8  bLength;
+    245         __u8  bDescriptorType;
+    246
+    247         __u8  bInterfaceNumber;
+    248         __u8  bAlternateSetting;
+    249         __u8  **bNumEndpoints**;
+    250         __u8  bInterfaceClass;
+    251         __u8  bInterfaceSubClass;
+    252         __u8  bInterfaceProtocol;
+    253         __u8  iInterface;
+    254 } __attribute__ ((packed));
+
+而其中我们这里提到的是bInterfaceNumber,**一个设备可以有多个Interface,于是每一个Interface当然就得用个编号了**,要不然咋区分啊?所有这些描述符里的冬冬都是__出厂的时候就固化在设备里边__的,而我们这里之所以可以用bInterfaceNumber来赋值,是因为usbcore在为设备初始化的时候就已经做足了这些功课.否则的话,我们真是寸步难行.总之,us->ifnum就是这样,最终就是等于咱们眼下这个interface的编号.
+
+438到444行就是两句调试语句,打印更多一些描述符信息,包括device描述符和interface描述符.
+
+447行, usb_set_intfdata(),这其实是一个内联函数,她就一行代码,也是定义于include/linux/usb.h中:
+    138 static inline void usb_set_intfdata (struct usb_interface *intf, void *data)
+    139 {
+    140         dev_set_drvdata(&intf->dev, data);
+    141 }
+  有趣的是,dev_set_drvdata这个函数也是内联函数,也只有一行代码,她定义于include/linux/device.h中:
+302 static inline void
+    303 dev_set_drvdata (struct device *dev, void *data)
+    304 {
+    305         dev->driver_data = data;
+    306 }
+所以,结合来看,最终做的事情就是让&intf->dev->driver_data=data,即&__intf->dev->driver_data=us__.
+
+再往下走,就是申请内存了,us->cr和us->iobuf都是指针,这里让它们指向两段内存空间,下面会用得到.需要注意的是usb_buffer_alloc(),这个函数是usbcore提供的,我们只管调用即可.从名字上就能知道它是用来申请内存的,第一个参数就是struct usb_device结构体的指针,所以我们要传递一个pusb_dev,第三个参数,GFP_KERNEL,是一个内存申请的flag,通常内存申请都用这个flag,除非是中断上下文,不能睡眠,那就得用GPF_ATOMIC,这里没那么多要求.第二个参数申请的buffer的大小,对于cr,传递的是sizeof(*us->cr),而对于iobuf,传递的是US_IOBUF_SIZE,这是一个宏,大小是64,是我们自己定义的,来自drivers/usb/storage/usb.h:
+     91 /*
+     92  * We provide a DMA-mapped I/O buffer for use with small USB transfers.
+     93  * It turns out that CB[I] needs a 12-byte buffer and Bulk-only needs a
+     94  * 31-byte buffer.  But Freecom needs a 64-byte buffer, so that's the
+     95  * size we'll allocate.
+     96  */
+     97
+     98 #define US_IOBUF_SIZE           64      /* Size of the DMA-mapped I/O buffer */
+
+而usb_buffer_alloc()的第四个参数有些意思了,第一次我们传递的是&us->cr_dma,第二次传递的是&us->iobuf_dma,这涉及到dma传输.这两个咚咚此前我们都没有赋过值,相反它们是在这个函数调用之后被赋上值的.cr_dma和iobuf_dma都是dma_addr_t类型的变量,这个数据类型是Linux内核中专门为dma传输而准备的.为了支持dma传输,usb_buffer_alloc不仅仅是申请了地址,并且建立了dma映射,cr_dma和iobuf_dma就是记录着cr和iobuf的dma地址.关于什么是cr,关于这些dma地址究竟有什么用,我们稍候就会遇到,那时候再讲也不迟.现在需要知道的就是usb_buffer_alloc申请的空间分别返回给了cr和iobuf.顺便提一下,用usb_buffer_alloc申请的内存空间需要用它的搭档usb_buffer_free()来释放.
+
+452行和459行,每一次申请完内存就要检查成功与否,这是惯例.驱动程序能否驱动设备,关键就是看能否申请到内存空间,任何一处内存空间申请失败,整个驱动程序就没法正常工作.这就像如今找对象,谈婚姻,总是要看有没有房子.没有房子的话,那么基本上爱情也就没戏.然而现实中要拥有房子比计算机里分配内存却要难上许多,许多.可怜的我们这一代人,当我们不能挣钱的时候,房子是分配的,当我们能挣钱的时候,却发现房子已经买不起了.哭…

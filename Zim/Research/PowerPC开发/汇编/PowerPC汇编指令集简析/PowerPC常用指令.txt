@@ -1,0 +1,145 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-04T22:40:00+08:00
+
+====== PowerPC常用指令 ======
+Created Sunday 04 December 2011
+http://zhiwei.li/text/2008/11/powerpc-instruaction/
+
+指令缩写
+
+•st = store
+•ld = load
+•r = right
+•l = left 或者 logical
+•w = word
+•u = update
+•m = move
+•f = from 或者 field
+•t = to 或者 than
+•i = Immediate
+•h = half word
+•z = zero
+•b = branch
+•n = and
+•cmp = compare
+•sub = subtract
+•clr = clear
+•cr = condition register
+•lr = link register
+•ctr = couter register
+
+stwu = STore Word witch Update
+
+stwu r1, <-frame_size>(r1)
+
+在GDB/IDA汇编中通常写成
+
+stwu %sp, -0×20(%sp)
+
+意思是，先将 SP 放入到 (SP-20) 这个内存地址然后 SP = SP – 20;
+
+从特殊寄存器 取值 的 扩展助记符
+mflr = Move From Link Register
+
+mflr rt 等同于 mfspr rt,8
+
+将连接寄存器的值 放到 RT
+
+一般是 mflr %r0
+
+存值到特殊寄存器 的 扩展 助记符
+
+mtctr = Move To Counter Register
+
+mtctr rs 等同 mtspr 9,rs
+
+将 RS 的 值 放入 到 计数寄存器
+
+mtcrf = Move to Condition Register Fields mtcrf FXM, RS 按照掩码FXM，复制Rs的内容到 CR
+
+FXM是8位，控制 RS的32位（8组，共32位） 复制过去，也就是说 FXM的1位，可以控制 Rs的4位一位掩码 控制 一组 CR
+
+条件寄存器扩展助记符
+crclr = Control Register CLeaR?
+
+crclr bx 等同于 crxor bx, bx, bx 作用是 将条件寄存器 相应的位 清零
+
+例如 crclr so 等同于 crxor 3, 3, 3 将 CR0的 SO位 （第3位) 清零
+
+crclr 4*cr3+eq 等同于 crxor 14, 14, 14 将CR3的EQ位 清零
+
+比较指令
+cmpli = Compare Logical Immediate
+
+cmplwi bf, ra, ui 等同于 cmpli bf, 0, ra, ui Compare Logical Word Immediate
+
+所谓逻辑比较，就是同 无符号整数比较
+
+存储指令
+
+sth = Store Half 并且是存储高位 (16-31位)
+
+载入指令
+lhz = Load Half and Zero 载入半字并将高16位清零
+
+lwzx = Load Word and Zero Indexed 意思 是 lwzx RT, RA, RB (Ra+Rb就是 地址)
+
+跳转
+bccl = bctrl (有别名的助记符)
+
+Branch Conditional to Count Register 条件跳转到 计数寄存器 指定的地址
+
+逻辑操作
+
+ori 或者 oril = OR Immediate 同16位立即数进行 或 操作
+
+循环掩码操作
+
+循环左移 然后进行掩码操作是
+PowerPC指令集的精华，包含了一组非常强大的指令集
+
+移位指令
+
+slwi = Shift left immediate 左移 几位（位数用立即数表示)
+
+rotlwi = Rotate left immediate 循环左移
+
+抽取
+extrwi = Extract and right justify immediate 例如 extrwi RX, RY, 1, 0
+
+等同于 rlwinm RX, RY, 1, 31, 31
+
+rlwinm or rlinm (Rotate Left Word Immediate Then AND with Mask)
+
+插入
+
+清除
+clrlwi = Clear left immediate
+
+怪异清除
+clrlslwi = Clear (Left Word) and Shift Left clrlslwi %r0, %r0, 24,8 等同于 rlwinm RA, RS, 24-8, 31-24 = rlwinm Ra, Rs, 16, 7 rlwinm RA, RS, SH, MB, ME 将R0向左循环移动掩码是 [8, 15]
+
+影响CR的 运算
+
+如果Overflow Exception (OE)设置1, 那么结果影响定点异常寄存器的 Summary Overflow (SO)和 Overflow (OV), 助记符是 后面加o, addo
+
+如果Record (Rc)设置1，那么结果影响 Less Than (LT) zero, Greater Than (GT) zero, Equal To (EQ) zero, 和 Summary Overflow (SO) 等条件寄存器CR 助记符 是 后面加”点” add.
+
+算术运算
+
+注意方向
+subf = Subtract From 注意，被减数 是后面的那个寄存器
+
+计数器循环
+在扩展助记符中，计数寄存器的语义可以通过在 b 后面立即添加 dz 或 dnz 来指定。
+
+符号扩展
+extsb
+
+将最右边的8位保存，左边的24位清零或者置1（依赖于 右边8位的最高位)
+
+　算术运算
+除法 divwu (Divide Word Unsigned)
+
+乘法 mullw(Multiple Low Word) 

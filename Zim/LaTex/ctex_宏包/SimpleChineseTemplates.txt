@@ -1,0 +1,218 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-01T14:35:52+08:00
+
+====== SimpleChineseTemplates ======
+Created Sunday 01 January 2012
+
+SimpleChineseTemplates  
+各种工具链下最简单的中文文档模板
+
+目的
+    LaTeX
+        xelatex (推荐)
+        latex + dvipdfmx
+        pdflatex
+        latex + dvips + ps2pdf (过时，不推荐，仅供参考)
+    ConTeXt
+        MkIV (推荐)
+        MkII
+
+v0.3, 2010-03-06
+
+===== 目的 =====
+
+希望 google code 上的 ctex-kit 和 ctex-doc 成为 TeX 中文支持信息的权威集中点，为中文用户使用 TeX 排版中文文档提供__最基本的模板__，解决如下问题：
+
+* 可以生成中文显示正常的 PDF 文件；
+* 复制 PDF 中的中文文字不会乱码；
+* PDF 中的中文书签不乱码；
+* PDF 可以搜索中文。 
+
+**更细致**的符合中文排版习惯的模板不在此页面考虑范围之内，请参考 cjk、xecjk、ctex 宏包的文档以及 Li Yanrui 的 ConTeXt 笔记。
+
+使用的 TeX 发行版为 T__eX Live__ 和 ConTeXt Minimals，因为这俩能在多个 OS 上使用，使用人数众多。
+
+页面中的模板来自各种角落的收集：
+
+* http://tex.board.newsmth.net/
+* http://www.ctex.org
+* CTeXLive ISO 镜像文件中的例子
+* CJK、xeCJK、ctex 宏包的例子
+* Li Yanrui 的 ConTeXt 笔记等等。 
+
+====== LaTeX ======
+
+文档参考：
+
+* lshort - http://ctex-doc.googlecode.com/svn/trunk/lshort-zh-cn/
+* lnotes - http://ctex-doc.googlecode.com/svn/trunk/latex-notes-zh-cn/
+* ctex-faq - http://ctex-doc.googlecode.com/svn/trunk/ctex-faq/
+* texlive-zh-cn - http://www.tug.org/texlive/doc/texlive-zh-cn/texlive-zh-cn.pdf
+* xetex-about-fonts - http://bbs.ctex.org/viewthread.php?tid=43244
+* milksea-readme - http://www.newsmth.net/bbscon.php?bid=460&id=282515
+* tl2007-cjk-howto(old??) - http://mailboxpublic.googlepages.com/texlive2007cjkchinesehowto 
+
+由于 __xelatex 使用的是近来开发的 XeTeX 引擎__，能容易的使用字体，所以推荐使用。下面__后三种__工具链使用的都是 __pdftex 引擎加 CJK 宏包__，它们间的区别只是得到 PDF 文件的方式不一样，各有一些细微的优缺点，参考 ctex-faq 第 32 个问题“在 CJK 中都可以使用哪些矢量字库?”。
+
+模板文件：http://ctex-kit.googlecode.com/svn/trunk/templates/LaTeX ，在 Linux 下可以用 make TOOLCHAINS=xxx gbk utf8 来编译 gbk.tex 和 utf8.tex，TOOLCHAINS 可以是 __xelatex、pdflatex、dvipdfmx、dvips__ 的一种或者组合(**前两种是直接从源文件生成pdf文档，而后两者是先生成dvi文件，然后再转换为pdf文档**。)，以逗号或者空格分隔。当使用**后三者**并且使用 winfonts 时，需要把 C:\WINDOWS\Fonts\ 目录下的 sim*.ttf、sim*.ttc 复制到TEXMFHOME/fonts/truetype/sim/ 目录下（没有此目录则新建之），TEXMFHOME 指 kpsexpand '$TEXMFHOME' 命令的输出。
+
+测试环境如下，更详细的软件包信息见模板文件末尾的注释：
+
+* Debian GNU/Linux Squeeze
+* TeXLive 20090910
+* ctex r167 at http://ctex-kit.googlecode.com (ctex r189 对 hyperref 支持做了修改，可以使用 ctex 宏包的 hyperref 选项，不再需要模板中繁琐的 hyperref 设置)
+* zhwinfonts r167 at http://ctex-kit.googlecode.com
+* xecjk r167 at http://ctex-kit.googlecode.com
+* evince 2.26.2-2
+* libpoppler4 0.10.6-1
+* poppler-data 0.2.1-5 
+
+==== xelatex (推荐的工具链) ====
+
+编译方式：
+
+xelatex a.tex
+xelatex a.tex   # 使用交叉引用信息，书签需要这个
+
+编译结果:
+
+模板 	字体选项 		实际字体 	pdf 大小 	显示 	超链接 	字体信息 	选择 	复制 	书签 	搜索
+gbk.tex 	adobefonts 	Adobe 	22118 	极好 	正常 	正常 	正常 	正常 	正常 	正常
+gbk.tex 	winfonts 		中易 	20903 	极好 	正常 	正常 	正常 	正常 	正常 	正常
+utf8.tex 	adobefonts 	Adobe 	22120 	极好 	正常 	正常 	正常 	正常 	正常 	正常
+utf8.tex 	winfonts 		中易 	20904 	极好 	正常 	正常 	正常 	正常 	正常 	正常
+
+此方式编译时 ctex __基于 xecjk 宏包__，cjkfonts 等价于 adobefonts。
+
+==== latex + dvipdfmx ====
+
+如果没有 GBK-EUC-UCS2 文件，则需要 gbk2uni，参见下一节 pdflatex。 Debian 上 cmap-adobe-gb1 和 poppler-data 中都有 GBK-EUC-UCS2，也可以从 Adobe Reader 简体中文版中获取，复制到 TEXMFHOME/fonts/cmap/dvipdfmx/ 目录下。
+
+编译方式：
+
+latex a.tex
+latex a.tex     # 使用交叉引用信息，书签需要这个
+gbk2uni a.out   # 如果是 GBK 编码，并且没有 GBK-EUC-UCS2 文件
+latex a.tex     # 如果是 GBK 编码，并且没有 GBK-EUC-UCS2 文件。使用正确编码的交叉引用信息。
+__dvipdfmx__ a.dvi
+
+编译结果：
+
+模板 	字体选项 	实际字体 	pdf 大小 	显示 	超链接 	字体信息 	选择 	复制 	书签 	搜索
+gbk.tex 	cjkfonts 	文鼎 	失败 							
+gbk.tex 	winfonts 	中易 	17051 	很好 	正常 	正常 	正常 	正常 	正常 	正常
+utf8.tex 	cjkfonts 	文鼎 	27615 	很好 	正常 	正常 	正常 	正常 	正常 	正常
+utf8.tex 	winfonts 	中易 	17049 	很好 	正常 	正常 	正常 	正常 	正常 	正常
+
+此方式编译时** ctex 基于 cjk 宏包**，adobefonts 等价于 winfonts。
+
+==== pdflatex ====
+
+需要 gbk2uni : ftp://ftp.cc.ac.cn/pub/cct/src/ ，下载 cct 源码包，取出其中的 gbk2uni.h 和 gbk2uni.c，编译：
+
+gcc -o gbk2uni gbk2uni.c
+mv gbk2uni `kpsexpand '$TEXMFMAIN'`/../bin/i386-linux/
+
+为了使 GBK 编码的文件被 pdflatex 编译后可以搜索中文，需要取出 cct 源码中 ccmap 目录，复制到 TEXMFHOME/tex/latex/ccmap/ 目录，然后执行：
+
+mkdir t.$$ && cd t.$$ && latex "\def\cmapEnc{GBK} \input{makecmap.tex}"
+todir=`kpsexpand '$TEXMFMAIN'`/tex/latex/ccmap
+mkdir -p $todir
+mv *.cmap  $todir
+cd - && rm -rf t.$$
+
+编译方式：
+
+pdflatex a.tex
+pdflatex a.tex      # 使用交叉引用信息，书签需要这个
+gbk2uni a.out       # 如果是 GBK 编码
+pdflatex a.tex      # 如果是 GBK 编码。使用正确编码的交叉引用信息。
+
+    !!! 注：pdftex <= 1.40.9 对 simsun.ttc 支持有问题，导致 winfonts 下没能嵌入 truetype 字体，使得显示效果一般，TeXLive 2009 最新版已经包含 pdftex 1.40.10 (2009-11-30 发布)，支持 .ttc 字体文件，因此显示效果很好。 
+
+编译结果：
+
+模板 	字体选项 	实际字体 	pdf 大小 	显示 	超链接 	字体信息 	选择 	复制 	书签 	搜索
+gbk.tex 	cjkfonts 	文鼎 	失败 							
+gbk.tex 	winfonts 	中易 	102851 	很好 	正常 	正常 	乱码 	正常 	正常 	正常
+utf8.tex 	cjkfonts 	文鼎 	873447 	一般 	正常 	正常 	乱码 	正常 	正常 	正常
+utf8.tex 	winfonts 	中易 	73237 	很好 	正常 	正常 	乱码 	正常 	正常 	正常
+
+此方式编译时 ctex 基于 cjk 宏包，adobefonts 等价于 winfonts。
+
+==== latex + dvips + ps2pdf (过时，不推荐，仅供参考) ====
+
+ps2pdf 需要安装 ghostscript，另外 Debian 上 texlive-extra-utils 包有 epstopdf， context 包有 pstopdf，但这两个程序在 TeXLive 2009 都没有。
+dvips 方式不能嵌入 truetype 字体，生成的 pdf 里中文不能搜索，因此建议不要使用。
+为了使书签不乱码，需要把模板中 hyperref 的 dvipdfmx 选项改成 ps2pdf，并使用 gbk2uni，见下面小节 pdflatex。
+
+编译方式:
+
+latex a.tex
+latex a.tex     # 使用交叉引用信息，书签需要这个
+gbk2uni a.out   # 如果是 GBK 编码
+latex a.tex     # 如果是 GBK 编码，使用正确编码的交叉引用信息
+dvips a.dvi
+ps2pdf a.ps
+
+编译结果：
+
+模板 	字体选项 	实际字体 	pdf 大小 	显示 	超链接 	字体信息 	选择 	复制 	书签 	搜索
+gbk.tex 	cjkfonts 	文鼎 	失败 							
+gbk.tex 	winfonts 	中易 	36979 	一般 	正常 	丢失 	乱码 	乱码 	正常 	不支持
+utf8.tex 	cjkfonts 	文鼎 	42573 	一般 	正常 	正常 	乱码 	乱码 	正常 	不支持
+utf8.tex 	winfonts 	中易 	36800 	一般 	正常 	丢失 	乱码 	乱码 	正常 	不支持
+
+此方式编译时 ctex 基于 cjk 宏包，adobefonts 等价于 winfonts。
+
+ 后注：snoopyzhao@newsmth 指出 dvips 方式制作出的中文 PDF 也是可以正常搜索复制的，我实验了下，发现使用 Type 1 字体就可以，TeXLive 2009 默认只配备了文鼎几款覆盖 GB2312 字符集的 Type 1 中文字体，上面表格的结果是从 truetype 自动生成的 Type 3 字体，而如果用 Type 1 字体，GB 编码下字体信息、选择、复制、搜索都正常，显示效果也很好，例子如下，编译方式同上。
+
+    \documentclass{article}
+    \usepackage{CJK}                                % 如果文档内容用 UTF-8 编码，把 CJK 换成 CJKutf8
+    \usepackage[CJKbookmarks,ps2pdf]{hyperref}      % 如果文档内容用 UTF-8 编码，把 CJKbookmarks 改成 unicode
+    \begin{document}
+    \begin{CJK*}{GB}{gbsn}                          % 如果文档内容用 UTF-8 编码，把 GB 改成 UTF8
+
+    \title{latex + dvips + ps2pdf 编译方式的中文支持}
+    \author{作者}
+    \maketitle
+    \tableofcontents
+
+    \section{第一段}
+      我来试试复制与搜索……
+    \section{第二段}
+      我来试试复制与搜索……
+    \section{第三段}
+      我来试试复制与搜索……
+    % See http://lists.ffii.org/pipermail/cjk/2008-April/002218.html
+    %   "CJKutf8 results in error in TOC": This is documented in CJK.txt, section 'Possible errors'
+    %\clearpage                                     % UTF-8 编码时打开, 否则第二遍 latex 时报告章节标题错误，感谢 snoopyzhao@newsmth 指出
+    \end{CJK*}
+    \end{document}
+
+====== ConTeXt ======
+
+文档参考：
+
+    ctx-notes - http://ctex-doc.googlecode.com/svn/trunk/context-notes-zh-cn/
+    way2ctx - http://code.google.com/p/way2ctx/downloads/list
+    ctx-top10 - http://ctex-doc.googlecode.com/svn/trunk/context-top-ten/
+    ctx-tutor - http://meeting.contextgarden.net/2008/talks/2008-08-21-willi-aditya-beginners/ 
+
+    特别注意： ctex 论坛有人说 2008 年以前的 ConTeXt 文档大多不适用于 ConTeXt MkIV，阅读时需要小心。 
+
+由于 ConTeXt MkIV 使用近来开发的 LuaTeX 引擎，能容易的使用字体，所以推荐使用。 ConTeXt MkII 使用 pdftex 引擎排版。
+
+==== MkIV (推荐) ====
+
+所有模板都是 UTF-8 编码，参照 way2ctx 安装好 ConTeXt Minimals 后，找到 Adobe 的四款字体(AdobeFangsongStd-Regular.otf AdobeHeitiStd-Regular.otf AdobeKaitiStd-Regular.otf AdobeSongStd-Light.otf) 放到某个目录下并设置 好 OSFONTDIR，编译方法见 way2ctx 文档。
+
+所有模板都在 ConTeXt Minimals 2009-09-02 Linux 版编译通过。
+
+    使用 Li Yanrui 的 zhfonts.tex - http://ctex-kit.googlecode.com/svn/trunk/templates/ConTeXt-MkIV/zhfonts/
+    使用 Li Yanrui 的新 zhfonts.tex - http://ctex-kit.googlecode.com/svn/trunk/templates/ConTeXt-MkIV/zhfonts-new/
+    使用 Li Yanrui 的 t-zhfonts - http://ctex-kit.googlecode.com/svn/trunk/templates/ConTeXt-MkIV/t-zhfonts/
+    使用 t-simplefonts - http://ctex-kit.googlecode.com/svn/trunk/templates/ConTeXt-MkIV/t-simplefonts/ 
+
+    !!! Sorry, I'm stupid, I have no idea which one is better... 

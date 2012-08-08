@@ -1,0 +1,376 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-21T14:23:48+08:00
+
+====== EPOLL为我们带来了什么 ======
+Created Friday 21 October 2011
+
+Q：网络服务器的瓶颈在哪？
+A：IO效率。
+
+在大家苦苦的为在线人数的增长而导致的系统资源吃紧上的问题正在发愁的时候，Linux 2.6内核中提供的__System Epoll__为我们提供了一套完美的解决方案。传统的select以及poll的效率会因为在线人数的__线形递增__而导致呈二次乃至三次方的下降，这些直接导致了网络服务器可以支持的人数有了个比较明显的限制。
+
+自从Linux提供了/dev/epoll的设备以及后来2.6内核中对/dev/epoll设备的访问的封装（System Epoll）之后，这种现象得到了大大的缓解，如果说几个月前，大家还对epoll不熟悉，那么现在来说的话，epoll的应用已经得到了大范围的普及。
+
+那么究竟如何来使用epoll呢？其实非常简单。
+通过在包含一个头文件#include 以及几个简单的API将可以大大的提高你的网络服务器的支持人数。
+
+首先通过create_epoll(int maxfds)来创建一个__epoll的句柄__，其中maxfds为你epoll所支持的最大句柄数。这个函数会返回一个新的epoll句柄，之后的所有操作将通过这个句柄来进行操作。在用完之后，记得用close()来关闭这个创建出来的epoll句柄。
+
+之后在你的网络主循环里面，每一帧的调用epoll_wait(int epfd, epoll_event events, int max events, int timeout)来查询所有的网络连接状态，看哪一个可以读，哪一个可以写了。基本的语法为：
+nfds = epoll_wait(kdpfd, events, maxevents, -1);
+其中kdpfd为用epoll_create创建之后的句柄，events是一个epoll_event*的指针，当epoll_wait这个函数操作成功之后，epoll_events里面将__储存所有的读写事件__。max_events是当前需要监听的所有socket句柄数。最后一个timeout是epoll_wait的超时，为0的时候表示马上返回，为-1的时候表示一直等下去，直到有事件发生，为任意正整数的时候表示等这么长的时间，如果一直没有事件，则超时返回。
+
+一般如果__网络主循环__是**单独的线程**的话，可以用-1来等，这样可以保证一些效率，如果是和__主逻辑__在同一个线程的话，则可以用0来保证主循环的效率。
+
+epoll_wait范围之后应该是一个循环，**遍利所有的事件**：
+for(n = 0; n < nfds; ++n) {
+if(events[n].data.fd == listener) { //如果是**主socket的事件**的话，则表示有新连接进入了，进行新连接的处理。
+client = accept(listener, (struct sockaddr *) &local,
+&addrlen);
+if(client < 0){
+perror("accept");
+continue;
+}
+setnonblocking(client); // 将新连接置于__非阻塞模式__
+ev.events = EPOLLIN | EPOLL__ET__; // 并且将新连接也加入EPOLL的监听队列。注意，这里的参数EPOLLIN | EPOLLET并没有设置对__写__socket的监听，如果有写操作的话，这个时候epoll是不会返回事件的，如果要对写操作也监听的话，应该是EPOLLIN | EPOLLOUT | EPOLLET
+ev.data.fd = client;
+if (epoll_ctl(kdpfd, EPOLL_CTL_ADD, client, &ev) < 0) {
+// 设置好event之后，将这个新的event通过epoll_ctl加入到epoll的监听队列里面，这里用EPOLL_CTL_ADD来加一个新的epoll事件，通过EPOLL_CTL_DEL来减少一个epoll事件，通过EPOLL_CTL_MOD来改变一个事件的监听方式。
+fprintf(stderr, "epoll set insertion error: fd=%d0,client);
+return -1;
+}
+}
+else // 如果不是主socket的事件的话，则代表是一个**用户socket的事件**，则来处理这个用户socket的事情，比如说read(fd,xxx)之类的，或者一些其他的处理。
+do_use_fd(events[n].data.fd);
+}
+
+对，epoll的操作就这么简单，总共不过4个API：epoll_create, epoll_ctl, epoll_wait和close。如果您对epoll的效率还不太了解，请参考我之前关于网络游戏的网络编程等相关的文章。
+
+===== epoll与iocp的异同之处 =====
+
+目前国内的网游研发，在服务器使用的开发平台方面，win和linux的比例各占多少，我一时半会也没有准确数据，但从我了解的这么多公司情况来看，用win系统的还是比较多一点，这些企业一般都是比较单纯的网游公司，而用linux的则多数是一些传统的互联网公司，比如网易和腾讯。
+
+网游服务器用win还是linux，向来都是大家关注的话题。我想，原因可能很多，但此处不想过多论述这个问题，为避免多费口舌，我还是明确表明一下自己的观点：我是推荐用linux作开发的，虽然我也是刚转来作linux平台下的开发。
+
+那么，说具体一点。但凡作过比较深入的网络编程的人，都会知道，**在win平台下，高效的IO模型是IOCP，而在linux底下则是epoll。**那么，epoll与iocp之间到底有哪些异同之处呢？
+
+首先，我们看一下它们相同的地方。
+
+两者都是__处理异步IO的高效模型__，这种高效，除了“异步处理”这个共同的特征之外，二者都可以通过指针携带应用层数据：在IOCP里，应用层数据可以通过单句柄数据和单IO数据来与IOCP底层通信；而在epoll里，可以通过epoll_data里的"void *ptr"来传递。这是一种很重要的思想，也是它们高效的原因所在：__当事件的通知到来时，它不仅告诉你发生了什么样的事件，还同时告诉这次事件所操作的数据是哪些。__
+
+那么，epoll和iocp到底又有什么不同呢？
+
+以我目前粗浅的使用经验来看，至少可以得到以下结论：
+
+1.iocp是在IO操作完成之后，才通过get函数返回这个完成通知的；而epoll则不是在IO操作完成之后才通知你，它的工作原理是，你如果想进行IO操作时，先向epoll查询是否可读或可写，如果处于可读或可写状态后，epoll会通过epoll_wait函数通知你，此时你再进行进一步的recv或send操作。
+
+2.在1的基础上，我们其实可以看到，__epoll仅仅是一个异步事件的通知机制__，其本身并不作任何的IO读写操作，它只负责告诉你是不是可以读或可以写了，而具体的读写操作，还要应用层自己来作；但iocp的封装就要多一些，它不仅会有完成之后的事件通知，更重要的是，它同时封装了一部分的IO控制逻辑。从这一点上来看，iocp的封装似乎更全面一点，但是，换个角度看，epoll仅提供这种机制也是非常好的，它保持了__事件通知与IO操作之间彼此的独立性__，使得epoll的使用更加灵活。
+
+这只是我初步使用epoll开发过程中的体会，以后有更深的体会时还会发上来跟大家分享。
+
+===== linux 2.6内核epoll用法举例说明 =====
+
+epoll用到的所有函数都是在头文件sys/epoll.h中声明的，下面简要说明所用到的数据结构和函数：
+
+=== 所用到的数据结构 ===
+typedef **union** epoll_data {
+void *ptr;
+__int fd;__
+__uint32_t u32;
+__uint64_t u64;
+} epoll_data_t;
+
+struct epoll_event {
+__uint32_t events; /* Epoll events */
+epoll_data_t data; /* User data variable */
+};
+
+结构体epoll_event 被用于**注册所感兴趣的事件和回传所发生待处理的事件**，其中epoll_data 联合体用来保存**触发事件的某个文件描述符相关的数据**，例如一个client连接到服务器，服务器通过调用accept函数可以得到于这个client对应的socket文件描述符，可以把这文件描述符赋给epoll_data的fd字段以便后面的读写操作在这个文件描述符上进行。
+
+epoll_event 结构体的events字段是表示感兴趣的事件和被触发的事件可能的取值为：
+EPOLLIN ：表示对应的文件描述符可以读；
+EPOLLOUT：表示对应的文件描述符可以写；
+EPOLLPRI：表示对应的文件描述符有紧急的数据可读（我不太明白是什么意思，可能是类似client关闭 socket连接这样的事件）；
+EPOLLERR：表示对应的文件描述符发生错误；
+EPOLLHUP：表示对应的文件描述符被挂断；
+EPOLLET：表示对应的文件描述符有事件发生（边缘触发）；
+EPOLLLT: 同上，但是level trigger
+
+=== 所用到的函数： ===
+1、epoll_create函数
+函数声明：int epoll_create(int size)
+该函数生成一个epoll专用的文件描述符，其中的参数是指定生成描述符的最大范围（我觉得这个参数和select函数的第一个参数应该是类似的但是该怎么设置才好，我也不太清楚）。
+2、epoll_ctl函数
+函数声明：int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)
+该函数用于控制某个文件描述符上的事件，可以注册事件，修改事件，删除事件。
+参数：epfd：由 epoll_create 生成的epoll专用的文件描述符；
+op：要进行的操作例如注册事件，可能的取值EPOLL_CTL_ADD 注册、EPOLL_CTL_MOD 修改、EPOLL_CTL_DEL 删除
+fd：关联的文件描述符；
+event：指向epoll_event的指针；
+如果调用成功返回0,不成功返回-1
+3、epoll_wait函数
+函数声明:int epoll_wait(int epfd,struct epoll_event * events,int maxevents,int timeout)
+该函数用于**轮询**I/O事件的发生；
+参数：
+epfd:由epoll_create 生成的epoll专用的文件描述符；
+epoll_event:用于__回传待__处理事件的数组；
+maxevents:每次能处理的事件数；
+timeout:等待I/O事件发生的超时值；
+返回发生事件数。
+
+=== 例子： ===
+
+#include <iostream>
+
+#include <sys/socket.h>
+
+#include <sys/epoll.h>
+
+#include <netinet/in.h>
+
+#include <arpa/inet.h>
+
+#include <fcntl.h>
+
+#include <unistd.h>
+
+#include <stdio.h>
+
+ 
+
+#define MAXLINE 10
+
+#define OPEN_MAX 100
+
+#define LISTENQ 20
+
+#define SERV_PORT 5555
+
+#define INFTIM 1000
+
+ 
+
+void setnonblocking(int sock)
+
+{
+
+int opts;
+
+opts=fcntl(sock,F_GETFL);
+
+if(opts<0)
+
+{
+
+perror("fcntl(sock,GETFL)");
+
+exit(1);
+
+}
+
+opts = opts|O_NONBLOCK;
+
+if(fcntl(sock,F_SETFL,opts)<0)
+
+{
+
+perror("fcntl(sock,SETFL,opts)");
+
+exit(1);
+
+}
+
+}
+
+ 
+
+int main()
+
+{
+
+int i, maxi, listenfd, connfd, sockfd,epfd,nfds;
+
+ssize_t n;
+
+char line[MAXLINE];
+
+socklen_t clilen;
+
+//声明epoll_event结构体的变量,ev用于注册事件,数组用于回传要处理的事件
+
+struct epoll_event ev,events[20];
+
+//生成用于处理accept的epoll专用的文件描述符
+
+epfd=epoll_create(256);
+
+ 
+
+struct sockaddr_in clientaddr;
+
+struct sockaddr_in serveraddr;
+
+listenfd = socket(AF_INET, SOCK_STREAM, 0);
+
+//把socket设置为非阻塞方式
+
+setnonblocking(listenfd);
+
+//设置与要处理的事件相关的文件描述符
+
+ev.data.fd=listenfd;
+
+//设置要处理的事件类型
+
+ev.events=EPOLLIN|EPOLLET;
+
+//注册epoll事件
+
+epoll_ctl(epfd,EPOLL_CTL_ADD,listenfd,&ev);
+
+ 
+
+bzero(&serveraddr, sizeof(serveraddr));
+
+serveraddr.sin_family = AF_INET;
+
+ 
+
+char *local_addr="200.200.200.204";
+
+inet_aton(local_addr,&(serveraddr.sin_addr));//htons(SERV_PORT);
+
+serveraddr.sin_port=htons(SERV_PORT);
+
+bind(listenfd,(sockaddr *)&serveraddr, sizeof(serveraddr));
+
+listen(listenfd, LISTENQ);
+
+ 
+
+maxi = 0;
+
+for ( ; ; ) {
+
+//等待epoll事件的发生
+
+nfds=epoll_wait(epfd,events,20,500);
+
+//处理所发生的所有事件
+
+for(i=0;i<nfds;++i)
+
+{
+
+if(events[i].data.fd==listenfd)
+
+{
+
+ 
+
+connfd = accept(listenfd,(sockaddr *)&clientaddr, &clilen);
+
+if(connfd<0){
+
+perror("connfd<0");
+
+exit(1);
+
+}
+
+setnonblocking(connfd);
+
+ 
+
+char *str = inet_ntoa(clientaddr.sin_addr);
+
+std::cout<<"connect from "<_u115 tr<<std::endl;
+
+//设置用于读操作的文件描述符
+
+ev.data.fd=connfd;
+
+//设置用于注测的读操作事件
+
+ev.events=EPOLLIN|EPOLLET;
+
+//注册ev
+
+epoll_ctl(epfd,EPOLL_CTL_ADD,connfd,&ev);
+
+}
+
+else if(events[i].events&EPOLLIN)
+
+{
+
+if ( (sockfd = events[i].data.fd) < 0) continue;
+
+if ( (n = read(sockfd, line, MAXLINE)) < 0) {
+
+if (errno == ECONNRESET) {
+
+ 
+
+close(sockfd);
+
+events[i].data.fd = -1;
+
+} else
+
+std::cout<<"readline error"<<std::endl;
+
+} else if (n == 0) {
+
+close(sockfd);
+
+events[i].data.fd = -1;
+
+}
+
+//设置用于写操作的文件描述符
+
+ev.data.fd=sockfd;
+
+//设置用于注测的写操作事件
+
+ev.events=EPOLLOUT|EPOLLET;
+
+//修改sockfd上要处理的事件为EPOLLOUT
+
+epoll_ctl(epfd,EPOLL_CTL_MOD,sockfd,&ev);
+
+}
+
+else if(events[i].events&EPOLLOUT)
+
+{
+
+sockfd = events[i].data.fd;
+
+write(sockfd, line, n);
+
+//设置用于读操作的文件描述符
+
+ev.data.fd=sockfd;
+
+//设置用于注测的读操作事件
+
+ev.events=EPOLLIN|EPOLLET;
+
+//修改sockfd上要处理的事件为EPOLIN
+
+epoll_ctl(epfd,EPOLL_CTL_MOD,sockfd,&ev);
+
+}
+
+ 
+
+}
+
+ 
+
+}
+
+}

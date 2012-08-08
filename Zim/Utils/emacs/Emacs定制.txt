@@ -1,0 +1,185 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-18T21:32:57+08:00
+
+====== Emacs定制 ======
+Created Monday 18 April 2011
+
+屏幕上显示的任何东西，任何命令，任何按键动作和任何一条消息等几乎都可以定制。
+LISP函数的调用形式是 (function-name argumets-lists)
+
+当.emacs配置文件出现问题时可以在命令行上指定-q参数，Emacs将不运行这个文件中的配置指令。
+-u username	用于测试另外用户的配置文件
+
+==== 1.键盘的定制 ====
+	按键的动作是通过按键序列与命令关联起来的。Emacs里每个按键动作都会运行一个命令对于可打印字符运行self-insert-command。
+	键位映射表(keymap)是由多个按键绑定构成的一个集合。Emacs最基本的默认按键绑定保存在名为global-map的全局键位映射表中。
+	局部键位映射表local-map 是每个模式对应的一个映射表，作用是实现对应模式的特殊命令，不同的编辑模式对应的局部表不同。每个缓冲区的模式
+都有一个本地键盘映射表，该表首先用于对应窗口的按键操作，若没有按键定义项，就会察看global-map表。
+对于绑定到组合键(多余一个字符的按键序列)的命令，比如M-d 是怎样被查到的呢？
+	按键时Emacs执行的循环操作是：基本的转换操作是使用输入字符的ASCII值来索引具有128个元素的一个向量即keymap，有时一个字符的第8位配解释为META字符，所有的META字符将包含ESCAPE前缀，无论是否以该方式输入。
+对于组合键如C-x 、M-、C-c等其实是被绑定到一些特殊的内部函数上，而这写函数会让Emacs等到另一个按键配按下胡在去另外一个键位映射图中查找
+该按键的绑定定义。如果后面的按键在一秒后没有按下就会在minibuffer中现实C-x-等。供C-x ,M- , M-x ,C-c使用的键位映射图分别为 ctl-x-map和esc-map
+mode-specific-map. C-c 组合键是为关联与某具体编辑模式的局部键位映射图准备的。
+通过在键位映射图中添加或写改(如果已经存在)定义项可以创造出自己的按键绑定，可以使用三个函数：
+	(define-key keymap "keystroke"   'command-name)   
+	(global-set-key  "keystroke"  'command-name)
+	(local-set-key  "keystroke" 'command-name)
+第一个是通用的，可以用来绑定任何一个键位映射图中的按键，但需要知道图名称。
+把按键绑定插入到.emacs文件后，需要运行(或者称为求值)这个文件才能生效，可以用M-x eval-buffer 或 C-x C-e 执行光标所在的那一行上的LISP代码。
+
+ 特殊字符的表达式
+\C-x   		C-x x为任意字符
+\C-[ 或\e		ESC； 转义符
+\C-j 或 \n		LINEFEED； 换行符
+\C-m 或 \r	RETURN ；回车符
+\C-i 或\t		TAB；制表符
+由于转移字符只能用于有限的几个字符(如\o ,\p,\q等就没有意义)，因此一般应用kbd函数来生成任意含有特殊含义的字符串。
+kbd函数的调用形式为：
+(kbd string)
+返回string对应的emacs控制序列，使用kbd函数的好处是string中各特殊控制字符可以用三个大些字母来表示，功能键可以用尖括号括起来的键名表示，
+按键前缀可以用但个大写字母加段横线表示，这避免了keystroke中过多了转义字符。
+string的格式为：
+(edmacro-mode)  下段说明来自这个函数的帮助文件
+Text is divided into "words" separated by whitespace.  Except for the words described below, the characters of each word go directly
+as characters of the macro.  The whitespace that separates words  is ignored. __ Whitespace in the macro must be written explicitly__,
+as in "foo SPC bar RET". 
+* The special words __RET, SPC, TAB, DEL, LFD, ESC__, and __NUL__ represent   special control characters.  The words must be written in uppercase.
+	它们都是三个大写字母
+* A word in angle brackets, e.g., __<return>, <down>, or <f1>__, represents  a function key.  (Note that in the standard configuration, the
+   function key <return> and the control key RET are synonymous.)   You can use angle brackets on the words RET, SPC, etc., but they
+   are not required there.
+* Keys can be written by their ASCII code, using __a backslash followed  by up to six octal digits__.  This is the only way to represent keys
+   with codes above \377.
+* One or more prefixes __M- (meta), C- (control), S- (shift), A- (alt),   H- (hyper), and s- (super)__ may precede a character or key notation.
+   For function keys, the prefixes may go inside or outside of the  brackets:  C-<down> = <C-down>.  The prefixes may be written in
+   any order:  M-C-x = C-M-x.注意shift必须和C或M或A一起使用"S-SPC"是错误的，可以用"C-S-SPC"
+.  __ Prefixes are not allowed on multi-key words, e.g., C-abc__, except that the Meta prefix is allowed on a sequence of digits and optional
+   minus sign:  M--123 = M-- M-1 M-2 M-3.
+* The `^' notation for control characters also works: __ ^M = C-m__.
+* Double angle brackets enclose command names:  <<next-line>> is  shorthand for M-x next-line RET.
+* Finally, REM or ;; causes the rest of the line to be ignored as a  comment.
+
+Any word may be prefixed by a multiplier in the form of a decimal  number and `*':  3*<right> = <right> <right> <right>, and
+10*foo = foofoofoofoofoofoofoofoofoofoo.  
+Multiple text keys can normally be strung together to form a word, but you may need to add whitespace if the word would look like one
+of the above notations:  `; ; ;' is a keyboard macro with three semicolons, but `;;;' is a comment.  Likewise, `\ 1 2 3' is four  keys but `\123' is a single key written in octal, and `< right >' is seven keys but `<right>' is a single function key.  When in  doubt, use whitespace.
+
+常见的错误:
+(global-set-key (kbd "S-m")  'goto-line)     ;;; S- 不能单独跟一个字符
+(global-set-key (kbd "C-xa") 'goto-line)   ;; C-后面只能连续跟一个字符 ，应为"C-x a"
+(global-set-key (kbd "abC-m") 'goto-line)   ;;; a不是一个命令前缀
+(global-set-key (kbd "C-aC-bC-m") 'goto-line)    ;; 不同的控制字符相互间必须有空格分开
+(global-set-key (kbd "C-a C-b") 'goto-line)  ;; C-a 并没有一个已经定义的键映射前缀函数绑定(缺省绑定的有 C-x -, C-x-4- ，M-  ， C-h-，C-c-),
+(global-set-key (kbd "C-x C-a C-b")  'got-line)  ;; 虽然C-x是已经定义的映射前缀但C-a并不是下一级的映射前缀
+
+一般一个可打印字符的绑定可以直接用“a”的形式，不可打印如带有CTL或ALT前缀的单一字符可用"C-a" 或“^A"或"M-a".
+对于单个字符，用local-set-key是定义在major-mode的局部缓冲区列表中，用global-set-key是定义到全局缓冲区列表中。
+
+对于由两个字符序列的绑定除非用已经定义的前缀(因为它们都有相应的keymap，这时其实还是一级表，C-x等其实是一个前缀命令)如C-x (ctl-x-map) , C-x 4 (ctl-x-4-map),  C-h (help-map) , C-c(mode-specific-map) ，否则必须先定义一个keymap。
+"C-x a"  "C-x 4a"  "C-x 4 a"  "C-h 4"   " C-h a"  "C-c a" 都是合法的(它们都是把a绑定的命令添加到对应的keymap中)，但"C-x ad"等是不合法的，除非先在C-x的映射表中定义一个对应与a的映射表(这时形成了一个两级表)如：
+(setq tmpkeymap (make-keymap))   ;; set up the keymap var
+(define-key ctl-x-map "a" tmpkeymap)   ;; add the tmpkeymap to exit ctl-key-map
+然后就可以使用"C-x ad"等以"C-x a 任意字符” 的形式绑定命令了如：
+(define-key tmpkeymap "d" 'forward-word)  ;; add a key to tmpkeymap ,由于制定了表，故无需再加前缀
+或(global-set-key (kbd "C-x ad") 'forward-word)  ;;没有指定表，故需加前缀
+
+也可以定义自己的前缀表，方法和上面的类似：
+(setq map (make-keymap))
+(define-key global-map  (kbd "C-a") map)
+然后就可以往map表中绑定命令了:
+(define-key map "d" 'forward-line)  ;指定表时不需加前缀
+(global-set-key  (kbd “C-a d") 'forward-line)  ;;不指定表时需指定前缀
+
+注意如果上面的按键不用kbd函数的话，要使用转移字符转义如：
+"\C-a d"  "\M-a d" 
+对于\C-和\M-也可以直接用"\ead" 或"\"
+
+===== 2.Emacs变量 =====
+按键改变的是操作emacs的界面，而变量(或选项)控制着emacs的各种行为。可以说只要相对emacs的某个方面进行定制，就肯定会有一个
+与之对应的控制变量(特别是想改变的东西涉及到一个数字或涉及到真、假条件时更是如此)。
+当不知道变量名时可以通过apropos命令查出是否有与想定制相关的变量。
+(setq   varname val)  ;;设置局部变量值
+(setq-default varnaem val) ;;设置默认值(全局变量值)
+但没有方法判断某一个变量是只有一个全局取值还是既有默认值又有局部值，最佳的策略是先尽量使用setq命令，无效时再使用setq-default.
+
+变量值的类型：
+字符串值：必须放在双引号中，特殊字符要转义
+字符值：必须用问号做前缀，而且不能放在双引号中
+符号值：以单引号开头，后跟符号名(通常位函数名或变量名)，表示不执行函数和获得变量的值
+
+===== 自动模式的定制 =====
+
+    M-x c-mode：进入C mode模式
+    M-x c++-mode：进入C++ 模式
+
+===== 1.文件名与模式自动匹配 =====
+emacs能根据文件后缀名自动进入相应的模式，后缀名与主编辑模式的关联关系是有列表型变量auto-mode-alist管理的。
+这个变量是一个(regexp .  mode) 形式的数据组列表，regexp为正则表达式，mode为启动某一个主编辑模式的函数名。
+注意：regexp可以匹配文件名的任意部分。
+例如：
+(setq auto-mode-alist (cons '("\\.org$" . org-mode) auto-mode-alist))
+注意： cons 后面必须要有一个单引号，org-mode前必须要有一个句号，记号 '(x . y)是用来把x和y配对组成一个数据组的LISP语法。注意正则表达式中用两个\\表示一个\，这是因为emacs在读正则表达式时将其中的两个\\转为一个\传给相应的函数。
+
+==== 2.缺省模式 ====
+如果打开的文件没有匹配上auto-mode-alist中的任何一个表达式，emacs就会把放到default-major-mode变量中的只作为基本默认模式。
+(setq default-major-mode 'text-mode)
+
+
+====== 对现有模式进行定制 ======
+
+Emacs的各种主编辑模式都有一些可以把你编写的代码添加到它上面去的挂钩，他们的名字一般叫做mode-hooks.
+Emacs内建的各主编辑模式都有一个名为"mode-name-hook"的编辑模式挂钩，其中的mode-name是该编辑模式的名称或启动他的函数的名字。
+如C模式的c-mode-hook，shell有一个shell-mode-hook.
+
+挂钩是一种特殊的变量，它的值代表一些LISP代码，这些代码会在相应的编辑模式启动时得到运行。
+启动一个编辑模式就等于运行一个LISP函数，该函数通常要设置按键绑定、创建局部变量、创建缓冲区，如果编辑模式有挂钩，那么该函数的所做的
+最后一件事就是运行挂钩变量中的LISP代码。
+
+LISP基本函数lambda可以用来定义函数，它与defun的区别是lambda定义的函数没有名字即为匿名函数，其语法如下：
+(lambda	(args)
+	code-block)
+如果想把一个用lambda定义的函数作为一个值赋给某个变量，就必须对他进行转义以防止它被求值(即防止它被调用运行)如：
+(setq	var-name
+		'(lambda	()
+			code)
+在编写编辑模式挂钩的代码时可以用：
+(setq mode-name-hook
+	'(lambda ()
+		code for mode hook))
+
+如果使用setq来定义你自己的挂钩，就会覆盖掉原有的挂钩，要想避免出现这样的情况，就可以使用add-hook函数
+(add-hook  'mode-name-hook
+	'(lambda ()
+		code for mode hook))
+
+编辑模式挂钩最常用的用途时为某个编辑模式的特殊命令修改一个或多个按键绑定。可以自己定义一些函数然后将其绑定到某一模式的键盘映射表上，也可以为某一模式现有的函数设置按键绑定。
+按照规定定义某一编辑模式的正确方法是必须通过他的挂钩来进行，但如果只是给变量重新设置一个值，就可以不用使用挂钩；但如果想运行某些编辑模式相关的函数就必须使用挂钩。这是因为：
+某一个编辑模式的局部变量是属于局部范畴的，如果没有启动该模式，他们就不会存在。但只要在.eamcs文件中包含一条给这个变量赋值的setq语句，那么不管是否使用该模式，这个变量就已经存在了。Emcas能够很好地应付这种情况，当加载这种模式时，它会注意到这个已经设置的变量值，于是就不会覆盖掉它。
+但函数的情况就不同了 ，如果.emacs文件里有一个属于某个编辑模式的局部函数，当这个模式没有启动时，Emacs会给出一条出错信息。因为它根本不知道该函数属于那个编辑模式，因此必须把这个函数的调用语句放在他所在模式的钩子函数里。
+
+
+===== 交换Control和alt的位置 =====
+
+ !
+ ! Swap Caps_Lock and Control_L
+ !
+ !remove Lock = Caps_Lock
+ !remove Control = Control_L
+ !keysym Control_L = Caps_Lock
+ !keysym Caps_Lock = Control_L
+ !add Lock = Caps_Lock
+ !add Control = Control_L
+ 
+
+!swithc alt and ctl
+remove mod1 = Alt_L
+remove Control = Control_L
+keycode 37 = Alt_L
+keycode 64 = Control_L
+add Control = Control_L
+add mod1 = Alt_L
+
+
+
+

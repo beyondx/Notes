@@ -1,0 +1,62 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-04T22:05:40+08:00
+
+====== 整数加载指令 ======
+Created Sunday 04 December 2011
+
+http://hi.baidu.com/power_nq/blog/category/powerpc%D6%B8%C1%EE
+
+整数加载指令如表3所示。
+
+名称												助记符		语法格式
+
+高位清零加载字节指令（偏移地址寻址）					lbz			rD, d(rA)
+高位清零的加载字节指令（寄存器寻址）					lbzx		rD, rA, rB
+高位清零的加载字节并记录有效地址指令（偏移地址寻址）	lbzu		rD, d(rA)
+高位清零的加载字节并记录有效地址指令（寄存器寻址）		lbzux		rD, rA, rB
+高位清零的加载半字指令（偏移地址寻址）				lhz			rD, d(rA)
+高位清零的加载半字指令（寄存器寻址）					lhzx		rD, rA, rB
+高位清零的加载半字并记录有效地址指令（偏移地址寻址）	lhzu		rD, d(rA)
+高位清零的加载半字并记录有效地址指令（寄存器寻址）		lhzux		rD, rA, rB
+加载半字指令（偏移地址寻址）							lha			rD, d(rA)
+加载半字指令（寄存器寻址）							lhax		rD, rA, rB
+加载半字并记录有效地址指令（偏移地址寻址）				lhau		rD, d(rA)
+加载半字并记录有效地址指令（寄存器寻址）				lhaux		rD, rA, rB
+加载字指令（偏移地址寻址）							lwz			rD, d(rA)
+加载字指令（寄存器寻址）								lwzx		rD, rA, rB
+加载字并记录有效地址指令（偏移地址寻址）				lwzu		rD, d(rA)
+加载字并记录有效地址指令（寄存器寻址）				lwzux		rD, rA, rB
+
+
+（1） lbz rD, d(rA) ；EA＝（rA|0）＋d。从存储器读取EA地址的内容，并加载低8位到rD，__rD的其他位清0__。不影响其他寄存器。
+
+（2） lbzu rD, d(rA) ；EA＝（rA）＋d。从存储器读取EA地址一个字节的内容，并加载低8位到rD，rD的其他各位清零，有效地址EA存放在rA中。
+
+（3） lbzux rD，rA，rB ；EA＝（rA）＋（rB）。从存储器读取EA地址一个字节的内容，并加载低8位到rD，rD的其他各位清零，EA存放在rA中。如果rA＝0或者rA＝rD，则指令无效。
+
+（4） lbzx rD，rA，rB ；EA＝（rA|0）＋（rB）。从存储器读取EA地址一个字节的内容，并加载低8位到rD，rD的其他各位清0。
+
+（5） lha rD, d(rA) ；EA＝（rA|0）＋d。从存储器EA处读取两个字节的数，并加载到rD的低16位。__rD的其他位填充最高位的值__。
+
+（6） lhax rD，rA，rB ；EA＝（rA）＋（rB）。从存储器EA处读取两个字节的数，并加载到rD的低16位。rD的其他位填充最高位的值。
+
+（7） lhau rD, d(rA) ；EA＝（rA）＋d。从存储器EA处读取两个字节的数，并加载到rD的低16位。rD的其他位填充最高位的值。EA存放在rA中，如果rA＝0或者rA＝rD，则指令格式无效。
+
+（8） lhaux rD，rA，rB ；EA＝（rA）＋（rB）。从存储器EA处读取两个字节的数，并加载到rD的低16位。rD的其他位填充最高位的值。EA存放在rA中，如果rA＝0或者rA＝rD，则指令格式无效。
+
+（9） lhz rD, d(rA) ；EA＝（rA|0）＋d。从存储器EA处读取两个字节的数，并加载到rD的低16位。rD的其他位清零。
+
+（10）lhzu rD, d(rA) ；EA＝（rA|0）＋d。从存储器EA处读取两个字节的数，并加载到rD的低16位。rD其他位清零。EA存入rA，如果rA＝0或者rA＝rD，则指令格式无效。
+
+（11）lhzux rD，rA，rB ；EA＝（rA）＋（rB）。从存储器EA处读取两个字节的数，加载到rD的低16位，rD其他位清零。EA存入rA，如果rA＝0或者rA＝rD，则指令格式无效。
+
+（12）lhzx rD，rA，rB ；EA＝（rA|0）＋（rB），从EA处读取两个字节的数，并加载到rD的低16位，将rD的其他位清零。
+
+（13）lwz rD，d（rA） ；EA＝（rA|0）＋d，从EA处读取4个字节的数，并加载到rD。
+
+（14）lwzu rD，d（rA） ；EA＝（rA）＋d，从EA处读取4个字节的数，并加载到rD。rA＝EA，如果rA＝0或rA＝rD，则指令格式无效。
+
+（15）lwzux rD，rA，rB ；EA＝（rA）＋（rB），从EA处读取4个字节的数，并加载到rD。rA＝EA，如果rA＝0或rA＝rD，则指令格式无效。
+
+（16）lwzx rD，rA，rB ；EA＝（rA|0）＋（rB），从EA处读取4个字节的数，并加载到rD。

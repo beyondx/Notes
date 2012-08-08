@@ -1,0 +1,37 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-22T22:18:40+08:00
+
+====== django media 设置 ======
+Created Saturday 22 October 2011
+http://hi.baidu.com/uniqcmt/blog/item/e64a0c1e2d9dd41b40341770.html
+
+在一个 model 中使用 FileField 或 ImageField 需要以下步骤:
+
+    1) 在你的 settings 文件中, 定义一个完整路径给 __MEDIA_ROOT__ 以便让 Django在此处保存**上传文件**. (出于性能考虑,这些文件并不保存到数据库.) 定义 __MEDIA_URL__ 作为**该目录的公共 URL.** 要确保该目录对 WEB 服务器用户帐号是可写的.
+    2) 在你的 model 中添加 FileField 或 ImageField, 并确保定义了 __upload_to__ 选项,以告诉 Django 使用 MEDIA_ROOT 的哪个**子目录**保存上传文件.
+    3) 你的数据库中要保存的只是文件的路径(相对于 MEDIA_ROOT). 出于习惯你一定很想使用 Django 提供的 get_<fieldname>_url 函数.举例来说,如果你的 ImageField 叫作 mug_shot, 你就可以在模板中以 {{ object.get_mug_shot_url }} 这样的方式得到图像的绝对路径.
+
+===== settings.py 设置 =====
+# 媒体文件的绝对路径
+# Absolute path to the directory that holds media.
+# Example: "/home/media/media.lawrence.com/"
+MEDIA_ROOT = 'D:/django/hwedding/images/'
+
+# 媒体文件的相对路径
+# URL that handles the media served from MEDIA_ROOT.
+# Example: "http://media.lawrence.com"
+MEDIA_URL = '/smedia/'
+
+# admin管理素材路径
+# URL prefix for admin media -- CSS, JavaScript and images. Make sure to use a
+# trailing slash.
+# Examples: "http://foo.com/media/", "/media/".
+ADMIN_MEDIA_PREFIX = '/media/'
+
+# urls.py 影射路径: 将 url smedia 影射到 settings.MEDIA_ROOT
+(r'^smedia/(?P<path>.*)$', 'django.views.static.__serve__',{'document_root': settings.MEDIA_ROOT}),
+
+# models.py 上传图片字段设置
+image = models.ImageField('介绍图片',upload_to='./up')
+相当于传到 D:/django/hwedding/images/up 目录下，浏览时通过__/smedia/up/__访问

@@ -1,0 +1,1260 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-07T13:20:06+08:00
+
+====== The Well-Tempered Unix Application ======
+Created 星期二 07 六月 2011
+
+http://www.faqs.org/faqs/unix-faq/programmer/application-principles/
+
+Message-ID: <unix-faq/programmer/application-principles_998814492@rtfm.mit.edu>
+X-Last-Updated: 2000/01/21
+From: Rich Kulawiec <rsk@gsp.org>
+Newsgroups: comp.unix.admin, comp.unix.misc, comp.unix.programmer, 
+comp.unix.large
+Subject: [DRAFT FAQ] The Well-Tempered Unix Application
+Summary: Guidelines for application developers
+Reply-To: rsk@gsp.org
+Keywords: Unix, applications, installation, software, administration
+Date: 26 Aug 2001 08:29:13 GMT
+
+Archive-name: unix-faq/programmer/application-principles
+Version: $Id: wtua,v 1.15 2000/01/21 11:57:58 rsk Exp $
+
+Copyright Rich Kulawiec, 1997, 1998, 1999, 2000.
+
+[ January 2000 update: currently being rewritten. ]
+
+READ THIS NOTE:
+
+	I receive an average of hundreds of mail messages per day.  If you
+	want to make sure that your update/correction/reply to this
+	article comes to my attention when I'm working on the next
+	version, please send your message as a reply to this article,
+	i.e. make absolutely certain that you preserve the "Subject:"
+	line.  If you don't do this, your reply may sit in one of my
+	numerous mail queues for months or even years.
+
+	Please don't send an update more than once -- doing so only
+	adds to the queue that I have to process when doing updates.
+	If you want to make certain that I've received something, then
+	make a note of the information on the "Version:" line above.
+	If it has changed when you next see this article, and your
+	information isn't included, then I've missed it.  Otherwise,
+	it's safe to presume I've got it and it's queued for inclusion.
+
+	The FAQ may be reproduced and propagated via http, ftp, gopher
+	or other common Internet protocols by anyone provided that (1)
+	it is reproduced in its entirety (2) no fee is charged for access
+	to it and (3) it's kept up-to-date.  This latter is probably best
+	accomplished by mirroring one of the FAQ archives -- that way
+	you'll get a new copy everytime I update it, which is
+	approximately monthly.   (If you do put it up on the web, I'd
+	like to know the URL, but that's not a requirement.  It just
+	would be nice.)
+
+	Reproduction of this FAQ on paper, CDROM or other media which
+	are sold is permissible only with the express written consent
+	of its author.
+
+	If you are reading a copy of this document which appears to be
+	out-of-date, there are a variety of methods that you can use to
+	retrieve the most current method.  If you are familiar with access
+	to the FAQ archives via mail, ftp, and www, then you already know how.
+	If not,	 then send email to mail-server@rtfm.mit.edu with the command
+	"send usenet/news.answers/news-answers/introduction" in the message,
+	and a complete guide to FAQ retrieval will be mailed to you.
+
+Q. Why does this document exist?
+
+A. This is an attempt to spell out some general principles that Unix
+application developers should consider in order to make the products
+of their work portable, easy to install and maintain, and flexible.
+It's somewhat targeted toward developers of commercial software,
+although folks developing freely-available code may also find some
+guidance here.
+
+Much of it is opinion -- but a lot of that opinion has been formed by
+people who have installed hundreds of software packages on dozens
+of varieties of Unix.  The intention here isn't to inflict capricious
+whims on software developers; the intention is to keep them from
+doing the same to system administrators.
+
+
+Q. What should I assume about current OS releases?
+
+A. That they'll change. ;-)
+
+More seriously, the Unix world is one of short release cycles; Sun's 
+Solaris 2.7 is now being widely deployed and we're already seeing
+reports on future beta releases.  Locking one's software into the
+specific features of a release is generally a Bad Thing.  There's
+also the question of deprecated releases (e.g. SunOS) and newly-emerging
+ones (e.g. SUSE Linux).  Generally speaking, the tradeoff is one of
+trying to exploit the unique features of OS's for maximum programmatic
+advantage vs. trying to keep code as simple and as portable as possible.
+Your editor strongly recommends the latter and suggests that necessary
+performance criteria can almost always be met by a combination of
+other means, e.g. better choice of algorithm, optimizing compilers,
+hardware upgrades, and so on.
+
+
+Q. What about all those standards?
+
+A.  In general, software packages should attempt to comply as much as is
+practical with the prevailing Unix software standards: POSIX 1003.1,
+POSIX 1003.3, SVID, and XPG.  Unfortunately, these comprise a maze
+of overlapping and occasionally conflicting requirements.
+
+One way out of that maze is to try, as much as possible, to avoid
+developing products which rely on features over which there is
+disagreement.  Obvious, and easier said than done, but when there
+are major differences of opinion among standardization efforts,
+it may be better to duck the issue rather than contest it.
+
+
+Q. What about the windowing system environment?
+
+A. Applications should be compatible with currently shipping X-based window
+environments from various vendors, some of which are based on X11R4,
+some on X11R5, and some on X11R6.  In general, attempts to support
+and utilize the features of X11R6 are encouraged.
+
+Applications should work with any window manager, e.g. olwm, twm, etc.
+Compliance with the ICCCM standard will assist with this.
+
+
+Q. What about the Networking environment?
+
+A. Use of Internet standard protocols and mechanisms are *highly* encouraged.
+
+This includes:
+
+	SMTP	(See RFC 821, 822) for mail
+	NNTP	(See RFC's 977 and 1036) for news
+	Telnet	(See RFC's 854, 855) for interactive login
+	FTP	(See RFC 959) for file transfer
+	HTTP	(See RFC 2068) for WWW services
+	NTP	(See RFC's 1129, 1305) for time synchronization
+	DNS	(See RFC 1032, 1033) for hostname resolution
+	SSH	(See RFC ????)
+
+Also, RFC 1123 ("Requirements for Internet hosts - application and support")
+should be studied and its requirements adhered to as much as possible.
+
+Use of the NIS/NIS+ environment should be selectable; i.e. the installer
+of the software package should be presented with the option to
+utilize NIS/NIS+ services at the time of the installation.  No package
+should require explicit entries in the local system's /etc/hosts file.
+Kerberos support is encouraged.
+
+Use of NFS is ubiquitous, and all software packages should operate with
+NFS in a transparent manner but should not *require* it.  Use of NFS 3.0
+features where they are available is a good idea.  In addition, software
+packages should cooperate with the automounter; in particular, there must
+be provisions to ensure that the physical mount point of the package
+(e.g. <servername>:/<directory>/<package-name>) may be different that
+logical automount point of the package (e.g. /home/<package-name>).
+
+Two issues that often arise with NFS are:
+
+	1. A "pwd" executed in an automounted directory will
+	show something like
+
+		/tmp_mnt/server/export/foo
+
+	even though the directory is really mounted on
+
+		/import/foo
+
+	2. If NFS is used with the default options that most Unixes
+	employ, UID 0 (root) maps to UID -1 (nobody, or 65534).
+	in other words, root access to an NFS-mounted filesystem
+	sometimes requires remounting the filesystem with different
+	options, or - if that can't be done - executing part of an
+	installation script/procedure on another machine.
+
+Use of RFS and Andrew distributed filesystems should be optional,
+as these filesystems are not universally supported.  (This isn't
+a comment on the merits of those filesystems, by the way: it's just
+an observation on their propagation.)
+
+An application which requires the of temporary "scratch" disk space
+should allow that space to be resident anywhere on the local
+(executing) machine.  The way that some programs do this (e.g.
+GNU's gcc) is to use the environment variables "TMPDIR" -- which gives
+the name of the directory to use for "scratch" space.
+
+On that topic -- and on mkstemp()/mktemp() -- let me quote Paul D. Smith:
+
+	ALL_ programs that attempt to creat temp files should honor
+	this variable.
+
+	Also, _all_ programs that need temporary files should use the
+	mkstemp() function if available, or the mktemp() function if
+	not, to get a temporary filename.  This can help avoid
+	security problems, denial-of-service attacks, etc.
+
+Paul goes on to mention that he thinks this is a POSIX function; I think
+so, too; are we right?  (I can't find my copy of the POSIX standard
+this afternoon.)
+
+Applications should also work seamlessly with memory-resident filesystems
+(e.g. Sun's tmpfs). 
+
+Use of interprocess communication facilities should be carefully done
+in order to avoid collision with port numbers assigned by the Internet
+Assigned Numbers Authority.  Ideally, applications should allow the 
+installer to specify port numbers used.  Applications which need
+to function in a firewalled environment should provide proxies.
+
+
+Q. What about licensing mechanisms?
+
+A. Use of standard network-based licensing mechanisms, for example FlexLM,
+is HIGHLY encouraged.  (Although it needs to be noted that most FlexLM
+implementations rely on hostid locking for the license server.  This isn't
+a limitation of FlexLM: it's possible to give out keys which aren't locked
+to a particular machine by using the ANY keyword in the hostid field.
+However, vendors fear that people will set up license servers on multiple
+machines, and thus steal their products.  Thanks to Mark C. Henderson
+for pointing this out.)  Licensing methods which rely in any part on hostname,
+IP address, hostid, username, or userid are discouraged because
+they tend to cause nightmares for system administrators when they have
+to change machines, or subnets, or any of the other myriad things that
+are part of evolving networks.
+
+All that said, consider that it's possible for sufficiently smart and
+motivated programmers/administrators to bypass just about any licensing
+mechanism.  Depending on what your product is, and what the intended
+user community is, it may be easier to just skip the entire exercise.
+
+Q. What about the Unix environment in general?
+
+A. While the user of a dedicated loginname/uid to provide administration within
+a package is acceptable, no loginname/uid should be mandated.  In other
+words, if a database application is designed to be administered by an
+end-user account, the loginname/uid/groupname/gid of that account
+must be selectable by the installer and no constraints should be
+placed upon it.
+
+No package should require users to have a particular loginname/uid/gid
+in order to utilize any feature of that package.  (Obvious exceptions
+would include system administration tools that require root priviledges
+to execute certain commands, modify certain files, etc.)
+
+Every application should make extreme attempts to avoid changes to
+the / or /usr filesystems; these are reserved for the Unix operating system,
+and are not appropriate installation locations for 3rd-party software.
+(This comment doesn't apply to /usr/local, which is the de facto standard
+for the installation of non-OS software.)
+
+Applications which require daemons to be launched at boot time should NOT
+modify /etc/rc.local (or its equivalent) in order to accomplish this; they
+should generate the appropriate /bin/sh fragment and request that
+the installer manually edit the appropriate files -- or provide the
+option for the installer to examine the fragment and then have it
+installed in /etc/rc.local.  For System-V style systems, the install
+script could generate the appropriate startup script, allow the
+installer to examine it, and then install it in the appropriate
+directories (e.g. /etc/rc/rc1.d, /etc/rc/rc2.d, and so on).
+
+(In fact, most Unixes and Linuxes are migrating to this sort of
+startup, so it's probably preferable to use this facility over
+the BSD one, if it's available.)
+
+The reason for this is that it's difficult for an installation
+script to figure out enough about a particular machine's configuration
+to determine just where such startup code should be placed.  Allowing
+the installer to interact with this process and/or to handle this step
+semi-manually is often necessary.  This isn't to say that a
+non-interactive way of handling this can't be included too -- because
+that's handy for non-interactive installs.
+
+Similar comments apply to /etc/inetd.conf, /etc/services, /etc/fstab,
+and other critical files.
+
+All packages should be installable at any point in the directory structure.
+No packages should require the creation of hard links, symbolic links,
+directories, or files on client (diskless or dataless) client workstations.
+No hardwired pathnames should exist inside the application.  (That's
+what environment variables and "dotfiles" are for; see below.  There's
+debate on this point, I should note: some folks contend that
+"configurable at run time" is a bad idea or impossible for setuid
+programs.  I think that a setuid program can read everything it needs
+from a config file whose pathname is hardwired into it -- which
+means that it doesn't strictly adhere to this principle, but it
+comes pretty close.)
+
+Timothy J. Lee points out (and I agree with him) that:
+"One point of annoyance with some programs is shared libraries, since if
+the program is not compiled with the correct rpath, the user must have 
+the LD_LIBRARY_PATH environment variable set to find all of the proper 
+shared libraries.  Freeware programs should take that into account and 
+set the rpath properly when linking.  Binary distributions are in a    
+tougher situation, especially if it is not known where the program will
+be installed."
+
+Use of application-specific environment variables should be minimized;
+applications which require large numbers of per-user variables to be
+initialized should utilize a "dotfile" or a wrapper instead.  For example,
+the Foobar software package might use a .foobarrc which contains initialization
+information for that application.  Appropriate provisions for host-wide
+and site-wide instantiations of these files should be provided, e.g.
+the X11 .Xdefaults/"app-defaults"/command-line-option mechanism.
+
+Wrappers are shell scripts (or Perl scripts, or other kinds of scripts)
+which set the appropriate environment variables and then call the
+real application.  For example, a package containing commands called
+"foo1", "foo2", and "foo3" might put the real executables in
+
+	/usr/local/lib/foo-app/foo1
+	/usr/local/lib/foo-app/foo2
+	/usr/local/lib/foo-app/foo3
+
+and install a shell script in /usr/local/bin, hardlinked to foo1,
+foo2, and foo3, which looks something like:
+
+	#!/bin/sh
+
+	FOOENV=/foo/bar
+	ANOTHERFOOENV=fred
+	export FOOENV ANOTHERFOOENV
+
+	exec /usr/local/lib/foo-app/`basename $0`
+
+This provides a single point-of-entry to all of the sub-applications
+in the package, avoids cluttering the user's environment, and makes
+life much easier for system admins.
+
+Additionally, no application should modify a users's existing "dotfiles",
+e.g. ".cshrc", but should intead confine changes to an application-specific
+dotfile.
+
+In any case, any application-specific environment variables should be carefully
+distinguished from those which might be utilized by another application.
+For example, FOOBAR_DIRECTORY is vastly preferable to DIRECTORY.
+
+It is permissible for an application to use well-known, standard environment
+variables (e.g. EDITOR) but it should not create or modify these.
+
+Use of non-standard printing mechanisms is highly discouraged.  Applications
+should spool using the standard lp or lpd print commands.  Ralf Fassel adds
+"In addition, the print command itself should be configurable, not only the
+printer name.  We have our own cross-platform mechanism to select the
+printer according to the document type.  Each vendor has its own mechanism,
+and it's a nightmare to set up all the /etc/printcap's or
+/var/spool/lp/interface files."  And I concur with him.
+
+The executables within an application (binaries, shell scripts, Perl scripts,
+etc.) should be carefully scrutinized to ensure that their names do
+not overlap with standard Unix commands or with vendor-supplied Unix
+commands.  (Note: add list of commands in appendix)
+
+The use of custom kernels should be avoided if possible; in particular,
+the use of special device drivers for reasons other than special hardware
+is highly discouraged, as this makes life very difficult for large sites,
+especially when they attempt to upgrade their OS version.
+
+Under no circumstances should an application replace any of the
+normal commands (e.g. those in /usr/bin) with its own.  If for some
+reason, an application requires a modified version of such a command,
+it should reside in the application's own directory tree and should
+be clearly identified at the time of the installation.  (This lets
+users select which version of a command they wish to run based on $path.)
+
+Applications should make no requirements on the filesystem/network
+architecture; in other words, a switched/routed network consisting
+of diskless, dataless, and dataful nodes with local and remote
+/ and /usr partitions using hard-mounted and automounted filesystems
+should run the application seamlessly.  (But it should be noted
+that for some applications, NFS, due to its basic design, probably
+just won't work.)
+
+Applications should preserve localization options when upgraded
+versions are installed.
+
+Harald Kirsch notes -- and I think he's quite right -- that:
+
+"No executable (or shell script) should try to guess the package's
+installation directory from argv[0] (or $0), because due to (soft)
+links or mounting, the directory part of the name might be totally
+misleading. Use environment variables instead."
+
+Q. What about accounting and security mechanisms?
+
+A. Use of standard Unix accounting methods is highly encouraged.
+
+No application should require weakening of network security
+by mandating use of /etc/hosts.equiv, /.rhosts, or ~<user>/.rhosts.
+
+Applications should utilize standard Unix security mechanisms, such
+as /etc/group, whenever possible.  This implies that applications
+understand the limits on these mechanisms, e.g. MAXGROUPS.
+
+No assumptions about the current state of any user's umask should be made.
+The installation script should explicitly specify the permissions
+and ownerships of all files and directories; these should be set in
+order to provide the maximum possible data security without rendering
+the application non-functional.  In particular, no application should
+require write access for its users anywhere in its own directory tree.
+
+The use of the setuid/setgid bits should be carefully limited.
+Setuid/setgid shell scripts be avoided if at all possible -- especially
+since some Unix implementations don't support them at all.
+
+The location of "lockfiles" should be configurable, as should the
+mechanism (e.g. flock(), lockf(), etc.)  Frank da Cruz points out
+(and I think he's right, although I sure wish he wasn't) that
+"This is, of course, a hornet's nest.  Even if I configure an
+application to use the politically correct lockfile conventious du
+jour, they will change out from under the application I just installed
+when I install a new OS release or even another application (uucp
+lockfiles are the worst)."
+
+So maybe I should back off a bit on my statement about lockfiles;
+is there a way out of this that doesn't put the application
+developer in the position of trying to outguess the installer?
+
+Applications should not require the user to grant general 
+read/write/execute permission to his or her own directory tree.
+
+
+Q. Are there any other general comments?
+
+A. If shell scripts are supplied as part of a package, the Bourne
+shell is preferred.
+
+If source code is supplied as part of a package, ANSI C/C++
+is preferred.
+
+Use of Perl should be carefully considered, as it is not yet shipped with
+all production Unix releases.  But it is easily available and since it's
+GPL'd, it can be included with software distributions.
+
+Applications should suppport transparent data interchange between
+releases and platforms.  For example, a Sun running Solaris 2.7
+should be able to use the client side of a database package to
+interrogate a database server running on Red Hat Linux 5.2.
+
+The use of flexible, informative, and easily customizable installation
+scripts such as the those supplied wilth Perl 5.0 or the GNU tools
+is highly encouraged.  (These scripts actively seek out system information
+and interact with the installer in order to confirm that the automated
+installation will be based on verified data.)  
+
+Q. What about installation procedures?
+
+A.  Application installation guides should clearly identify the following:
+
+	Operating system requirements (including revision #)
+	Operating system options requirement (many OS's do not require
+		full installation, need to know which OS features must
+		be installed to support application)
+	Operating system patches required (should reference vendor's #)
+	Required kernel configuration/changes
+	Windowing system requirements
+	Required daemons/services (e.g. /etc/services, /etc/inetd.conf,
+			/etc/rc.local)
+	Required utilities
+	Supported hardware platforms
+	Supported hardware options (e.g. graphics)
+	Memory/disk/swap requirements for minimum functionality/full-blown
+		install, including use of temporary/scratch file system space.
+	Estimates of user data storage requirements based on usage.
+	Performance characterization in different local/network architectures
+		with suggestions for first-order performance tuning.
+
+
+Installation procedures should be informative and include provisions
+for soft failure in the event of a problem.  Logging of the installation
+process should be done in order to enable post-mortem analysis.
+
+Installation procedures should be fully executable by the "application
+maintenance account", which will probably not be root, if it's at
+all possible to do so.  (And that's probably not possible for programs
+that need to work with more than one UID.)  Accordingly,
+any installation-related changes which require root access must be
+clearly identified (e.g. modififying /etc/group, /etc/services).
+
+Any application procedures which must be executed by root should
+be scripts and *not* binaries -- in order to allow the system
+administrator to examine them before running them.  If for some
+reason, a binary executable is necessary, then full source code
+and a Makefile should be provided in order to enable compilation
+on the local machine.
+
+Installation procedures should support a "deinstall" facility.
+Peter da Silva points out that "Ideally this should be a script that
+can be eyeball-executed in case the system isn't entirely stable
+when cleanup time arrives, rather than a binary."  I think what Peter
+means by that is that an admin who is trying to deal with a system
+whose state is confused or unknown would probably feel much better
+manually executing the commands in the script one by one, rather
+than having to execute the entire script -- or worse, a binary
+whose precise actions are unknown.
+
+Installation procedures should work with local and remote devices,
+e.g. tape and cdrom.
+
+Install procedures should be scriptable and executable in a
+non-interactive way.  Non-interactive install capability helps a
+system administrator who is setting up a large number of computers,
+each with the same package.  (Or, as Greg Lindahl put it, "[...] remember
+that some sites may want to install your product on 1,000 servers.
+Forcing them to reverse-engineer your installation procedure will
+not make friends.")
+
+
+Q. How should I track revision levels on my package?
+
+A. This is a thorny question, to which the best answer is "simply".
+Your editor would like to recommend the following standard for all
+Unix software packages:
+
+	<Release>.<Patchlevel>
+
+e.g.
+
+	foolib-4.13
+
+would be release 4, patchlevel 13 of the foolib package.  Your editor
+finds revision numbers like 5.004_03 or 0.99.6 too cryptic to be useful
+to anyone but the packages' authors, and suspects that many of his
+colleagues feel the same way.  Your editor feels he has suddenly
+started writing like Miss Manners and needs to stop.  Now.
+
+
+Q. Is there a way to provide pointers to new version of packages?
+
+A. The answer to this one -- in the case of freeware packages, like
+the ones that comprise Linux, comes from Håvard Lygre:
+
+	"I am running RedHat Linux on one of my servers, and see the
+	need for upgrading the software from time to time (especially 
+	as I am using development kernels, which need newer versions of a lot 
+	of the packages).   However, a lot of the time,  _none_ of the files  
+	included says anything about where new versions of the software can be
+	downloaded.
+
+	As an example, I will use the net-tools package for linux.
+	This package contains programs like route, ifconfig, hostname etc.
+	I have previously downloaded a net-tools package, however, with the
+	development of new kernels, there was a need for the newest.
+	However, in _none_ of the README, INSTALL etc. files in the source
+	tree of the previous net-tools package, was there an ftp or http  
+	address.  There was the e-mail address of the author/maintainer,  
+	but that's not the kind of questions you like to be bothered with when
+	you are a developer!  Of course, I was able to find the package after 
+	doing a search, but that should really not be necessary.  When
+	the package provides README's INSTALL's etc., there should also be an
+	URL of where you can get the newest version."
+
+My comment?  Yes, that would be awfully handy.  An option like "-u"
+for "emit the URL where this package can be found" would be very nice.
+On the other hand, web locations for packages change so often that
+it could also become a maintenance nightmare for the developer.
+
+So I think that this *might* work if we all agree that the URL that's
+embedded is the one of the (primary) site where the software package
+could be found *as of the time it was downloaded*.  In other words,
+the URL given is understood to be "where I came from" which might
+not be the same as "where I can be found today".
+
+Comments, anybody?
+
+
+Q. Whew!  Anything else?
+
+A. Oh my yes.  I'm sure that while you're reading this my mailbox
+is filling up with comments.  But you'll have to wait until the
+next revision to read them. :-)
+
+
+Q. Did you do this by yourself?
+
+A. Oh my no.  Among the people who have helped with comments and fixes
+and things that I needed to think about in earlier revisions are:
+Chris Siebenmann, Alan Rollow, Jonathan Spangler, Mark C. Henderson,
+Timothy J. Lee, Pete Forman, Paul D. Smith, Greg Lindahl, Peter da Silva,
+Frank da Cruz, D. J. Bernstein, Harald Kirsch, Ralf Fassel,
+Wim Vandeputte, Håvard Lygre.
+.
+
+If there's any usefulness in this document, it's because of their help.
+The mistakes are still my fault, though. ;-)
+
+
+---------------------------------------------------------------------
+| NOTE: The following four appendices list common names for         |
+| configuration files, environment variables, file suffixes, and    |
+| file names.  I'm well aware that they're incomplete.  Additions   |
+| are quite welcome.                                                |
+---------------------------------------------------------------------
+
+
+Appendix I: Configuration Files/Directories
+
+
+A number of UNIX programs utilize configuration files
+(or "dot files", so called because their names usually
+begin with a .) to customize their behavior.
+These files usually are located in a user's home (login)
+directory; some of them (and their purpose) are given below.
+
+Note that some applications have taken to using "dot directories"
+because they have so much information to store -- often including
+state information that persists between instantiations of the
+application -- that it would clutter up the user's home directory.
+So intead it winds up in a subdirectory; for example, Netscape's
+web browser likes to keep things in ".netscape".
+
+Application developers shouldn't necessarily count on these
+being present -- but may use them if they are.  They certainly
+shouldn't name their own files in conflict with these names; and they
+should avoid modifying these files if at all possible.
+
+
+.acrorc, .acrosrch		
+Used by Adobe Acrobat PDF reader.
+
+.Arena
+Used by the Arena web browser
+
+.article
+Location of saved (posted) articles; used by Pnews.
+
+.bash_profile
+.bashrc
+Startup information for GNU bash shell.
+
+.bash_history
+Command history for GNU bash shell.
+
+.bookmarks
+Used by Sun's AnswerBook applications.
+
+.cshrc
+Initialization for instances of csh.
+
+.dbxinit
+Startup commands and aliases for the dbx debugger.
+
+.dddinit
+Startup commands and aliases for the ddd debugger.
+
+.desksetdefaults
+Startup options for Sun deskset tools.
+
+.dtprofile
+Startup for CDE on Solaris.
+
+.elmrc
+Initialization for the Elm mail client.
+
+.errorrc
+Functions for error to ignore.
+
+.exrc
+Initialization and macros for vi, edit, ex and view.
+
+.fetchmailrc
+Configuration information for the fetchmail POP/IMAP client.
+
+.forward
+Forwarding address for incoming mail, or the name of a
+program to which incoming mail should be sent.
+
+.gimp
+.gimprc
+Used by the GNU Image Manipulation Program.
+
+.gnupg
+GNU implementation of PGP.
+
+.gopherc
+Start up info for gopher clients.
+
+.history
+Saved command history across login sessions (csh).
+
+.hostaliases
+Shorthand names for hosts.
+
+.hushlogin
+Suppress printing of /etc/motd on login.
+
+.indent.pro
+Initialization for indent.
+
+.ircrc
+Startup of ircII
+
+.kermrc
+Standard Kermit initialization file
+
+.learnrc
+Used by learn to mark progress.
+
+.less
+.lessrc
+Used by the "less" paginator.
+
+.letter
+Location of saved (sent) letters; used by Pnews, rn, tin.
+
+.lisprc
+Initialization for Franz Liszt (lisp) sessions.
+
+.lynrc
+Initialization for the Lynx web browser.
+
+.login
+Initialization for csh login sessions.
+
+.logout
+Commands to execute at end of csh login sessions.
+
+.mailcap
+MIME definitions used by various applications
+
+.mailrc
+Berkeley mailer options and aliases (Mail).
+
+.mh_profile
+MH mailer options.
+
+.mhrc
+MH mailer aliases.
+
+.muttrc
+Initialization for the mutt mail client.
+
+.mykermrc
+Personal Kermit customization file
+
+.newsrc
+News articles read; used by rn, vnews and readnews.
+
+.netrc
+Remote login initialization for ftp.
+
+.netscape
+.netscape-bookmarks.html
+Used by Netscape web browser
+
+.openwin-init
+Startup info for Sun's OpenWindows.
+
+.openwin-menu
+Menu for Sun's OpenWindows.
+
+.pinerc
+Used by the "pine" mail client.
+
+.plan
+User's planned absences, contact information, etc.; printed by finger.
+
+.pnewsexpert
+Used by Pnews to track user expertise.
+
+.procmailrc
+Initialization and configuration for the procmail mail filter.
+
+.profile
+Initialization for login sessions using sh.
+
+.project
+User's current work area (project); used by finger.
+
+.qmail
+Used by the QMAIL mail package.
+
+.raplayer
+.raplayer30
+Used by the RealAudio player.
+
+.rhosts
+List of pairs of login names/machine names allowed access to
+this account without a password via rlogin, rsh, and rcp.
+
+.signature
+User's signature and electronic address; appended by postnews and Pnews.
+
+.smrc
+Used by Peter da Silva's Session Manager tool.
+
+.ssh
+Used by the "secure shell".
+
+.rnhead, .rnlast, .rnlock, .rnmac, .rnsoft
+Used by various versions of rn/trn/strn news-reading software.
+
+.tcl  
+Tool Command Language script.
+
+.tin
+Startup file for the "tin" news-reading client.
+
+.tiprc
+Used by cu, tip.
+
+.tgz
+Gzipped archive created by gnutar.
+
+.tkman
+Used by the tkman program (TK interface to manual pages).
+
+.vimrc
+Used by "vim", an implementation of the vi editor.
+
+.workmanrc, .workmandb
+Configuration and database for the Workman audio CD player.
+
+.Xauthority
+Used for security by X window system.
+
+.Xdefaults
+Configuration info for X window systems and X applications.
+
+.xinitrc
+Startup information for the X window system.
+
+
+
+Appendix II: Environment Variables
+
+An array of strings called the environment is made available
+to each process started by Unix.  These strings are used to provide
+information such as terminal type, default editor, preferred mailer,
+and so on.  Most users set their environment in either .login (if they
+use csh) or .profile (if they use sh).
+
+Some common environment variables:
+
+ABHOME
+Sun's AnswerBook.
+
+ATTRIBUTION
+Format of attribution line in quoted article (rn/trn/xrn)
+
+AUTHORCOPY
+Where Pnews saves posted articles.
+
+BIN
+Number to be placed on the top of printer listings.
+
+CANCELHEADER
+Format of file to pass to CANCEL (rn/trn/xrn)
+
+DOTDIR
+Location of news-related files; used by rn/trn/xrn, Pnews, Rnmail.
+
+EDITOR
+User's preferred editor.
+
+EXINIT
+Startup commands read by ex, edit, view and vi.
+
+FIRSTLINE
+Format of first line of article displayed (rn/trn/xrn)
+
+GR_HOME
+Location of librariers for xmgr/xvgr data visualization tools.
+
+GS_LIB
+GNU ghostscript library directory.
+
+HELPDIR
+Help files for X windows applications
+
+HIDELINE
+Regular expression describing article lines to suppress (rn/trn/xrn)
+
+HOME
+User's home (login) directory.
+
+HOSTALIASES
+Location of .hostaliases file
+
+HTTP_PROXY
+Used by various web browsers to give host/port for HTTP proxy services.
+
+INSTALL
+Flags to initialize install.
+
+KILLGLOBAL
+Location of global kill file (rn/trn/xrn)
+
+KILLLOCAL
+Location of per-newsgroup kill file(s) (rn/trn/xrn)
+
+LD_LIBRARY_PATH
+Path to search for dynamically loadable libraries.
+
+LESS
+Flags to provide to the GNU "less" pager.
+
+MAIL
+Location of incoming mail.
+
+MAILER
+Default mailing program to use.
+
+MAILCALL
+What to say when there is new mail. (rn/trn/xrn)
+
+MAILFILE
+Where to check for mail. (rn/trn/xrn)
+
+MAILHEADER
+The format of the header file for replies. (rn/trn/xrn)
+
+MAILPOSTER
+Shell command used by reply (via mail) command (rn/trn/xrn)
+
+MAILRECORD
+Saved (sent) mail (Rnmail)
+
+MANPATH
+Path to search for manual pages.
+
+MBOXSAVER
+The shell command to save an article in mailbox format. (rn/trn/xrn)
+
+MORE
+Flags to provide to the "more" pager.
+
+MOZILLA_HOME
+Netscape's installed location.
+
+NAME
+User's real name.
+
+NEWSHEADER
+The format of the header file for followups. (rn/trn/xrn)
+
+NEWSPOSTER
+The shell command to be used by the followup commands (rn/trn/xrn)
+
+NEWSRC
+Location of news control file.
+
+NNTPSERVER
+Name/IP address of host providing NNTP services.
+
+NORMSAVER
+The shell command to save an article in the normal format (rn/trn/xrn)
+
+OPENWINHOME
+Sun, installation directory of OpenWindows.
+
+ORGANIZATION
+User's organization; used by Mail and news programs.
+
+PAGER
+User's preferred pagination (terminal file display) program.
+
+PAGESTOP
+Regular expression matching lines as page breaks (rn/trn/xrn)
+
+	Are you beginning to get the idea that maybe rn/trn/xrn got
+	just a little carried away with environment variables?
+
+PATH
+The sequence of directory prefixes that sh, csh, etc.,
+apply in searching for a file known by an incomplete path name.
+The prefixes are separated by : for sh, and
+by spaces for csh.
+
+PERLLIB
+Perl library directory.
+
+PIPESAVER
+Shell command to save via a pipe. (rn/trn/xrn)
+
+PRINTER
+User's default printer.
+
+RNINIT
+Initialization string for rn.
+
+RNMACRO
+Location of files with macros and key maps. (rn/trn/xrn)
+
+SAVEDIR
+Directory for saved news articles from rn/trn/xrn.
+
+SAVENAME
+The name of the file to save to, if unspecified (rn/trn/xrn).
+
+SHELL
+The file name of the user's login shell.
+
+SUBJLINE
+Controls the format of lines displayed by "=" (rn/trn/xrn).
+
+TERM
+Terminal type for which output is to be prepared.
+
+TERMINFO
+Location of the terminfo directory (System V curses).
+
+TERMCAP
+The string describing the terminal in TERM,
+or the name of the termcap file (Berkeley curses).
+
+TRNINIT
+Initialization string for trn.
+
+USER
+The login name of the user.
+
+VISUAL
+Preferred screen editor; used by mail and news programs.
+
+WORKMANDB
+Location of data files for Workman CD player application.
+
+WWW_HOME ~/web/home.html
+Starting document for web browsers.
+
+XAPPLRESDIR [DEPRECATED]
+Replaced by XFILESEARCHPATH and XUSERFILESEARCHPATH.
+
+XFILESEARCHPATH
+Colon-separated list of directories to search for
+system X resource files.
+Can contain special tokens to facilitate i18n support.
+
+XUSERFILESEARCHPATH
+Colon-separated list of directories to search
+for user-specific X resource files.
+Can contain special tokens to facilitate i18n support.
+
+YOUSAID
+Format of attribution line in front of the quoted article (rn/trn/xrn).
+
+
+Appendix III: File Suffix Conventions
+
+Although UNIX allows users to store data and text in files
+of practically any name, certain conventions have evolved
+over the years.  Here is a quick list of the suffixes most often
+encountered:
+
+.a
+Archive (ar) file.
+
+.awk
+Awk script.
+
+.bib
+Bibliographic data file.
+
+.c
+C source.
+
+.cc
+C++ source
+
+.dvi
+Device-independent text formatter output.
+
+.f
+Fortran (f77) source.
+
+.h
+Source code include file, usually C.
+
+.html
+HTML document
+
+.ksc
+Kermit script
+
+.l
+Lisp source; Lex source.
+
+.me
+Nroff/troff source using -me macros.
+
+.mm
+Nroff/troff source using -mm macros.
+
+.ms
+Nroff/troff source using -ms macros.
+
+.n
+Nroff source.
+
+.o
+Object (as output).
+
+.p
+Pascal source; Prolog source.
+
+.pl
+Perl program.
+
+.s
+Assembler (as) source.
+
+.sh
+Bourne (sh) shell script.
+
+.tar
+Archive created by tar.
+
+.tex
+TeX source.
+
+.txt   
+A plain text file
+
+,v
+RCS delta file.
+
+.w
+A Wart preprocessor file (similar to Lex).
+
+.y
+Yacc source.
+
+.Z
+Compressed file.
+
+.cf
+configuration file, as in sendmail.cf
+
+.z
+packed file
+
+.gz
+gzipped file
+
+.zip
+zipped file
+
+.C
+C++ source, or compacted file (obsolete)
+
+
+
+Appendix IV: File Name Conventions
+
+
+Although UNIX allows users to store data and text in files
+of practically any name, certain conventions have evolved
+over the years.  Here is a quick list of the filenames most often
+encountered, and what they're used by:
+
+a.out
+Default name of executable files produced by cc,
+f77, pc, ld, and other compilers and loaders.
+
+calendar
+Location of user's schedule; used by calendar.
+
+Configure
+A shell script found in the top-level directory of software
+distributions.  Usually refers to a Larry Wall-style interactive
+configure, whose first appearance (I think) was in "rn".
+
+configure
+A shell script found in the top-level directory of software
+distributions.  Usually refers to a GNU-style non-interactive
+configure, found in things like "gcc".
+
+core
+*.core
+core.*
+Created by Unix when a program attempts an illegal operation;
+useful with adb, dbx, gcore and pxp.  (More recent Unixes tend
+toward the latter two forms.)
+
+dead.article
+Used by Pnews and postnews for interrupted articles.
+
+dead.letter
+Used by Mail and mail for interrupted letters.
+
+gmon.out
+Profiling information; used by gprof.
+
+Imakefile
+A meta-makefile which is used to create Makefiles via tools
+such as xmkmf.
+
+lex.yy.c
+Output file from lex.
+
+Makefile, makefile
+Standard name for make command file.  See also cc.
+
+mbox
+Used by Mail and mail as default mailbox.
+
+mon.out
+Profiling information; see prof.
+
+nohup.out
+Output from background commands after logout; see nohup, sh, and csh.
+
+strings
+Quoted strings file from xstr.
+
+tags
+Function references in C source;
+created by ctags and used by vi, ex, edit, and view.
+
+typescript
+Default name for script output.
+
+xs.c
+C source created by xstr.
+
+y.output, y.tab.h, y.tab.c
+Various yacc output files.
+
+Administrivia:
+
+	I receive an average of hundreds of mail messages per day.  If you
+	want to make sure that your update/correction/reply to this
+	article comes to my attention when I'm working on the next
+	version, please send your message as a reply to this article,
+	i.e. make absolutely certain that you preserve the "Subject:"
+	line.  If you don't do this, your reply may sit in one of my
+	numerous mail queues for months or even years.
+
+	Please don't send an update more than once -- doing so only
+	adds to the queue that I have to process when doing updates.
+	If you want to make certain that I've received something, then
+	make a note of the information on the "Version:" line above.
+	If it has changed when you next see this article, and your
+	information isn't included, then I've missed it.  Otherwise,
+	it's safe to presume I've got it and it's queued for inclusion.
+
+	The FAQ may be reproduced and propagated via http, ftp, gopher
+	or other common Internet protocols by anyone provided that (1)
+	it is reproduced in its entirety (2) no fee is charged for access
+	to it and (3) it's kept up-to-date.  This latter is probably best
+	accomplished by mirroring one of the FAQ archives -- that way
+	you'll get a new copy everytime I update it, which is
+	approximately monthly.   (If you do put it up on the web, I'd
+	like to know the URL, but that's not a requirement.  It just
+	would be nice.)
+
+	Reproduction of this FAQ on paper, CDROM or other media which
+	are sold is permissible only with the express written consent
+	of its author.
+
+	If you are reading a copy of this document which appears to be
+	out-of-date, there are a variety of methods that you can use to
+	retrieve the most current method.  If you are familiar with access
+	to the FAQ archives via mail, ftp, and www, then you already know how.
+	If not,	 then send email to mail-server@rtfm.mit.edu with the command
+	"send usenet/news.answers/news-answers/introduction" in the message,
+	and a complete guide to FAQ retrieval will be mailed to you.
+
+Copyright Rich Kulawiec, 1997, 1998, 1999.

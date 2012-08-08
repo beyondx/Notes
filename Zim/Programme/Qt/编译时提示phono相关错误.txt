@@ -1,0 +1,18 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-23T14:48:21+08:00
+
+====== 编译时提示phono相关错误 ======
+Created Thursday 23 February 2012
+
+menu.cpp:(.text+0x1e4): __undefined reference to Phonon:__:MediaSource::operator==(Phonon::MediaSource const&) const'
+menu.o: In function `menu::next()':
+
+只需在 **.pro中添加
+Qt += phonon
+
+使用phonon播放前，系统需要安装以下解码器
+1）. gstreamer0.10-ffmpeg
+2）. gstreamer0.10-fluendo-mp3
+3）. gstreamer0.10-plugins-ugly
+4）. gstreamer0.10-plugins-bad

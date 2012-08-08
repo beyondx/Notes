@@ -1,0 +1,21 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-17T11:46:56+08:00
+
+====== The Semantic Desktop in KDE ======
+Created Thursday 17 November 2011
+http://nepomuk.kde.org/node/1
+
+
+As long as there have been computers there has been a very technical way of looking at information. Data is always organized in fixed hierarchies of folders or into tables. This is what slow computers back in the day could handle and which was always easy to program for.
+
+This system worked quite well, likely because it was the **only system users** knew and it was somehow modelled on the way we organize papers in folders in our office cupboards. However, __it is not at all how the human brain manages information__.
+
+__The human mind depends a lot on context and relations.__ Nepomuk aims to make the computer work more like the human mind. (Of course we do not claim that Nepomuk is Brain 2.0, that would not be feasible today. But we can take inspiration from **the way information is handled in the brain and use it to our advantage**.) To this end Nepomuk has two main goals:
+ 
+* Store all information in** a consistent and compatible manner **allowing all applications to access it and algorithms to "understand" it.
+* Organize this information in one big graph which** contains relations** between entities where it makes sense.
+
+Nepomuk allows applications to use information from all over the desktop, the web, other devices, and combine it into **one coherent interface**.
+
+To this end Nepomuk expoints technologies from the Semantic Web (or Web 2.0) like RDF and SPARQL and builds upon powerful tools such as Virtuoso, Raptor, Soprano, and libstreamanalyzer

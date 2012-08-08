@@ -1,0 +1,195 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-22T19:56:25+08:00
+
+====== Django+Mysql安装配置详解(Linux)[更新为1.3版] ======
+Created Saturday 22 October 2011
+
+http://dmyz.org/archives/110
+
+===== Perface =====
+
+Django是一个开源的Web应用框架，由Python写成，并于2005年7月在BSD许可证下发布。Django的主要目标是使得开发复杂的、数据库驱动的网站变得简单。Django采用MVC设计模式,注重组件的重用性和“可插拔性”，敏捷开发和DRY法则（Don’t Repeat Yourself）。
+
+在Django中Python被普遍使用，甚至包括配置文件和数据模型。本文介绍Django在Linux+Mysql环境下安装、配置的过程，包括安装、运行、添加应用的所有流程，最终建立一个可以从Mysql读取文章并显示的Django应用。
+
+===== Install =====
+
+首先下载Django
+wget www.djangoproject.com/download/1.3/tarball/
+
+得到Django-1.3.tar.gz，将其解压后安装
+tar xzvf Django-1.3.tar.gz
+cd Django-1.3
+sudo python setup.py install
+
+如果提示缺少setuptools还要下载安装setuptools(建议提前安上，因为在安装MySQL for Python的时候也会用到)。
+
+完成安装后，Django会拷贝一个**django-admin.py**到/usr/local/bin下，这个py文件引入了**Django的管理模块**。
+
+===== Setup =====
+
+要创建一个Django项目非常简单，使用startproject命令，输入项目名称：
+
+**django-admin.py startproject mysite**
+
+Django会在当前目录下自动生成一个名为mysite的文件夹，即**项目文件夹**，里面有以下文件(.pyc在第一次执行后才有，刚建立时可能只有几个.py后缀的文件)：
+urls.py
+settings.pyc
+settings.py
+manage.py
+__init__.pyc
+__init__.py
+
+    __init__.py/__init__.pyc：可以是空文件，只是**表明这个文件夹是一个可以导入的包**，这个文件在安装配置时不会用到。
+    settings.py/settings.pyc：配置文件，配置Django的一些信息，最主要是数据库信息、加载模块的信息。
+    manage.py：**命令行工具**，实现与Django之间的交互。
+
+创建项目后，进入项目文件夹，启动**Django自带的web开发服务器**：
+python manage.py runserver
+
+Django会自动检查配置文件中的错误，如果全部正常则顺利启动：
+Validating models…
+0 errors found
+
+Django version 1.2.3, using settings ‘mysite.settings’
+Development server is running at http://127.0.0.1:8000/
+Quit the server with CONTROL-C.
+
+ 访问http://127.0.0.1:8000，如果顺利显示，说明Django已经可以正常使用了。但现在只有本机可以访问，要让外网能够访问，或是要更换默认的8000端口，可以执行命令：
+python manage.py runserver 0.0.0.0:8080
+
+这样就将端口修改为8080，且外网也可以通过IP访问本机上的Django。
+
+现在要让Django支持Mysql数据库。编辑配置文件(settings.py)。在第12行找到
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql', #设置为mysql数据库
+        'NAME': 'dmyz',  #mysql数据库名
+        'USER': 'root',  #mysql用户名，留空则默认为当前linux用户名
+        'PASSWORD': '',   #mysql密码
+        'HOST': '',  #留空默认为localhost
+        'PORT': '',  #留空默认为3306端口
+    }
+}
+
+再次使用runserver命令(通常来说Django会**自动重新加载settings.py文件**的)，就可以使用Mysql数据库了。
+
+因为Django要通过Python操作Mysql，所以要先安装**Mysql for Python**。在Ubuntu下安装还会提示EnvironmentError: mysql_config not found。因为通过apt-get安装的mysql**没有安装开发工具包**，所以找不到mysql_config文件，使用以下命令安装：
+ sudo apt-get install libmysqld-dev
+
+===== URL =====
+
+URL配置文件很象**一个目录**，Django会通过URL配置文件来查找相应的对象，URL地址的使用正则表达式设置。在mysite目录下可以找到urls.py文件，它是URL配置的默认起点（也可以通过编辑settings.py中的 __ROOT_URLCONF__值来修改）。直接编辑urls.py
+
+urlpatterns = patterns('',
+(r'^$', 'mysite.hello.index'),
+)
+
+    r’^$’：正则，表示根目录；
+    mysite.hello.index：指向mysite这个项目下的hello模块中的index函数。
+
+剩下的就很简单了，在mysite文件夹下建立一个hello.py文件，在其中写入一个index函数：
+
+#hello.py
+from django.http import HttpResponse
+def index(request):
+    return HttpResponse('hello, world')
+
+刷新网站首页，就可以看到已经输出了”hello, world”。
+
+另一种方法: 设置一个hello模块只是方便理解Django的结构，但如果一个首页就要使用那么多代码，是很不pythonic的，所以在生产环境中我们的首页通常会这么来写：
+
+#url.py
+urlpatterns = patterns('',
+    url(r'^$', 'django.views.generic.simple.direct_to_template', {'template':'index.html'}),
+)
+
+Django会自动**在模板目录中**找到并加载index.html，只需要修改url.py一个文件就搞定了。
+
+===== Application =====
+
+上一节”hello world”的例子只是说明了URL的用法，可以说完全没有用到Django。__Django作为一个Web框架，目的是实现MVC的分离，它可以自行处理一些通用的操作，让开发人员可以专注于核心应用的开发。__所以，本文的最后一步将编写一个名为article的应用，从mysql数据库里读取出文章作者、标题、内容。
+首先建立应用：
+python manage.py startapp article
+
+在项目文件夹中会增加一个article文件夹，里面有如下文件
+models.py
+views.py
+__init__.py
+
+    models.py：模型文件，用一个 Python 类来描述**数据表**，运用它可以通过简单的 Python 的代码来创建、检索、更新、删除数据库中的记录而无需写一条又一条的SQL语句。
+    views.py：视图文件，用来联系模型与模版。
+
+然后编写模型文件(article/models.py)，用来实现对数据库的操作：
+
+
+from django.db import models
+ 
+# Create your models here.
+class Article(models.Model):
+    title    = models.CharField(max_length=50)
+    author   = models.CharField(max_length=50)
+    content  = models.CharField(max_length=200)
+
+现在要修改配置文件(settings.py)文件，告诉Django这__个应用是项目的一部分__，打开配置文件，在尾部找到INSTALLED_APPS元组，将article添加进去：
+
+INSTALLED_APPS = (
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django_openid_auth',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    #……
+    'mysite.article', #加入app
+)
+
+可以现运行manage.py sql article命令进行测试，如果可以看到生成的sql语句，说明模型已经正常设置，可以初始化并安装：
+python manage.py syncdb
+
+Django会自动创建名为**article_article**的表。而且，因为在INSTALLED_APPS中使用了__django.contrib.auth__，所以syncdb命令会要求提供一个管理员帐号和密码，用来登录Django的管理工具。
+You just installed Django’s auth system, which means you don’t have any superusers defined.
+
+Would you like to create one now? (yes/no): yes
+
+简单的模型就设置完成了，现在来设置视图，编辑视图(article/views.py)文件：
+
+# article/views.py
+from django.shortcuts import render_to_response
+from models import Article
+ 
+def latest_article(request):
+    article_list = Article.objects.order_by('-id')
+    return render_to_response('article/article.html',{'article_list':article_list})
+
+    2行：导入Django的render_to_response()函数，它用来调用模板、填充内容和返回包含内容的页面。
+    3行：导入之前编写模型文件中的Article类。
+    4~6行：定义一个latest_article函数，利用Article类从数据库获得数据，并按照id倒序输出。然后调用模版文件，将变量传递过去。
+
+在上面的代码中使用的模版文件，它的地址是设置文件中的__模版路径__+在views.py中定义的路径，因此如果报错TemplateDoesNotExist at 路径的话，很可能就是忘了设置模板路径。
+
+编辑设置文件(settings.py)，修改**TEMPLATE_DIRS**，设置一个模版路径，这里将模版目录直接指定在项目文件夹(mysite)中：
+
+TEMPLATE_DIRS = (
+"/var/www/mysite"
+)
+
+这样程序运行时，加载的静态模版就是 /var/www/mysite/article/article.html了。如果使用过其它框架或者模板引擎，下面article.html的内容就很容易看懂了，Django在模版文件中利用相应的TAG控制传递过来的变量显示的位置：
+
+{% for article in article_list %}
+Author:{{ article.author }}
+Title:{{ article.title }}
+Content:{{ article.title }}
+{% endfor %}
+
+最后，修改URL配置文件，让article/指向视图(views.py)中定义的latest_articl函数：
+(r’^article/’, ‘mysite.article.views.latest_article’),
+
+这样所有的配置就完成了，当访问 http://127.0.0.1:8000/article，Django就会自动读取数据库中的内容，并显示在网页上了。
+
+===== Epilogue =====
+
+本文的一些设置并不适用于实际生产环境，比如URL配置，为了方便重用，通常都会__使用include的方式__，而在这里则是直接指定。所以本文旨在介绍一些入门知识和快速配置的方法，如果希望更规范的学习Django，首推Django的官方文档，其次是Djangobook，我更新这篇文章的时候Djangobook2.0中文版已经翻译了大半了，也是学习Django很好的教材。

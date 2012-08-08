@@ -1,0 +1,80 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-29T14:13:06+08:00
+
+====== framebuffer分析 ======
+Created Wednesday 29 February 2012
+http://blog.csdn.net/android83/article/details/6277683
+
+本文介绍了 s3c6410 中的 framebuffer ，参考代码为 Linux2.6.28 。网上介绍 framebuffer 的文章很多，内核代码中也有关于 framebuffer 的文档，所以本文只介绍一些其它文章较少介绍的部分。
+
+===== 1.      Overview =====
+在嵌入式系统中，会有一块__内核空间__保存 LCD 上__每一个象素__需要被显示的值。系统运行时， CPU 的__显示控制器__会自动从这块内存读取内容，然后发送到__ LCD 显示屏__。这块内存就叫作 framebuffer 。对程序来说，通过修改 framebuffer 中的内容，就可以控制 LCD 的显示。 
+
+Linux 的__ GUI 系统__都运行在**用户空间**，不能直接访问内核空间。所以就需要一个 framebuffer 驱动，__将内核空间的 framebuffer 映射到用户空间__，方便 GUI 的访问。
+
+对 framebuffer 的典型操作如下所示：
+
+l          fd = open(fb, …);
+l         __ ioctl(fb, …)__;               // 设置 framebuffer ，比如象素的格式等。
+l          pBuffer = __mmap__(fb, …);    // 映射 framebuffer 到用户空间
+l          。。。                       // 像读写内存一样操作 pBuffer
+
+
+framebuffer 与 LCD 接口之间的通路有两种，分别是__ DMA 和 local bus__ ，一般都会将通路设置为 DMA 以提高性能。设置成 DMA 时，注意不能用 kmalloc 分配 framebuffer ，应使用 __dma_alloc_writecombine __函数分配能被 DMA 访问的内存空间，对应代码在 s3cfb_map_video_memory 函数中。
+
+s3c6410 支持多个__层叠窗口__（ 5 个），显示的时候，这些窗口会被**叠加显示**。在这里，** framebuffer 的概念变成和窗口关联**，而不是和 LCD 显示屏关联。__每个窗口对应一个 framebuffer __，所以， s3c6410 中可以有 5 个 framebuffer （不考虑硬件双缓冲的情况）。关于窗口的概念在 s3c6410 的芯片手册中有介绍。
+
+===== 2.      双缓冲 =====
+双缓冲是指** framebuffer 的大小两倍于 LCD 的大小**，可将其称为 frame1 和 frame2 。 LCD 显示 frame1 的内容时， __GUI 在后台绘制 frame2 __； LCD 显示 frame2 时， GUI 在后台绘制 frame1 。有多种实现双缓冲的方法，比如硬件切换、 virtual screen 等。
+
+==== • 硬件实现 ====
+s3c6410 的芯片手册中提到它最多支持** 5 个窗口叠加**。其中 win0 和 win1 支持__硬件双缓冲__。 win0 对应的寄存器为
+
+l          VIDW00ADD0B0                               // win0 的 buffer0 起始地址
+l          VIDW00ADD0B1                               // win0 的 buffer1 起始地址
+l          VIDW00ADD1B0                               // win0 的 buffer0 结束地址
+l          VIDW00ADD1B1                               // win0 的 buffer1 结束地址
+
+要实现 win0 的 buffer0/1 之间的切换，只需要设置 WINCON0 寄存器的 BUFSEL 位即可。**显示控制器**会根据 VIDW00ADD0B0 和 VIDW00ADD0B1 的值，自动切换是使用 buffer0 还是 buffer1 作为显示内容。win1 对应的寄存器与 win0 类似。代码中对应的切换命令为 IOCTL S3 CFB _CHANGE_REQ 。 
+
+===== • Virtual Screen =====
+virtual screen 的概念在 s3c6410_rev12.pdf 的第 485 页， figure 14-10 。通过设定 framebuffer 的 xoffset 和 yoffset ，可以__设置 framebuffer 被 LCD 显示的 x 、 y 坐标__。因此，可以定义 frame1 的坐标为 (0,0) ， frame2 的坐标为 (0,<LCD’s yres>) 。通过改变 x/y 的坐标，可以在 LCD 上切换 frame1 、 frame2 。
+
+在代码中，能改变坐标的 IOCTL 操作为   FBIOPAN_DISPLAY 。FBIOPAN_DISPLAY 通过改变 framebuffer 的起始地址实现双缓冲，对应的函数为 s3cfb_set_fb_addr 。__这种机制被 Android 采用__。
+
+
+===== 3.      alpha 与 colorkey =====
+s3c6410 支持硬件 alpha 操作和 colorkey 操作。
+
+__alpha 操作用于实现图形渐变效果，以及半透明效果等等__。
+
+colorkey 操作可以在__融合两个窗口时过滤掉其中一个窗口的某一种特定颜色__。因为 __GUI 在显示图象时都是通过画矩形实现__，所以这个功能在显示**非矩形图像**（比如圆形）时很有用。假设要显示圆形图案，可以把圆形放进一个矩形，然后矩形的剩余部分填充一个背景色，并把这个背景色指定为 colorkey 。这样，显示的时候自动将 colorkey 指定的颜色过滤，屏幕上就能显示出那个圆形了。
+
+不管是 alpha 操作还是 colorkey 操作，都有对应的**软件模拟实现**。网上类似的代码有很多，不再赘述。
+
+===== 4.       窗口平移与 virtual screen 平移 =====
+
+窗口平移与 virtual screen 平移是两个容易被混淆的概念，下面简单介绍一下：
+
+* 窗口平移
+s3c6410 硬件上__支持 5 个窗口，每一个窗口都可以显示在 LCD 的不同位置__。所以窗口平移就是指**硬件支持的窗口在 LCD 上的移动**。
+
+窗口平移由以下寄存器控制：
+S3C_VIDOSD[0-4]A
+S3C_VIDOSD[0-4]B
+
+在 framebuffer 的驱动中，可以通过以下__ IOCTL __控制窗口平移：
+
+S3 CFB _OSD_MOVE_LEFT
+S3 CFB _OSD_MOVE_RIGHT
+S3 CFB _OSD_MOVE_UP
+S3 CFB _OSD_MOVE_DOWN
+另外 SET_OSD_INFO 也可以用于控制平移。内核中与窗口平移对应的函数为 s3cfb_set_win_position 。
+
+* virtual screen 平移
+
+virtual screen 的概念在上面介绍双缓冲的地方提到过，具体可查阅芯片手册。这里的平移指的是__显示内容的平移__，可以想象成通过拖动 GUI 中的滚动条造成的效果。
+virtual screen 的平移由寄存器 VIDWxxADD[0-1] 实现 ， 内核中对应函数为 s3cfb_set_fb_addr ， 用户程序可以通过调用 FBIOPAN_DISPLAY 控制。
+
+目前 s3c6410 的 framebuffer 实现中，窗口平移和 virtual screen 平移都由 fb_var_screeninfo 中的 xoffset 和 yoffset 控制，所以使用时要小心。另外 FBIOPAN_DISPLAY 的实现代码中没有考虑 x 轴平移，只有 y 轴平移。 

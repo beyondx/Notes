@@ -1,0 +1,259 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-30T13:51:49+08:00
+
+====== 14. 第13章 红黑树(3) ======
+Created Saturday 30 July 2011
+这一篇是关于红黑树的结点删除。
+
+依然和上一篇的插入一样，先用到了BST的删除结点函数，然后做相应的调整。
+
+不过，这里的调整思路颇为新颖。
+
+还是来看看略微改变后的删除结点函数：
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+
+	
+
+Node* RBTreeDelete(RBTree T, Node *z)
+{
+	Node *x, *y;
+	// z是要删除的节点,而y是要替换z的节点
+	if(z->lchild == NULL || z->rchild == NULL)   
+		y = z;   // 当要删除的z至多有一个子树，则y=z；
+	else
+		y = RBTreeSuccessor(z);  // y是z的后继
+	if(y->lchild != NULL)
+		x = y->lchild;  
+	else
+		x = y->rchild;
+	// 无条件执行p[x] = p[y]
+	x->parent = y->parent;  
+	if(y->parent == NULL)   
+		T = x;
+	else if(y == y->parent->lchild)   
+		y->parent->lchild = x;
+	else
+		y->parent->rchild = x;
+	if(y != z)
+		z->key = y->key;
+	if(y->color == BLACK)
+		RBDeleteFixup(T, x);
+	return y;
+}
+
+注意代码倒数第二和第三行，只有当后继结点y的颜色是黑色时，才做调整。
+
+由此，引导出几个问题：
+
+1.问：考虑为何当y的颜色是黑色时，才调整？当y的颜色是红黑时，会不会破坏性质4？
+
+  答：这里我一开始纠结了，后来反复看了几次BST的删除，再算想通。在BST中，删除结点z，并不是真的把z给移除了，其实删除的不是z，而是y！因为z始终没有动过，只是把y删除了，然后把y的key赋值给z的key。所以，在红黑树中，z的颜色没有变，依然符合红黑性质。（这里我先开始理解为y->color也要赋值给z->color，汗。。。）
+
+2.问：考虑y为黑色时，破坏了哪几条红黑性质？
+
+   答：当y是根时，且y的一个孩子是红色，若此时这个孩子成为根结点。———>破坏了性质2
+
+        当x和p[y]都是红色时。                                                    ———>破坏了性质4
+
+        包含y的路径中，黑高度都减少了。                                      ———>破坏了性质5
+
+解决方法：
+
+上一篇我解释过，性质五涉及到了整棵树，难以控制。
+
+因此将x的颜色增加一重黑色，那么当:
+
+①.x原先颜色为RED时——->x包含RED和BLACK两颜色
+
+②.x原先颜色是BLACK时—–>x包含BLACK, BLACK两颜色。
+
+此时性质5解决，但是又破坏了性质1.
+
+接下来就是恢复性质1，2，4了。
+
+将额外的一重黑色一直沿树向上移，直到x是根或者是红色结点。
+
+看看具体的实现代码：
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+
+	
+
+void RBDeleteFixup(RBTree &T, Node *x)
+{
+	while(x != T && x->color == BLACK)
+	{
+		if(x == x->parent->lchild)
+		{
+			Node *w = x->parent->rchild;
+			///////////// Case 1 /////////////
+			if(w->color == RED)
+			{
+				w->color = BLACK;
+				x->parent->color = RED;
+				LeftRotate(T, x->parent);
+				w = x->parent->rchild;
+			}
+			///////////// Case 2 /////////////
+			if(w->lchild->color == BLACK && w->rchild->color == BLACK)
+			{
+				w->color = RED;
+				x = x->parent;
+			}
+			else
+			{
+				///////////// Case 3 /////////////
+				if(w->rchild->color == BLACK)
+				{
+					w->lchild->color = BLACK;
+					w->color = RED;
+					RightRotate(T, w);
+					w = x->parent->rchild;
+				}
+				///////////// Case 4 /////////////
+				w->color = x->parent->color;
+				x->parent->color = BLACK;
+				w->rchild->color = BLACK;
+				LeftRotate(T, x->parent);
+				x = T;
+			}
+		}
+		else
+		{
+			Node *w = x->parent->lchild;
+			if(w->color == RED)
+			{
+				w->color = BLACK;
+				x->parent->color = RED;
+				RightRotate(T, x->parent);
+				w = x->parent->lchild;
+			}
+			if(w->lchild->color == BLACK && w->rchild->color == BLACK)
+			{
+				w->color = RED;
+				x = x->parent;
+			}
+			else
+			{
+				if(w->lchild->color == BLACK)
+				{
+					w->rchild->color = BLACK;
+					w->color = RED;
+					LeftRotate(T, w);
+					w = x->parent->lchild;
+				}
+				w->color = x->parent->color;
+				x->parent->color = BLACK;
+				w->lchild->color = BLACK;
+				RightRotate(T, x->parent);
+				x = T;
+			}
+		}
+	}
+	x->color = BLACK;
+}
+
+对于删除的调整，共八种情况(左右对称各四种)，这里在书上P175面讲的很详细，所以我也就不再画图了，大家可以自己拿起笔在草稿纸上画一
+
+在我独立博客上的原文：http://www.wutianqi.com/?p=2449
+
+欢迎大家互相讨论，一起进步！

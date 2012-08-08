@@ -1,0 +1,110 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-03T17:11:22+08:00
+
+====== PowerPC汇编指令集简析 ======
+Created Saturday 03 December 2011
+http://www.linuxidc.com/Linux/2011-09/43873.htm
+
+在了解PowerPC汇编指令前，需要先看下编程所用的__寄存器模型__，PowerPC系统结构为大多数运算指令都定义了__Register-Register__的操作，这些操作的源操作数从寄存器取得，或作为**嵌入指令操作码中的立即数**提供。这里的e300核可分为用户编程模型和管理员编程模型，该模型有32个GPR、32个FPR、特殊目的寄存器SPR和一些功能寄存器，下图为二者的示意图：
+{{~/sync/notes/zim/Research/PowerPC开发/汇编/PowerPC汇编指令集简析/1.gif.jpe}}
+
+{{~/sync/notes/zim/Research/PowerPC开发/汇编/PowerPC汇编指令集简析/2.jpe}}
+
+上面这些寄存器可能不太好理解，因为名字和Intel汇编不一样，其实，可以这样理解，GPR就相当于EAX/EBX/ECX，而CTR则完全就是ECX的功能，是吧?区别就是__没有堆栈__而已咯。CR被分为8段，每段4位，分别代表LT、GT、EQ和SO(**小于、大于、等于和溢出**)；LR用于记录**跳转地址**；特殊寄存器XER用于记录__溢出和进位__标志；FPSCR用于记录**浮点运算类型和异常**等。
+
+再看下指令集，大部分的CPU指令集可分为：__数据读写、数值计算、流程控制和设备管理__四个部分，由于PowerPC使用RISC，指令字长为32bit，Endian一般是可调的，__默认为大端__，另外，PowerPC没有栈，所以程序需要自己实现相关操作。首先为运算和逻辑指令，列举如下：
+{{~/sync/notes/zim/Research/PowerPC开发/汇编/PowerPC汇编指令集简析/3.jpe}}
+它们与__通用寄存器__有关，源数据来自GPR 或16 位立即数，目的是GPR 寄存器，**操作为32 位**，GPR 中存放32 位更新数据。大多数指令都可以根据字面意思理解其作用，注意还有一个“cntlzw”指令，意为计算字中的第一个0，用于在一个字中找到1时将一个指令中的0的数量找出，它在决定例外寄存器中最高优先服务时有用。
+
+下面是数据读写指令，它们对数据在**存储器中和通用寄存器中的传送**很有用，若数据小于__传送长度__(单字，半字或字节)，指令会使数据变位为32位，将不同位填0或符号扩展。指令列举如下：
+{{~/sync/notes/zim/Research/PowerPC开发/汇编/PowerPC汇编指令集简析/4.jpe}}
+这里需要注意的是上面列举的lbz和lhz两个指令并不完全等同于mov al,[ebx]和mov ax,[ebx+10]这两个，因为前面两个是将字节和半字加载到r3时还清空了高位，而后两条指令只是加载数据到eax，并不会清空高位。
+
+另外，还有两个指令sthbrw和stwbrx，对PowerPC存取小端格式数据很有用，它们允许存取这样的数据，若数据以小端顺序进入总线，就把它存为大端顺序。
+
+好了，现在来详细看下**赋值指令**，下面是最常见的赋值代码：
+
+lis    r3,0x1234
+
+addi r3,r3,0x5678
+
+这段代码的含义是将0x12345678加载到寄存器r3中。因为在RISC下，PowerPC的每条指令都是32bit，除去指令和寄存器参数编码，只剩下16bit的长度描述立即数，如立即数加载指令li：
+{{~/sync/notes/zim/Research/PowerPC开发/汇编/PowerPC汇编指令集简析/5.jpe}}
+这样立即数SIMM只有16位，所以需要两次加载，使用lis(立即数载入并左移)和addi(立即数加法)两条指令完成。
+
+再看下PowerPC不同的__子程序调用__：
+
+    func:       /* 子程序入口 */  
+        blr     /* 返回(跳转到lr地址) */  
+    start:        
+        bl func   /* 调用func(跳转并__保存地址到lr__) */  
+        li r1,1   /* 设置r1、r3 */  
+        li r3,1    
+        sc        /* 系统调用，结束程序 */  
+
+这里的调用由PowerPC使用lr寄存器完成，在bl指令跳转前，下一条指令li r1,1的地址会被保存在lr，而执行的func中的blr时，系统会跳到lr表示的地址，完成返回。
+
+再来介绍下特殊寄存器的操作指令，它们可以完成__特殊用途寄存器之间和通用寄存器之间的数据交换__，**不可以直接**对特殊用途寄存器中的值进行处理，但是，可以将一个值先拷贝到一个通用寄存器上处理，再将信息存到特殊用途寄存器上。下面是指令集合：
+{{~/sync/notes/zim/Research/PowerPC开发/汇编/PowerPC汇编指令集简析/6.jpe}}
+这里回顾下，PowerPC里没有堆栈，那用什么实现模拟呢？看下面的例子：
+
+    f1:  
+       __ mflr r2 __  /*保存lr中记录的地址到r2*/  
+        stw r2,-8(r1)  /*记录r2的值到__mem__[r1-8]*/  
+        addi r1,r1,-60   /*r1后移60个字节，完成进栈操作*/  
+        ...  
+        addi r1,r1,60   /*r1前移60个字节，准备出栈*/  
+        lwz r2,-8(r1)   /*读出老的lr值到r2*/  
+        mtlr r2       /*将r2的内容复制到lr*/  
+        blr       /*返回(跳转到lr地址)*/  
+    start:  
+        ...  
+        bl f1       /*调用f1(跳转并保持地址到lr)*/  
+
+看到了吧，虽然没有提供栈的相关指令(PUSH/POP/CALL/RET)，但应用程序可以__用r1模拟栈指针__，实现多层调用对LR的记录和恢复。
+
+前面说了，PowerPC指令为32位长，指令内仅有16位用于加载常量值，由于地址最多可达到64位，所以我们可以采用**每次一段**的方式载入地址，汇编程序中的@符号指示汇编程序给出一个符号值的特殊处理形式：@highest：表示一个常量的第48-63位；@higher：表示一个常量的第32-48位；@h：16-31位；@l：0-15位。
+
+下面是我们的一个稍大点的PowerPC汇编程序总结下上面的指令集，实现的功能就是载入两个值并相加，最后退出，以结果为状态代码输出。代码如下：
+
+    #sum.s，第一个PowerPC汇编程序   
+    .data  
+    .align 3  
+    #此处装载两个值   
+    first_value:  
+    .quad 1  
+    second_value:  
+       .quad 2  
+    #写”.opd”(__official procedure descriptor__)   
+    .section “.opd”,”aw”  
+    .align 3  
+    #._start的程序描述符，即为程序名   
+    .global _start  
+    _start:  
+       .quad .start, .TOC.@tocbase,0  
+    #._text为程序代码段   
+    .text  
+    ._start:  
+       #装载地址高位   
+    lis r7,first_value@highest  
+    ori r7,r7,first_value@higher  
+    #shift these up to the high-order bits   
+    rldier r7,r7,32,31  
+    #装载地址低位   
+    oris r7,r7,first_value@h  
+    ori r7,r7,first_value@l  
+    #将第一个值载入寄存器4   
+    ld r4,0(r7)  
+    lis r7,second_value@highest  
+    ori r7,r7,second_value@higher  
+    rldicr r7,r7,32,31  
+    oris r7,r7,second_value@h  
+    ori r7,r7,second_value@l  
+    ld r5,0(r7)  
+    #二者相加并存到寄存器6   
+    add r6,r4,r5  
+    #程序退出   
+    li 0,1 #寄存器0为系统调用  
+    mr r3,r6 #将结果移到寄存器3中  
+    sc #对内核进行系统调用  

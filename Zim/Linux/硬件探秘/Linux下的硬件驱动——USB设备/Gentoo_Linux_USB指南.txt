@@ -1,0 +1,248 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-22T20:29:54+08:00
+
+====== Gentoo Linux USB指南 ======
+Created Tuesday 22 November 2011
+
+http://www.gentoo.org/doc/zh_cn/usb-guide.xml
+
+===== 1.  简介 =====
+
+USB是什么?
+
+USB的意思是通用串行总线(Universal Serial Bus)，是一种扩展接口标准，主要用于不同计算机或其周边设备之间的通信。一些大众化的USB设备有键盘、鼠标、U盘、数码相机、CD和DVD外接读写器、打印机等。
+
+目前USB标准有两种版本：USB 1.1 与USB 2.0。由于USB的__前一版总是向后兼容的__，所以USB 2.0兼容USB 1.1。最新的USB设备通常都是支持USB 2.0。USB 2.0支持的最大数据传输速率为480 MBps与60 MBps，这分别是USB 2.0与其所兼容的USB 1.1的数据传输速率。USB还具有支持设备热插拔的优点，这意味着不必重启系统即可使用USB设备。
+
+=== 技术剖析 ===
+
+在进行内核有关USB配置之前，先来了解一下它的一些知识细节。如果没有多少时间或者不想阅读这一节，可直接阅读配置内核一节。
+
+USB系统有一个**主控制器**(host controller)，__一些__**集线器(**hub)（不是网络工具中的那个“集线器”）以及__一个__ **根集线器**(root hub)，根集线器所能连接的USB设备的上限是**127**个。主控制器只是USB设备与操作系统之间的硬件接口。目前有两种主控制器接口(HCI, Host Controller Interface)：Compaq的OHCI (Open HCI)，Intel的UHCI (Universal HCI)和EHCI (Enhanced HCI)。OHCI/UHCI是针对USB 1.1的工业标准，而EHCI是针对USB 2.0的。
+
+硬件商向程序员提供开发接口，即所谓的__HCD__ (Host Controller Device)。通过HCD，USB设备可以与系统软件进行交互，看下面的图示会更易于理解这一点。
+
+代码 1.1: USB一般体系结构
+
+(软件层还有设备驱动之类的成份构成，但出于简化问题的目的，在此略去)
+
+    + ----    硬件    ----   + ----    软件    ---- +
+    |                           	   |                      |	
+    | [USB Dev] -+-> {EHCI} -+--->  ( EHCD )        |
+    |            |        		   |                      |  用户
+    |            `-> {UHCI} -+--->  ( UHCD )        |
+    |                   		     |                      |
+    + ----    硬件    ----   + ----    软件    ---- +
+
+USB设备可以有单独的驱动程序，也可以使用系统提供的驱动程序，这依赖**于设备的类别**。也就是说，如果一个USB设备属于某种类别，那么其他属于该类别的设备就可以使用同一种设备驱动。在USB设备类别中有一些是__USB HID__ (Human Interface Device)类别，它包括：输入设备，如键盘、鼠标；USB__块存储设备__，比如U盘、数码相机、音频播放器等；__USB CDC __(Communication Devices Class，通信设备类别)，比如USB口的modem或其他类似设备。
+
+=== 你的机器上有什么? ===
+
+要想弄清楚你的机器是否支持USB 2.0是很简单的，可以使用lspci来查看。
+
+注意: lspci工具是sys-apps/pciutils包的一部分，如果未有安装该软件包，请emerge pciutils。要注意的是，必须是root用户才有权限执行lspci命令。
+
+代码 1.2: lspci的输出
+
+(系统是兼容USB 1.1的，即UHCI接口)
+
+# lspci -v | grep USB
+0000:00:04.2 USB Controller: Intel Corp. 82371AB/EB/MB PIIX4 USB (rev 01) (prog-if 00 [UHCI])
+00:1d.0 USB Controller: Intel Corp. 82801DB USB (Hub #1) (rev 01) (prog-if 00 [UHCI])
+00:1d.1 USB Controller: Intel Corp. 82801DB USB (Hub #2) (rev 01) (prog-if 00 [UHCI])
+00:1d.2 USB Controller: Intel Corp. 82801DB USB (Hub #3) (rev 01) (prog-if 00 [UHCI])
+00:1d.7 USB Controller: Intel Corp. 82801DB USB EHCI Controller (rev 01) (prog-if 20 [EHCI])
+
+使用lspci，可以搞清楚系统是否支持USB 2.0，这在配置内核编译选项时有用。
+
+=== 2.  配置内核 ===
+
+获得内核
+
+首先emerge你所要使用的内核源码，这里所使用的是gentoo-sources。关于Portage中其它的内核源码说明，请参考Gentoo Linux Kernel Guide。
+
+代码 2.1: 获取内核源码
+
+# emerge gentoo-sources
+
+现在开始配置内核。
+
+代码 2.2: 准备配置
+
+# cd /usr/src/linux
+# make menuconfig
+
+注意: 上例假定/usr/src/linux是一个符号连接，指向你要使用的内核源码目录。在进行内核配置之前，你要保证有这样的连接。
+
+=== 内核配置选项 ===
+
+现在来看一下需要启用哪些内核选项以确保我们的硬件能够得到正确的 USB 支持。
+
+注意: 本文档示例只针对一些基本的USB支持，当然这也是大多数人所需要的，譬如USB块存储设备（数码相机与U盘驱动）。若对一些特殊的USB设备进行配置，请参考设备的用户手册，或者在网上搜索一下内核是否已经实现了对这些设备的支持，再或者使用你所能找到的对应驱动程序。请注意，本文为了简化问题，所有的示例配置都是编译到内核中去的，如果你希望使用内核的模块机制，在确认要编译哪些模块时，相应地调整一下内核配置文件。
+
+代码 2.3: make menuconfig选项
+
+Device Drivers  --->
+  SCSI device support  --->
+
+(尽管在选择USB Mass Storage时会自动__启用SCSI支持__，也必需启用disk支持)
+---   SCSI support type (disk, tape, CD-ROM)
+<*>   SCSI disk support
+
+(然后返回上一层，进入USB support)
+USB support  --->
+
+(这是__根集线器__(Root Hub)，对于USB支持而言是必须的。如果你想把它编译成模块，那么它就叫做__usbcore__)
+<*> Support for Host-side USB
+
+(至少要选择一个HCD。如果你不能确定，就都选上好了)
+--- USB Host Controller Drivers
+<*> EHCI HCD (USB 2.0) support
+< > OHCI HCD support
+<*> UHCI HCD (most Intel and VIA) support
+
+(向下移动一下，就可以看到CDC和mass storage的配置选项了)
+< > USB Modem (CDC ACM) support
+<*> USB Printer support
+<*> USB Mass Storage support
+
+--- USB Input Devices
+<*> USB Human Interface Device (full HID) support
+[*] HID input layer support
+
+(如果你有USB网卡，比如RTL8150，应当开启这个选项)
+USB Network Adapters  --->
+    <*> USB RTL8150 based ethernet device support (EXPERIMENTAL)
+
+(如果你有串口-USB转接器，譬如Prolific 2303，你需要开启这一选项)
+USB Serial Converter support  --->
+    <*> USB Serial Converter support
+    <*> USB Prolific 2303 Single Port Serial Driver (NEW)
+
+如果你拥有 USB 主板、鼠标、控制杆或者其它类型的输入设备，则有必要启用__ HID 支持__。请阅读“设备驱动”一节，并像下面这样启用 HID：
+
+代码 2.4: Enabling HID support
+
+Device Drivers --->
+[*] HID Devices  --->
+    <*>   USB Human Interface Device (full HID) support
+
+内核选项已经配置完毕，你可以（重新）编译内核，然后使用新内核重启机器就可以实现对USB设备的支持了。现在你可以向下阅读查看USB设备工作状况，查看是否设备是否正常工作。
+
+=== 3.  查看USB设备工作状况 ===
+
+dmesg是你的朋友！
+
+现在终于到了与USB设备共舞的时刻了:) 在本章中，将会看到系统如何响应各种USB设备的。先从一个512M的U盘的插入开始，你也可以使用其他类似设备。我们主要是使用dmesg来查看U盘插入后发生了什么以及系统如何响应的。
+
+注意: dmesg在显示我们所需要的信息之前会输出大量的冗余信息，因为它要读取__内核的环缓冲区__(ring buffer)，会输出许多启动信息。下面示例中的输出信息只给出了一部分信息，为了更好的阅读，还添加了一些空行。使用dmesg | more或dmesg | less来查看输出信息会更好一些。
+
+代码 3.1: 记忆棒的dmesg输出
+
+(先将U盘插入可用的USB端口，然后...)
+# dmesg | less
+
+(当前设备被识别为USB 1.1并为之分配一个地址。这也能说明哪一种HCD正在被使用)
+usb 1-1: new full speed USB device using uhci_hcd and address 2
+
+(__SCSI模拟器__会自动载入)
+scsi0 : SCSI emulation for USB Mass Storage devices
+usb-storage: device found at 2
+
+(现在设备信息，包括模块号，都可以被检索到)
+usb-storage: waiting for device to settle before scanning
+  Vendor: JetFlash  Model: TS512MJF2A        Rev: 1.00
+  Type:   Direct-Access                      ANSI SCSI revision: 02
+SCSI device sda: 1003600 512-byte hdwr sectors (514 MB)
+
+(写保护语句是未来新版本内核的试验性代码)
+sda: Write Protect is off
+sda: Mode Sense: 0b 00 00 08
+sda: assuming drive cache: write through
+SCSI device sda: 1003600 512-byte hdwr sectors (514 MB)
+/dev/scsi/host0/bus0/target0/lun0: p1
+Attached scsi removable disk sda at scsi0, channel 0, id 0, lun 0
+Attached scsi generic sg0 at scsi0, channel 0, id 0, lun 0,  type 0
+usb-storage: device scan complete
+(在此，设备通常可以通过挂载/dev/sda1来访问)
+
+(当设备断开连接时，系统会给出这样的反馈信息)
+usb 1-1: USB disconnect, address 2
+
+一旦设备连接上并被挂载，就可以像普通硬盘那样访问了。一些大众化的操作，譬如cp，mv，rm之类，都可以正常执行。也可以在U盘上创建文件系统。
+
+代码 3.2: 访问U盘
+
+# mount /dev/sda1 /mnt/usb
+# df -h
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/hda8             9.4G  7.5G  1.9G  80% /
+/dev/hda9              11G  8.1G  2.4G  78% /usr
+none                  189M     0  189M   0% /dev/shm
+/dev/sda1             490M   34M  457M   7% /mnt/usb
+
+注意: 也可以像U盘那样访问数码相机。我曾有一个Nikon Coolpix 5200，我正是采用这种方式访问它的。数码相机中的图片通常有两种面向计算机的传输模式：USB块存储与PTP (Picture Transfer Protocol)。相机要是被设置为USB块存储模式，就如同上面所讲的U盘访问过程一样，但是也要注意这并非放之四海皆准的。
+
+对于USB鼠标又是怎样一种情况呢？它应当被显示为一种HID设备。
+
+代码 3.3: USB光电鼠标
+
+# dmesg | grep USB
+drivers/usb/input/hid-core.c: v2.0:USB HID core driver
+usb 1-1: new low speed USB device using address 2
+input: USB HID v1.10 Mouse [Logitech USB-PS/2 Optical Mouse] on usb-0000:00:07.2-1
+
+另外一个时髦的命令__lsusb__可以查看你的USB端口。这个命令是sys-apps/usbutils软件包的一部分，下一章会介绍该软件包。
+
+=== 4.  用户级的USB ===
+
+时髦的工具
+
+内核/系统对USB的支持已经见识得很多了。现在，我们将看看由Gentoo为USB提供的用户级支持。
+
+一个非常有用的工具是lsusb，它可以列出所有连接到系统的USB设备，而且它的安装也非常easy。
+
+代码 4.1: 安装usbutils
+
+# emerge usbutils
+
+安装完后，可以运行lsusb获得连接到机器上的USB设备的一些简要信息。
+
+注意: 通常你必须以根用户身份运行__lsusb__。
+
+警告: lsusb从**/proc/bus/usb**中读取USB设备信息，如果你在编译内核时没有进行相应配置，那么lsusb就无法工作了。所以，一定要确认你的内核配置启用了/proc文件系统支持，并且保证usbfs是挂载在/proc/bus/usb上的（默认就是如此）。
+
+代码 4.2: 执行lsusb
+
+# lsusb
+(This is the 512 MB Memory Stick from Transcend)
+Bus 001 Device 003: ID __0c76:0005__ JMTek, LLC. USBdisk
+(This is the Optical Mouse)
+Bus 001 Device 002: ID 046d:c00e Logitech, Inc. Optical Mouse
+(This is the root hub)
+Bus 001 Device 001: ID 0000:0000
+
+如果你喜欢看大量的输出信息，运行__lsusb -v__就可以满足你的这一欲望。lsusb另一个有用的选项是给出当前USB物理层次的树状信息，这可以更容易让你准确理解设备体系结构，这个命令就是lsusb -t，例如：
+
+代码 4.3: lsusb显示USB物理层
+
+# __lsusb -t__
+Bus#  1
+`-Dev#   1 Vendor 0x0000 Product 0x0000
+  |-Dev#   2 Vendor 0x046d Product 0xc00e
+  `-Dev#   3 Vendor 0x0c76 Product 0x0005
+
+可以很容易地将lsusb与lsusb -t的输出信息联系起来，这有助于调试与理解USB的工作机制。
+
+5.  致谢...
+
+参考文献
+
+在我撰写这篇文档时，一些优秀的在线文档给予了我极大的帮助，它们有许多不仅技术含量高而且令人手不释卷。它们应当得到赞颂，来看一看！
+
+    USB官方站点
+    USB FAQ
+    Compaq的OHCI标准
+    Intel的UHCI标准
+    Intel的EHCI标准

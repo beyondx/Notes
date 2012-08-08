@@ -1,0 +1,262 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-05T22:03:11+08:00
+
+====== Misc ======
+Created Tuesday 05 April 2011
+
+gccsense也是auto-complete的补全引擎而已.语法检查用flymake,很强悍,DEA中有配置
+安装yasnippet
+安装elib
+安装cedet
+安装ECB
+安装Cscope
+配置tabbar
+company-mode配置
+安装auto-complete
+配置gcc-code-assist
+配置Doxymacs
+
+emacs的自动补齐（智能感应） 收藏
+   在编写代码时,自动补齐（成员函数变量，以及……）能提高很大的效率,emacs的自动补齐方法有很多种,我参考了很多其他网友的文章,简单总结了下,希望其他网友不要怪罪我哈,呵呵,我希望把我的学习过程记录下来,能对其他网友有所帮助.以下是几种不同的方法(也可以一块用哈)
+1.  Emacs 自带的hippie-expand (参考的是王垠的)
+    hippie-expand是 Emacs 自带的功能,
+   把M-/ 绑定到 hippie-expand，在.emacs文件中加入
+    ;;绑定按键  
+    (global-set-key [(meta ?/)] 'hippie-expand)
+
+    hippie-expand 的补全方式。它是一个优先列表， hippie-expand 会优先使用表最前面的函数来补全。通常的设置是：
+
+(setq hippie-expand-try-functions-list 
+      '(try-expand-dabbrev
+	try-expand-dabbrev-visible
+	try-expand-dabbrev-all-buffers
+	try-expand-dabbrev-from-kill
+	try-complete-file-name-partially
+	try-complete-file-name
+	try-expand-all-abbrevs
+	try-expand-list
+	try-expand-line
+	try-complete-lisp-symbol-partially
+	try-complete-lisp-symbol))
+    首先使用当前的buffer补全，如果找不到，就到别的可见的窗口里寻找，
+如果还找不到，那么到所有打开的buffer去找，如果还……那么到kill-ring里，
+到文件名，到简称列表里，到list，…… 当前使用的匹配方式会在 echo 区域
+显示.
+   确实是非常好用,基本上我M-/就能到达我想要的了.
+
+2 采用etags
+  etags能像cscope那样,在代码里跳来跳去,比如查找函数,变量等,它还能够自动补齐代码.
+  1),先生成etags文件
+   find .  /usr/include/ -name "*.c"  -or -name "*.cpp" -or -name "*.hpp" -or -name "*.h" |xargs etags --members --language=c++
+  2).配置.emacs
+	(setq tags-file-name "~/TAGS")
+ 3),使用
+     在emacs中,M-tab 就可以自动补齐了,不过有时候还是不是很好用.     
+	M-. 查找一个tag，比如函数定义类型定义等。
+	C-u M-. 查找下一个tag的位置
+	M-* 回到上一次运行M-.前的光标位置。 	M-TAB 自动补齐函数名。 
+
+3 采用cedet包
+   1)下载cedet 
+     网址是 http://cedet.sourceforge.net/
+   2)编译
+    tar -zxf cedet-1.0pre3.tar.gz
+    cd cedet-1.0pre3
+    make
+    如果make不成功的话,就看看那个说明吧
+   3)配置
+   查看emacs的配置文件在哪里
+    whereis emacs
+    拷贝编译好了的cedet 
+    cp -r cedet-1.0pre3 /usr/share/emacs/
+    查看是否有我们需要的那个文件
+    ls /usr/share/emacs/cedet-1.0pre3/common/cedet.el
+
+    配置.emacs文件,在.emacs文件中加入
+   	;;;;;;;;;;cedet
+	(load-file "/usr/share/emacs/cedet-1.0pre3/common/cedet.el")
+
+	;;设置检索范围
+	(setq semanticdb-project-roots 
+	  (list
+        	(expand-file-name "/")));;可以设置为项目的顶级目录
+
+	;;绑定按键,ctr+tab,以下三种,任意选择一个,我喜欢第二个
+	;;(global-set-key [(control tab)] 'senator-complete-symbol);
+	(global-set-key [(control tab)] ' senator-completion-menu-popup)
+	;; (global-set-key [(control tab)] 'semantic-ia-complete-symbol-menu)
+
+    4)使用
+       在一个未输入完成的函数上尝试下ctr+tab键
+看看效果吧:
+
+
+emacs auto-complete 收藏
+
+    晚上在家写自己的网游服务端底层库，休息时在网上闲逛，无意中发现一篇介绍emacs auto-complete的文章，正是自己想要的东西。比hippie-expand使用更方便，快捷。于是便下载下来，配置成功。另补充原文没有详细讲解的二点：
+
+    生成etags：在工程目录下执行 find -name "*.h" -or -name "*.cpp" -or -name "*.c" |xargs     etags --members --language=c++
+
+    使用etags：M-x visit-tags-table，然后选择要使用的tag文件即可。
+
+Emacs中使用Cscope 收藏
+在emacs中使用cscope,在preServer下有三个目录，其中含有.h或.cpp文件。
+
+第一步：在preServer下执行find ./ -name *.[hc]'*'> cscope.files,其作用是将当前目录下.h和.cpp 文件列表导入cscope.files。
+第二步：cscope -b，其作用是生成符号列表文件cscope.out。
+第三步：emacs中一般自动支持cscope，先设定初始索引目录，一般是当前根目录。 
+
+
+;; -*-mode:lisp-interaction-*- -*- coding: gbk-dos -*-
+ 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 外观显示 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;禁用启动画面
+(setq inhibit-startup-message t)
+ 
+;; *scratch* buffer的提示信息
+(setq initial-scratch-message "")
+ 
+;; 字体 可 "Monaco-11" 来改字号
+(set-default-font "Monaco-12")
+ 
+;; 设置中文字体
+(set-fontset-font "fontset-default"
+          'gb18030 '("微软雅黑" . "unicode-bmp"))
+ 
+;; Frame 中的字体添加 
+(add-to-list 'default-frame-alist '(font . "Monaco-12"))
+  
+;; 调出 windows 的字体对话框， 奇怪的有些字体安装在系统了却没有出现， 在 notepad 中可以看到
+;; (w32-select-font nil t) 
+ 
+;;尺寸
+(setq initial-frame-alist '( (width . 80) (height . 25)))  
+ 
+;;标题格式, "文件名  @  全路径文件名"
+(setq frame-title-format '("%b   @   " buffer-file-name))
+ 
+;;取消显示工具栏
+(tool-bar-mode nil)
+ 
+;; 取消显示菜单栏
+(menu-bar-mode nil)
+ 
+;;去掉滚动条, 鼠标滚轮代替
+(set-scroll-bar-mode nil)
+ 
+;;底栏显示列号
+(setq column-number-mode t)
+ 
+;;显示括号匹配
+(show-paren-mode t)
+ 
+;;显示日期
+(setq display-time-day-and-date t)
+;;显示时间
+(display-time)
+;;时间为24小时制
+(setq display-time-24hr-format t)
+;;时间显示包括日期和具体时间
+(setq display-time-day-and-date t)
+;;时间栏旁边启动邮件设置
+(setq display-time-use-mail-icon t)
+;;时间的变化频率
+(setq display-time-interval 10)
+ 
+;;光标靠近鼠标指针时，让鼠标指针自动让开，别挡住视线。
+(mouse-avoidance-mode 'animate)
+ 
+;;指针不闪，不恍花眼睛。
+(blink-cursor-mode -1)
+(transient-mark-mode 1)
+ 
+;; 显示行号切换
+(global-set-key [C-f6] 'global-linum-mode)
+ 
+;;语法加亮
+(global-font-lock-mode t)
+ 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 全局设定 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;y/n替代yes/no
+(fset 'yes-or-no-p 'y-or-n-p)
+ 
+;;设置粘贴缓冲条目数量
+(setq kill-ring-max 200)
+ 
+;;递归使用minibuffer
+(setq enable-recursive-minibuffers t)
+ 
+;;支持外部程序粘贴
+(setq x-select-enable-clipboard t)
+ 
+;; 默认 80 列自动换行, 需要 M-x auto-fill-mode 模式下
+(setq default-fill-column 80)
+ 
+;;取消错误铃，闪屏
+(setq visible-bell t)
+ 
+;;设置默认工作目录
+(setq default-directory "~/work/")
+ 
+;;默认为text模式
+(setq default-major-mode 'text-mode)
+ 
+;; 我的信息
+(setq user-full-name "xxxxx")
+(setq user-mail-address "xxxxx@gmail.com")
+ 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 我的插件目录导入 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 添加目录和二级子目录
+(defun add-to-load-path (load-path-name)
+  (let (default-directory-old default-directory)
+    (progn (cd load-path-name) 
+       (normal-top-level-add-subdirs-to-load-path))))
+ 
+(add-to-load-path "~/etc/emacs23/site-lisp")
+ 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 风格 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+(require 'color-theme)
+(color-theme-initialize)
+(color-theme-arjen)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Unicad ;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(require 'unicad)
+ 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; org ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+;;;; htmlize
+;;;; 网上下载的 htmlize 会使用报错: invalid face, 解决方法：
+;;;; 将下面一行：
+;;;;      for f = face then (face-attribute f :inherit)
+;;;; 改为
+;;;;       for f = face then (or (face-attribute f :inherit) 'unspecified)
+(require 'htmlize)
+(setq org-publish-project-alist
+      '(("orgfile"
+     :base-directory "~/work/org/source"
+     :publishing-directory "~/work/org/publish"
+     :base-extension "org"
+     :section-numbers nil
+     :auto-index t
+     :headline-levels 3
+     :publishing-function org-publish-org-to-html
+     :style "<link rel=\"stylesheet\" href=\"../other/mystyle.css\" type=\"text/css\">")
+ 
+    ("images"
+     :base-directory "~/work/org/source/image"
+     :base-extension "jpg\\|gif\\|png\\|bmp"
+     :publishing-directory "~/work/org/publish/image"
+     :publishing-function org-publish-attachment)
+ 
+    ("other"
+     :base-directory "~/work/org/source/other"
+     :base-extension "css\\|el"
+     :publishing-directory "~/work/org/publish/other"
+     :publishing-function org-publish-attachment
+      
+    ("website" :components ("orgfile" "images")))))
+ 
+ 
+;; org 自动换行
+(add-hook 'org-mode-hook
+    (lambda () (setq truncate-lines nil)))
+

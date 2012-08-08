@@ -1,0 +1,86 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-01T11:49:30+08:00
+
+====== 12从协议中来,到协议中去(中) ======
+Created Sunday 01 July 2012
+
+星爷说,人有人他妈,妖有妖他妈.说的就是__任何事物都有其要遵守的规矩__.usb设备要遵循的就是usb协议. 不管是软件还是硬件,在设计的伊始,总是要参考usb协议.怎么设计硬件,如何编写软件,不看usb协议,谁也不可能凭空想象出来.毕竟不是写小说,有几人能像**海岩**那样,光凭想象就能写出便衣警察,永不瞑目,玉观音这些经典的爱情加案情的作品来呢.
+
+usb协议规定了,每个usb设备都得有些基本的元素,称为__描述符__,有四类描述符是任何一种usb设备都得有的.他们是：
+**device** descriptor,**configuration** descriptor,**interface** descriptor,**endpoint** descriptor.
+
+描述符里的冬冬是一个设备出厂的时候就被厂家给__固化__在设备里了.这种东西不管怎样也改变不了,比如我有个Intel的U盘,那里边的固有的信息肯定是在Intel出厂的时候就被烙在里边了,厂家早已把它的一切,烙上Intel印.所以当我插入U盘,用cat /proc/scsi/scsi命令看一下的话,"Vendor"那一项显示的肯定是Intel. 
+
+关于这几种描述符,__usb core在总线扫描__那会就会去读取,会去获得里边的信息,其中,device描述符描述的是整个device,注意了,这个device和咱们一直讲的device和driver那里的device是不一样的.因为一个usb device实际上指的是一种宏观上的概念,它可以是**一种多功能的设备**,改革开放之后,多功能的东西越来越多了,比如外企常见的多功能一体机,就是集打印机,复印机,扫描仪,传真机于一体的设备, 当然,这不属于usb设备,但是usb设备当然也有这种情况,比如电台DJ可能会用到的,一个键盘,上边带一个扬声器,它们**用两个usb接口接到usb hub**上去,而device描述符描述的就是这整个设备的特点.
+
+那么configuration描述符呢,老实说,对我们了解U盘驱动真是没有什么意义,但是作为一个有责任心的男人,此刻,我必须为它多说几句,虽然只是很简单的说几句.一个设备可以有一种或者几种配置,这能理解吧?没见过具体的usb设备?那么好,手机见过吧,每个手机都会有多种配置,或者说"设定",比如,我的这款,Nokia6300,手机语言,可以设定为English,繁体中文,简体中文,一旦选择了其中一种,那么手机里边所显示的所有的信息都是该种语言/字体.还有最简单的例子,操作模式也有好几种,标准,无声,会议,etc.基本上如果我设为"会议",那么就是只振动不发声,要是设为无声,那么就啥动静也不会有,只能凭感觉了,以前去公司面试的话通常就是设为无声,因为觉得振动也不好,让人家面试官听到了还是不合适.那么usb设备的配置也是如此,不同的usb设备当然有不同的配置了,或者说需要配置哪些东西也会不一样.好了,关于配置,就说这么多,更多的我们暂时也不需要了解了.
+
+对于usb设备驱动程序编写者来说,更为关键的是下面两个,__interface和endpoint__.
+
+先说,interface.第一句,__一个interface对应一个usb设备驱动程序__.没错,还说前边那个例子,一个usb设备,两种功能,一个键盘,上面带一个扬声器,两个接口,那这样肯定得要两个驱动程序,一个是键盘驱动程序,一个是音频流驱动程序.道上的兄弟喜欢把这样两个整合在一起的东西叫做一个设备,那好,让他们去叫吧,我门用interface来区分这两者行了吧.于是有了我们前面提到的那个数据结构,struct usb_interface.它定义于include/linux/usb.h:
+
+     71 /**
+     72  * struct usb_interface - __what usb device drivers talk to__
+     73  * @altsetting: array of interface structures, one for each alternate
+     74  *      setting that may be selected.  **Each one includes a set of**
+     75  *      **endpoint configurations.**  They will be in no particular order.
+     76  * @num_altsetting: number of altsettings defined.
+     77  * @cur_altsetting: the current altsetting.
+     78  * __@driver: the USB driver that is bound to this interface__.
+     79  * @minor: the minor number assigned to this interface, if this
+     80  *      interface is bound to a driver that uses the USB major number.
+     81  *      If this interface does not use the USB major, this field should
+     82  *      be unused.  The driver should set this value in the probe()
+     83  *      function of the driver, after it has been assigned a minor
+     84  *      number from the USB core by calling usb_register_dev().
+     85  * @condition: binding state of the interface: not bound, binding
+     86  *      (in probe()), bound to a driver, or unbinding (in disconnect())
+     87  * @dev: driver model's view of this device
+     88  * @class_dev: driver model's class view of this device.
+     89  *
+     90  * USB device drivers attach to interfaces on a physical device.  Each
+     91  * interface encapsulates a single high level function, such as feeding
+     92  * an audio stream to a speaker or reporting a change in a volume control.
+     93  * Many USB devices only have one interface.  The protocol used to talk to
+     94  * an interface's endpoints can be defined in a usb "class" specification,
+     95  * or by a product's vendor.  The (default) control endpoint is part of
+     96  * every interface, but is never listed among the interface's descriptors.
+     97  *
+     98  * The driver that is bound to the interface can use standard driver model
+     99  * calls such as dev_get_drvdata() on the dev member of this structure.
+    100  *
+    101  * Each interface may have alternate settings.  The initial configuration
+    102  * of a device sets altsetting 0, but the device driver can change
+    103  * that setting using usb_set_interface().  Alternate settings are often
+    104  * used to control the the use of periodic endpoints, such as by having
+    105  * different endpoints use different amounts of reserved USB bandwidth.
+    106  * All standards-conformant USB devices that use isochronous endpoints
+    107  * will use them in non-default settings.
+    108  *
+    109  * The USB specification says that alternate setting numbers must run from
+    110  * 0 to one less than the total number of alternate settings.  But some
+    111  * devices manage to mess this up, and the structures aren't necessarily
+    112  * stored in numerical order anyhow.  Use usb_altnum_to_altsetting() to
+    113  * look up an alternate setting in the altsetting array based on its number.
+    114  */
+    115 **struct usb_interface** {
+    116         /* array of __alternate settings__ for this interface,
+    117          * stored in no particular order */
+    118         struct **usb_host_interface** *altsetting;
+    119
+    120         struct usb_host_interface *cur_altsetting;      /* the currently active alternate setting */
+    122         unsigned num_altsetting;        /* number of alternate settings */
+    123
+    124         int minor;                      /* minor number this interface is bound to */
+    125         enum usb_interface_condition condition;         /* state of binding */
+    126         __struct device dev;__              /* interface specific device info */
+    127         struct class_device *class_dev;
+    128 };
+    129 #define __to_usb_interface__(d) container_of(d, struct usb_interface, dev)
+    130 #define __interface_to_usbdev__(intf) /
+    131         container_of(intf->dev.__parent__, **struct usb_device**, dev)
+
+嗬,贴这么长一段,怎么又是注释为主啊?知足吧,Linux代码中注释实在是太少了,等你真的需要认真看某一个模块的时候你就会嫌注释少了.这个结构体是一个贯穿整个U盘驱动程序的,所以虽然我们不用去深入了解,但是需要记住,整个U盘驱动程序在后面任何一处提到的struct usb_interface都是同一个变量,__这个变量是在usb core总线扫描的时候就申请好了的__.我们只需贯彻鲁迅先生的拿来主义即可,直接用就是了.比如前面说过的storage_probe(struct usb_interface *intf,const struct usb_device_id *id),storage_disconnect(struct usb_interface *intf)这两个函数中的那个参数intf.
+
+而这里130行这个宏-interface_to_usbdev,也会用得着的,顾名思义,就是从一个struct usb_interface转换成一个struct usb_device,我们说过了,有些函数需要的参数就是struct usb_device,而不是usb_interface,所以这种转换是经常会用到的,而这个宏,usb core的设计者们也为我们准备好了,除了感激,我们还能说什么呢?

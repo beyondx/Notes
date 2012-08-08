@@ -1,0 +1,63 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-04T18:48:18+08:00
+
+====== busybox ======
+Created Saturday 04 August 2012
+
+1. 在编译老版本的busybox时，出现：
++ make menuconfig 'HOSTCC=ccache /usr/bin/gcc -B/usr/bin/'
+Makefile:421: *** mixed implicit and normal rules.  Stop.
+error: Bad exit status from /home/geekard/PPC/ltib-mpc8315erdb-20100719/tmp/rpm-tmp.23736 (%build)
+这是由于make工具版本太高的原因，可以降级make为3.8.1或者升级busybox到最新版。我们__采用后者__方法。
+
+2.下载最新版busybox。
+
+[geekard@kb310 ltib-mpc8315erdb-20100719]$ rm -rf rpm/BUILD/busybox-1.11.2/*
+[geekard@kb310 ltib-mpc8315erdb-20100719]$ rm -rf tmp/* 
+[geekard@kb310 ltib-mpc8315erdb-20100719]$ cp -r  modify/busybox-1.20.2/* rpm/BUILD/busybox-1.11.2/
+[geekard@kb310 ltib-mpc8315erdb-20100719]$ [[./ltib]] --config #注意，在package list中选中configure busybox at build time
+
+3. 编译时出错：
+loginutils/passwd.c: In function 'passwd_main':
+loginutils/passwd.c:104:16: error: storage size of 'rlimit_fsize' isn't known
+loginutils/passwd.c:188:2: warning: implicit declaration of function 'setrlimit' [-Wimplicit-function-declaration]
+loginutils/passwd.c:188:12: error: 'RLIMIT_FSIZE' undeclared (first use in this function)
+loginutils/passwd.c:188:12: note: each undeclared identifier is reported only once for each function it appears in
+loginutils/passwd.c:104:16: warning: unused variable 'rlimit_fsize' [-Wunused-variable]
+make[1]: *** [loginutils/passwd.o] Error 1
+make: *** [loginutils] Error 2
+make: *** Waiting for unfinished jobs....
+-------------------------------------------------------------------
+http://lists.busybox.net/pipermail/busybox/2012-May/077766.html
+Fix this by including sys/resource.h.
+
+Signed-off-by: Markus Trippelsdorf <markus at trippelsdorf.de>
+---
+ include/libbb.h |    1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/include/libbb.h b/include/libbb.h
+index f12800f..e7806c2 100644
+--- a/include/libbb.h
++++ b/include/libbb.h
+@@ -40,6 +40,7 @@
+ #include <sys/poll.h>
+ #include <sys/ioctl.h>
+ #include <sys/mman.h>
++#include <sys/resource.h>
+ #include <sys/socket.h>
+ #include <sys/stat.h>
+ #include <sys/time.h>
+-- 
+Markus
+------------------------------
+4. 提示找不到rpc/rpc.h文件：
+util-linux/mount.c:134:22: fatal error: rpc/rpc.h: No such file or directory
+compilation terminated.
+make[1]: *** [util-linux/mount.o] Error 1
+make: *** [util-linux] Error 2
+error: Bad exit status from /home/geekard/PPC/ltib-mpc8315erdb-20100719/tmp/rpm-tmp.84999 (%build)
+
+这是由于glibc>2.16后将SUN RPC系列组件从glibc中删除了，代之的是librpc项目库。解决方式是去掉mount命令的NFS文件类型选项。
+Linux System Utilities  —>  [ ] mout support NFS filesystem on linux

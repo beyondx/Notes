@@ -1,0 +1,138 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-15T14:58:47+08:00
+
+====== 有用的特性(模式) ======
+Created Friday 15 April 2011
+
+__align-regexp__
+
+相必大家都用过 C-M-\，一般都能满足需要，可是有时候需要按一行中的某些字符对齐，比如一些变态的语言或者编程规范规定赋值语句需要按”=”对齐，那怎么办?
+align-regexp 使用起来只需要选中需要对齐的 region，然后执行，输入需要匹配的正则表达式即可。
+比如如下代码:
+int var = 2;
+int variable_is_kinda_long = 3;
+int var_is_less_long = 4;
+需要按 = 对齐，选中执行M-x align-regexp, 然后 regexp 填 =，结果如下:
+int var                    = 2;
+int variable_is_kinda_long = 3;
+int var_is_less_long       = 4;
+
+__occur__
+
+输出 buffer 中符合正则表达式的所有行，在查找替换时，或者需要重构代码时，事先用 occur 来验证下构造的正则表达式的效果，可以避免一时自信或者冲动毁了先前的工作.
+
+__tramp__
+
+远程文件编辑的利器，C-x f username@user.com:filepath, 流畅俨如本地文件，该工具其实很流行，但还有一个功能很少被人使用，但却可以解决烦恼。
+有多少次你编辑了文件，悲催的发现是只读文件，不能保存，你又不想退出 emacs，只能 sudo vim，然后用非常别扭的方式编辑文件。但有了 tramp，只需要 __C-x f /sudo::/etc/passw__，烦恼木有了。
+刚在 Emacs 中输入上面那个远程文件的链接时，竟然也触发启动了 tramp 连接，然后网络连不上于是 Emacs 僵死了，只得 force quit 了下，看来不死之身有时候也会出问题的。
+
+__re-builder__
+
+实时高亮显示当前 buffer 可以匹配所输入正则表达式的字串，非常适合查找替换前做检查。功能跟 occur 差不多，只是 occur 另开一个 buffer 用来显示匹配的行，re-builder 直接显示在当前 buffer。
+
+__ractangle__
+
+如下矩阵:
+
+1234
+2345
+3456
+
+假如我们需要剪切左上 2×2 矩阵，从1排1列，C-space 选中，挪动光标到2排2列，__C-x r k__, 然后 __C-x r y__ 复制，结果如下:
+
+// After cut
+34
+45
+3456
+// Copy
+12
+23
+
+__C-x r o__ 插入空格到选中矩阵，__C-x r c__ 用空格替换所选中矩阵，__C-x r d __删除所选矩阵，如下三操作区别 (左上2×2矩阵):
+
+// C-x r o
+  1234
+  2345
+3456
+// C-x r c
+  34
+  45
+3456
+// C-x r d
+34
+45
+3456
+
+__C-x r t__ 用输入字符串替换所选矩阵每行, 下图结果用 xy 替换左上 2×2 矩阵。
+
+xy34
+xy45
+3456
+
+__auto-rever-tail-mode__
+
+我们多少次在 terminal 中 tail -f sys.log 来关注 log 的最新输出, 使用这个命令 Emacs 便自动完成该工作。
+
+__wdired-change-to-wdired-mode__
+
+在 dired-mode 使用该 mode，就可以像文件那样对 dired-mode buffer 进行编辑，可以用 regex-replace，rectangle 命令，批量更改文件名等。
+
+__hexl-mode__
+
+查看编辑非文本文件利器。
+
+__multi-occur-in-matching-buffers__
+
+可以对所有打开的 buffer 进行 regex search。
+
+__C-u C-spacebar__
+
+Emacs 记录了所有光标移动的历史，使用这个命令，可以依次回到前一个位置，在阅读代码时非常有用。
+
+__apropos__
+
+搜索包含某关键字或者匹配某正则表达式的 Emacs 命令，利用这个可以发现更多给力的 feature。
+
+__follow-mode__
+
+现在流行的是宽屏，宽度不是问题，因此 Emacs C-x 3 用的很多，但很多长的文档，要翻好多页，小拇指真疼。
+竖分屏后执行 follow-mode 后，所有 buffer 显示同一文件的不同部分，可视范围翻倍，甚至数倍，这要看你的屏幕有多宽了。
+
+__winner-mode  __		 	Emacs会记住上一个frame的布局，用于以后的frame切换
+__linum-mode  __  				显示行号
+__org-mode  __      			笔记
+__yas/minor-mode   __			自动模版替换
+__auto-complete-mode __  		自动补全，若当前输入中出现了前面的字符，它会自动将后面可能出现的用不同的颜色
+						  显示，可按 Ctrl+i （先配置配置文件后才能这样操作）即可自动补全，或如果有多个选择
+							时，通过 Alt+n 向下选择或 Alt+p 向上选择，然后通过Alt+j 确认选择。
+__column-number-mode__  		在模式栏显示列号
+__view-mode  __ 				察看模式
+__auto-fill-mode text-mode__	 这两个经常连用
+__ido-mode	__				自动补充和搜索模式
+__yasnippet-bundle__			自动模板补充模式
+__cscope__					代码查找和跳转
+etags					同上
+gtags					同上
+__magit__					git的前端
+__ecb	__					emacs code browse
+ '(column-number-mode t)
+ '(current-language-environment "Chinese-GBK")
+ '(default-input-method "chinese-py-punct")
+ '(display-time-mode t)
+ '(ecb-options-version "2.40")
+ '(show-paren-mode t)
+ '(size-indication-mode t)
+ '(text-mode-hook (quote (turn-on-auto-fill text-mode-hook-identify)))
+ '(tool-bar-mode nil))
+
+
+这里有个调查，Emacs 中最有用的 feature，大家可以参与下，另外本文中的很多 command 是我看到这个 polls 之后才觉得很强大。
+
+http://stackoverflow.com/questions/60367/the-single-most-useful-emacs-feature
+
+最后，不能忘了很强大很强大的三个命令，分别用来查询某 key binding，某 function (command)，某variable 是干啥用的:
+
+__c-h k / c-h f / c-h v__
+

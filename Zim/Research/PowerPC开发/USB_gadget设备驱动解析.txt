@@ -1,0 +1,174 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-01T20:55:14+08:00
+
+====== USB gadget设备驱动解析 ======
+Created Thursday 01 December 2011
+
+http://www.embedu.org/Column/Column113.htm
+
+作者：刘洪涛，华清远见嵌入式学院金牌讲师。
+
+利用Linux USB gadget设备驱动可以实现一些比较有意思的功能，举两个例子： 1、一个嵌入式产品中的某个存储设备，或是一个存储设备的某个分区，可以将给设备的USB接口连到另外一台电脑，而该usb被当作设别，从而非常方便的完成文件交互，这个功能被广泛的应用于手机、数码相机等产品中。2、一个嵌入式设备通过USB连接到你的PC后，在你的PC端会出现一个新的网络连接，在嵌入式设备上也会有一个网卡设备，你可以配置它们的IP地址，并进行网络通讯，俗称__USBNET__。
+
+所有USB通讯的__设备端__都有usb device程序(和设备端对应的还是有__host side__,即usb device controller)，通常称它们为**usb固件**。在一些功能简单的设备里，用一些专用的可编程USB控制器就可以了。而在一些运行了类似linux操作系统的复杂的嵌入式系统中，要完成usb device程序，就会要求你不仅熟悉usb device控制器的操作，还要熟悉操作系统的驱动架构（通常带linux的嵌入式系统，其usb是一个host side）。
+
+我想通过 “功能体验”、“驱动调试”、“gadget驱动结构分析”、“编写一个自己的gadget驱动”这4个方面解析linux usb gadget设备驱动的编写方法。
+
+===== 一、linux模拟U盘功能的实现 =====
+
+在硬件环境为华清远见的fs2410平台，软件环境为linux-2.6.26的linux系统上，实现模拟U盘的功能。
+
+向内核添加代码
+
+    #include <asm/arch/regs-gpio.h>
+    #include <asm/arch/regs-clock.h>
+    #include <asm/plat-s3c24xx/udc.h>
+
+修改arch/arm/mach-s3c2410/mach-smdk2410.c
+
+/*USB device上拉电阻处理 */
+    static void smdk2410_udc_pullup(enum s3c2410_udc_cmd_e cmd)
+    {
+        u8 *s3c2410_pullup_info[] = {
+            " ",
+            "Pull-up enable",
+            "Pull-up disable",
+            "UDC reset, in case of"
+        };
+        printk("smdk2410_udc: %s\n",s3c2410_pullup_info[cmd]);
+        s3c2410_gpio_cfgpin(S3C2410_GPG9, S3C2410_GPG9_OUTP);
+        switch (cmd)
+        {
+            case S3C2410_UDC_P_ENABLE :
+               
+            s3c2410_gpio_setpin(S3C2410_GPG9, 1);   //set gpg9 output HIGH
+                break;
+            case S3C2410_UDC_P_DISABLE :
+                s3c2410_gpio_setpin(S3C2410_GPG9, 0);   //set gpg9 output LOW
+                break;
+            case S3C2410_UDC_P_RESET :
+                //FIXME!!!
+                break;
+            default:
+                break;
+        }
+    }
+
+static struct s3c2410_udc_mach_info smdk2410_udc_cfg __initdata = {
+        .udc_command    = smdk2410_udc_pullup,
+    };
+
+static struct platform_device *smdk2410_devices[] __initdata = {
+    …,
+    &s3c_device_usbgadget,  /*USB gadget device设备登记*/
+    };
+
+static void __init sdmk2410_init(void)    
+    {
+       u32 upll_value;
+       set_s3c2410fb_info(&smdk2410_lcdcfg);
+      s3c24xx_udc_set_platdata(&smdk2410_udc_cfg); /* 初始化*/
+       s3c_device_sdi.dev.platform_data = &smdk2410_mmc_cfg;
+       /* Turn off suspend on both USB ports, and switch the
+        * selectable USB port to USB device mode. */
+
+   s3c2410_modify_misccr(S3C2410_MISCCR_USBHOST |
+                 S3C2410_MISCCR_USBSUSPND0 |
+                 S3C2410_MISCCR_USBSUSPND1, 0x0);
+      /* 设置USB时钟 */
+      upll_value = (
+           0x78 << S3C2410_PLLCON_MDIVSHIFT)
+            | (0x02 << S3C2410_PLLCON_PDIVSHIFT)
+            | (0x03 << S3C2410_PLLCON_SDIVSHIFT);
+      while (upll_value != readl(S3C2410_UPLLCON)) {
+          writel(upll_value, S3C2410_UPLLCON);
+          udelay(20);      
+        }
+    }
+
+修改drivers/usb/gadget/file_storage.c
+
+static void start_transfer(struct fsg_dev *fsg, struct usb_ep *ep,
+                struct usb_request *req, int *pbusy,
+                enum fsg_buffer_state *state)
+    {
+        int     rc;
+        udelay(800);
+    ……
+    }
+
+__配置内核支持U盘模拟__
+
+<*>   USB Gadget Support  --->
+            USB Peripheral Controller (S3C2410 USB Device Controller)  --->
+             S3C2410 USB Device Controller
+    [*]       S3C2410 udc debug messages
+    <M>   USB Gadget Drivers
+    <M>     File-backed Storage Gadget
+
+3、编译内核
+
+#make zImage
+    #make modules
+
+在目录drivers/usb/gadget下生成**g_file_storage.ko**
+
+===== 加载驱动，测试功能 =====
+
+利用前面的生成的内核，启动系统后，加载g_file_storage.ko
+
+#insmod g_file_storage.ko
+    #__ insmod g_file_storage.ko file=/dev/mtdblock2 stall=0 removable=1__
+    0.03 USB: usb_gadget_register_driver() 'g_file_storage'
+    0.04 USB: binding gadget driver 'g_file_storage'
+    0.05 USB: s3c2410_set_selfpowered()
+    g_file_storage gadget: File-backed Storage Gadget, version: 20 October 2004
+    g_file_storage gadget: Number of LUNs=1
+    g_file_storage gadget-lun0: ro=0, file: /dev/mtdblock3
+    0.06 USB: udc_enable called
+    smdk2410_udc: Pull-up enable
+
+连接设备usb到windows，windows系统会自动设备到一个新的U盘加入。格式化U盘，存入文件。卸载U盘后，在目标板上执行如下操作：
+
+# mkdir /mnt/gadget
+    # mount -t vfat /dev/mtdblock2 /mnt/gadget/
+    #ls
+
+可以看到windows存入U盘的文件。
+
+===== 二、usbnet功能的实现 =====
+
+配置内核支持usbnet
+
+<*>   USB Gadget Support  --->
+            USB Peripheral Controller (S3C2410 USB Device Controller)  --->
+             S3C2410 USB Device Controller
+    [*]       S3C2410 udc debug messages
+    <M>   USB Gadget Drivers
+    <M>     **Ethernet Gadget** (with CDC Ethernet support)
+    [*]      ** RNDIS support**
+
+2、编译内核
+
+#make zImage
+    #make modules
+
+在目录drivers/usb/gadget下生成g_ether.ko
+
+3、加载驱动，测试功能
+
+利用前面的生成的内核，启动系统后，加载g_ether.ko
+
+#insmod g_ether.ko
+ __   #ifconfig usb0 192.168.1.120__
+    ……
+    usb0 Link encap:Ethernet HWaddr 5E:C5:F6:D4:2B:91
+    inet addr:192.168.1.120 Bcast:192.168.1.255 Mask:255.255.255.0
+    UP BROADCAST RUNNING MULTICAST MTU:1500 Metric:1
+    RX packets:253 errors:0 dropped:0 overruns:0 frame:0
+    TX packets:43 errors:0 dropped:0 overruns:0 carrier:0
+    collisions:0 txqueuelen:1000
+    RX bytes:35277 (34.4 KiB) TX bytes:10152 (9.9 KiB)
+
+连接设备到windows，windows系统会提示安装驱动，根据提示安装上RNDIS驱动。这个驱动可以在网络上找到。此时windows会新生成一个网络连接，配置它的ip地址等信息。然后就可以和目标系统通过USB实现网络通讯了。

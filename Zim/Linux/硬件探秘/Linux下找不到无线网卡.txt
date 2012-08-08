@@ -1,0 +1,244 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-28T16:46:32+08:00
+
+====== Linux下找不到无线网卡 ======
+Created Monday 28 November 2011
+
+http://www.linuxforum.net/forum/showflat.php?Cat=&Board=embedded&Number=645940&page=0&view=collapsed&sb=5&o=0&fpart=1&vc=1&PHPSESSID=
+
+小弟刚买了华硕的WL－167G无线网卡，在LINUX下安装驱动，** ID 0b05:1723**，使用光盘自带的RT73_Linux_STA_Drv1.0.3.6
+在windows下面试过，硬件没问题
+
+内核模块已经加载了，usb设备也可以识别出来，但是ifconfig －a 为什么见不到无线接口啊？
+系统启动时提示bringing up rausb0 up: rt73 device doesn't seem to be present
+怎样确定驱动是否安装成功啊？
+
+主机Redhat9，内核2.4.20，按照reamde的操作如下：
+[root@dding Module]# **make config**
+-------------------- Ralink RT73 Station Configuration --------------------
+Linux kernel source directory : /usr/src/linux-2.4.20-8
+Module install directory : /lib/modules/2.4.20-8/kernel/drivers/net
+## 上述内核目录存在
+[root@dding Module]# **make all**
+..........
+ld -r rtmp_main.o mlme.o connect.o rtusb_bulk.o **rtusb**_io.o sync.o assoc.o auth.o auth_rsp.o rtusb_data.o rtmp_init.o sanity.o rtmp_wep.o rtmp_info.o rtmp_tkip.o wpa.o md5.o -o** rt73.o**
+## 编译未出现问题
+##建立目录/etc/Wireless/RT73STA/拷贝
+[root@dding Module]# cp __rt73.bin __/etc/Wireless/RT73STA/
+[root@dding Module]# __dos2unix__ rt73sta.dat
+dos2unix: converting file rt73sta.dat to UNIX format ...
+[root@dding Module]# cp rt73sta.dat /etc/Wireless/RT73STA/
+## 拷贝完毕上述目录存在此两个文件
+[root@dding Module]#** make install**
+install -m 755 -o 0 -g 0 **-d** /lib/modules/2.4.20-8/**extra**
+install -m 644 -o 0 -g 0 rt73.o /lib/modules/2.4.20-8/extra
+Network device directory **/etc/sysconfig/network-scripts**
+Module configuration file /etc/**modules.conf**
+Create 'ifcfg-rausb0' in /etc/sysconfig/network-scripts/
+append 'alias rausb0 rt73' to /etc/**modules.conf**
+**/sbin/depmod -a**
+## 安装完毕后modules.conf内容如下:
+alias eth0 8139too
+...............
+alias rausb0 rt73
+##安装完毕后__ ifcfg-rausb0__ 内容如下:  注意文件名的特殊格式：**ifcfg - 接口名称**
+DEVICE=rausb0
+ONBOOT=yes
+BOOTPROTO=dhcp
+[root@dding Module]# **modprobe rt73**
+##时间11.35
+[root@dding Module]# cat /**var/log/messages** |tail
+.............
+Apr 13 10:38:35 dding kernel: usb.c: __deregistering__ driver rt73
+Apr 13 10:38:35 dding kernel: <=== rtusb exit
+//## 为什么没有加载呢//
+[root@dding Module]#** insmod rt73.o**
+##时间11.40
+[root@dding Module]# cat /var/log/messages |tail
+..........
+Apr 13 10:36:46 dding kernel: rtusb init ====>
+Apr 13 10:36:46 dding kernel: usb.c: registered new driver rt73
+Apr 13 10:38:35 dding kernel: usb.c: **deregistering** driver rt73
+Apr 13 10:38:35 dding kernel: <=== rtusb exit
+## 为什么还是没有加载呢
+[root@dding Module]#** lsmod**
+Module Size Used by Not tainted
+**rt73 233632 0 (unused)**
+...............
+usbcore 78784 1 [rt73 hid usb-uhci ehci-hcd]
+ext3 70784 2
+## __列出模块已经加载了,可日志里为什么没有记录呢?__
+[root@dding Module]# cat /proc/sys/kernel/printk
+8 4 1 7
+## 当前__日志级别__最小为8阿?
+[root@dding Module]# **ifconfig -a**
+eth0 Link encap:Ethernet HWaddr 00:F0:4C:81:64:43
+inet addr:192.168.0.12 Bcast:192.168.0.255 Mask:255.255.255.0
+UP BROADCAST RUNNING MULTICAST MTU:1500 Metric:1
+................
+lo Link encap:Local Loopback
+inet addr:127.0.0.1 Mask:255.0.0.0
+## 为什么**没有出现无线端口**呢?
+[root@dding Module]# __lsusb__** | grep 0b05**
+
+string descriptor 1 invalid (bf bf; len=0)
+string descriptor 2 invalid (bf bf; len=0)
+Bus 001 Device 002: ID 0b05:1723
+idVendor 0x0b05
+##系统USB设备可以识别出网卡的ID 0b05:1723
+
+
+同样的环境我用**TP-LINK TL-WN321G**就可以使用，这款是采用RA-link的芯片，ID号__148F/2573__，驱动也是RT73的
+好多WL-167G的芯片ID都是__0B05/1706__，使用**RT250USB**驱动，而我的这个ID确为__0B05/1723__，使用rt73驱动，为什么同样的WL-167G芯片还不一样啊？
+
+现在系统启动时TP-LINK TL-WN321G可以正常识别，而WL-167G确提示
+Apr 13 21:25:17 dding kernel: usb.c: __USB device 2 (vend/prod 0xb05/0x1723) is not claimed by any active driver__. #这个信息很关键
+Apr 13 21:25:18 dding kernel: rtusb init ====>
+Apr 13 21:25:18 dding kernel: usb.c: registered new driver rt73
+Apr 13 21:25:15 dding ifup: **rt73 device rausb0** does not seem to be present, delaying initialization.
+Apr 13 21:25:15 dding network: Bringing up interface rausb0: failed
+
+好像USB可以识别出来，但**网络设备找不到驱动**，不知道为什么啊
+另外我加载模块时也只提示
+Apr 13 21:25:18 dding kernel: rtusb init ====>
+Apr 13 21:25:18 dding kernel: usb.c: registered new driver rt73
+没有其他信息，跟别人的都不一样，哪为高人能解释下呢？ 
+
+
+## WL-167G插入后**热插拔不支持**,说找不到设备
+Apr 13 23:00:09 dding kernel: hub.c: new USB device **00:1d.7-4**, assigned address
+4
+Apr 13 23:00:09 dding kernel: usb.c: __USB device 4 (vend/prod 0xb05/0x1723) is not claimed by any active driver.__
+Apr 13 23:00:12 dding /etc/hotplug/usb.agent: ... __no modules for USB product b05/1723/1__
+不知道是不是这个原因，如果是这样为什么不支持这个设备的热插拔呢？
+
+## TL-WN321G插入后（正常支持）
+Apr 13 23:14:10 dding kernel: idVendor = 0x148f, idProduct = 0x2573
+Apr 13 23:14:10 dding /etc/hotplug/net.agent: invoke ifup rausb0
+Apr 13 23:14:10 dding kernel: ip_tables: (C) 2000-2002 Netfilter core team
+Apr 13 23:14:10 dding kernel: rt73 driver version - 1.0.3.6
+Apr 13 23:14:13 dding /etc/hotplug/usb.agent: Setup rt73 for USB product 148f/2573/1
+Apr 13 23:14:13 dding devlabel: devlabel service started/restarted
+
+
+--------================================================------------------
+这是我从 ralink 官方网站下载的 RT73_Linux_STA_Drv1.0.3.6
+里的 __rtmp_def.h __里的 表示**支持的 device Id 和 vendor id 组合**的 数据结构:
+里面确实没有 你说的 device Id 和 vendor id的组合, **这个驱动本来就不支持你那设备**.
+
+//-------------------
+// VID/PID
+//-------------------
+
+#define RT73_USB_DEVICES { \
+{USB_DEVICE(0x148f,0x2573)}, /* Ralink */ \
+{USB_DEVICE(0x148f,0x2671)}, /* Ralink */ \
+{USB_DEVICE(0x18e8,0x6196)}, /* Qcom */ \
+{USB_DEVICE(0x18e8,0x6229)}, /* Qcom */ \
+{USB_DEVICE(0x1044,0x8008)}, /* Gigabyte */ \
+{USB_DEVICE(0x14b2,0x3c22)}, /* Conceptronic */ \
+{USB_DEVICE(0x0db0,0x6877)}, /* MSI */ \
+{USB_DEVICE(0x0db0,0xa874)}, /* MSI */ \
+{USB_DEVICE(0x0db0,0xa861)}, /* MSI */ \
+{USB_DEVICE(0x07b8,0xb21d)}, /* AboCom */ \
+{USB_DEVICE(0x0769,0x31f3)}, /* Surecom */ \
+{USB_DEVICE(0x1472,0x0009)}, /* Huawei-3Com */ \
+{USB_DEVICE(0x1371,0x9022)}, /* CNet */ \
+{USB_DEVICE(0x1371,0x9032)}, /* CNet */ \
+{USB_DEVICE(0x1631,0xc019)}, /* Billionton */ \
+{USB_DEVICE(0x1044,0x800a)}, /* Gigabyte */ \
+{USB_DEVICE(0x1690,0x0722)}, /* Askey */ \
+{USB_DEVICE(0,0)}} /* end marker */
+
+#endif // __RTMP_DEF_H__ 
+
+-----=================================================-----
+应该从这里下载驱动程序:
+
+http://dlsvr01.asus.com/pub/ASUS/wireless/WL-167g/Linux_1218.zip
+
+另外: 这里的 notice 明确写道, 让你**自己添加 device Id 和 vendor id 到 source code 中去**.
+
+Please check which driver you should use:
+1. Insert** ASUS 167g** into USB port.
+2. cat /proc/usb/devices.
+3. Check** vendor id and product id **of ASUS WLAN device.
+4. Follow the README file in related directory to compile and install driver.
+
+Vendor id predicted driver directory
+0B05 1706 rt25USB
+0B05 1707 rt25USB
+0B05 1723 rt73
+0B05 1724 rt73
+
+For rt73, please add ASUS IDs (red words) in the rtmp_def.h.
+#define RT73_USB_DEVICES { \
+
+{USB_DEVICE(0x148f,0x2573)}, /* Ralink */ \
+
+{USB_DEVICE(0x148f,0x2671)}, /* Ralink */ \
+
+{USB_DEVICE(0x18e8,0x6196)}, /* Qcom */ \
+
+{USB_DEVICE(0x18e8,0x6229)}, /* Qcom */ \
+
+{USB_DEVICE(0x1044,0x8008)}, /* Gigabyte */ \
+
+{USB_DEVICE(0x14b2,0x3c22)}, /* Conceptronic */ \
+
+{USB_DEVICE(0x0db0,0x6877)}, /* MSI */ \
+
+{USB_DEVICE(0x0db0,0xa874)}, /* MSI */ \
+
+{USB_DEVICE(0x0db0,0xa861)}, /* MSI */ \
+
+{USB_DEVICE(0x07b8,0xb21d)}, /* AboCom */ \
+
+{USB_DEVICE(0x0769,0x31f3)}, /* Surecom */ \
+
+{USB_DEVICE(0x1472,0x0009)}, /* Huawei-3Com */ \
+
+{USB_DEVICE(0x1371,0x9022)}, /* CNet */ \
+
+{USB_DEVICE(0x1371,0x9032)}, /* CNet */ \
+
+{USB_DEVICE(0x1631,0xc019)}, /* Billionton */ \
+
+{USB_DEVICE(0x1044,0x800a)}, /* Gigabyte */ \
+
+{USB_DEVICE(0x1690,0x0722)}, /* Askey */ \
+
+{USB_DEVICE(0x0B05,0x1723)}, /* ASUS */ \
+
+{USB_DEVICE(0x0B05,0x1724)}, /* ASUS */ \
+
+{USB_DEVICE(0,0)}} /* end marker */
+
+编辑者： goldenfort (07-04-14 09:40)
+
+----===============================================-
+谢谢大虾，应该是正解
+
+昨晚上快回去时也查看了下源码，确实我那版**驱动里USB—ID里没有我这个设备**
+你说的是1218版的，我的版本号是1036的，里面没有你说的这个Notice.doc文档，只有个readme说
+Please check** which driver** you should use:
+1. Insert ASUS 167g into USB port.
+2. cat /proc/usb/devices.
+3. Check vendor id and product id of ASUS WLAN device.
+4. Follow the README file in related directory to compile and install driver.
+
+Vendor id predicted driver directory
+0B05 1706 rt25USB
+0B05 1707 rt25USB
+0B05 1723 rt73
+0B05 1724 rt73
+
+本以为官方的文档不会错的，既然说支持我就相信了，找不到才想到去看那个USB—ID
+这个Notice.doc文档估计是用户反映后华硕才加上去的，还是.doc，明显不是原装的
+
+靠，华硕让我瞎折腾了一天，华硕网卡附带的光盘里的驱动就是跟1036版一样的，没有Notice.doc文档
+所以大家再遇到 0B05 1723 rt73版的wl－167G可都得注意了
+
+更改后问题解决，大家要注意：
+重新编译前要将以前的RT73卸载掉，同时将lib/moduals/extra/rt73.o删除掉，否则系统启动时由于rt73.o没有更新仍然不能识别出来 

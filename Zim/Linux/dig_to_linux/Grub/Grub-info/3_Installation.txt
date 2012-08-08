@@ -1,0 +1,29 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2010-08-03T21:41:04.717552
+
+====== 3 Installation ======
+Created Tuesday 03 August 2010
+
+In order to install GRUB as your boot loader, you need to first install
+the GRUB system and utilities under your UNIX-like operating system
+(*note Obtaining and Building GRUB::). You can do this either from the
+source tarball, or as a package for your OS.
+
+   After you have done that, you need to install the boot loader on a
+drive (floppy or hard disk). There are two ways of doing that - either
+using the utility `grub-install' (*note Invoking grub-install::) on a
+UNIX-like OS, or by running GRUB itself from a floppy. These are quite
+similar, however the utility might probe a wrong BIOS drive, so you
+should be careful.
+
+   Also, if you install GRUB on a UNIX-like OS, please make sure that
+you have an emergency boot disk ready, so that you can rescue your
+computer if, by any chance, your hard drive becomes unusable
+(unbootable).
+
+   GRUB comes with boot images, which are normally put in the directory
+`/usr/lib/grub/i386-pc'. Hereafter, the directory where GRUB images are
+initially placed (normally `/usr/lib/grub/i386-pc') will be called the
+"image directory", and the directory where the boot loader needs to
+find them (usually `/boot/grub') will be called the "boot directory".

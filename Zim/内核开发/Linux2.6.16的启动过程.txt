@@ -1,0 +1,90 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-15T16:27:27+08:00
+
+====== Linux2.6.16的启动过程 ======
+Created Friday 15 June 2012
+http://blog.donews.com/qiaolin/archive/2006/11/07/1073617.aspx
+
+从按下启动按钮，到登陆界面的出现，这期间就是Linux的启动过程。显然这期间有两个重要的任务要完成：初始化各种硬件、载入kernel映像并由kernel接管系统。研究Linux的启动过程对嵌入式开发有着不言而喻的重要性——因为这期间是和硬件关系最紧密的时候，是移植kernel到不同硬件平台的第一个关键环节。参考Kernel 2.6.16源代码和《Understanding the Linux Kernel，3th Edition》，总结出如下步骤：
+
+**1.BIOS启动部分：**
+Reset引脚一旦有信号，cpu就开始执行一段在rom中的**只读代码**，完成一些基本的硬件检测，所以被称为BIOS(Basic Input/Output System)。这些都是__以中断形式提供的服务__，只能运行在__实模式__。BIOS把检测硬件的结构打印到屏幕的同时存在一些table里面，最后根据配置从启动介质里面读取第一个扇区的内容到RAM的0x00007c00处，并跳转到那里执行。通常情况，就是我们的磁盘的第一个扇区，也即传统上的MBR，存放的代码是一个BootLoader。
+关于BIOS的启动可以参考：[[../X86/I386的体系结构.txt]]
+
+**2.BootLoader：**
+顾名思义，BootLoader就是负责引导操作系统的。对IBM PC来说，LILO和Grub是最流行的两个bootloader，并且后者更加高级，因为它能够__识别多种文件系统__。通常说来，一个sector是放不下一个bootloader的，故而分成__两部分__：以LILO为例，放在MBR的一部分把自己拷贝到0x00096a00，并且在0x00098000和0x000969ff之间建立一个实模式下的堆栈，把第二部分拷贝到0x00096c00处，并跳转到那执行。第二部分代码允许用户选择一个操作系统来启动，或者直接启动默认的操作系统。如果是Linux操作系统，LILO使用__BIOS提供的磁盘读写(中断)服务__，把kernel Image的前面几个扇区(**bootsect.S和Setup.S**)的内容拷贝到0x00090000，然后把Image的其余部分（被压缩）拷贝到__0x00100000(这个是内核代码在物理内存中实际位置)__，最后一步跳转到0x00090200处执行，也就是__Setup.S的第一条指令__。可以看到使用BootLoader之后，kernel里bootsec.S提供的功能被BootLoader替代了。
+
+**3.setup.S（arch\i386\boot\）：**
+这个文件里面的汇编代码的主要作用是**重新初始化一些硬件设备**，并且为kernel的运行准备必要的环境。
+a)    从BIOS里面__取出物理内存的描述__，并保存在一块安全的内存区域里。
+b)    设定键盘的速度。
+c)    初始化显卡。
+d)    初始化硬盘。
+e)    检查PS/2 总线。
+f)    检查高级电源管理(APM)。
+g)   初始化GDT和IDT。  参考：[[../X86/第四讲--段机制及linux实现.txt]]
+lidt idt_48   # load idt with 0,0
+lgdt  gdt_48  # load gdt
+h)   切换到保护模式   __#注意不是分页模式。__
+movw $1, %ax 	# protected mode (PE) bit
+lmsw %ax     		# This is it!
+i)   跳转到startup_32
+.byte 0×66, 0xea   # prefix + jmpi-opcode
+code32:
+.long 0×1000       # will be set to 0×100000
+# for big kernels
+.word __BOOT_CS
+ 
+这段代码表明上是数据，__实际上构造了一条跳转指令__jmpi  0×100000,__BOOT_CS。
+
+**4.startup_32：**（arch/i386/boot/compressed/head.S）
+正如名字所示，这些汇编代码是在**32位的保护模式**下执行。首先它用初始化段寄存器DS,ES,FS,GS:
+movl $(__BOOT_DS),%eax
+movl %eax,%ds
+movl %eax,%es
+movl %eax,%fs
+movl %eax,%gs
+lss stack_start,%esp
+紧接着把BSS的内容用0填充：
+xorl %eax,%eax       	#置eax为0
+    movl $_edata,%edi     #_edata为起始地址
+    movl $_end,%ecx       #_end为结束地址
+    subl %edi,%ecx        #循环次数
+    cld
+    rep                   #置BSS区域为0
+
+调用decompress_kernel函数(arch/i386/boot/compressed/misc.c)来解压内核，最后跳转到解压之后的内核所在的__0x00100000处__执行。这个地方的代码以arch/i386/kernel/head.S开始。
+
+**5.Head.S**(arch/i386/kernel/head.S)：
+这个文件__也是以startup_32标号开始第一条指令__。完成一下内容：
+a)    初始化gtdr、**段寄存器**和内核里面的BSS段。#在这以前由于没有使用分页机制，__所有的线性地址直接就是物理内存地址__。
+b)    建立一个内核页表，并把PGD的地址存入cr3，然后__使能paging单元。__
+movl $swapper_pg_dir-__PAGE_OFFSET,%eax   #PGT地址
+movl %eax,%cr3                            #存入cr3中
+/* set the page table pointer.. */
+movl %cr0,%eax
+orl $0×80000000,%eax                       #置cr0的PG位
+movl %eax,%cr0                           /* ..and set paging (PG) bit */
+参考：[[../X86/第八讲--linux内存初始化之一启用分页机制.txt]]  2．启用分页机制：
+c)        初始化esp：lss stack_start,%esp
+d)        调用setup_idt()函数。这个函数也在这个文件里面，每一个interrupt只是打印一句话就返回。
+e)         调用init/main.c的start_kernel函数。
+
+**6.start_kernel**(init/main.c):
+到现在为止，__kernel进入c语言的函数__，start_kernel需要完成内核的所有初始化工作，包括：
+a)         setup_arch()(arch\i386\kernel\setup.c)->paging_init()(arch\i386\mm\init.c)->pagetable_init().
+b)        初始化schedule: sched_init();
+c)        初始化memory zones: build_all_zonelists();
+d)        初始化伙伴系统：page_alloc_init();
+e)         处理命令行内核参数。
+f)         初始化中断，异常，软中断：trap_init()，init_IRQ(),softirq_init(); 参考：[[../Linux2.6.16的中断.txt]]
+g)        初始化系统时间和日期：time_init();
+h)        初始化slab算法：kmem_cache_init();
+i)         初始化pid的hash表：pidmap_init();
+j)         初始化信号系统：signals_init();
+k)        最后调用rest_init()函数。
+
+**7.rest_init**(init/main.c)：
+a)        首先创建1号进程init：kernel_thread(init, NULL, CLONE_FS | CLONE_SIGHAND);
+b)        然后调用schedule()。这样init函数就得到执行，根据配置，在init函数里面最终会执行文件系统的某一个可执行文件。

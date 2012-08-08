@@ -1,0 +1,121 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-17T11:31:38+08:00
+
+====== Coding with KParts ======
+Created Thursday 17 November 2011
+
+http://www.ibm.com/developerworks/library/l-kparts/
+
+Understanding the KParts component architecture
+David Faure (faure@kde.org), KDE developer, MandrakeSoft
+
+Summary:  This article discusses KParts, an architecture for graphical components, found in KDE, the K Desktop Environment. KParts allows applications requiring the same functionality to __share a component by embedding the graphical component into the application's window__. This article compares KParts with other component models, such as CORBA, and describes the main concepts used in KParts, including actions, plug-ins, part managers, and GUI merging.
+
+
+Date:  01 Feb 2002
+Level:  Introductory
+Also available in:   Japanese
+
+
+The K Desktop Environment, or KDE, is an easy-to-use, open source, graphical environment for Linux/UNIX, available with all Linux distributions. KDE is a powerful C++ development platform for graphical applications, based on the Qt toolkit. __Qt provides the widgets, the many utility classes, and a core object model. KDE provides an integrated network transparency, inter-process communication, a complete HTML browser, and KParts, an architecture for graphical components, which is presented here. __
+
+The notion of components is a key concept in today's software design. KParts allows applications that need the same functionality to share a component for this task by embedding the graphical component into the application's window.
+
+This article discusses what KParts is, what it isn't, why it is needed, and how it works. It compares KParts with other __component models __(in particular, out-of-process component models), and then describes the main concepts used in KParts, including actions, plug-ins, part managers, and GUI merging. The article concludes by showing how the KParts component model is used throughout KDE, in particular in Konqueror and KOffice.
+
+===== KParts components: viewers and editors =====
+
+KParts applies specifically to **graphical components**, such as viewers and editors, for any kind of data. Example viewers, also called "**read-only parts**," are the directory views in Konqueror, the HTML browser widget, the image viewers, the DVI viewer, the PS/PDF viewer, and the text viewers. Editors, or "**read-write parts**," are components that can modify data, such as text editors and KOffice applications.
+
+The most important part of a component is its__ interface__. For instance, KDE's file manager, Konqueror (see Figure 1 below), is able to __embed__ any kind of viewer, for any kind of file, because all viewers provide the **same** interface.
+
+Figure 1. The Konqueror file manager in action
+{{~/sync/notes/zim/Linux/KDE/Coding_with_KParts/konqueror.jpg}}
+Konqueror in use
+
+A graphical component is not just a widget, such as those Qt provides. The main difference between a widget and a component is that __a component comes with additional user interface items__, such as menu items and toolbar buttons that the hosting application integrates into its own user interface.
+
+It is important to understand that KParts__ isn't an all-purpose object model__. For that, KDE uses QObject, the base class for all objects in Qt and KDE. QObject provides the functionality common to all objects: naming, parent/child relationship, signals and slots, event model, and properties.
+
+==== Why use components? ====
+
+The main purpose of creating components is to __enable use of the same component in applications needing similar functionality__. But even when a component is used only in a single application, the __high degree of modularization__ given by a component architecture makes it easier to work in parallel, and to make sure that the introduction of new features doesn't introduce regressions (for example, the new feature doesn't break the existing features). For instance, Konqueror gained a whole new directory view for managing files related to a Concurrent Version System (CVS) server, with additional toolbar buttons and menu items, without changing a single line of code in Konqueror itself.
+
+==== Finding an appropriate KParts component ====
+
+The traditional way to share anything between applications is to place code in a** shared library** and link to it from the application binary. This approach allows easy access to the shared code. However, this approach is inflexible because it doesn't allow **components to be installed **after installing the application. To gain __run-time access to components__, the application dynamically locates and opens the shared library containing the component.
+
+If the application does not have a built-in viewer or editor for a certain type of data, it needs to find an appropriate component to open based on its capabilities. Each component publishes__ the type of service__ it implements (for instance "Viewer") into a "service" file, together with the __type of file__ (for instance "Image"), and various details that help KDE to locate and open the library containing the component. The__ KDE Trader__, a facility provided by the KDE libraries, offers a way to query the installed service files to find which services match the criteria given by the application.
+
+For instance, when the Print Preview button is clicked in a KOffice application, it will **query the Trader for a service that implements a viewer associated with the type of file "postscript."** If any such component is available (KGhostView provides one), the Print Preview window will** embed it**; otherwise it launches a stand-alone PostScript viewer as a fallback.
+
+=== The four KParts concepts ===
+
+KParts is the **framework** for KDE parts based on** standard KDE/Qt objects**, such as QWidget and KMainWindow. It defines a very simple set of classes: Part, Plug-in, MainWindow, and Part Manager.
+ 
+* A **Part** is the name for a graphical KDE component. It provides** a widget**, of course, but also the** actions** that give access to the Part's functionality, as well as an XML file that describes the **layout** of those actions in the user interface.
+* A **Plug-in** is a small piece of functionality that is not implemented by an embedded widget but that defines some actions to be merged in the application's user interface -- an example is the Calculator Plug-in for KSpread (KOffice's spreadsheet program). It can be graphical, however, like a dialog box or a separate window popping up, or it can be an application-specific plug-in and act on the application itself, such as a spell checker for a word processor, for example.
+* A **MainWindow** is a special KDE main window that has some additional functionality for embedding Parts: support for MainWindow plug-ins and giving Parts access to the window caption and to the status bar. Standard KDE main windows and even dialogs can embed parts but without those additional features.
+* A **Part Manager** is a more abstract object whose task is to handle the activation and the deactivation of the Parts. Of course, this is useful only for MainWindows that embed more than one Part, such as Konqueror (where each view is a Part) or KOffice documents (where main documents and embedded documents are KParts components). Stand-alone viewers, which embed only their own part, don't need a Part Manager.
+
+
+=== KParts versus COM/CORBA models ===
+
+When starting the development of KDE 2.0, the KDE team focused on using CORBA, a middleware framework for distributed object communication. However, during development, it turned out that while CORBA is a cleanly designed architecture useful for large and high-latency applications (such as database applications), it is not suited for tasks such as user interfaces where speedy responses are needed. CORBA is distributed by nature, which is good if distributed objects are needed, but a burden if they aren't and you no longer need them to embed components.
+
+CORBA was used for two very different things: graphical component embedding and interprocess communication (IPC). While KParts now provides the former, the Desktop Communications Protocol, or DCOP, provides the latter. A desktop obviously needs interprocess communication (for example, to synchronize data and settings between applications), but this is independent from component embedding.
+
+=== Advantages of using KPARTS over CORBA ===
+
+    KParts components have been made easy to develop and use. CORBA, on the other hand, has a very steep learning curve, which includes having to learn another language (IDL) and new data types.
+    The KParts architecture is "lightweight" when compared to CORBA: a single process holds the application and the components, as opposed to one process per component.
+    KParts provides document management (keeping track of the modified status, support for loading and saving, with built-in network transparency).
+    KParts provides tight integration (user interface merging and consistent look-and-feel).
+    In-process components are more easily integrated, with all widgets using the native toolkit, and calls being synchronous.
+    Some distributed objects architectures (such as KDE's previous CORBA-based architecture) involve a complete redefinition of the API for graphical objects: for example, creating a menu item from a component isn't the same as creating a menu item with the native toolkit. KParts, on the other hand, doesn't require that existing components be rewritten to make them accessible via the KParts architecture.
+
+=== Disadvantages of using KPARTS over CORBA ===
+
+    KParts components cannot communicate with CORBA/COM applications.
+    KParts are KDE-specific and C++ only.
+    A single component can bring down the entire application.
+    Library loading and unloading introduces some issues, such as the need to take care of static objects.
+
+The main limitation of KParts is its inability to use components written in other languages or with other toolkits. However, an out-of-process component model for KParts, called XParts, has been developed for this purpose. The application sees a normal KParts component (in the same process), but it is in fact a proxy that communicates with another process (using DCOP), where the component is really located. This technology is being used to develop a text-editor component based on vi -- but it is still under development.
+
+
+
+=== The KParts framework ===
+
+__"Actions" __are a central concept for graphical components. If an application needs a menu item for "Copy" in the Edit menu, and a toolbar button for "Copy," the traditional method has been to create both independently, and to make sure that both are enabled or disabled at the same time.
+
+Because those two items are about** the same action**, copying, the idea behind actions is to create a single action so that the application will have only one item to handle. When "__plugging__" the action into a menu, a menu item is created, whereas plugging it into a toolbar creates a button. This approach also makes the whole user interface configurable, with the GUI layout being described in an XML file separate from the code of the application. KDE's toolbar editor, for instance, simply saves a modified version of the XML file that defines which actions should go to the toolbars and in which order. This technology is called "__XML-GUI__."
+
+
+=== GUI merging ===
+
+When an application embeds a Part, it merges the Part's user interface into its own. A well-known example of this in the non-Linux world is the menu merging done by Microsoft Office when embedding one document into another.
+
+In KDE, menu merging uses the XML-GUI technology previously described. All applications and all components define the layout of their user interface in an XML file. When embedding a Part into an application or a Plug-in into a Part, the two XML trees are merged using optional predefined merging points in the hosting application.
+
+The concepts of actions and GUI merging have been extended to all of KDE, even applications unrelated to KParts. A standard GUI layout is merged with the one defined by the application so it doesn't need to specify that New, Open, Save, Close, and so on go into the File menu, or that Copy, Cut, Paste, and so on go into the Edit menu. If the application simply creates a Cut action, it will automatically go into the Edit menu, unless the application overrides the standard layout for this menu in its XML file. This makes it very easy to develop a graphical KDE application.
+
+
+=== KParts extensions for use in Konqueror and KOffice ===
+
+KDE provides many KParts components, including the HTML viewer, text editors, an image viewer, and Konqueror's directory views. Konqueror itself is basically a generic host for all read-only parts. KParts was designed to be as simple as possible: in a plain "read-only part," the part can only display the contents of the URL the application passes to it. This is the primary function of any viewer and is all that an application needs to display an image, a PostScript file, and so on. However, this is not enough for a complete integration of an HTML Part, for instance, into a browser.
+
+For a better integration with browsers, an additional interface called BrowserExtension is defined by KParts and can be implemented by components. The extension allows components to save and restore their state when the user clicks the Back and Forward buttons in the browser, and it allows parts to request a URL be opened (for example, when clicking on a link).
+
+Note that this is a working example of how to extend the functionality by aggregating objects -- adding a BrowserExtension to a ReadOnlyPart -- as opposed to subclassing. Aggregating allows any number of extensions to be added, without the need for defining all possible combinations of subclasses.
+
+KParts is also used in more high-level interfaces, such as the TextEditor interface. The former is a complete interface that models the API of a text editor so that applications can interchangeably use any text editor available that implements this interface. vi users will love being able to type mail in KMail using a vi text-editor component (such a component is under development). A general ImageViewer interface is under development as well.
+
+But the largest software project that utilizes KParts is KOffice. KParts is the new object framework used in KOffice for embedding documents into other documents, such as embedding a spreadsheet object from KSpread into a KWord (the word processor) document. KOffice documents are KParts components, except that the KOffice architecture allows multiple views for a single document, whereas KParts has a single widget for a part. The choice of basing the KOffice document model on KParts makes it possible to view a KOffice document as a simple read-only part, allowing read-only KOffice documents to be embedded into Konqueror to view them. Because KParts components are in-process, there is no speed difference between working on the container part (the word processor in the above example) and the embedded part (the spreadsheet in the above example).
+
+KParts is the component model that allows so much integration in KDE, making it easy to reuse existing components to view or edit any kind of data. You can create a "generic viewer" window to display any kind of file in an application with only five simple lines of code. With KParts, any KDE application can gain access to the numerous components provided by KDE. And anyone can develop a component that will be used by Konqueror as well as other KParts-based applications to display a new kind of file, for instance, a company's own files with its specific data format.
+
+=== Next steps ===
+
+Stay tuned for our upcoming KParts tutorials, which will show how to create and use KParts components. In the meantime, check out the resources below to learn more about KDE and KParts.

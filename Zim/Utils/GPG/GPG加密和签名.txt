@@ -1,0 +1,343 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-29T19:48:07+08:00
+
+====== GPG加密和签名 ======
+Created Thursday 29 December 2011
+http://lagignition.blog.163.com/blog/static/1287300232009101082517154/
+
+GnuPG全称__GNU Privacy  Guard__，它是基于**公钥/私钥体系**的加密工具PGP（__Pretty Good Privacy__）的开源版本它遵循OpenPGP标准。你可以免费使用，自由传播，并可以获得它的源代码。可以用于对Email、文件及其他数据的加密与验证，确保通信数据的保密性、完整性和真实性。
+
+===== 如何获得 =====
+
+可以在其官方网站获得源代码和编译好的程序，当前版本是1.4.6。
+如果在Windows下使用，则安装后需要把安装目录添加进PATH环境变量以便在命令行下使用。GnuPG的__kering（密钥环）__默认保存在 C:/Documents and Settings/你的用户名/ApplicationData/gnupg目录下的话，要保存在其他地方，就得设置GNUPGHOME环境变量。具体可以看其安装目录下附带的文档。
+
+===== PGP原理及规则 =====
+
+在介绍GPG前，先让我们看看PGP的基本原理及应用规则。
+
+PGP使用**双密匙**来加密数据。每个使用PGP加密技术的人都要创建一对密匙，一个叫做公匙，另一个叫做私匙。公匙可被广泛传播，你可以贴在自己的网页上或发到专门的__公钥管理网站__上等等。私匙属于个人信息，绝不应该泄漏给其他人。
+
+公匙和私匙**相互作用**对数据进行加密及解密。被公匙加密的数据只能被私匙解密，被私匙加密的数据也只能被一个公匙解密。这样就可以实现__双重认证__。
+
+例如，A要给B发信息：
+
+	* A不想信息被其他人看见，怎么办？
+
+      首先A必须通过某些途径得到B的公钥。在发送信息前，使用B的公匙对信息进行加密。这样只有B用对应的私匙才能解密收到的信息。所以就保证了信息传输的安全，这就是PGP所谓的**加密(encryption)与解密(decryption)**。
+
+	* B收到信息后如何确定这信息是A发的呢？
+
+      首先A必须通过某种途径把自己的公钥发给B。在发送信息前，A先用自己的__密钥加密信息__。B收到信息后就可以使用A的公钥来对收到的信息进行验证。这样就能确定信息来自A，这就是PGP所谓的**签名(signature)与验证(verification)**。
+
+总的来说，__公钥可以用来加密和认证，私钥可以用来签名和解密。__
+
+===== 如何使用GnuPG来生成自己公钥/私钥 =====
+
+你首先要创建一个自己的**密钥对**，使用如下命令：
+
+gpg --gen-key
+
+期间会要求你输入个人信息如用户名，邮件地址，注释等，最好选有意义的。最后会让你输入passphrase（口令），这就是咱们通常意义上的密码了，解密和签名时都用得着的，按设密码的一般规则设就行了。除了那些Yes/No的问题，其他选项大可直接回车默认。
+注意：一旦有任何一个丢失，则这对密钥就需要作废。
+
+这里假设我们生成了一个名为foooo的用户：
+
+用户名 (注释可选)
+
+foooo (nobody)
+
+接着你便可以使用下面之一的命令**导出自己的公钥**了(如果本地又对各密钥对，则可以用参数__-u__来指定哪一个)
+
+gpg --export foooo > foooo.pk             ::导出为二进制形式，后缀名可以自己取
+gpg --armor --export foooo > foooo.pk  ::导出为ASCII字符形式，可以用文本编辑工具打开查看
+
+下面是文本形式公钥的一个例子
+
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+Version: GnuPG v1.4.6 (MingW32)
+
+mQGiBEV4GRURBAD9STM2AvmHRej94kjIbCfOYXZX6StxK8eU2M0d4j94KAgXe4s3
+zxV6F1AyXxZAI8jVf/wyApE7iTGQ29B+kaMf4MRwhc3F80dz7R6Zh7TkUiqCP9q/
+................................................................
+................................................................
+a8TUvPWylvqISQQYEQIACQUCRXgZHgIbDAAKCRC8O+Bl+/W+DU02AJ9Xq/5M5yiw
+2tpiz/mSOXZzo+i8RQCgjZljVuAB9an8zFrSV52fzq9GhH8=
+=N3TB
+-----END PGP PUBLIC KEY BLOCK-----
+
+现在你就可以把你的公钥传到网上或发给别人了。
+
+获得别人的公钥之后可以使用下面的命令把公钥__导入自己的钥匙圈，在认证时会自动调用。__
+
+gpg --import someone.pk ::后缀名并不一定是pk，这里只是举例
+
+===== 如何使用GnuPG来加密/解密 =====
+
+你有一个文件beloved.txt要加密后发给你的GF，首先你得有GF的公钥，假设GF的**公钥的用户信息**为
+ooyymm keti@butique.com
+公钥为： ooyymm
+可以用gpg --list-keys来查看本地的所有公钥。
+
+加密命令如下
+
+--recipient选项指定接受者，也就是你要用__谁的公钥__来加密。在GnuPG里面指定公钥或私钥可以使用该公钥或私钥的__用户名、注释、邮件地址__等。可以只输入一部分，但要唯一，GnuPG会查找用户列表来找到所需的公钥。
+
+gpg --encrypt --recipient ooyymm beloved.txt ::生成.gpg的二进制加密文件
+gpg --encrypt **--armor** --recipient ooyymm beloved.txt ::生成.asc得ASCII码签名文件
+
+比如，使用邮箱地址来指定密钥:
+
+gpg --encrypt --recipient keti@butique.com beloved.txt
+
+当然GnuPG还可以通过其他手段来指明你要使用哪个公钥或私钥，具体请参看GnuPG的文档。
+
+现在可以把加密后生成beloved.txt.gpg或beloved.txt.asc文件发给你GF吧。
+
+你的GF收到文件后，必须使用自己的相应的私钥来解密，命令如下:
+
+gpg --decrypt beloved.txt.gpg > beloved.txt
+gpg --__decrypt__ beloved.txt.asc > beloved.txt
+
+这个过程需要输入passphrase。
+ 
+
+===== 如何使用GnuPG来签名/验证 =====
+__GPG使用公钥加密的数据可以用私钥解密，同样，使用私钥加密的数据可以用公钥解密__。
+
+==== 签名过程： ====
+
+1.在主机上创建密钥对
+
+host # gpg --gen-key
+
+按提示操作即可。操作完成后可以**查看已经创建的公钥**：
+
+host # gpg --list-keys
+
+2.然后使用密钥对文件进行签名，二进制签名：
+
+host # gpg -s patch.tar.gz
+
+创建的一个名为patch.tar.gz.gpg的文件就是签名后的包，如果想指定签名后的文件名字，可以用以下命令:
+
+host # gpg -o pach.tar.gz.sig -s patch.tar.gz
+
+要对对__文本文件进行明文签名__的话：
+
+host # gpg --clearsign hello.txt
+
+明文签名默认文件名为原文件名后加.asc，也可以使用-o 参数来指定文件名。
+ 
+
+==== 验证签名过程： ====
+签名方(host)将自己的公钥导出后发给接收方，接收方(target)将该公钥导入到本地的公钥环。
+
+1.导出公钥
+
+host # gpg -o pub.key --export userid
+
+或者：
+
+host # gpg --export userid >pub.key
+
+userid是在创建密钥的时候输入的用户名。pub.key是二进制文件，如果想导出文本文件，加入-a参数即可：
+
+host # gpg -a --export userid >pub.key.txt
+
+2.导入公钥
+target # gpg --import pub.key
+
+target # gpg --import pub.key
+
+target # gpg --ignore-time-conflict --improt pub.key
+
+3__.验证公钥__
+
+**target** # gpg --edit-key userid
+
+>fpr
+
+    查看这个__公钥的指纹__，核对指纹来**确认这个key正确无误**。
+
+>sign
+
+    签署
+
+->trust
+
+   信任
+
+>quit
+
+   退出，问保存与否输入y。
+
+4.验证签名：
+
+target # gpg --verify patch.tar.gz.gpg
+
+忽略时间校验：
+
+target # gpg --ignore-time-conflict --verify patch.tar.gz.gpg
+
+会显示签名校验的结果。
+
+导入key来校验看上去比较麻烦，那么还有一种更简单的方式，直接在校验的时候通过参数来指定使用哪个key文件（**必须是二进制的文件**，文本文件不可用）：
+
+target # gpg __--keyring pub.key__ --verify patch.tar.gz.gpg如   果连时间都懒得设（有时候是没法设），那么也可以忽略时间戳的验证：
+
+target # gpg --keyring pub.key --ignore-time-conflict --verify patch.tar.gz.gpg
+
+附录：签名与验证过程
+
+ms1@localhost:~/Desktop/work/sign> **gpg --gen-key**
+gpg (GnuPG) 2.0.9; Copyright (C) 2008 Free Software Foundation, Inc.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+Please select what kind of key you want:
+   (1) DSA and Elgamal (default)
+   (2) DSA (sign only)
+   (5) RSA (sign only)
+Your selection? 1
+DSA keypair will have 1024 bits.
+ELG keys may be between 1024 and 4096 bits long.
+What keysize do you want? (2048)
+Requested keysize is 2048 bits
+Please specify how long the key should be valid.
+         0 = key does not expire
+      <n>  = key expires in n days
+      <n>w = key expires in n weeks
+      <n>m = key expires in n months
+      <n>y = key expires in n years
+Key is valid for? (0)
+Key does not expire at all
+Is this correct? (y/N) y
+
+You need a user ID to identify your key; the software constructs the user ID
+from the Real Name, Comment and Email Address in this form:
+    "Heinrich Heine (Der Dichter) <heinrichh@duesseldorf.de>"
+
+Real name: lagignition
+Email address: lagignition@163.com
+Comment:
+You selected this USER-ID:
+    "lagignition <lagignition@163.com>"
+
+Change (N)ame, (C)omment, (E)mail or (O)kay/(Q)uit? O
+You need a Passphrase to protect your secret key.
+
+We need to generate a lot of random bytes. It is a good idea to perform
+some other action (type on the keyboard, move the mouse, utilize the
+disks) during the prime generation; this gives the random number
+generator a better chance to gain enough entropy.
+asdfasfdasdfasdfsadfsadf
+asidpfupjxzcv
+asdfiasjdf
+wefijklasdf
+We need to generate a lot of random bytes. It is a good idea to perform
+some other action (type on the keyboard, move the mouse, utilize the
+disks) during the prime generation; this gives the random number
+generator a better chance to gain enough entropy.
+gpg: key BC123ABC marked as ultimately trusted
+public and secret key created and signed.
+
+gpg: checking the trustdb
+gpg: 3 marginal(s) needed, 1 complete(s) needed, PGP trust model
+gpg: depth: 0  valid:   2  signed:   0  trust: 0-, 0q, 0n, 0m, 0f, 2u
+pub   1024D/BC123ABC 2009-11-06
+      Key fingerprint = A943 4978 4DF9 C9A5 726C  9163 7166 AAF9 BC12 3ABC
+uid                  lagignition <lagignition@163.com>
+sub   2048g/586310BF 2009-11-06
+
+
+ms1@localhost:~/Desktop/work/sign>** gpg -s -u lagignition test.txt**
+
+You need a passphrase to unlock the secret key for
+user: "lagignition <lagignition@163.com>"
+1024-bit DSA key, ID BC123ABC, created 2009-11-06
+
+
+ms1@localhost:~/Desktop/work/sign> **gpg -o pub_lagignition.key --export lagignition**
+
+ 
+
+[root@localhost sign]# **gpg --import pub_lagignition.key**
+gpg: /root/.gnupg/trustdb.gpg: trustdb created
+gpg: key BC123ABC: public key "lagignition <lagignition@163.com>" imported
+gpg: Total number processed: 1
+gpg:               imported: 1
+
+
+[root@localhost sign]# **gpg --verify test.txt.gpg**
+gpg: Signature made Thu 05 Nov 2009 09:24:48 PM EST using DSA key ID BC123ABC
+gpg: Good signature from "lagignition <lagignition@163.com>"
+__gpg: WARNING: This key is not certified with a trusted signature!   #这需要对获得的公钥的fingerprint进行核对，然后签署它有效。__
+gpg:          There is **no indication** that the signature belongs to the owner.
+Primary key fingerprint: A943 4978 4DF9 C9A5 726C  9163 7166 AAF9 BC12 3ABC
+
+
+[root@localhost sign]# __gpg --edit-key lagignition__
+gpg (GnuPG) 1.4.5; Copyright (C) 2006 Free Software Foundation, Inc.
+This program comes with ABSOLUTELY NO WARRANTY.
+This is free software, and you are welcome to redistribute it
+under certain conditions. See the file COPYING for details.
+
+
+pub  1024D/BC123ABC  created: 2009-11-06  expires: never       usage: SC 
+                    ** trust: unknown ** **     validity: unknown**
+sub  2048g/586310BF  created: 2009-11-06  expires: never       usage: E  
+[ unknown] (1). lagignition <lagignition@163.com>
+
+Command> __fpr__
+pub   1024D/BC123ABC 2009-11-06 lagignition <lagignition@163.com>
+ Primary key __fingerprint__: A943 4978 4DF9 C9A5 726C  9163 7166 AAF9 BC12 3ABC
+
+Command> **trust    #签署导入的公钥有效**
+pub  1024D/BC123ABC  created: 2009-11-06  expires: never       usage: SC 
+                     trust: unknown       validity: unknown
+sub  2048g/586310BF  created: 2009-11-06  expires: never       usage: E  
+[ unknown] (1). lagignition <lagignition@163.com>
+
+Please decide how far you __trust this user__ to correctly verify other users' keys
+(by looking at passports, checking fingerprints from different sources, etc.)
+
+  1 = I don't know or won't say
+  2 = I do NOT trust
+  3 = I trust marginally
+  4 = I trust fully
+  5 = I trust ultimately
+  m = back to the main menu
+
+Your decision? 5
+Do you really want to **set this key to ultimate trust**? (y/N) y
+
+pub  1024D/BC123ABC  created: 2009-11-06  expires: never       usage: SC 
+                    __ trust: ultimate__      validity: unknown
+sub  2048g/586310BF  created: 2009-11-06  expires: never       usage: E  
+[ unknown] (1). lagignition <lagignition@163.com>
+Please note that the shown key validity is not necessarily correct
+unless you restart the program.
+
+Command> quit
+[root@localhost sign]#** gpg --verify test.txt.gpg    #没有警告了！**
+gpg: Signature made Thu 05 Nov 2009 09:24:48 PM EST using DSA key ID BC123ABC
+gpg: checking the trustdb
+gpg: 3 marginal(s) needed, 1 complete(s) needed, PGP trust model
+gpg: depth: 0  valid:   1  signed:   0  trust: 0-, 0q, 0n, 0m, 0f, 1u
+gpg: Good signature from "lagignition <lagignition@163.com>"
+[root@localhost sign]# echo $?
+0
+
+[root@localhost sign]# gpg --verify __-u lagignition__ test.txt.gpg
+gpg: Signature made Thu 05 Nov 2009 09:24:48 PM EST using DSA key ID BC123ABC
+gpg: Good signature from "lagignition <lagignition@163.com>"
+
+
+[root@localhost sign]# gpg -o test.txt test.txt.gpg
+gpg: Signature made Thu 05 Nov 2009 09:24:48 PM EST using DSA key ID BC123ABC
+gpg: Good signature from "lagignition <lagignition@163.com>"
+
+ Reference:
+http://bbs.wmzhe.com/redirect.php?tid=264&goto=lastpost

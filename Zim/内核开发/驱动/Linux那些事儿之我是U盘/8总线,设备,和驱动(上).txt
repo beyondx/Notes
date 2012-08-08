@@ -1,0 +1,84 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-01T11:02:55+08:00
+
+====== 8总线,设备,和驱动(上) ======
+Created Sunday 01 July 2012
+
+struct bus_type中为devices和drivers准备了两个链表, 代表device的结构体struct device中又有两个成员,struct bus_type *bus和struct device_driver *driver,同样,代表driver的结构体struct device_driver同样有两个成员,struct bus_type *bus和__struct list_head__ devices,
+
+struct device和struct device_driver的定义和struct bus_type一样,在include/linux/device.h中.凭一种男人的直觉,可以知晓,struct device中的bus记录的是这个设备连在哪条总线上,driver记录的是这个设备用的是哪个驱动,反过来,struct device_driver中的bus代表的也是**这个驱动属于哪条总线**,devices记录的是这个驱动支持的那些设备,没错,是devices(复数),而不是device(单数),因为__一个驱动程序可以支持一个或多个设备,反过来一个设备则只会绑定给一个驱动程序__.
+
+于是我们想知道,关于bus,关于device,关于driver,他们是如何建立联系的呢? 换言之,这三个数据结构中的指针是如何被赋值的?绝对不可能发生的事情是,一旦为一条总线申请了一个struct bus_type的数据结构之后,它就知道它的devices链表和drivers链表会包含哪些东西,这些咚咚__一定不会是先天就有的,只能是后天填进来的__.而具体到usb系统,完成这个工作的就是usb core.
+
+usb core的代码会进行__整个usb系统的初始化__,比如申请struct bus_type usb_bus_type,然后会__扫描usb总线__,看线上连接了哪些usb设备,或者说root hub上连了哪些usb设备,比如说连了一个usb键盘,那么就为它准备一个struct device,根据它的实际情况,为这个struct device赋值,并插入devices链表中来.又比如root hub上连了一个普通的hub,那么除了要为这个hub本身准备一个struct device以外,还得继续扫描看这个hub上是否又连了别的设备,有的话继续重复之前的事情,这样一直进行下去,直到完成整个扫描,最终就把usb_bus_type中的devices链表给建立了起来.
+
+那么drivers链表呢?这个就__不用bus方面主动了,而该由每一个driver本身去bus上面登记__,或者说挂牌.具体到usb系统,每一个usb设备的驱动程序都会有一个struct usb_driver结构体,其代码如下,来自include/linux/usb.h
+
+    485 /* -------------------------------------------------------------------------- */
+    486
+    487 /**
+    488  * __struct usb_driver__ - identifies USB driver to usbcore
+    489  * @owner: Pointer to the module owner of this driver; initialize
+    490  *      it using **THIS_MODULE**.
+    491  * @name: The driver name should be unique among USB drivers,
+    492  *      and should normally be **the same as the module name**.
+    493  * @probe: Called to see __if the driver is willing to manage a particular__
+    494  *  __    interface on a device__.  If it is, probe returns zero and uses
+    495  *      dev_set_drvdata() to associate driver-specific data with the
+    496  *      interface.  It may also use usb_set_interface() to specify the
+    497  *      appropriate altsetting.  If unwilling to manage the interface,
+    498  *      return a negative errno value.
+    499  * @disconnect: Called when the interface is no longer accessible, usually
+    500  *      because its device has been (or is being) disconnected or the
+    501  *      driver module is being unloaded.
+    502  * @ioctl: Used for drivers that want to talk to userspace through
+    503  *      the "usbfs" filesystem.  This lets devices provide ways to
+    504  *      expose information to user space regardless of where they
+    505  *      do (or don't) show up otherwise in the filesystem.
+    506  * @suspend: Called when the device is going to be suspended by the system.
+    507  * @resume: Called when the device is being resumed by the system.
+    508  * @id_table: __USB drivers use ID table to support hotplugging__.
+    509  *      Export this with MODULE_DEVICE_TABLE(usb,...).  This must be set
+    510  *      or your driver's probe function will never get called.
+    511  * @driver: the driver model core driver structure.
+    512  *
+    513  * USB drivers __must__ provide a name, probe() and disconnect() methods,
+    514  * and an id_table.  Other driver fields are optional.
+    515  *
+    516  * **The **__id_table__** is used in hotplugging**.  It holds a set of descriptors,
+    517  * and specialized data may be associated with each entry.  That table
+    518  * is used by both user and kernel mode hotplugging support.
+    519  *
+    520  * The probe() and disconnect() methods are called in a context where
+    521  * they can __sleep__, but they should avoid abusing the privilege.  Most
+    522  * work to connect to a device should be done when the device is opened,
+    523  * and undone at the last close.  The disconnect code needs to address
+    524  * concurrency issues with respect to open() and close() methods, as
+    525  * well as forcing all pending I/O requests to complete (by unlinking
+    526  * them as necessary, and blocking until the unlinks complete).
+    527  */
+    528 struct usb_driver {
+    529         struct module *owner;
+    530
+    531         const char __*name__;
+    532
+    533         int (*probe) (struct usb_interface *intf,
+    534                       const struct usb_device_id *id);
+    535
+    536         void (*disconnect) (struct usb_interface *intf);
+    537
+    538         int (*ioctl) (struct usb_interface *intf, unsigned int code, void *buf);
+    539
+    540         int (*suspend) (struct usb_interface *intf, u32 state);
+    541         int (*resume) (struct usb_interface *intf);
+    542
+    543         const struct usb_device_id __*id_table__;
+    544
+    545         struct device_driver __driver__;
+    546 };
+    547 #define to_usb_driver(d) container_of(d, struct usb_driver, driver)
+
+看似很长一段,实际上也就是注释为主.而此刻我们只需注意到其中的struct device_driver driver这个成员,usb core为每一个设备驱动准备了一个函数,让它把自己的这个struct device_driver driver插入到usb_bus_type中的drivers链表中去.而这个函数正是我们此前看到的__usb_register__.
+
+而与之对应的usb_deregister所从事的正是与之相反的工作,把这个结构体从drivers链表中删除.可以说,usb core的确是用心良苦,为每一个usb设备驱动做足了功课,正因为如此,作为一个实际的usb设备驱动,它在初始化阶段所要做的事情就很少,很简单了,直接调用usb_register即可.事实上,没有人是理所当然应该为你做什么的,但usb core这么做了.所以每一个写usb设备驱动的人应该铭记,usb device driver绝不是一个人在工作,在他身后,是usb core所提供的默默无闻又不可或缺的支持.

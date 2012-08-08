@@ -1,0 +1,7 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-07T13:05:21+08:00
+
+====== FAQ ======
+Created 星期二 07 六月 2011
+

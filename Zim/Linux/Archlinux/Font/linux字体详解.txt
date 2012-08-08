@@ -1,0 +1,252 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-28T14:11:25+08:00
+
+====== linux字体详解 ======
+Created Saturday 28 May 2011
+http://blogold.chinaunix.net/u2/63996/showart_702667.html
+警告
+万一本文有更新的版本, 也许可以在 http://fractal.csie.org/~eric/fontconfig 找到，任何使用本文中提及的方法所造成之社会成本损失将不会被负责。
+
+引言
+「为什么我把 xxx 升了之后字就变难看了？」
+「X 的字真是又丑又难设」
+
+「Fontconfig Xft Freetype 到底是什么关系啊!?!?」
+
+屏幕上的字是用计算机的人整天会看到的，而用屏幕上有限的像素来有效显示文字，又要提高文字的可读性一直不容易。除了点阵字外，早在 80 年代就有的 anti-alias 也使得情况变得很复杂，即使已经过了 20 年，由于
+
+1、各人的视觉喜好不同 - 没有一种样式可以使每一个人都满意
+2、不同的操作环境与平台以及显示用的装置 (CRT || LCD)
+3、多国语言文字的同时显示
+所以能够随着自己的喜好而设定的字型是挺重要的。在各家 X desktop, toolkit 与浏览器的战国时代，前后出现了许多解决方案，而 Fontconfig 是到目前为止，算是广为被支持的一种新的不错的方式，姑且一试，也许它还不能完全令你满意，不过比起从前是来得有弹性多了。
+
+Fontconfig
+晚近的 XFree86 除了有了 freetype 的内建，加强了对于 TrueType 等向量字型的支持外，最近 Keith Packard 的 Xft 与 Fontconfig 也是一个对于字型整合所做的尝试，在最新的 XFree86 4.3.x 与 freetype/Xft2/Fontconfig 的支持下，X 下的程序对于一个统一的字型选择与绘制接口又进了一步。
+虽然 XFree86 本身包含 Fontconfig, Fontconfig 事实上是一个可以独立出来的接口，它是一个 library 不是一套 user app, 它所做的就是提供一套 font matching 的机制，让使用 Fontconfig 的程序可以不必自己实作一套字型的选取方法。如此只要使用 Fontconfig 的程序愈多，单一的一套设定档就可以被用在愈多的应用程序，应用程序本身可以利用 Fontconfig 所得到的字型名称去画字，也可以架构在自己原先的字型选择架构之上 (如 Qt), 以达成对旧的设定的一定的向后兼容性。
+
+Fontconfig 有许多好处，例如:
+
+字型的安装。与其把要用的字型拿来放在一个目录, 然后用 ttfmkdir / defoma / ttfm 等东西生出 fonts.dir 再指给 xtt/freetype, 再重新启动 X font server 或 xset fp rehash, 现在只要把字型丢或 symlink 到 ~/.fonts 或任何其它经过指定的目录, 就可以 _立即_ 开始使用了。当然在使用没有支持 Fontconfig 的程序时, 仍然要用传统的方法。Fontconfig 除了可以吃 TrueType, 也可以吃 Type1 或 pcf 等等传统的点阵字。
+字型 matching 的设定。虽然 Fontconfig 已经附上了一套不错的设定档让在未被设定的情况下也都能够有一个可以使用的系统，但其实对于个别字型的设定更有弹性。这个是透过 Fontconfig 所使用的 xml 设定档达成的。稍后再说。
+Fontconfig 会尽可能找出一套字，可以满足显示不同语言的需求。
+
+Xft
+Xft 也是一套 library, 它使用 Fontconfig match 到了所要的字型之后, 来决定该如何画这些字。Xft 会看情况而决定要不要使用 core protocol 或 XRender 来画字。XRender 是 XFree86 4.x 新增的 extension, 我认为这是为了保留 X 的向后兼容性所新增的一个 hack, 不过因为它可以用来画 anti-aliased 的字，目前的使用愈来愈广泛。不过 anti-aliased text 只有在使用向量字型的时候有用， 绘制点阵字的时候就要使用 core lib. Core library（以 x-truetype 或 freetype 作为 backend）自然也是可以画向量字，只不过画出来的就不能有 anti-aliased 的效果了。
+有时当 XRender 不能使用时（如你是透过网络用一个旧的 X server 来执行 X apps）, Xft 也可以使用 core lib 来画字。应用程序不必为这些问题操心，达到信息隐藏、各谋其政的目的。
+
+
+Freetype
+Freetype 是一个很棒的画字函式库，XFree86 4.3 内含了 2.1.2. Freetype 提供 Xft 如何画字的信息，包括处理 anti-aliasing 或 hinting. 因此 freetype 的改变会影响到 Xft 画出来的字，而 Fontconfig 的改变会影响到 Xft 如何去选字来画。
+
+fonts.conf
+这里所讲的就是最新的 Fontconfig 与 Xft2 的设定。对于旧的 Xft1.0 的 ~/.xftconfig 就不提了。
+如果你装了 fontconfig, 那么它应该已经附上了一套预设的设定档。可以到 /etc/fonts/ (一些 Linux distributions) 或 /usr/X11R6/etc/fonts (一些 BSD flavors) 底下找找看 fonts.conf 这个档案。
+
+fonts.conf 是简单的 xml 格式，在 etc/ 里面的 fonts.conf 是 system-wide 的设定，一般不建议直接更改它，可以更改 local.conf 或是自己家目录下面的 ~/.fonts.conf . 关于 fonts.conf 的各种语法，由于 manpage 里头已经写得很详尽，所以这里只是提及比较重要的一些部份，有兴趣者可以 man fonts-conf. 所有的设定都放在 <fontconfig> 与 </fontconfig> 之间，而其中可以包含许多 tags, 详细的 tags 可以参照 fonts.dtd 或者是 manpage.
+
+<dir> 里面是一个路径，fontconfig 会自己递归地去找这个路径里头的所有字型，如: <dir>/foo/bar/myfonts</dir>
+
+可以把其它的设定档引进来，它们的格式是一样的。
+
+其中最重要的 element 应该是 <match> 了。match 主要有两种用法, 一种是 pattern match, 另一种是 font match. 前者会把所有的字型 match 出来，所以针对它的更改会套用到所有的字型的选择方式上。为什么要更改字型的属性? 因为这样可以针对个别的字型告诉 Fontconfig 该如何去处理这些字型，或是告诉 renderer 该如何去画这些字型。这里是一些常用到属性的列表，关于所有的属性请洽 manpage：
+
+
+family - String - 就是一般所看到的字型的名称了, 如 Arial
+style - String - 字型的 style, 像是 Regular, Bold, Italic...
+spacing - Int - 字型的宽度, Proportional 是有不同的宽度, monospace 是单一的宽度 (如 terminal 的字型)
+antialias - Bool - 决定该字型是否要被 anti-alias 绘制; 只能用在向量字型上
+hinting - Bool - 决定该字型是否要打开 hinting
+autohint - Bool - 决定是否要用 Freetype 自己的 hint 方法来 hint 字型, 还是用预设的方法来 hint
+rgba - Bool - 决定是否要用 subpixel 的方式来画字, 可以是 none (只用灰阶), rgb, bgr, vrgb, vbgr
+Hinting 用来最佳化字型显示的方法。由于屏幕的像素有限，向量字型的缩放需要有更多的考虑, 例如当一条线位在两个像素格子中间时, 该取左边的格子还是右边的格子? 如果这方面的控制没有做好，就常常会出现字型的衬线没有对齐，或是小字歪七扭八的情况。 Hinting 是额外的信息, 它告诉 renderer 该如何处理这些细节的部份，使得向量字在小字的时候能够好看。也因此 Hinting 是非常费时费人力的工作，TrueType 字型很多，但是有良好 Hinting 的字型不多。拙劣的 Hinting 就会让字变得很难看。
+
+为了稍微改善这个问题，freetype 有 autohint 的功能，可以自动为没有 hint 的字型做 hinting 的工作。另外由于 TrueType 的 hinting 是有专利的，不能完全自由地使用， autohint 就不受这个限制。autohint 自然无法做得像人力的 hint 一样好，不过至少比没有 hint 要好些。话虽如此，对于许多笔划复杂的文字 (如中文) 目前 freetype 的 autohint 还做得不甚完美，而因为建立完整的 hinting 的难度，即使是英文字，原本就很高，内建有 hinting 的中文字型就少之又少了。所以常常有人抱怨中文字在屏幕上很难看，就是没有理想 hinting, 或者是使用了 autohinter 所造成的一些反效果。
+
+Anti-alias 是将字型在幕后先以数倍的大小来绘制，然后再缩成想要的大小，未满一格的格子用灰阶补点。由于原本 X 所支持的 logic 运算不敷使用，所以才用 XRender 的 extension 来达成目的。除了一般的 Anti-alias 之外，Xft 还支持了为 LCD 所设计的 subpixel rendering.
+
+什么是 subpixel rendering? 如果你用放大镜去看 LCD, 会发现一个正方形的像素是由三个长方形小像素构成的。这排列通常是红绿蓝，也就代表如果液晶屏幕的水平分辨率是 1024 个像素，它其实有 1024x3 = 3072 个点，只不过这些点是 rgbrgbrgb... 依序排列的。以白底黑字为例，如果需要满格的像素，rgb 三格就需是全关 (0,0,0), 如果只是右边三分之二部份, 就关掉 g 和 b, 留下最左边的 r 开着。这样子理论上就会有原来三倍的水平像素可以使用，大幅增加了液晶屏幕的分辨率。但由于只开着红色或黄色或其它颜色，会有很明显的光晕，所以一般会采用 filtering 的方式，把一个次像素的值往左右两格分散（因为无论对哪一格次像素来说，它的左右两格的颜色和本身都是不同的，所以往左右两格分散可以均匀影响亮度），成为 1/3, 1/3, 1/3 分布；但这样的坏处是会显得太模糊了一点，于是再多一层，把原先三格分成 5 格，但权重改为 1/9 2/9 3/9 2/9 1/9。3/9 那一格就是原本的次像素，而邻近的格子就用这样的方法分散后和原来该次像素格子的光度值相加，达到像素往中央集中，却又不太模糊的效果。Windows XP 有个 ClearType 选项可以打开对液晶屏幕显示最佳化，其基本原理就是 subpixel rendering. Xft 也有这样的功能，不过 Xft 做得更多，除了 subpixel 外，还加上了 anti-aliasing。Fontconfig 的 rgba 选项就是设定液晶屏幕次像素的排列方式，一般都是 rgb, v 开头的表示三种颜色是纵向排列。如果好奇的话可以拿放大镜仔细瞧瞧，或用数字相机近拍下来放大观察。
+
+很多问题是出在 hinting, 因为许多时候, distribution 会把 freetype 的 bytecode hinting 打开，代表使用字型内部的 bytecode 来做 hinting 修正，如果像 freetype 预设没有打开或是使用 freetype 里头的 autohinter, 有时效果不错，有时却不尽人意。另外 hinting 费时费力，大部分的字型设计师在做 hinting 的时候都只有针对点阵字的显示做 hinting 的工作，这表示如果我们在显示小字又用 anti-aliasing 的话，通常是不在字型设计师最佳化的范围内的; 当 hinting 不当的时候，小字 anti-aliasing 就会显得非常难看（如歪七扭八或挤成一团）。关于这方面 freetype 做了很多的努力， autohinter 也就是让程序自己做 hinting 的算法。由于 hinting 实在是个很棘手的问题，Mac OS X 对于 anti-aliasing 字型就都不使用 hinting. 好在 fontconfig 可以让我们调整这些细部的设定，让我们针对个别的字型做不同的处理。
+
+话题回到 pattern match: 要使用 pattern match, 只需要加入如下的 pattern, 它就会对所有的字型作用:
+
+<match target="pattern">
+...
+</match>
+中间放的可以是一连串的 test, 然后是一连串的 edit. test 的用法是:
+
+
+<test qual="any|all|first|not_first"
+name="属性"
+compare="eq|not_eq|less|less_eq|more|more_eq|contains|not_contains">
+值
+</test>
+any 指的是说, 只要字型的该属性 list 之中有一项有符合要 test 的值, test 就会成立。all 的话要 list 之中所有的都符合，first 要第一个符合， not_first 要除了第一个以外有符合的。通常只会用到 any, 预设也是 any. name 里面填的就是前面所提的属性, 如 name="family". compare 是比较的条件, eq 是相等, less 是小于, 以此类推。 <test> 所包住的那个值就是要用来比较的值，包括: int, double, string, matrix, bool 等等。一旦 test 的条件都成立, 就会进行到 edit 的阶段，代表编辑符合条件上述 test 条件的属性:
+
+
+<edit name="属性"
+mode="assign|assign_replace|prepend|append|prepend_first|append_last">
+值
+</edit>
+注意在 fontconfig 中, 属性 (property) 可以是一个 list, 亦即一个属性可有许多的值。 assign 是说把 match 到的值取代掉, assign_replace 是说把该 list 的所有值取代成指定的值, prepend 则是插在 list 中被 match 到的那个值的前头, 以此类推。
+
+fonts.conf 里面有一个范例:
+
+
+<match target="pattern">
+<test name="prefer_outline">
+true
+</test>
+<test name="family">
+<string>Times</string>
+</test>
+<edit name="family" mode="prepend" binding="same">
+<string>Times New Roman</string>
+</edit>
+</match>
+这个 pattern match 是说, 当 prefer_outline 的值是 true 的时候, 而且字型的 family 又叫做 Times, 那么就把它的 family list 前面加入 Times New Roman。这样做的原因是, Times 本身是点阵字, 如果希望在许多应用程序指定用 Times 显示时, 不要用点阵字显示, 而要用 Times New Roman 这个 TrueType 字型显示, 这样可以把 Times New Roman 的优先权提在 Times 的前面。 Family matching 是另一种 match 方法，它的用法和 pattern matching 差不多，只是它是针对个别字型的属性作修改，用法是:
+
+
+<match target="font">
+...
+</match>
+举个例子，如果我想让所有字型预设能够打开 anti-aliasing, hinting 并且使用 subpixel rendering, 我就写:
+
+
+<match target="font">
+<edit name="antialias">true</edit>
+<edit name="rgba" mode="assign"><const>rgb</const></edit>
+<edit name="hinting">true</edit>
+</match>
+但是我可能觉得 Luxi Mono 这个字型在某些时候, subpixel 不太好看, 我就写:
+
+
+<match target="font">
+<test name="family"><string>Luxi Mono</string></test>
+<edit name="rgba"><const>none</const></edit>
+</match>
+
+FAQ
+Q. 我手上有很多 ttf, 我要怎么装它们?
+
+前面说过啦, 把它们全部丢到 ~/.fonts/ 里头去吧。做 symbolic link 也可以。丢完之后就跑一下 fc-list 列出所有已安装的字型看看有没有在里面。
+Q. 我装好了字型, 可是我的程序 (rxvt, aterm, gtk1.x) 却不能使用它们？
+
+
+因为这些程序是使用 X 的 core fonts, 不是使用 fontconfig 也没有支持 Xft, 就没有办法享受这样的便利，不过还是可以透过传统的方式来装这些字型。新的 gtk2, Gnome2, mlterm, Mozilla (Firebird), Qt3.x 都支援了 fontconfig。
+Q. 我想要使用新细明体，可以吗？
+
+
+可以, 把 mingliu.ttc 丢到 ~/.fonts 就行了。
+Q. 我想要像 Windows 上小字那样的新细明体，那是怎样办到的呢？为什么在一些大小，新细明体的笔划会破碎呢？
+
+
+(新) 细明体在 11, 12, 13, 15, 16, 20 点的大小有特别做内嵌的点阵字，换句话说，由于中文字的 hinting 不易，有时点阵字会比较有效。又因为新细明体使用了 bytecode 来组合笔划, 没有编进 bytecode interpreter 的 freetype 版本在 render 的时候，就会碎掉。请确定您系统上 freetype2 的 source 之中, include/freetype/config/ftoption.h 里面的 #defineTT_CONFIG_OPTION_BYTECODE_INTERPRETER 是不是有打开。也不可以使用内建的 autohinter. 由于是上述几个特定的大小是内建点阵字型，所以没有被 bytecode interpreter 影响。
+
+确定了 freetype 有编进 bytecode interpreter 之后, 设定让新细明体在这些大小时显示内建的点阵字而不要用 anti-aliased, 可以在 ~/.fonts.conf 加入:
+
+<match target="font">
+<test name="family"><string>PMingLiU</string></test>
+<edit name="antialias">true</edit>
+<edit name="hinting">true</edit>
+<edit name="autohint">false</edit>
+</match>
+<match target="font">
+<test name="family"><string>PMingLiU</string></test>
+<test name="size" compare="less_eq">12</test>
+<edit name="antialias" mode="assign">false</edit>
+<edit name="hinting" mode="assign">true</edit>
+</match>
+
+Q. 我的细明体 (MingLiU) 的英文字和中文字会等宽?
+
+
+因为 MingLiU 宣称自己是 monospaced 字型，但实际上它有两种宽度：中文的全角以及英文的半角。于是 freetype 就被骗了; 同样的事情也发生在其它华康的一些字型上。Freetype 有个 globaladvance 的 flag:
+
+<match target="font">
+<test name="family"><string>MingLiU</string></test>
+<edit name="globaladvance">false</edit>
+</match>
+
+万一因为不明的原因, 这样做没有用, 那么还可以改 spacing:
+
+<match target="font">
+<test name="family"><string>MingLiU</string></test>
+<edit name="spacing">0</edit>
+</match>
+
+0 是 proportional 的 spacing, 100 是 mono, 110 是 charcell.
+Q. 我想要把 Gnome2 选单的中英文字型分开设。
+
+
+Gtk2 可以使用两组特殊的 alias: Sans 和 Serif. Sans 是无衬线的意思，也就是如 Arial, Verdana 等等边缘是方的字。Serif 则是有衬线的字，如 Times. 由于 fontconfig 有字型取代的机制, 可以修改 /etc/fonts/fonts.conf 里面的这一段：
+
+相关:
+Screenshot
+
+<alias>
+<family>Bitstream Vera Sans</family>
+<family>Helvetica</family>
+<family>Arial</family>
+<family>Verdana</family>
+<family>Nimbus Sans L</family>
+<family>Luxi Sans</family>
+<family>Kochi Gothic</family>
+<family>PMingLiU</family>
+<family>AR PL KaitiM GB</family>
+<family>AR PL KaitiM Big5</family>
+<family>Baekmuk Dotum</family>
+<family>SimSun</family>
+<default><family>sans-serif</family></default>
+</alias>
+
+与这一段:
+
+<alias>
+<family>sans-serif</family>
+
+<family>Bitstream Vera Sans</family>
+<family>Verdana</family>
+<family>Nimbus Sans L</family>
+<family>Luxi Sans</family>
+<family>Arial</family>
+<family>Helvetica</family>
+<family>Kochi Gothic</family>
+<family>PMingLiU</family>
+<family>AR PL KaitiM GB</family>
+<family>AR PL KaitiM Big5</family>
+<family>Baekmuk Dotum</family>
+<family>SimSun</family>
+
+</alias>
+
+把想要加入替换 list 的字型加进去。排愈前面的字型, 在当他有符合要显示的语言的文字的时候就会被用上，如我把 PMingLiU 设在文鼎字型前面，PMingLiU 就会在需要显示中文的时候优先被选到。当然严格来说，PMingLiU 并不能算是 Sans-serif 而要算是 serif, 但因为我要跟 Bitstream Vera Sans 搭配，故放在一起。
+Q. 我遇到了奇怪的问题，可是不知从何找起，怎么办？
+
+
+XFT_DEBUG 这个环境变量可以显示不同的侦错信息，打开一个 terminal, 把 XFT_DEBUG 设在要执行的程序之前，也许它可以帮助你找到问题。其中可以设的数值有：
+
+XFT_DBG_OPEN 1
+XFT_DBG_OPENV 2
+XFT_DBG_RENDER 4
+XFT_DBG_DRAW 8
+XFT_DBG_REF 16
+XFT_DBG_GLYPH 32
+XFT_DBG_GLYPHV 64
+XFT_DBG_CACHE 128
+XFT_DBG_CACHEV 256
+XFT_DBG_MEMORY 512
+
+要同时开启某几个侦错选项，就把它们的值相加就可以了。如 XFT_DEBUG=3 mozilla 就是以开启第一和第二选项的模式来开启 mozilla. 有趣的是，当 GLYPH 和 GLYPHV 同时开启时, Xft 会在 console 用 ascii art 印出它所画的字
+Q. 我手上的字型都很难看。有什么比较不错的字型？
+
+
+英文字型来说, Bitstream Vera Sans, Bitstream Vera Serif, Bitstream Vera Mono 都是高质量又是 free 的字型。Bitstream Cyberbit 可以免费取得（现在已经不是免费的了），又有颇完整的 Unicode coverage, 包含中日韩等等的字集。另外 Microsoft 和 Monotype 买的 Verdana, Times New Roman 等等也都具有漂亮的 hinting; Kochi Gothic 和 Kochi Mincho 是高质量的 free 日文字型。Arial Unicode MS 的 Unicode coverage 也很大，只是这套字型为了这么大的 coverage, 相对地在许多地方，如笔划与外观，就必须做出一些牺牲。如果要拿来看中文的小字的话，目前最好把 hinting 关掉（中文字型大部分把 hinting 关掉会有比较令人高兴的外观，除了新细明体是一定要打开以外）
+Q. 这份 FAQ 实在太没有帮助了。我要找的问题都找不到。很多地方都写错了。
+
+如果有写错的地方，为免再造成误导，也请不吝指正。这里是 wiki, 也可以直接点上面的 Edit this page 来加入自己的修改。
+Q. 我照着这些方法设却不能动。一切都太麻烦了！
+
+要让一切合自己的意要付出一定的代价。或许你可以找到一个会设的人，请他吃一顿饭或什么的，然后找他来帮你照你的意思设。
+

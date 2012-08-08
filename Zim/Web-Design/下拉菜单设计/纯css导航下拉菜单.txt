@@ -1,0 +1,260 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-15T21:44:18+08:00
+
+====== 纯css导航下拉菜单 ======
+Created Sunday 15 May 2011
+http://www.tonjay.com/website/csstab.html
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>dropdown˵--A CROSS BROWSER DROP DOWN CASCADING VALIDATING MENU</title>
+<style type="text/css">
+/* common styling */
+/* set up the overall width of the menu div, the font and the margins */
+.menu {
+font-family: arial, sans-serif;
+width:1000px;
+margin:0;
+margin:50px auto;
+}
+/* remove the bullets and set the margin and padding to zero for the unordered list */
+.menu ul {
+padding:0;
+margin:0;
+list-style-type: none;
+}
+/* float the list so that the items are in a line and their position relative so that the drop down list will appear in the right place underneath each list item */
+.menu ul li {
+float:left;
+position:relative;
+}
+/* style the links to be 104px wide by 30px high with a top and right border 1px solid white. Set the background color and the font size. */
+.menu ul li a, .menu ul li a:visited {
+display:block;
+text-align:center;
+text-decoration:none;
+width:80px;
+height:30px;
+color:#000;
+border:1px solid #fff;
+border-width:1px 1px 0 0;
+background:#c9c9a7;
+line-height:30px;
+font-size:11px;
+}
+/* make the dropdown ul invisible */
+.menu ul li ul {
+display: none;
+}
+/* specific to non IE browsers */
+/* set the background and foreground color of the main menu li on hover */
+.menu ul li a:hover {
+color:#fff;
+background:#b3ab79;
+}
+/* make the sub menu ul visible and position it beneath the main menu list item */
+.menu ul li:hover ul {
+display:block;
+position:absolute;
+top:31px;
+left:0;
+width:79px;
+}
+/* style the background and foreground color of the submenu links */
+.menu ul li:hover ul li a {
+display:block;
+background:#faeec7;
+color:#000;
+}
+/* style the background and forground colors of the links on hover */
+.menu ul li:hover ul li a:hover {
+background:#dfc184;
+color:#000;
+}
+</style>
+<!--[if lte IE 6]>
+<style type="text/css">
+/* styling specific to Internet Explorer IE5.5 and IE6. Yet to see if IE7 handles li:hover */
+/* Get rid of any default table style */
+table {
+border-collapse:collapse;
+margin:0;
+padding:0;
+}
+/* ignore the link used by 'other browsers' */
+.menu ul li a.hide, .menu ul li a:visited.hide {
+display:none;
+}
+/* set the background and foreground color of the main menu link on hover */
+.menu ul li a:hover {
+color:#fff;
+background:#b3ab79;
+}
+/* make the sub menu ul visible and position it beneath the main menu list item */
+.menu ul li a:hover ul {
+display:block;
+position:absolute;
+top:32px;
+left:0;
+width:105px;
+}
+/* style the background and foreground color of the submenu links */
+.menu ul li a:hover ul li a {
+background:#faeec7;
+color:#000;
+}
+/* style the background and forground colors of the links on hover */
+.menu ul li a:hover ul li a:hover {
+background:#dfc184;
+color:#000;
+}
+</style>
+<![endif]-->
+</head>
+<body>
+<div class="menu">
+<ul>
+<li><a class="hide" href="http://www.tonjay.com">DEMOS</a>
+<!--[if lte IE 6]>
+<a href="http://www.tonjay.com">DEMOS
+<table><tr><td>
+<![endif]-->
+    <ul>
+    <li><a href="http://www.tonjay.com" title="The zero dollar ads page">zero dollars</a></li>
+    <li><a href="http://www.tonjay.com" title="Wrapping text around images">wrapping text</a></li>
+    <li><a href="http://www.tonjay.com" title="Styling forms">styled form</a></li>
+    <li><a href="http://www.tonjay.com" title="Removing active/focus borders">active focus</a></li>
+    <li><a href="http://www.tonjay.com" title="Multi-position drop shadow">shadow boxing</a></li>
+    <li><a href="http://www.tonjay.com" title="Image Map for detailed information">image map</a></li>
+    <li><a href="http://www.tonjay.com" title="fun with background images">fun backgrounds</a></li>
+    <li><a href="http://www.tonjay.com" title="fade-out scrolling">fade scrolling</a></li>
+    <li><a href="http://www.tonjay.com" title="em size images compared">em sized images</a></li>
+    </ul>
+<!--[if lte IE 6]>
+</td></tr></table>
+</a>
+<![endif]-->
+</li>
+<li><a class="hide" href="http://www.tonjay.com">MENUS</a>
+<!--[if lte IE 6]>
+<a href="http://www.tonjay.com">MENUS
+<table><tr><td>
+<![endif]-->
+    <ul>
+    <li><a href="http://www.tonjay.com" title="a coded list of spies">spies menu</a></li>
+    <li><a href="http://www.tonjay.com" title="a horizontal vertical menu">vertical menu</a></li>
+    <li><a href="http://www.tonjay.com" title="an enlarging unordered list">enlarging list</a></li>
+    <li><a href="http://www.tonjay.com" title="an unordered list with link images">link images</a></li>
+    <li><a href="http://www.tonjay.com" title="non-rectangular links">non-rectangular</a></li>
+    <li><a href="http://www.tonjay.com" title="jigsaw links">jigsaw links</a></li>
+    <li><a href="http://www.tonjay.com" title="circular links">circular links</a></li>
+    </ul>
+<!--[if lte IE 6]>
+</td></tr></table>
+</a>
+<![endif]-->
+</li>
+<li><a class="hide" href="http://www.tonjay.com">LAYOUTS</a>
+<!--[if lte IE 6]>
+<a href="http://www.tonjay.com">LAYOUTS
+<table><tr><td>
+<![endif]-->
+    <ul>
+    <li><a href="http://www.tonjay.com" title="Cross browser fixed layout">Fixed 1</a></li>
+    <li><a href="http://www.tonjay.com" title="Cross browser fixed layout">Fixed 2</a></li>
+    <li><a href="http://www.tonjay.com" title="Cross browser fixed layout">Fixed 3</a></li>
+    <li><a href="http://www.tonjay.com" title="Cross browser fixed layout">Fixed 4</a></li>
+    <li><a href="http://www.tonjay.com" title="A simple minimum width layout">minimum width</a></li>
+    </ul>
+<!--[if lte IE 6]>
+</td></tr></table>
+</a>
+<![endif]-->
+</li>
+<li><a class="hide" href="http://www.tonjay.com">BOXES</a>
+<!--[if lte IE 6]>
+<a href="http://www.tonjay.com">BOXES
+<table><tr><td>
+<![endif]-->
+    <ul>
+    <li><a href="http://www.tonjay.com" title="a coded list of spies">spies menu</a></li>
+    <li><a href="http://www.tonjay.com" title="a horizontal vertical menu">vertical menu</a></li>
+    <li><a href="http://www.tonjay.com" title="an enlarging unordered list">enlarging list</a></li>
+    <li><a href="http://www.tonjay.com" title="an unordered list with link images">link images</a></li>
+    <li><a href="http://www.tonjay.com" title="non-rectangular links">non-rectangular</a></li>
+    <li><a href="http://www.tonjay.com" title="jigsaw links">jigsaw links</a></li>
+    <li><a href="http://www.tonjay.com" title="circular links">circular links</a></li>
+    </ul>
+<!--[if lte IE 6]>
+</td></tr></table>
+</a>
+<![endif]-->
+</li>
+<li><a class="hide" href="http://www.tonjay.com">MOZILLA</a>
+<!--[if lte IE 6]>
+<a href="http://www.tonjay.com">MOZILLA
+<table><tr><td>
+<![endif]-->
+    <ul>
+    <li><a href="http://www.tonjay.com" title="A drop down menu">drop down menu</a></li>
+    <li><a href="http://www.tonjay.com" title="A cascading menu">cascading menu</a></li>
+    <li><a href="http://www.tonjay.com" title="Using content:">content:</a></li>
+    <li><a href="http://www.tonjay.com" title=":hover applied to a div">mozzie box</a></li>
+    <li><a href="http://www.tonjay.com" title="I can build a rainbow">rainbow box</a></li>
+    <li><a href="http://www.tonjay.com" title="Snooker cue">snooker cue</a></li>
+    <li><a href="http://www.tonjay.com" title="Target Practise">target practise</a></li>
+    <li><a href="http://www.tonjay.com" title="Two tone headings">two tone headings</a></li>
+    <li><a href="http://www.tonjay.com" title="Shadow text">shadow text</a></li>
+    </ul>
+<!--[if lte IE 6]>
+</td></tr></table>
+</a>
+<![endif]-->
+</li>
+<li><a class="hide" href="http://www.tonjay.com">EXPLORER</a>
+<!--[if lte IE 6]>
+<a href="../ie/index.html">EXPLORER
+<table><tr><td>
+<![endif]-->
+    <ul>
+    <li><a href="http://www.tonjay.com" title="Example one">example one</a></li>
+    <li><a href="http://www.tonjay.com" title="Weft fonts">weft fonts</a></li>
+    <li><a href="http://www.tonjay.com" title="Vertical align">vertical align</a></li>
+    </ul>
+<!--[if lte IE 6]>
+</td></tr></table>
+</a>
+<![endif]-->
+</li>
+<li><a class="hide" href="http://www.tonjay.com">OPACITY</a>
+<!--[if lte IE 6]>
+<a href="http://www.tonjay.com">OPACITY
+<table><tr><td>
+<![endif]-->
+    <ul>
+    <li><a href="http://www.tonjay.com" title="colour wheel">opaque colours</a></li>
+    <li><a href="http://www.tonjay.com" title="a menu using opacity">opaque menu</a></li>
+    <li><a href="http://www.tonjay.com" title="partial opacity">partial opacity</a></li>
+    <li><a href="http://www.tonjay.com" title="partial opacity II">partial opacity II</a></li>
+    </ul>
+<!--[if lte IE 6]>
+</td></tr></table>
+</a>
+<![endif]-->
+</li>
+</ul>
+<!-- clear the floats if required -->
+<div class="clear"> </div>
+<div style="width:800px; height:100px; background:#000;"></div>
+</div>
+</body>
+</html>
+效果如下：
+{{./1.png?width=600}}
+{{./2.png?width=600}}
+{{./3.png?width=600}}
+
+

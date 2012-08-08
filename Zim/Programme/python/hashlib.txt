@@ -1,0 +1,20 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-14T21:09:18+08:00
+
+====== hashlib ======
+Created Friday 14 October 2011
+在Python中使用hashlib模块对字符串进行加密
+
+import hashlib
+m = hashlib.md5()　　#新建一个md5加密对象
+m.new("Nobody inspects")　　#加密的数据
+m.update(" the spammish repetition")　　#更新加密数据
+m.digest()　　#显示MD5值（二进制, 十六个字符的字符串）
+'\xbbd\x9c\x83\xdd\x1e\xa5\xc9\xd9\xde\xc9\xa1\x8d\xf0\xff\xe9'
+m.hexdigest　　#显示MD5值（十六进制）
+'cc4a5ce1b3df48aec5d22d1f16b894a0b894eccc'
+m.digest_size
+16
+m.block_size
+64

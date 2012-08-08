@@ -1,0 +1,188 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-21T16:54:08+08:00
+
+====== socket小结1 ======
+Created Thursday 21 April 2011
+http://blog168.chinaunix.net/space.php?uid=20196318&do=blog&id=165059
+Socket编程小结 (2011-03-10 20:11)
+
+1. read系统调用
+测试程序：客户端向服务器端（tcp）发送一个”hello”字符串，服务器端读取并echo到客户端。
+
+服务器端主要代码：
+char buf[4096];
+int r = tcp_readn(sock, buf, 4096);
+int w = tcp_writen(sock, buf, r);
+ 
+客户端主要代码：
+char buf[4096];
+int w = tcp_writen(sock, “hello”, 5);
+int r = tcp_readn(sock, buf, 4096);
+ 
+问题描述：客户端write调用成功，服务器端阻塞在tcp_readn上，tcp_readn的实现如下所示：
+
+ 
+
+int tcp_readn(int sock, void* buf, int len)
+
+{
+
+    int rd = 0;
+
+    int i = 0;
+
+    while(rd < len) {
+
+        i = read(sock, (char*)buf + rd, len - rd);
+
+        if(i <= 0) {
+
+            return rd;
+
+        }
+
+        rd += i;
+
+    }
+
+    return rd;
+
+}
+ 
+
+原因分析：readn必须从sock套接口上读取len个字节，才会返回，不然会一直阻塞；在调试时，我发现tcp_readn中的read执行过一次，读取了5个字节，然后一直阻塞。因为它需要读取4096个字节才返回，将客户端/服务器端中的代码都换成read/write，问题得到解决。
+
+附注：read从套接口读取数据，如果缓冲区中有数据已经准备后，read读取缓冲区的数据并返回，read读取的数据量可能比要求的长度要小，但这不能说明read出错，可能是内核中套接口缓冲区中的数据比需要的数据量。如果要判断套接口缓冲区中有多少数据可读或有多大空间可用于写，可通过设置接受和发送低潮标记，分别为SO_RCVLOWAT（缺省值为1）和SO_SNDLOWAT（缺省值为2048），select只有在可读的数据量不低于SO_RCVLOWAT或可写的空间不低于SO_SNDLOWAT时才会返回。
+
+ 
+
+ 
+
+2. read与write的对应关系
+
+测试程序：客户端调用两次write，服务器端调用一次read。
+
+ 
+
+服务器端主要代码：
+
+char buf[4096];
+
+int r = read(sock, buf, 4096);
+
+buf[r] = ‘\0’;
+
+printf(“%s\n”, buf);
+
+ 
+
+客户端主要代码：
+
+write(sock, “hello”, 5);
+
+write(sock, “ world”, 6);
+
+ 
+
+问题描述：服务器有时打印hello(read对应1个write)，有时打印hello world（read对应2个write）。
+
+ 
+
+原因分析：客户端与服务器之间的read/write并没有明确的对应关系。其实read/write只是往套接口缓冲区中读/写数据，数据具体什么时候从缓冲区发送到远端机器的缓冲区是由内核根据TCP的相关原理机制决定的。如果在服务器read读取之前，客户端的两次write的数据都已经到达服务器的套接口缓冲区，则read读取到hello world；否则如果只有第一次write的数据达到缓冲区，则read读取到hello。
+
+ 
+
+正常情况下，服务器读取到hello；如在服务器read之前假如sleep(1)，则read会读取到hello world，因为在1s内，两次write的数据都已经到达服务器的缓冲区。
+
+ 
+
+3． 值-结果参数
+
+问题描述：accept、recvfrom、getpeername、getsockname不能正确获取对端套接口地址信息。
+
+ 
+
+主要代码：
+
+struct sockaddr_in sa;
+
+int sock_len = 0;
+
+recvfrom(sock, buf, len, 0, (struct sockaddr*)&sa, &sock_len);
+
+ 
+
+原因分析：套接口函数接受指向套接口地址结构的参数，同时接受地址结构的长度参数，其传递方式决定于传递方式：从进程到内核，还是从内核到进程。
+
+ 
+
+1． 从进程到内核，如bind、connect、sendto等，其参数为指向地址结构的指针，以及地址的长度。
+
+2． 从内核到进程，如accept、recvfrom、getsockname、getpeername、其参数为指向地址结构的指针，以及表示结构大小的整数的指针。
+
+其中第二个参数为值-结果参数，当函数调用时，结构大小是一个值，使内核在写结构时不至于越界；但函数返回时，结构大小又是一个结构，它告诉进程内核在此结构中确切存储了多少信息。而代码中sock_len的初值被设置为0，故内核不会往地址结构上写任何信息，sa结构中的内容是随机的，将sock_len的初值设置为sizeof(sa)即可。
+
+ 
+
+4． getsockname、getpeername
+
+getsockname、getpeername的调用结果与其调用时机密切相关。具体表现为：
+
+1． TCP服务器端： 在bind以后就可以调用getsockname来获取本地地址和端口getpeername只有在连接建立（accept）以后才调用，否则不能正确获得对方地址和端口。
+
+2． TCP客户端：在调用socket时候内核还不会分配IP和端口，此时调用getsockname不会获得正确的端口和地址（当然链接没建立更不可能调用getpeername），调用了bind 以后可以使用getsockname获取绑定的地址。想要正确的到对方地址（一般客户端不需要这个功能），则必须在链接建立以后，同样链接建立以后，此时客户端地址和端口就已经被指定，此时是调用getsockname的时机。
+
+3． 未连接UDP套接口:在调用connect以后，这2个函数都是可以用的（同样，getpeername也没太大意义。如果你不知道对方的地址和端口，不可能会调用connect）。
+
+4． 已连接UDP套接口（调用connect后）: 不能调用getpeername，但是可以调getsockname。和TCP一样，他的地址和端口不是在调用socket就指定了，而是在第一次调用sendto函数以后。
+
+ 
+
+5. send/recv与sendto/recvfrom
+
+在TCP中，recv返回值为0表示对端已关闭连接；UDP是无连接的，recvfrom返回为0，说明对端写了一个长度为0的数据报（20字节的ip头部+8字节的UDP头部）。
+
+ 
+
+6. TCP/UDP服务器模型
+
+1． TCP的服务模型为并发，而UDP的服务模型为迭代。
+
+2． TCP服务器由监听套接字来接受客户端的请求，当收到请求时，为请求建立新的连接，并可以产生单独的进程（线程）为客户端服务，监听套接字则继续等待新的请求。不同的连接有各自的接受缓冲区，及不同的连接对于TCP服务器来说是独立的。
+
+3． UDP服务器只有一个服务进程，它仅有的单个套接口用于接受所有到达的数据报并发回所有的响应，该套接口有一个接受缓冲区用来存放所到达的数据报。发送给UDP服务器的数据报按顺序进入接收缓冲区，当服务器调用recvfrom时，缓冲区的下一个数据报将返回给进程。
+
+ 
+
+7． UDP的connect函数
+
+对于UDP套接口，也可以调用connect，但与TCP不同，UDP的connect过程没有三次握手，内核只是检查是否存在立即可知的错误（如不可达的目的地址），记录对端的IP地址和端口号），然后立即返回到调用进程。
+
+ 
+
+对于已连接的UDP套接口，与缺省未连接的UDP套接口相比：
+
+1． 不能再为输出操作指定IP地址和端口号，即不能使用sendto，而改用write或send；写到已连接UDP套接口上的任何内容都会自动发送到由connect指定的协议地址。
+
+2． 不必使用recvfrom获取数据报的发送者，而改用recv或read。在一个已连接UDP套接口上由内核为输入操作返回的数据报仅仅是那些来自connect所指定协议地址的数据报。这样就限制了一个已连接UDP套接口能且仅能与一个对端交换数据。
+
+3． 由已连接UDP套接口引发的异步错误返回给他们所在的进程。
+
+ 
+
+未连接UDP套接口发送数据报之前，内核会暂时连接该套接口，并发送数据，然后断开该连接。多个数据报的发送步骤为：
+
+【连接套接口】==》【输出第1个数据报】==》【断开套接口连接】==》
+
+【连接套接口】==》【输出第2个数据报】==》【断开套接口连接】…
+
+【连接套接口】==》【输出第n个数据报】==》【断开套接口连接】
+
+ 
+
+当应用程序要给同一目的地址发送多个数据报时，显式连接套接口效率更高，节省了多次向内核拷贝地址开销，其步骤为：
+
+【连接套接口】==》【输出第1个数据报】==》【输出第2个数据报】…
+
+【输出第n个数据报】==》【断开套接口连接】

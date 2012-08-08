@@ -1,0 +1,101 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-05-01T13:18:49+08:00
+
+====== 一个内核built-in的GPIO小模块 ======
+Created Tuesday 01 May 2012
+http://www.embexperts.com/forum.php/forum.php?mod=viewthread&tid=33&extra=page%3D1
+
+项目中很多driver会调用到gpio操作，所以需要一个gpio的小模块提供**统一的接口函数**给其他driver使用。考虑到gpio操作很多模块都需要，把它做成__内核built-in__的模块。
+
+EXPORT_SYMBOL(fsl_gpio_set);
+
+这样编译出内核之后，查看System.map，发现如下输出：
+[xuesoche@bsacwindriver linux-fsl_p2020ds-cgl-build]$ cat System.map | grep 'fsl_gpio_set'
+c022f0b0 T fsl_gpio_set
+c04d4ed8 r __ksymtab_fsl_gpio_set    #r 代表relocateable符号。
+c04e2032 r __kstrtab_fsl_gpio_set
+
+如果删除EXPORT_SYMBOL(fsl_gpio_set)这句，那么再编译内核，查看System.map，发现输出如下：
+c022f0b0 T fsl_gpio_set
+
+**看来如果没有用EXPORT_SYMBOL导出，那么就不会产生__ksymtab_fsl_gpio_set，这样其他driver模块就无法使用该函数了**。
+
+把可加载模块变成built-in的内核一部分，一般要：
+**1.修改Kconfig:**
+config GPIO_P2020
+        bool "Freescale P2020 GPIO"    #bool表示要么编译进内核，要么不被编译。
+        help
+          Say Y here to add the GPIO routine support for P2020 platform
+
+2.修改Makefile，加入一行：
+__obj-$(CONFIG_GPIO_P2020)__        += fsl-gpio.o
+
+考虑到其他可加载的模块要调用GPIO模块中的函数，所以把fsl-gpio.h的头文件放到linux/include/linux底下：
+extern void fsl_gpio_direction(GPIO_N bit, GPIO_DIR dir);
+extern void fsl_gpio_set(GPIO_N bit, GPIO_DAT dat);
+
+这样其他模块只需要：
+#include <linux/fsl-gpio.h>
+
+然后直接调用 fsl_gpio_direction和 fsl_gpio_set就可以了。
+
+这个小模块的帖子本来到此就结束了，看起来似乎没什么特别要注意的。不过因为早前一直都是写的可加载的模块，编译与链接这类事情一般都有**现成的Makefile模板**，只需要考虑代码就行了...
+
+但是这里仔细琢磨一下，发现有个问题（跟Linux下面的那套编译机制有关），我的那个fsl-gpio.c文件里面有：
+static int __init fsl_gpio_init(void)
+{
+    int status = 0;
+    p2020_gpio_regs_base = ioremap_nocache(P2020_GPIO_ADDR_BASE, sizeof(struct p2020_gpio_regs));
+    if(p2020_gpio_regs_base == NULL){
+        printk("%s failed\n", __func__);
+        return -ENOMEM;
+    }
+   
+    spin_lock_init(&gpio_lock);
+    printk("%s succeed\n", __func__);
+    return status;          
+}
+**module_init**(fsl_gpio_init);
+static void __exit fsl_gpio_exit(void)
+{
+    iounmap(p2020_gpio_regs_base);
+}
+**module_exit**(fsl_gpio_exit);
+
+以前隐约记得，__对于有没有宏MODULE的定义，module_init展开出来的东西不一样__。问题是谁负责去定义这个MODULE宏呢，至少我没干这件事。
+
+后来我又想仔细地看看传说中的Linux那套内核的编译过程，发现很繁琐，我也没耐心看下去了。再次感叹Linux的博大精深和个人精力的有限，还是拿三国孔明的学习方法聊以自慰一下：其他三人务于精纯，唯孔明独观其大略...
+大概发现__obj-y与obj-m__，然后Kconfig中如果把先前的
+config GPIO_P2020
+        **bool** "Freescale P2020 GPIO"
+        help
+          Say Y here to add the GPIO routine support for P2020 platform
+改成
+config GPIO_P2020
+        **tristate** "Freescale P2020 GPIO"
+        help
+          Say Y here to add the GPIO routine support for P2020 platform
+
+那么menuconfig的时候，就会让你选择**是否以模块**的形式编译，如果是的话，那么__CONFIG_GPIO_P2020=m__，这样obj-$(CONFIG_GPIO_P2020)        += fsl-gpio.o实际上就成了__obj-m__ += fsl-gpio.o，内核将会以模块的形式编译之。那么MODULE宏在哪里定义，直觉就是__-DMODULE__这样的FLAG了，现在找找来验证自己的判断啦。。。blabla。。。search=======search========，恩，结果出来了：
+
+Linux源码树底下**顶层Makefile**中：
+...
+MODFLAGS        = -DMODULE
+CFLAGS_MODULE   = $(MODFLAGS)
+AFLAGS_MODULE   = $(MODFLAGS)
+...
+
+基本上就推断出，编译obj-m的目标就用CFLAGS_MODULE, AFLAGS_MODULE应该是给汇编器使的，大约类似于gcc CFLAGS_MODULE   ${obj-m}-objs
+所以你的东西，是编译成内核的一部分，还是作为模块编译，其实**不在于你把你的东西放到哪里，而在于你是把它交给obj-y还是obj-m**
+
+这里的探索的思想正是:大胆假设，小心求证！
+
+最后再验证一下，在fsl-gpio.c文件开头加入：
+#ifdef MODULE
+#error "MODULE has beed defined"
+#else
+#error "MODULE hasn't been defined"
+#endif
+
+编译出错，提示：#error "MODULE has beed defined"，可见MODULE宏已经被定义了。

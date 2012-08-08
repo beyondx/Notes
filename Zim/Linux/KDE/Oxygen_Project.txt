@@ -1,0 +1,49 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-17T11:18:47+08:00
+
+====== Oxygen Project ======
+Created Thursday 17 November 2011
+http://en.wikipedia.org/wiki/Oxygen_Project
+
+From Wikipedia, the free encyclopedia
+
+Oxygen Oxygen Project logo
+KDE 4.png
+KDE Plasma Desktop
+Developer(s) 	KDE
+Initial release 	11 January 2008;
+3 years ago
+Stable release 	4.7.3  (2 November 2011; 11 days ago)[1] [+/−]
+
+
+The Oxygen Project is a project created to give a visual refresh to KDE Plasma Workspaces.
+
+It consists of a set of **computer icons**, a **window decoration** for KWin,** widget toolkit themes **for GTK and Qt, and **two themes** for KDE Plasma Workspaces.
+
+The Oxygen theme set is used by default for Plasma Workspaces in most Linux distributions, like Fedora,[2] Kubuntu,[3] and openSUSE.[4]
+
+===== Contents =====
+
+
+    1 History
+        1.1 4.0
+        1.2 4.1
+        1.3 4.2
+        1.4 4.3
+        1.5 4.4
+        1.6 4.5
+        1.7 4.6
+        1.8 4.7
+    2 Standardization
+    3 People
+    4 See also
+    5 References
+
+====  History ====
+
+The original purpose was to create **a new set of icons** but expanded to include **a new theme**, which included** a new cursor**, **widget and window theme**, and **sounds**. It represents a break with the cartoonish look of previous K Desktop Environment 3 graphics and iconsets, adopting a more photo-realistic style. One of the overall goals of Oxygen was to provide a nice looking desktop that did not distract the user, so the icons and themes use a **desaturated** color palette. The name Oxygen came from a joke between the developers that they wanted to ”bring a breath of fresh air to the desktop”.
+
+===  Standardization ===
+
+The Oxygen Project aims to offer standard icons, guidelines and a style guide. It builds on the freedesktop.org Standard Icon Naming Specification and Standard Icon Theme, allowing consistency across applications. There is an ongoing effort for supporting these specifications in different desktops, and by different iconsets and themes, such as the Tango Desktop Project.

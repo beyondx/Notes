@@ -1,0 +1,47 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-21T13:05:46+08:00
+
+====== chosen node create failed ======
+Created Tuesday 21 February 2012
+
+http://www.embeddedlinuxprimer.com/dtc
+
+===== Using Device Tree Compiler =====
+Get the dtc compiler and build it:
+From your favorite working directory:
+
+$ git clone git://git.kernel.org/pub/scm/linux/kernel/git/galak/dtc.git
+$ cd dtc
+$ make
+$ sudo make install
+
+To generate dtb source from the binary blob (dtb)
+
+**$ dtc -I dtb -O dts /tftpboot/mpc8349.dtb >/tftpboot/mpc8349.dts**
+
+To generate the dtb binary blob from source:
+
+$ **dtc -O dtb arch/powerpc/boot/dts/mpc8349emitx.dts -S 20000 > /tftpboot/mpc8349emitx.dtb**
+
+-S argument sets some spare space for the u-boot to add /choosen (and
+some other) nodes.
+------------------------------------------------------------------------
+    By challinan at 2008-11-26 08:29
+    Login or register to post comments
+
+===== U-Boot Error: /chosen node create failed =====
+If you get an error like this when you try to boot a kernel using U-Boot:
+ERROR: /chosen node create failed - must RESET the board to recover.
+
+It generally means that you __need to add some padding to your device tree binary__ (blob!). U-Boot tries to create nodes in your dtb, and if there is no room to create these nodes, it fails with an error similar to this one.
+
+__Use -S as above__, to add additional padding to the dtb.
+
+注意，只使用-S参数是不行的，还要指定-R 参数。如下：
+
+# __dtc -I dts -O dtb  -R 8 -S 20000 mpc8315erdb-default.dts >mpc8315erdb-default.dtb__
+注意：上面的命令必须在root环境下运行(sudo不合适)，因为dtc是一个脚本。
+
+from：
+http://lists.denx.de/pipermail/u-boot/2007-December/027167.html

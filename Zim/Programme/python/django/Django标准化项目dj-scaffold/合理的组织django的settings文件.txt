@@ -1,0 +1,56 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-23T21:07:20+08:00
+
+====== 合理的组织django的settings文件 ======
+Created Sunday 23 October 2011
+http://haoluobo.com/2011/10/django-settings/
+
+django在一个项目的目录结构划分方面缺乏必要的规范，因此不同人的项目组织形式也千奇百怪，而且也很难说谁的做法就比较好。我根据自己的项目组织习惯，发布了一个项目dj-scaffold。
+
+前些天在reddit上为我的项目dj-scaffold打了个“广告”（见：http://redd.it/kw5d4）。不想评价甚糟，甚至差点被打成负分。其中更也人将这个项目说的一文不值。面对负面声音虽然会有些不爽，但其中的建设性意见还是需要听取的，至于那些纯属个人偏好部分就自动过滤了。
+
+在谈及settings文件如何组织时，coderanger建议参考The Best (and Worst) of Django中的做法。文中的主要观点是开发环境和生产环境的配置都需要放到VCS中进行版本控制。参考文中的做法，我对settings模块做了部分调整。注：代码 https://github.com/vicalloy/dj-scaffold/tree/master/dj_scaffold/conf/prj/sites/settings
+
+local_settings的弊病
+
+为将项目的默认配置和本地配置区分开，最常用的做法是增加一个local_settings.py文件，并在settings文件的最后对该文件进行import。
+
+try:
+    from local_settings import *
+except:
+    pass
+
+由此引发的问题是你不能对local_settings.py进行版本控制，部署环境的配置万一丢失将难以找回。
+
+解决方案
+
+针对该问题，建议的解决方案如下
+合理的配置文件组织方式
+
+|~settings/
+| |-__init__.py
+| |-base.py   #默认配置信息
+| |-dev.py    #开发环境的配置
+| |-local.sample    #本地的扩展配置在dev和production的最后进行import
+| |-pre.sample    #设置当前使用的配置为生产环境还是开发环境
+| `-production.py    #生产环境的配置
+
+使用方式
+
+DJANGO_SETTINGS_MODULE
+
+django的admin脚本提供了settings参数用于指定当前使用的配置文件
+
+django-admin.py shell --settings=settings.dev
+
+在wsgi脚本中则可直接设置需要使用的settings
+
+deploy.wsgi
+os.environ['DJANGO_SETTINGS_MODULE'] = settings.production
+
+简化参数
+
+当然，如果每次使用django-admin.py的时候都要带上settings参数还是非常恼人，所以推荐的做法是在pre.py中配置自己所需要使用的配置文件。
+
+SETTINGS = 'production' #dev

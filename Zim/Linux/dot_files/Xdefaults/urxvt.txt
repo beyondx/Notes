@@ -1,0 +1,243 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-28T13:40:02+08:00
+
+====== urxvt ======
+Created Saturday 28 May 2011
+http://blog.sina.com.cn/s/blog_4d2bb0b10100llmm.html
+    常用的命令行开关: man rxvt 可以看详细资料
+
+    -fg color  设置前景色
+
+    -bg  color 设置背景色
+
+    -fm  font  设置多字节语言的字体(显示汉子必须设置好)
+
+    -fn  font  一般字体
+
+    -fb  font  粗体所用字体
+
+    -km  mode  设置多字节显示模式,汉字应该选gb(目前只能支持到gb2312)
+
+    -tr        支持桌面背景透明
+
+    -e   command
+
+    执行一个命令，一般这是最后一个开关，
+
+    后面的所有内容都属于这个命令的选项了
+
+    可用的资源名称 : rxvt –help可以看到更详细资料
+
+    termName:           string        标题
+
+    geometry:           geometry      启动后窗口的大小及位置
+
+    scrollBar:          boolean       是否显示滚动条
+
+    scrollBar_right:    boolean       滚动条在右侧还是左侧
+
+    scrollBar_floating: boolean       滚动条浮动
+
+    scrollWithBuffer:   boolean       滚动内容缓存
+
+    mouseWheelScrollPage:   boolean   支持滚轮
+
+    background:         color         背景
+
+    foreground:         color         前景
+
+    color0:             color         ansi color 0
+
+    color1:             color         ansi color 1
+
+    color2:             color         ansi color 2
+
+    color3:             color         ansi color 3
+
+    color4:             color         ansi color 4
+
+    color5:             color         ansi color 5
+
+    color6:             color         ansi color 6
+
+    color7:             color         ansi color 7
+
+    color8:             color         高亮ansi color 0
+
+    color9:             color         高亮ansi bold color 1
+
+    color10:            color         高亮ansi bold color 2
+
+    color11:            color         高亮ansi bold color 3
+
+    color12:            color         高亮ansi bold color 4
+
+    color13:            color         高亮ansi bold color 5
+
+    color14:            color         高亮ansi bold color 6
+
+    color15:            color         高亮ansi bold color 7
+
+    colorBD:            color         默认前景上的粗体颜色
+
+    colorUL:            color         显示下划线的颜色
+
+    colorRV:            color         反显所用的颜色
+
+    backgroundPixmap:   file[;geom]   背景的颜色
+
+    menu:               name[;tag]    指定rxvt的菜单，
+
+    boldFont:           fontname      粗体的字体
+
+    font:               fontname      指定一般字体
+
+    fontn:              fontname      指定几个字体，可随时切换,n=1-6
+
+    mfont:              fontname      指定多字节字体
+
+    mfontn:             fontname      指定几个字体，可随时切换,n=1-6
+
+    multichar_encoding: mode          多字节编码设置
+
+    inputMethod:        name          输入法一般设置为xim
+
+    preeditType         type          输入法样式可选:Root(置底) OverTheSpot(跟随) OffTheSpot OnTheSpot，后两种不是所有的都支持
+
+    title:              string        标题
+
+    iconName:           string        左上角的图标
+
+    cursorColor:        color         光标颜色
+
+    saveLines:          number        屏幕缓冲行数
+
+    thickness:          number        边框厚度
+
+    backspacekey:       string        回车键
+
+    deletekey:          string        删除键
+
+    scrollstyle:        mode          滚动条样式
+
+    scrollBar_align:    mode          滚动条对齐
+
+    print-pipe:         string        打印管道
+
+以上的资源字符串都可以写入~/.Xresources文件，用xrdb读入，而不用重起Xserver。
+
+下面说一下linux下颜色的设置，其中Xorg已经为一些常用的颜色命名了。文件在/usr/lib/X11/rgb.txt中，大家可以在其中找到自己喜欢的颜色。另外还可以用rgb的格式直接指定，象网页中常用的格式一样比如白色:#FFFFFF, 黑色#000000等等
+
+
+! urxvt color set
+URxvt.background:black
+URxvt.foreground:white
+URxvt.colorBD:yellow
+URxvt.colorUL:Green
+URxvt.color0: #000000
+URxvt.color1: #CC0000
+URxvt.color2: #4E9A06
+URxvt.color3: #C4A000
+URxvt.color4: #3465A4
+URxvt.color5: #75507B
+URxvt.color6: #06989A
+URxvt.color7: #D3D7CF
+URxvt.color8: #555753
+URxvt.color9: #EF2929
+URxvt.color10: #8AE234
+URxvt.color11: #FCE94F
+URxvt.color12: #729FCF
+URxvt.color13: #AD7FA8
+URxvt.color14: #34E2E2
+URxvt.color15: #EEEEEC
+
+! scroll set
+URxvt.scrollBar:false
+URxvt.scrollBar_right:True
+URxvt.scrollBar_floating:True
+URxvt.scrollstyle:plain
+URxvt.scrollWithBuffer:false
+URxvt.saveLines:5000
+
+! font set
+URxvt.font:xft:Liberation Mono:pixelsize=14:antialias=false,xft:Microsoft Yahei:pixelsize=14
+URxvt.boldFont:xft:Liberation Mono:pixelsize=14:antialias=false:Bold,xft:Microsoft Yahei:pixelsize=14:Bold
+
+! Input Method set
+URxvt.inputMethod:ibus
+!URxvt.imFont:Liberation Mono
+!URxvt.preeditType: Root
+
+! window geometry set
+URxvt.geometry: 80x30
+URxvt.title:Prongs-Rxvt
+
+! bg transparent set
+!URxvt.inheritPixmap: true
+!URxvt.tintCddolor: white
+!URxvt.shading: 80
+
+! Tab set
+URxvt.perl-ext-common: default,tabbed,matcher
+!URxvt.tabbed.tab-fg: 12
+!URxvt.tabbed.tab-bg: 0
+!URxvt.tabbed.tabbar-fg: 4
+
+Rxvt.menu:/etc/X11/rxvt.menu
+!Rxvt.preeditType:Root
+!Rxvt.transparency:255
+
+! 开启标签功能
+!URxvt.perl-ext-common: default,tabbed
+
+!滚动条
+Rxvt.scrollBar:True
+Rxvt.scrollBar_right:True
+Rxvt.scrollBar_floating: False
+Rxvt.scrollstyle:plain
+
+URxvt.urlLauncher: firefox
+URxvt.matcher.button: 1
+!URxvt.perl-ext-common: matcher
+
+
+URxvt.depth:32
+URxvt.background:rgba:0000/0000/0000/dddd
+
+rxvt虽然不支持Ctrl+C和Ctrl+V的复制、粘贴，但是它有自己的一套操作方式。Linux下普遍使用的图形界面均为X11，而X11支持一种独特的复制粘贴方式，即如果你在另一个程序比如文本编辑器中使用鼠标拖动来高亮一段文字后，不用进行任何操作，此时选中的内容已经复制到剪贴板中了，随后在rxvt中单击鼠标中键即可将选中内容粘贴到其中，此外，如果鼠标没有中键，可以同时按下左右键以达到同样的效果，还可以使用 Shift+Insert组合键来完成粘贴；反之，从rxvt中向外复制内容同样如此。
+
+   虽然rxvt对东亚文字支持不好，但是rxvt有几个修改版，其中一个就是rxvt-unicode。顾名思义，rxvt-unicode支持unicode编码，因此对东亚文字的支持完全没有问题。安装完成后，使用urxvt即可打开之。
+
+
+标签功能很实用，一般为了达到复用终端窗口的目的会采用两种方式：一是配合screen使用，另一个就是启用标签。然而前者有一个缺点就是不直观，标签页恰好能弥补这个缺陷。urxvt不愧是个功能强大的终端工具，如果在编译时开启perl支持，则urxvt可启用多标签功能。用法如下：
+
+一是在启动的时候加入命令行参数：
+
+    urxvt -pe tabbed
+
+二是在配置文件“.Xresources”中添加如下配置信息：
+
+    URxvt.perl-ext-common: default,tabbed
+
+则默认情况下执行urxvt就会打开多标签功能。urxvt的标签支持使用鼠标操作，同时可以使用Shift+左右箭头来切换标签页，使用Shift+向下箭头开启新标签。
+
+另外一个功能就是可以通过在urxvt中的链接上点击鼠标左键来通过设定的浏览器打开之。首先在“.Xresources”文件中添加如下内容：
+
+    URxvt.urlLauncher: firefox
+    URxvt.matcher.button: 1
+
+然后使用如下命令打开urxvt：
+
+    urxvt -pe matcher
+
+即可。也可以在配置文件中添加上述内容之后再添加一行：
+
+    URxvt.perl-ext-common: matcher
+
+此后即默认开启在终端窗口中打开链接的功能。注意修改“.Xresources”文件后需要执行如下命令才能使修改后的配置文件生效：
+
+    xrdb ~/.Xresources
+
+
+

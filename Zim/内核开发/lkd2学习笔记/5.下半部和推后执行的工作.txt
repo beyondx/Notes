@@ -1,0 +1,247 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-23T23:50:21+08:00
+
+====== 5.下半部和推后执行的工作 ======
+Created 星期四 23 六月 2011
+
+由上一篇笔记我们看到，中断处理分为两个部分：上半部和下半部。中断处理程序属于上半部，而本篇笔记来记录了下半部相关知识点。
+ 
+
+===== 一，下半部 =====
+ 
+下半部的任务就是执行与中断处理程序密切相关但中断处理程序本身不执行，推后执行的工作。
+一般情况下，虽然我们希望中断处理程序能够尽快的返回，但是中断处理程序是注定要完成一部分工作的。比如，中断处理程序几乎都需要通过操作硬件对中断的到达进行**确认**，有时，它还会从**硬件拷贝数据**，因为这些工作对时间都非常敏感，剩下的几乎所有其他工作都是下半部执行的目标。
+ 
+对于一个工作是放在上半部还是放在下半部去执行，可以参考下面四条：
+1）如果一个任务对时间非常敏感，将其放在中断处理程序中执行。
+2）如果一个任务和硬件相关，将其放在中断处理程序中执行。
+3）如果一个任务要保证不被其他中断（特别是相同的中断）打断，将其放在中断处理程序中执行。
+4）其他所有任务，考虑放在下半部去执行。
+ 
+再来看看上半部和下半部在对中断的影响上的区别：
+上半部：屏蔽在所有处理器上的**当前对应**的中断线。如果指定了SA_INTERRUPT，则禁止**所有本地**中断。
+下半部：允许响应所有中断。
+ 
+下半部执行的时间：注意，下半部执行的时间强调只要不是‘马上’就可以，并不需要指明一个确切时间，只要把这些任务推迟一点，让它们在系统不太繁忙并且中断恢复后执行就可以了。下半部执行的**关键在于当他们运行的时候，可以响应所有中断**。通常下半部在中断处理程序一返回就会马上运行。
+ 
+上半部和下半部的实现机制：
+上半部：只能用中断处理程序执行。
+下半部：（2.6）软中断，tasklet和工作队列。还有BH和任务队列，但是在2.5的时候已经去除了。
+ 
+另外一个可以用于将工作推后执行的机制是内核定时器。也就是说，如果想把任务推后执行，有两种方法可供选择：
+1）放到下半部：软中断，tasklet和工作队列。这种方法对时间的要求不确定，只要不是现在就行。
+2）内核定时器：推后到确定的时间后执行。
+ 
+
+===== 二，软中断 =====
+ 
+下面分别来看看下半部的这几个实现方式，先从软中断开始。软中断用的比较少，而tasklet是下半部更常用的一种形式，但tasklet是通过软中断来实现的，所以先来研究下软中断。
+ 
+软中断是在**编译期间静态分配**的，而tasklet能被**动态的注册或者去除**。软中断由softirq_action结构表示，定义在<linux/interrupt.h>中。
+ 
+
+struct softirq_action{
+        void (*action)(struct softirq_action *); /*待执行的函数*/
+};
+
+kernel/softirq.c中定义了包含有32个该结构体的数组。
+
+static struct softirq_action softirq_vec[32];
+
+每个被注册的软中断都占据该数组的一项。最多可能有32个软中断。
+
+当内核运行一个软中断处理程序的时候，就会调用其相关的action函数。例如：my_softirq为一个已注册的软中断，则内核会这样调用它：my_softirq->action(my_softirq)。
+
+**注意**，一个软中断**不会抢占**另外一个软中断，唯一可以抢占软中断的是**中断处理程序**。其他的软中断（包括同类型的软中断）可以在其他处理器上**同时**运行。
+
+一个注册的软中断必须被**标记**后才会执行，这被称作**触发软中断**。通常中断处理程序会在**返回前**标记它的软中断，使其在稍后被执行。在下列几种情况下，软中断会被检查和执行：
+
+1）从一个硬件中断代码处返回时。
+2）在ksoftirqd内核线程中。
+3）在那些显示检查和执行待处理的软中断的代码中，如网络子系统中。
+
+不管是用什么办法唤起，软中断都要在**do_softirq()**中执行。如果有待处理的软中断，则该函数会**遍历**每一个softirq_action，然后调用相关的处理函数。下面是该函数的核心部分：
+
+u 32 pending = softirq_pending(cpu); /*返回待处理的软中断的**32位位图***/
+
+if(pending){
+    struct softirq_action *h = softirq_vec;
+    
+    softirq_pending(cpu) = 0; /*因为所有被标记的软中断将被处理，所以将位图清0*/
+    
+    do{
+            if(pending & 1)
+                h->action(h);
+                
+            h++;
+            pending >>= 1; /*位掩码右移一位*/
+        }while(pending);
+}
+
+注意：软中断保留给系统中对时间要求最严格以及最重要的下半部使用。目前内核中只有两个子系统直接用到了软中断：**网络和SCSI**。对于时间要求严格并能自己高效完成加锁工作的应用，软中断会是正确的选择。
+
+加入并使用自己定义的软中断：
+
+在想加入一个新的软中断之前，要先问问自己为什么tasklet实现不了。一般情况下，tasklet可以很方便并且很好的完成大部分工作。下面来看看使用自己软中断的步骤：
+
+1）分配索引
+
+在编译期间，可以通过在<linux/interrupt.h>中定义一个枚举类型来静态的声明软中断。
+
+2）注册你的处理程序
+
+在运行期间可以通过open_softirq()来注册软中断处理程序。eg，网络子系统通过以下方式注册自己的软中断。
+
+open_softirq(NET_TX_SFOTIRQ,net_tx_action);
+open_softirq(NET_RX_SFOTIRQ,net_rx_action);
+
+注意：如果一个软中断在它被执行的同时再次被触发了，那么另外一个处理器可以同时运行其软中断处理程序。这意味着**任何共享数据**－－甚至是在软中断处理程序内部使用的**全局变量**，都需要**严格的锁保护**。软中断的这个麻烦，也正是tasklet受欢迎的原因。
+
+3）触发你的软中断
+
+当完成了上两步以后，新的软中断处理程序就能够运行了。可通过raise_softirq()函数将一个软中断设置为**挂起状态**，让它在下一次调用do_softirq()函数的时候投入运行。
+
+eg：raise_softirq(NET_TX_SOFTIRQ);
+
+在**中断处理程序中触发软中断**是最常见的形式。在这种情况下，中断处理程序执行硬件设备的相关操作，然后触发相应的软中断，最后退出。内核在执行完中断处理程序以后，会**马上调用**do_softirq()函数。于是软中断开始执行中断处理程序留给它去完成的剩余任务。
+
+===== 三，tasklet（大多数情况下的下半部的最佳选择） =====
+
+tasklet是利用**软中断实现**的一种下半部机制。其优点是：接口简单，**锁保护要求较低**。在大多数情况下，为了控制一个寻常的硬件设备，tasklet机制都是实现你自己的下半部的最佳选择。
+
+tasklet是通过软中断实现的，所以本质上来说也是软中断。tasklet由两类软中断代表：HI_SOFTIRQ和TASKLET_SFOTIRQ，唯一区别是前者的优先级高些，先执行。
+
+==== 1，内核中tasklet的表示。 ====
+ 
+tasklet由tasklet_struct结构体表示，在<linux/interrupt.h>中定义。
+ 
+struct tasklet_struct{
+    struct tasklet_struct *next;
+    unsigned long state; /*tasklet的状态*/
+    atomic_t count; /*引用计数器*/
+    void(*func)(unsigned long); /*tasklet处理函数*/
+    unsigned long data; /*给tasklet处理函数传递的参数*/
+};
+
+其中参数的意义如下：
+
+**state**：只能是0，TASKLET_STATE_SCHEDHE和TASKLET_STATE_RUN。
+
+count为引用计数，只有为0的时候tasklet才可被激活，并且在被设置了挂起状态以后，该tasklet才能够执行。（__激活---->挂起---->被调用__）
+
+func为tasklet的处理函数。
+
+==== 2，内核中tasklet的调度 ====
+
+已调度的tasklet（等同于被触发的软中断）存放在两个数据结构（每个处理器一个）中：tasklet_vec(普通tasklet)和tasklet_hi_vec(高优先级的tasklet)中。
+
+tasklet由**tasklet_schedule()**和**tasklet_hi_schedule()**进行调度。
+
+由于tasklet本质上也是软中断，所以当执行do_softirq（）的时候，因为TASKLET_SOFTIRQ和HI_SOFTIRQ已经被设置了，所以do_softirq()会执行相应的__软中断处理程序:tasklet_action()和tasklet_hi_action()__。这两个函数会**检索**tasklet_vec和tasklet_hi_vec,然后处理每一个待处理的tasklet。即调用其相关的tasklet处理函数。
+注意：同一时刻，相同类型的tasklet只有一个被执行(**这是与软中断最大的区别**)，而不同类型的tasklet可同时执行。
+ 
+
+==== 3，使用tasklet ====
+ 
+下面来看看如何使用自己定义的tasklet。
+ 
+1）声明你自己的tasklet。
+ 
+tasklet即可以静态创建也可以动态创建，选择哪种方式取决于你想要的是一个tasklet的**直接引用还是间接引用**。
+静态声明可以用如下两个宏：
+DECLARE_TASKET(name, func, data)或DECLARE_TASKLET_DISABLED(name, func, data)  //name为创建的tasklst_struct的名称，可以直接引用
+两个宏的区别：前面的宏创建的tasklet引用计数器设置为0，tasklet处于激活状态。而后面的创建的tasklet的引用计数器设置为1，所以该tasklet处于禁止状态。
+ 
+动态声明：
+tasklet_init(my_tasklet, tasklet_handler, dev);   //my_tasklet为间接引用。
+ 
+2)编写自己tasklet的处理函数
+ 
+tasklet处理函数必须符合以下格式：
+void tasklet_handler(unsigned long data) 
+ 
+注意：因为是靠软中断实现，即**还处在中断上下文，所以tasklet不能睡眠**。这意味着你不能在tasklet中使用信号量或者其他什么阻塞式的函数。但是tasklet运行时允许相应中断。
+ 
+3)调度你自己的tasklet
+ 
+通过调用tasklet_schedule()函数并传递给它相应的tasklet_struct指针，该tasklet就会被调度以便执行。
+tasklet_schedule(&my_tasklet);    /*把my_tasklet标记为**挂起***/
+因为在一开始声明初始化的时候就已经处于激活状态了，但是必须得标记为挂起状态后才能被执行。经过这步后，tasklet被挂起，之后**有机会**得时候，它就会被执行了。
+ 
+同样，也可以用函数tasklet_disable()来禁止某个指定的tasklet。tasklet_enable()函数可以激活一个tasklet。也可以通过tasklet_kill()函数从挂起的队列中去掉一个tasklet。
+ 
+ 
+
+===== 四，ksoftirqd =====
+ 
+每个处理器都有一组辅助处理软中断和tasklet的内核线程。当内核中出现大量软中断的时候，这些内核进程就会辅助处理它们。也就是说，当大量软中断出现的时候，内核会**唤醒一组内核线程**来处理这些负载。这些线程在最低优先级上运行（nice值是19），这能避免它们跟其它重要的任务抢夺资源，但它们最终肯定会被执行。
+ 
+注意：只要do_softirq()函数发现**已经执行过的内核线程重新触发了它自己**，软中断内核线程就会被唤醒。
+ 
+ 
+五，工作队列
+ 
+工作队列可以把工作推后，交由一个内核线程去执行---唯一能在进程上下文中执行的下半部机制。这样工作队列允许重新调度或者睡眠。
+ 
+1，选择软中断/tasklet还是工作队列？
+ 
+很简单，如果推后执行的工作需要睡眠，就选择工作队列。如果推后执行的工作不需要睡眠，则选择软中断或tasklet。也可以这么记忆，如果你的工作需要获得大量的内存时，需要获取信号量时，需要执行阻塞式的I/O操作时，工作队列会很有用。
+ 
+
+ 
+2，工作队列在内核中的实现
+ 
+工作队列子系统提供了一个默认的工作者线程即events/n来处理需要推后执行的工作。这里n是处理器编号，每个处理器对应一个。许多内核驱动程序都把它们的下半部交给默认的工作者线程。除非你必须建立一个自己的内核线程，否则最好使用默认的工作者线程。
+ 
+下面来看看几个相关的数据结构:
+workqueue_struct:每类工作者线程由一个workqueue_struct表示。
+cpu_workqueue_struct:每个工作者线程由一个该结构表示。
+work_struct:每个工作由一个该结构体表示。
+这三个结构之间的关系如下图：
+ 
+举个例子来说：
+比如在系统默认的events工作者类型以外，自己加入了一种test工作者类型。而本机由四个处理器。这种情况下，系统中会有四个events类型的工作者线程（四个cpu_workqueue_struct结构体）和四个test类型的工作者线程（四个cpu_workqueue_struct结构体）。而有一个events类型的workqueue_struct和一个test类型的workqueue_struct结构体。
+ 
+由上图可以看到，工作处于最低层。‘工作’这种接口封装了我们实际要推后执行的工作。该结构体中最重要的是一个函数，用来负责处理需要推后执行的具体任务。
+ 
+所有的工作者线程都是用普通的内核线程实现的，它们都会执行worker_thread()函数。工作线程被初始化后，该函数会执行死循环并开始睡眠。当有操作被插入到队列里的时候，线程就会被唤醒，然后执行这些需要推后执行的操作，当没有剩余的操作时，它又会继续休眠。
+ 
+3，如何使用自己的工作队列
+ 
+1）创建需要推后执行的工作。
+静态：DECLARE_WORK(name, void(*func), void *data);
+动态：INIT_WORK(struct work_struct *work, void(*func)(void *), void *data);
+2）编写工作的处理函数。
+函数原型为：
+void work_handler(void *data)
+注意：由于这个函数会由一个工作者线程调度，所以会运行在进程上下文中。但它不能够访问用户空间。只有在系统调用发生时，才有可能访问用户空间。
+3）对工作进行调度。
+也就是把工作加入到工作者线程的工作队列中：如果把工作交给默认的events，则只需调用：
+schedule_work(&work);
+这样work就会被加入到events的任务队列中，当所在处理器上的相应工作者线程被唤醒时，它就会被执行。或者：
+schedule_delayed_work(&work, delay);
+delay个时钟节拍以后将work加入到工作者的任务队列中。
+4）刷新操作
+有时，在进行下一步之前必须确保一些操作已经执行完毕，此时可以用刷新操作。（也就是等待操作？？？）
+void flush_schedule_work(void);
+此函数会一直等待，直到队列中所有对象都被执行以后才返回。
+注意，该函数不会取消任何延迟执行的工作。取消延迟执行的工作应该调用：
+int cancel_delayed_work(struct work struct *work);
+这个函数可以取消任何与work_struct相关的挂起操作。
+ 
+ok，到这里如何创建我们的‘工作’和如何把它加入到工作队列中我们已经知道了。下面来看看当默认工作者不能满足要求时，此时应该创建一类新的工作者线程。但是要注意，前面提到，随便创建一个内核线程不是一个好的办法，所以当必须要这么做时，可以考虑创建自己的工作队列。方法如下：
+ 
+可以调用以下函数：
+struct workqueue_struct *create_workqueue(const char *name);
+比如我们的events队列的创建调用的是：
+struct workqueue_struct *keventd_wq;
+keventd_wq = create_workqueue("events");
+ 
+把工作加入到自己定义的工作者线程的工作队列的函数是：
+int queue_work(struct workqueue_struct *wq, struct work_struct *work);
+int queue_delayed_work(struct workqueue_struct *wq, struct work_struct *work, unsigned long delay);
+跟默认的相比，只是多了要给出对应的工作者线程。
+ 
+刷新指定的工作队列：
+flush_workqueue(struct workqueue_struct *wq);

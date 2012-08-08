@@ -1,0 +1,262 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-22T21:22:23+08:00
+
+====== Linux and USB 2.0 ======
+Created Tuesday 22 November 2011
+
+http://www.linux-usb.org/usb2.html
+
+You should probably know that "USB" is an abbreviation of the Universal Serial Bus, which is widely used for peripherals in modern desktop systems. (It's not "universal" in the sense that you'd want it instead of HyperTransport!) PCs typically support one or more __USB controllers __(__one per "USB bus"__) each of which can support up to __127__ different USB peripherals. "Legacy free" PCs omit non-USB peripheral support (like RS-232 serial lines, and PS/2 ports). Partially excepting the new USB 2.0 "OTG" support, USB is asymmetric. For example, its cabling is always asymmetric (even with OTG), so you can't hook things up incorrectly. USB supports "hotplugging" for all its peripherals, which means that you don't have to configure them by hand and that peripherals may rely on power delivered through USB. Both those features help reduce end-user setup and configuration problems, which was a major goal for USB technology.
+
+===== OS-Neutral Changes in USB 2.0 =====
+
+Today, most USB peripherals and hosts support USB version 1.1, which supported two device speeds: low speed at **1.5** **Mbit/sec**, and full speed at **12 Mbit/sec**. USB 2.0 is appearing in current product designs, and one of its main features is adding a new speed: high speed, at** 480 Mbit/sec**.
+
+To put it another way: USB 1.1 was OK for low speed devices like __mice and keyboards__, and even for medium speed ones like Ethernet (10 Mbit/sec) adapters, or consumer electronics gadgets that only exchange a few megabytes of data (like many digital still cameras and MP3 players). 
+USB 2.0 "full speed" or "low speed" is effectively just the familiar old "USB 1.1". You need USB 2.0 high speed to get reasonable speed for multiple large transfers as with some PC peripherals like__ disk drives__ (including MP3 jukeboxes :) or high resolution webcams (USB video), or get concurrent use from a bunch of 100BaseT networking adapters.
+
+OK, it's faster! ... but what else will a Linux user notice about USB 2.0? We'll go from the outside in: starting from what you'll see with product boxes, and then working toward what you'll see with normal Linux user mode tools. (More technical details are in later sections.) One thing you won't notice is **designed-in compatibility** problems. Apart from some constraints on how you set up high speed devices, all your USB 1.1 hardware works just fine with USB 2.0 systems.
+
+===== Updated USB Logos =====
+
+One thing that you should watch for, and use to your advantage, is a new testing and branding program. Earlier USB peripherals sometimes had compatibility problems, and the tighter electrical requirements of USB 2.0 could have aggravated that issue. Instead, there are new USB 2.0 logos and a testing program that __must be__ passed before peripherals are allowed to use them. That is, this isn't purely a marketing gimmick, there's actually some value wrapped up in this logo. Here are the new and old USB logos:
+
+high speed labeled by the top stripe ... the two-color version highlights that in red, sometimes it's one-color.
+
+Be cautious about "high speed" peripherals that for any reason don't display that new logo. Those devices may not work very well, and it'll be your fault for encouraging vendors that sell nonconformant devices.
+
+===== Hubs and Cabling =====
+
+One big win for the USB 2.0 upgrade is that **cables don't need to change**. With the possible exception of some low quality cables that may not even handle USB 1.1 very well, you can keep using your existing USB cables. There was no need to switch to optical signal transmission, or anything similarly incompatible. There are new__ "Mini-B"__ cables, that can help eliminate the need for proprietary connectors on many small USB peripherals. (Think of a camera, cell phone, or PDA; classic B sockets take up way too much space.) However, some people report they need to avoid using long USB cables. If you're using long cables and having problems enumerating, try using shorter cables.
+
+USB 2.0 hubs are special. Not only do they support high speed devices (older USB 1.1 hubs can't), but also because they all include __"transaction translator"__ support that helps prevent full and low speed devices from wasting most of the USB bandwidth. See the later section on backwards compatibility for information about how this impacts end users with high speed buses whose devices may not all operate at high speed.
+
+=== USB "On-The-Go" (OTG) ===
+
+There is also a supplement to USB 2.0 called USB "On-The-Go" (OTG) which supports point-to-point peer style hookups for USB devices that are often used without a PC host. Few end-user OTG products exist yet; newer __embedded Linux__ systems can be used to implement them. OTG relies heavily on those new USB "Mini" connectors, and supports low power operation (battery friendly). It also defines a modified USB 2.0 logo:
+
+
+The key change in OTG is defining a new "Dual-Role" type of peripheral, which can become a low-power USB host when you connect it to another peripheral. Most OTG-capable peripherals will have special Mini-AB sockets (new in OTG). Because of how the USB "mini" plugs and jacks work, Mini-AB sockets accept either the Mini-B peripheral jack at one end of a USB cable or the (new in OTG) Mini-A host jack at its other end. Use the peripheral end, and they start out as a peripheral. Use the host end, and they start out like a USB host ... so that you could print directly from your camera or phone, hook a keyboard up to your PDA, or swap songs with your friend's MP3 player. If you connect two different dual-role devices, the "wrong" one may be initialized as the host. In that case, the optional OTG Host Negotiation Protocol (HNP) lets devices switch roles between "host" and "device" instead of forcing users to switch the cable around.
+
+==== Host Controllers and Backwards Compatibility ====
+
+You can connect USB 2.0 peripherals to USB 1.1 hosts and hubs, and they should__ work just fine__ ... but at 12 Mbit/sec, not at 480 Mbit/sec.
+
+To get "high speed" behavior you'll need an updated host controller. It must support "USB 2.0 high speed", through the "__EHCI__" standard. Today you can get those as PCI cards, usually with a three or five port controller from NEC, or sometimes a four port one from Philips or VIA. More importantly, essentially all current generation PC motherboard silicon includes an EHCI controller built in. Linux users have reported success on most of these, with chips from ALI, Intel, NVidia, SiS, VIA, and others. (That's in alphabetical order; I'm not intending to slight any vendors.) See the section on Linux support (later) for more specific information.
+
+You may also need **newer hubs **with USB 2.0 support. Probably the most important aspect of such hubs is how they support **trees of devices** that __mix both high speed and full (or low) speed devices__. The short version of the story is that to get high speed transfers out of a high-speed capable device, you must hook it up through an EHCI controller (that's using an EHCI driver!), and any hubs between the host and the device must only be USB 2.0 hubs.
+
+That is, a tree of USB devices can start out with a high speed__ root hub__, but if you plug in any USB 1.1 hubs to that tree, USB devices on branches below that hub will only operate at slower full/low (USB 1.1) speeds ... even if it's a USB 2.0 device. For now the lesson is that if you want to use a device at high speed, double check it after cabling things up. You can do this with "usbfs".
+
+==== Changes Visible to Linux Users ====
+
+Beyond those general issues, Linux users will notice a few changes if they poke around through what the kernel tells them about their hardware.
+
+=== "usbfs" and /proc/bus/usb/devices ===
+
+You may know "__usbfs__" through its original, and somewhat confusing name, of "usbdevfs". The name changed because it was completely unrelated to "devfs".
+
+If you use "usbfs" (perhaps through scripts like usbtree or tools like usbview) you will notice a few minor changes. Most notably, the USB version for some devices will be "**2.0**", and those devices will report their speed as "480Mb/s" when they're running at high speed. (In compatibility mode, at full speed, they'll say "12Mb/s".) Here's what usbtree shows for some full speed devices hooked up to an USB 2.0 controller. Several are connected through a USB 2.0 hub, and there's a USB 1.1 hub (with no devices) hooked up to another root hub port.
+
+/:  Bus 03.Port 1: Dev 1, Class=root_hub, Driver=ohci-hcd/2p, 12M   #1.0 Controller
+/:  Bus 02.Port 1: Dev 1, Class=root_hub, Driver=ohci-hcd/3p, 12M   #1.0 Controller
+        |__ Port 1: Dev 2, If 0, Class=hub, Driver=hub/4p, 12M
+/:  Bus 01.Port 1: Dev 1, Class=root_hub, Driver=ehci-hcd/5p, 480M  #2.0 Controller
+    |__ Port 2: Dev 2, If 0, Class=hub, Driver=hub/4p, 480M
+        |__ Port 1: Dev 3, If 0, Class=>ifc, Driver=pegasus, 12M
+        |__ Port 4: Dev 8, If 0, Class=hub, Driver=hub/3p, 12M
+            |__ Port 1: Dev 9, If 0, Class=HID, Driver=hid, 12M
+
+Some of the endpoint descriptors may change. Maximum packet sizes can be bigger, and polling intervals for periodic transfers will sometimes be measured in microseconds (like 250us), not milliseconds (like 2ms), and you may even see NAK rates for bulk endpoints. For example, this descriptor is for one USB 2.0 CD-RW when it's running at high speed:
+
+T:  Bus=01 Lev=01 Prnt=01 Port=01 Cnt=01 Dev#=  2 Spd=480 MxCh= 0
+D:  Ver= 2.00 Cls=00(>ifc ) Sub=00 Prot=00 MxPS=64 #Cfgs=  1
+P:  Vendor=05ab ProdID=0060 Rev= 2.10
+S:  Manufacturer=In-System Design
+S:  Product=USB Storage Adapter
+S:  SerialNumber=2201010A0247C8AB
+C:* #Ifs= 1 Cfg#= 2 Atr=c0 MxPwr= 98mA
+I:  If#= 0 Alt= 0 #EPs= 3 Cls=08(stor.) Sub=06 Prot=50 Driver=usb-storage
+E:  Ad=01(O) Atr=02(Bulk) MxPS= 512 Ivl=125us
+E:  Ad=82(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=83(I) Atr=03(Int.) MxPS=   2 Ivl=32ms
+
+Here's the descriptor for the same CD-RW when there's no EHCI driver, so it's running at full speed (may not be a good idea to burn CDs at this speed though):
+
+T:  Bus=02 Lev=01 Prnt=01 Port=00 Cnt=01 Dev#=  2 Spd=12  MxCh= 0
+D:  Ver= 2.00 Cls=00(>ifc ) Sub=00 Prot=00 MxPS=64 #Cfgs=  1
+P:  Vendor=05ab ProdID=0060 Rev= 2.10
+S:  Manufacturer=In-System Design
+S:  Product=USB Storage Adapter
+S:  SerialNumber=2201010A0247C8AB
+C:* #Ifs= 1 Cfg#= 2 Atr=c0 MxPwr= 98mA
+I:  If#= 0 Alt= 0 #EPs= 3 Cls=08(stor.) Sub=06 Prot=50 Driver=usb-storage
+E:  Ad=01(O) Atr=02(Bulk) MxPS=  64 Ivl=0ms
+E:  Ad=82(I) Atr=02(Bulk) MxPS=  64 Ivl=0ms
+E:  Ad=83(I) Atr=03(Int.) MxPS=   2 Ivl=32ms
+
+Other than that "480Mb/s" speed rating, most of that per-device usbfs information will only be interesting to folk working with device drivers. That "480Mb/s" in the descriptor for your device will be a sign that you've cabled it up correctly (so it runs at high speed). But there are also differences you may notice if you look at the root hub support for each of your systems USB busses.
+
+=== USB 1.1 "Companion Controllers" ===
+
+Perhaps the most curious thing is that when you plug in a full (or low) speed device to a connector on your high speed USB controller, it will be connecting to a different bus than when you plug in a high speed device to that same USB "A" socket on your PC! In the CD-RW example above, the bus number changed. Sometimes the port number will also change. (OK, so maybe you wouldn't have noticed.)
+
+That's because of how the controllers work. Here's how /proc/bus/usb/devices looks on one system with a five port NEC EHCI based controller, and nothing hooked up to it. I added some whitespace and highlighting so you can see what's going on a bit better:
+
+T:  Bus=03 Lev=00 Prnt=00 Port=00 Cnt=00 Dev#=  1 Spd=12  MxCh= 3
+B:  Alloc=  0/900 us ( 0%), #Int=  0, #Iso=  0
+D:  Ver= 1.10 Cls=09(hub  ) Sub=00 Prot=00 MxPS= 8 #Cfgs=  1
+P:  Vendor=0000 ProdID=0000 Rev= 2.05
+S:  Manufacturer=Linux 2.5.8 ohci-hcd
+S:  Product=NEC Corporation USB
+S:  SerialNumber=00:0b.0
+C:* #Ifs= 1 Cfg#= 1 Atr=40 MxPwr=  0mA
+I:  If#= 0 Alt= 0 #EPs= 1 Cls=09(hub  ) Sub=00 Prot=00 Driver=hub
+E:  Ad=81(I) Atr=03(Int.) MxPS=   2 Ivl=255ms
+
+T:  Bus=02 Lev=00 Prnt=00 Port=00 Cnt=00 Dev#=  1 Spd=12  MxCh= 2
+B:  Alloc=  0/900 us ( 0%), #Int=  0, #Iso=  0
+D:  Ver= 1.10 Cls=09(hub  ) Sub=00 Prot=00 MxPS= 8 #Cfgs=  1
+P:  Vendor=0000 ProdID=0000 Rev= 2.05
+S:  Manufacturer=Linux 2.5.8 ohci-hcd
+S:  Product=NEC Corporation USB (#2)
+S:  SerialNumber=00:0b.1
+C:* #Ifs= 1 Cfg#= 1 Atr=40 MxPwr=  0mA
+I:  If#= 0 Alt= 0 #EPs= 1 Cls=09(hub  ) Sub=00 Prot=00 Driver=hub
+E:  Ad=81(I) Atr=03(Int.) MxPS=   2 Ivl=255ms
+
+T:  Bus=01 Lev=00 Prnt=00 Port=00 Cnt=00 Dev#=  1 Spd=480 MxCh= 5
+B:  Alloc=  0/800 us ( 0%), #Int=  0, #Iso=  0
+D:  Ver= 2.00 Cls=09(hub  ) Sub=00 Prot=01 MxPS= 8 #Cfgs=  1
+P:  Vendor=0000 ProdID=0000 Rev= 2.05
+S:  Manufacturer=Linux 2.5.8 ehci-hcd
+S:  Product=NEC Corporation USB 2.0
+S:  SerialNumber=00:0b.2
+C:* #Ifs= 1 Cfg#= 1 Atr=40 MxPwr=  0mA
+I:  If#= 0 Alt= 0 #EPs= 1 Cls=09(hub  ) Sub=00 Prot=00 Driver=hub
+E:  Ad=81(I) Atr=03(Int.) MxPS=   2 Ivl=256ms
+
+Yes, three USB buses on one controller card! (The PCI card is 00:0b but each bus has a different PCI function number.) And it looks like there's a total of ten ports (sum the "MxCh" entries saying how many children the root hubs have), not five ... how can that be?
+
+The answer is that the two OHCI "companion controllers" are used along with the EHCI controller, and a silicon switch connects each port to only one controller at a time. When an EHCI driver runs, all ports start out connected to EHCI. When EHCI detects a full or low speed device on a port, that port is switched over to one of the companion controllers. High speed devices it keeps for itself ... so each port seems to connect to either EHCI or its companion controller (never both!) based on whether it runs at high speed or not. If there's no EHCI driver there to handle high speed devices, then everything gets treated as full or low speed since the switch won't connect things to the EHCI controller. (Companion controllers won't necessarily be OHCI; some are UHCI.)
+
+So to fully use a USB 2.0 host controller you must still use an OHCI or UHCI host controller driver, as you've likely been doing already. And if that's the only driver you have, you can still use hardware that includes USB 2.0 support ... it just won't be as fast until you upgrade to an OS version with USB 2.0 support. In the big picture that's a great migration story for the core USB 2.0 technology: the hardware can upgrade, and the software follows later when it's convenient for end users. (Much like most vendors' stories for migrating from one generation of CPU, or instruction set, to the next one.)
+
+The USB Host controllers in many embedded systems would rather not spend silicon for companion controllers, so some of them avoid this by embedding a transaction translator into the controller's root hub. That's not standardized, but Linux already supports one such product (from ARC).
+
+=== USB 2.0 Hubs have "Transaction Translators" (TTs) ===
+
+OK, this section talks about what makes USB 2.0 tricky. And it's not all that user visible, so you can safely skip reading it if you're one of the many Linux users who just wants a top quality OS (or a Free one) and aren't very concerned about all the underlying technology. If you want to skip this, remember just this one thing: hubs with more than one TT may support more active low and full speed devices, especially more webcams or audio devices.
+
+If you're writing a device driver, you may want to know about this, since it can affect how you write your driver. At this writing, not all transaction translator features are used by Linux. Also, since those code paths aren't used much yet, a number of shortcuts have been taken, which limit throughput. (A mostly-functional patch is available for 2.6.10, removing those shortcuts.)
+
+=== Split Transactions ===
+
+USB 2.0 gets some of its backward compatibility through a technique called split transactions that's used in many other buses. Many disk interface technologies, for example, support concurrent requests to different devices (like USB does), and split their requests into a "start" phase, disconnecting, and reconnecting later for a "complete" phase. That lets the bus be used for other purposes while some slow I/O completes ... like a disk drive seeking and reading several sectors, or (in the USB case) like a 1.5 MBit/sec mouse delivering its motion event.
+
+In the case of a USB 2.0 host talking to a USB 1.1 device, it does so either through a companion controller (so it's really acting as a USB 1.1 host), or through a transaction translator in a USB 2.0 hub. The host talks to the translator at high speed, and then the translator performs the full or low speed I/O to that USB 1.1 device. It buffers data in either direction as required, and later sends the results back to the host at high speed. A hub can have just one translator, or one per port. With just one translator, a hub can only use as much bandwidth as a USB 1.1 host can. With more translators, each port can use that much bandwidth.
+
+So for example, each of the ports on the hub might have a full speed webcam, each of which is using ten megabits per second of I/O at the same time. With less capable hubs, only one port on that hub might be able to operate at that speed at a time, supporting only the bandwidth of a USB 1.1 bus.
+
+=== Using Transaction Translators ===
+
+From the perspective of a Linux USB 2.0 host, there are two ways it talks to USB 1.1 devices through transaction translators. Some requests do this almost transparently, like control requests and (full speed only) bulk data transfer. In those cases, the host must tell the EHCI controller that it's talking through a transaction translator, and maybe be ready to recover from some errors, but for most purposes there's control and bulk requests are completely "hands off". That means many USB 1.1 device drivers will continue to work just fine through a USB 2.0 hub ... many network adapters, modems, digital still cameras, MP3 players, disk drives, and similar devices won't need anything more.
+
+Then there are the requests that need a lot of hands-on attention: periodic transfers like interrupt and (full speed only) isochronous ones. Because these are all reserved-bandwidth transacton types, they can't be automated as readily as control and bulk (which can opportunistically make progress whenever periodic transfers aren't active). The result is a lot of hub-related complexity in the EHCI driver, making sure that the periodic transfers are safely scheduled and that transaction translators don't get overcommited. Periodic transfers are already the most complex type in USB (though their API got simpler in the Linux kernel 2.6 series), so to some extent it's just one more consideration when scheduling,
+
+For example, suppost a USB 1.1 periodic transfer is to be worked on every eight frames (milliseconds). That's going to go through a specific transaction translator; the transfer needs a time when that translator isn't in use, and when there's also bus bandwidth. The EHCI driver needs to schedule a "start split" (a bit in an 's-mask') sometime in one microframe, and a "complete split" (bits in a 'c-mask') in some later microframe, and ensure that between the start and completion no other request uses that translator. Isochronous transfers can be bigger, and are managed by EHCI using a different type of data structure, but in both cases you can see that there's a fair amount of housekeeping involved in tracking what requests are active.
+
+=== Driver-Visible Changes in USB 2.0 ===
+
+The most visible change was the addition of "high speed" devices and transfers. In a Linux USB device driver, you can tell if the device is high speed (and thus whether its transfers will be at high speed!) by testing whether dev->speed == USB_SPEED_HIGH. You've been able to do that since about the 2.4.10 kernel, but you probably didn't have high speed devices to work with then.
+
+The rules for full and low speed transfers have not changed, but some rules changed for high speed transfers. (You may have noticed some of those changes when comparing the high speed and full speed usbfs information shown above for the CD-RW.) In a few cases drivers need to have code that knows which rules apply, but mostly the changes will be transparent to correctly written drivers. Those changes include:
+
+    Maximum packet sizes for control transfers are fixed at 64 bytes, and for bulk transfers they are fixed at 512 bytes. For full and low speed, those limits are smaller and can also vary between devices. Don't hard-wire maxpacket sizes in drivers that will handle high speed devices (and their full-speed modes).
+    Maximum packet sizes for interrupt transfers can now be up to 1024 bytes. (For full and low speed, those limits are much smaller.) Likewise for ISO transfers (which previously had a curious 1023 byte limit).
+    There are now eight "microframes" per frame. A useful number to keep in mind is that thirteen bulk packets of 512 bytes each can be exchanged in one microframe. (At full speed, nineteen bulk packets of 64 packets could be exchanged in one frame. High speed transfers can be more than forty times faster than full speed ones!) For devices that can operate at high speed, drivers need to queue more data, both with bigger per-urb buffers and multiple urbs, to get the most benefit from that higher speed.
+    Periodic transfers can only reserve up to eighty percent of the USB bandwidth (per microframe). In USB 1.1, up to ninety percent was available.
+    Periodic transfer periods are measured in microframes, not frames. Both ISO and interrupt transfer intervals now use a log2 encoding, where previously only ISO transfers used that encoding. (Interrupt transfers can now have larger or smaller periods.) Drivers will need to interpret endpoint->bInterval differently for high speed devices, and also set urb->interval accordingly. Use usb_fill_int_urb() correctly, so this is done for you.
+    Periodic transfers can support a "high bandwidth" mode, where up to 3 packets (3KB at most) per microframe can be transferred. This shows up in a new field in endpoint descriptors. Drivers will need to interpret usb_maxpacket() differently for high speed, since that holds the new bit field as well as the original one. (With USB 1.1 devices, periodic transfers only involve one packet each period.)
+    EHCI provides less detailed error indicators than OHCI or UHCI. This means that drivers for USB 1.1 devices should retest for good behavior while connecting through a transaction translator in a USB 2.0 hub. Try things like unplugging devices while they're actively in use. It's likely they'll see EPIPE (endpoint stall) errors in some cases where previously they saw ETIMEDOUT (ohci) or EILSEQ (uhci). Unlike true endpoint stalls, usb_clear_halt() won't be able to talk to the device. (Your driver does have code to recover correctly from halted endpoints, doesn't it? It should!)
+
+There are also protocol changes that should be invisible to most device drivers ... except in some cases for the host or device controller drivers, or the hub driver:
+
+    There's a new "other speed configuration" descriptor for devices that can work at both full and high speed. When a device is working at full speed, it would usually have different descriptors for high speed operation ... see the CD-RW example above. You don't need to re-enumerate at the other speed to see those descriptors.
+    "Split transactions" use a new feature of USB 2.0 hubs, the "transaction translator, which makes more efficient use of USB bandwidth. (All transactions run at high speed. Hubs build in buffering and logic for full or low speed speed operations.)
+    NYET transactions on the wire, used to detect that split transactions are not yet complete.
+    PING transactions on the wire help flow control to high speed bulk or control endpoints.
+    DATA2 and MDATA transactions on the wire are used with isochronous transfers.
+    The hub descriptor defines a few new fields, and uses the protocol number to say whether each port has its own transaction translator.
+
+=== USB "Gadget" API; and OTG ===
+
+As Linux gets embedded more widely inside USB peripherals (not just USB hosts), the USB "function" or "target" drivers have been getting more attention. The original Linux-USB programming interface had only a host side model: one master talking to many targets (like a web client talking to many servers). It didn't support the drivers running inside USB devices.
+
+A peripheral side Linux-USB gadget API is now standard with 2.4 and 2.6 kernels. That framework currently supports at least a dozen different types of USB peripheral controller hardware under Linux. While it resembles the original host-side programming interfaces (at least in terms of submitting asynchronous requests, and in terms of shared core data structures), it must treat USB busses very differently from a host side API. That's because implementing the target function only involves responding to a single USB Host (like a web server only responding to one client at a time). Also, target side drivers can never initiate control requests, they can only respond to them.
+
+Once Linux supported both "host" and "gadget" USB APIs (at all device speeds), it clearly had almost every programming interface needed to implement OTG compliant devices. Courtesy of Texas Instruments, Linux 2.6.9 kernels include an implementtion of OTG on Linux; that first implementation supports TI's OMAP processors, used in wireless devices.
+
+=== Linux Status ===
+
+People have been using USB 2.0 with usb-storage devices from Linux hosts since June 2001. But it was only towards the end of that year, a short while before Linus created the 2.5 development branch, that other USB 2.0 devices (notably, hubs) began to be available. So while some changes for USB 2.0 were rolling into 2.4 kernels through the year 2001, largely done by about 2.4.10, the most tricky stuff (the ehci-hcd driver) stayed separate until the 2.5 kernel branched. All current Linux distributions include EHCI support, and the end-user bug reports have been helping to stabilize that driver.
+
+=== Host Controller Driver Support ===
+
+At this writing the "ehci-hcd" driver is not as well proven as the OHCI or UHCI drivers, so parts of it (especially those parts interacting with USB 2.0 hubs and transaction translators) are still experimental, but it's just fine for many purposes, including espcially providing quick access to high speed disks. (Where "quick" often means up to 30 MByte/second, with off-the-shelf hardware.)
+
+    The Linux 2.6 kernel has the most up-to-date USB 2.0 support, as well as quite a number of other USB updates and cleanups.
+    The 2.4.19 kernel was the first to bundle a 2.4 based version of the ehci-hcd driver, but avoid using anything older than 2.4.22. Expect any 2.4 version to be less current than the 2.5 version; it's also not being updated to match 2.6 any more.
+    Older Linux distributions include a 2.4.18 based version that's much like the original 2.5 patch, though more recent distributions (including RedHat 9) match a good 2.4.21-pre level.
+
+In terms of functionality, the latest driver:
+
+    Supports all four USB transfer types at high speed: control, bulk, interrupt, and isochronous. However, scheduling for interrupt transfers currently takes shortcuts which prevent them from using much bandwidth. (Or handling certain system configurations. However, a patch for 2.6.10 is being tested which removes those shortcuts.) And nobody's really done much yet with the isochronous code, although kernel 2.6.2 (or 2.4.25) and later has a rewritten version that handles high bandwidth, and is a lot more capable.
+    Has partial support for split transactions (full and low speed transfers) through USB 2.0 hubs:
+        Control and bulk transfers work, though older versions may not recover from some errors appropriately. That means: that while you should be able to use many USB 1.1 devices like disks and still cameras through such hubs, you might also run into some failure modes that can't yet be recovered. (And some device drivers might also need updates to handle new failure modes, as noted above.)
+        Full and low speed interrupt transactions work, taking the same scheduling shortcuts as high speed interrupt transfers take. So most keyboards and mice should work on USB 2.0 hubs, if you're using one of the more recent kernels. (Some serial port and Bluetooth adapters aren't compatible with those shortcuts though.)
+        Full speed isochronous transfers work somewhat through USB 2.0 hubs, in current 2.6 kernels. But they're not robust yet; for example, USB speakers will sometimes work, but there may also be an audible buzz in addition to (or instead of!) the desired sound. Eventually of course a dozen USB 1.1 webcams will easily coexist at full data rate on a single USB 2.0 bus, using USB 2.0 hubs.
+    The current kernels support BIOS handshaking (transferring "ownership" of EHCI from BIOS/SMM to Linux, as is done for OHCI or UHCI). That depends on EHCI hardware features that took time to become generally available with BIOS implementation support. Recently some BIOS versions have appeared which don't seeem to cooperate fully with Linux (mis-implementing that handshake).
+    Works with a variety of EHCI silicon implementations. NEC led the market by over a year, but now implementations from Intel, NVidia, Philips, VIA, SiS, ALI, Genesys, and others work with Linux.
+    Should tolerate more abuse on CardBus adapters. Before the 2.5.29 kernel, you needed to manually "rmmod" ehci-hcd (and often ohci-hcd) to cope with a sequencing bug in the CardBus shutdown.
+
+You'll find that most PCI USB 2.0 add-in cards (and CardBus/PCMCIA ones) use the NEC silicon or the VT62x2, though there are other vendors. (Including ALI.) The cards that do both USB 2.0 and FireWire have for some reason been a problem for many people, even those without built-in PCI bridges. Avoid the VT6202 cards; but VT6212 should be OK.
+
+Some folk have problems with the CardBus versions, because Linux hasn't always managed to get the IRQs assigned correctly on their particular laptop make/model. (IRQs are a general problem, BIOS and ACPI problems abound.) Once such BIOS/PCI level problems get resolved, the ehci-hcd driver works with those CardBus configurations too. It may be very important to use an external power supply for the CardBus adapter. (It seems like CardBus can't supply all of the power needed by bus-powered USB devices, without help: half an Ampere from each port. With longer USB cables, you may also need more power to drive the signals correctly.)
+
+If you're using a CardBus adapter with an older driver version, you may need to manually remove the driver (with rmmod) before a CardBus eject (including cardctl eject) or system shutdown; the CardBus shutdown doesn't shut down drivers when it should, so that's the only "clean shutdown" solution..
+
+See the linux/Documentation/usb/ehci.txt file in your Linux kernel source distribution for some more information. As always with drivers still in development, if you have any problems, try the latest code (preferably in the 2.5 kernel, otherwise in the latest 2.4 code) to see if the problem has been fixed yet. And if not, report problems to the linux-usb-devel mailing list.
+Device Driver Support
+
+High speed storage devices, and to some extent hubs, seem to be the most USB 2.0 devices so far. High speed scanners and printers are available, and there are early reports of success using them.
+
+Most full and Low speed (USB 1.1) devices will work when connected to USB 2.0 root hubs, using their current drivers, since they'll be handled by the companion controllers. Many of them should also work when connected to USB 2.0 external hubs, subject to the restrictions desribed earlier. (Which, for the latest code, amounts to no webcam or audio support yet.)
+Device 	Driver 	Comments
+USB 2.0 hubs 	hub (usbcore) 	USB 2.0 hubs work, but haven't been widely stressed (especially in terms of faults happening during transaction translation). The hubs with Cypress hub chips have multiple transaction translators; get that kind if you're using many full speed audio or video devices.
+Disks, CD-RW, USB-FLASH, etc 	usb-storage 	Linux USB 2.0 support seems to work pretty well for the usb-storage devices that now exist, though it's slower on 2.4 since the usb-storage driver does not queue its USB requests. (Where "slower" still tops 10 MByte/sec on most hardware.) Starting with about 2.5.45, storage uses the new usb_sg_submit() call to queue all I/Os in a scatterlist at once, so nothing should be in the way of letting your hardware achieve 20+ MByte/sec (except maybe bugs that aren't yet fixed, or slow disks).
+BackPack USB Drives 	usb-storage 	Micro-Solutions has provided software to set up their devices with hotplugging, so that you can easily connect theeir drives to Linux. Available in several formats, including RPM.
+Archos MP3 Jukebox 	usb-storage 	Older kernels may need a tweak to usb-storage error handling, or a workaround: start the Archos and let it boot up before you load or hotplug the usb-storage module..
+ASIX AX88172 (10/100 Ethernet Adapter) 	usbnet 	A variety of products, including the D-Link DUB-E100, Hawking UF200, and Netgear FA120 all use this technology. Running at high speed, all of them should give much better throughput than similar full-speed products. This driver is merged into usbnet in 2.4 and 2.6 kernels.
+ALI M5632 Host-to-Host Link 	usbnet 	Adapter cables based on this chip are available from several different vendors, and can provide good throughput to another Linux system.
+IOGear Host-to-Host Link 	usbnet (patch needed) 	Press Release
+Orange iBOT2 WebCam 	ovfx2, evolved from ov511 	This is the first USB 2.0 webcam announced.
+Cypress EZ-USB FX2 	custom ... depends on what your firmware makes it do 	These are 8051 microcontrollers with support for high speed transfers, designed for use inside USB devices and with custom firmware. The fxload software lets you download that firmware. For the start of one interesting Linux-based example (hosted at sf.net), see the SR-1 software radio.
+NetChip 2280 	custom ... depends on what your firmware makes it do 	These are PCI based controllers with support for high speed transfers, designed for use inside USB devices and with custom firmware. Linux-USB gadget support is available, so you can implement that firmware under Linux. One such driver implemens a network interface, and others are under development.
+
+Regardless of what type of high speed device you use, USB hotplugging works the same as it always has on Linux.
+
+User mode device drivers should be able to use the usbfs APIs as usual. They may be able to tell that they're talking to USB 2.0 devices by details in the device descriptors (such as 512 byte bulk packets); the Java USB APIs expose such information more directly. The libusb APIs (in C) don't yet.
+References
+
+    http://www.linux-usb.org ... for all the Linux-USB info.
+    http://www.usb.org/developers/docs.html ... for USB 2.0 information, including specifications for USB 2.0
+    For host controller interfaces, most systems connect to USB through PCI and obey one of these three specifications:
+        http://developer.intel.com/technology/usb/ehcispec.htm ... Intel; EHCI 1.0 specification (for high speed and USB 2.0)
+        http://www.compaq.com/productinfo/development/openhci.html ... Compaq, Microsoft, and National Semiconductor; OHCI 1.0a specification (for full/low speed and USB 1.1)
+        http://developer.intel.com/design/USB/UHCI11D.htm ... Intel; UHCI 1.1D specification (for full/low speed and USB 1.1)
+    http://www.kernel.org ... get yourself a USB 2.0 enabled Linux 2.6 kernel!
+    http://linux-hotplug.sourceforge.net ... if you're working with Linux to support USB 2.0 devices based on Cypress FX2 microcontrollers, use fxload to download your USB device firmware.
+    CNET says Linux is poised to plug in USB 2 as of kernel 2.4.19: no more of those patches.
+    Tom's Hardware ... article comparing two USB 2.0 hubs, one with a single TT and one with multiple TTs. Some loads work better with the multiple TT hub. (One point where the article is wrong: the connector on that multi-TT hub isn't proprietary, it's just a mini-B connector!)

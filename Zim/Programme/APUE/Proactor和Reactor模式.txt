@@ -1,0 +1,197 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-17T11:15:37+08:00
+
+====== Proactor和Reactor模式 ======
+Created Friday 17 February 2012
+http://www.cppblog.com/kevinlynx/archive/2008/06/06/52356.html
+
+Kevin Lynx
+
+Proactor和Reactor都是并发编程中的设计模式。在我看来，他们都是__用于派发/分离IO操作事件__的。这里所谓的
+IO事件也就是__诸如read/write的IO操作__。"派发/分离"就是__将单独的IO事件通知到上层模块__。两个模式不同的地方
+在于，**Proactor用于异步IO，而Reactor用于同步IO**。
+
+摘抄一些关键的东西：
+
+"
+Two patterns that involve **event demultiplexors** are called Reactor and Proactor [1]. The Reactor patterns
+involve synchronous I/O, whereas the Proactor pattern involves asynchronous I/O.
+"
+
+关于两个模式的大致模型，从以下文字基本可以明白：
+
+"
+An example will help you understand the difference between Reactor and Proactor. We will focus on the read
+operation here, as the write implementation is similar. Here's a read in Reactor:
+
+* An __event handler__ declares interest in I/O events that indicate readiness for read on a particular socket ;
+* The __event demultiplexor__ waits for events ;
+* An event comes in and** wakes-up the demultiplexor**, and the demultiplexor calls the appropriate handler;
+* The event handler performs t__he actual read operation__, handles the data read, declares** renewed interest** in
+  I/O events, and returns control to the dispatcher .
+
+By comparison, here is a read operation in Proactor (true async):
+
+* A __handler__ initiates an asynchronous read operation (note: the OS must support asynchronous I/O). In this
+  case, the handler does not care about I/O readiness events, but is instead registers interest in **receiving**
+**  completion events**;
+* The __event demultiplexor__ waits until the operation is completed ;
+* While the event demultiplexor waits, the OS executes the read operation in** a parallel kernel thread**, puts
+  data into** a user-defined buffer**, and notifies the event demultiplexor that the read is complete ;
+* The event demultiplexor __calls__ the appropriate handler;
+* The event handler handles the data from user defined buffer, starts **a new asynchronous operation**, and returns
+  control to the event demultiplexor.
+
+"
+
+可以看出，两个模式的相同点，都是对某个IO事件的事件通知(即告诉某个模块，这个IO操作可以进行或已经完成)。在结构
+上，两者也有__相同点__：demultiplexor负责提交IO操作(异步)、查询设备是否可操作(同步)，然后当条件满足时，就回调handler。
+__不同点__在于，异步情况下(Proactor)，当回调handler时，表示IO操作已经完成；同步情况下(Reactor)，回调handler时，表示
+IO设备可以进行某个操作(can read or can write)，handler这个时候开始提交操作。
+
+用**select模型**写个简单的reactor，大致为：
+
+///
+class __handler__
+{
+public:
+    virtual void onRead() = 0;
+    virtual void onWrite() = 0;
+    virtual void onAccept() = 0;
+}; 
+
+class __dispatch__
+{
+public:
+    void poll()
+    {
+        // add fd in the set.
+        //
+        // poll every fd
+        int c = select( 0, &read_fd, &write_fd, 0, 0 );
+        if( c > 0 )
+        {
+            for each fd in the read_fd_set
+            {    if fd can read
+                    _handler->onRead();
+                if fd can accept
+                    _handler->onAccept();
+            } 
+
+            for each fd in the write_fd_set
+            {
+                if fd can write
+                    _handler->onWrite();
+            }
+        }
+    } 
+
+    void setHandler( handler *_h )
+    {
+        _handler = _h;
+    } 
+
+private:
+    **handler** *_handler;
+}; 
+
+/// application
+class MyHandler : public handler
+{
+public:
+    void onRead()
+    {
+    } 
+
+    void onWrite()
+    {
+    } 
+
+    void onAccept()
+    {
+    }
+}; 
+
+
+在网上找了份Proactor模式比较正式的文档，其给出了一个总体的UML类图，比较全面：
+
+{{./proactor_uml_thumb.jpg}}
+
+根据这份图我随便写了个例子代码：
+
+class AsyIOProcessor
+{
+public:
+    void do_read()
+    {
+        //send read operation to OS
+        // read io finished.and dispatch notification
+        _proactor->dispatch_read();
+    } 
+
+private:
+    __Proactor*__ _proactor;
+}; 
+
+class Proactor
+{
+public:
+    void dispatch_read()
+    {
+        _handlerMgr->onRead();
+    } 
+
+private:
+    HandlerManager *_handlerMgr;
+}; 
+
+class HandlerManager
+{
+public:
+    typedef __std::list<Handler*>__ HandlerList; 
+
+public:
+    void onRead()
+    {
+        // notify all the handlers.
+        std::for_each( _handlers.begin(), _handlers.end(), onRead );
+    } 
+
+private:
+    HandlerList *_handlers;
+}; 
+
+class Handler
+{
+public:
+    virtual void onRead() = 0;
+}; 
+
+// application level handler.
+class MyHandler : public Handler
+{
+public:
+    void onRead() 
+    {
+        // 
+    }
+}; 
+
+
+Reactor通过某种变形，可以将其改装为Proactor，在某些不支持异步IO的系统上，也可以隐藏底层的实现，利于编写跨平台
+代码。我们只需要在dispatch(也就是demultiplexor)中封装同步IO操作的代码，在上层，用户提交自己的缓冲区到这一层，
+这一层检查到设备可操作时，不像原来立即回调handler，而是开始IO操作，然后将操作结果放到用户缓冲区(读)，然后再
+回调handler。这样，对于上层handler而言，就像是proactor一样。详细技法参见这篇文章。
+
+
+最近在看spserver的代码，看到别人提各种并发系统中的模式，有点眼红，于是才来扫扫盲。知道什么是leader follower模式，
+reactor, proactor，multiplexing，对于心中的那个网络库也越来越清晰。
+
+最近还干了些离谱的事，写了传说中的字节流编码，用模板的方式实现，不但保持了扩展性，还少写很多代码；处于效率考虑，
+写了个static array容器(其实就是template <typename _Tp, std::size_t size> class static_array { _Tp _con[size])，
+加了iterator，遵循STL标准，可以结合进STL的各个generic algorithm用，自我感觉不错。基础模块搭建完毕，解析了公司
+服务器网络模块的消息，我是不是真的打算用自己的网络模块重写我的验证服务器？在另一个给公司写的工具里，因为实在厌恶
+越来越多的重复代码，索性写了几个宏，还真的做到了代码的自动生成:D。
+
+对优雅代码的追求真的成了种癖好.  = =| 

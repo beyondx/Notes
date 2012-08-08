@@ -1,0 +1,202 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-05T14:51:47+08:00
+
+====== Python Essential Reference 4th – 第13章 – 读书笔记 ======
+Created 星期二 05 七月 2011
+
+本章主要介绍了一些与Python运行时相关的模块。
+
+1、atexit模块
+在真个Python解释器退出时，可以绑定若干钩子函数，通过atexit完成。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> def fun1():
+...     print "hh"
+...
+>>> import atexit
+>>> atexit.register(fun1)
+<function fun1 at 0xb7707614>
+>>>
+#按Ctrl 和 D退出，会调用fun1
+hh
+
+2、copy模块，可用于浅拷贝和深拷贝（copy.deepcopy）
+deepcopy(x [,visit])，其中visit用于递归深度，以防造成死循环。
+对象必须自己实现了__copy__(self_)和__deepcopy__(self,visit)才可以被浅、深拷贝。
+
+3、gc模块：用于垃圾回收，这个应该很熟悉了。
+Python的垃圾回收分Generation，0，1和2。当在第0个Gen存活了x个周期（而没有到达refcount为0），则被放入1，以此类推到2。按照检查频率，0，1，2递减。以此来最大化平衡效率和回收效率。
+一些gc模块的函数：
+collect([generation])：全部执行一遍垃圾回收。
+get_count(object)：获取某对象object的引用计数。
+disable()：禁用gc
+garbage：一个list，存了一些不再使用，但存在循环引用的对象。
+set_threshold(threshold0,[threshold1,threshold2])：设置每隔多少个执行指令检查一次gc（引来一个gc周期）。
+
+4、inspect模块，用于Python的属性、函数、字符串、文档、源代码等对应的Python的对象表示。
+几个术语：
+frame：代码+环境+stack。。。
+几个函数：
+isbuiltin(object)：是否是内置函数。
+ismethod(object)：是否是对象。
+trace([context])：返回stack等信息。
+
+5、marshal模块，一个基础的对象序列化模块，很快但是功能单一，对数据类型支持也不太好。一般只支持基本类型。
+dump(value,file)：把序列化写到file-object对象file中。
+dumps(value[,version])：对象序列化，并返回字符串。
+load(file)：从file反序列化。
+loads(string)：从字符串中饭序列化。
+
+marshal在性能上很好，但是只支持数字、字符串、tuple、list、dictionary。而这几种支持的容器类型必须包含基本类型。也就是说不支持自定义object啦！
+
+6、pickle，推荐使用的序列化方法，基本类型都支持了！
+dump、dumps、load、loads和marshal一样。
+如果要序列化多个对象，多次调用dump/dumps即可。
+有的对象不适合序列化，因为对内部状态没有标识，如file-object，network的socket等。
+
+7、Pickler和Unpickler，是对pickle的对象化封装，需要的话可以翻翻文档。
+
+8、sys模块：变量、解释器相关的函数。
+常用的属性：
+argv：cmd传入的参数，不用解释了吧～
+byteorder：返回机器的CPU的大小端’little’或者’big’，这个很实用，呵呵……
+copyright：返回版权信息？Python的。。
+maxsize：本机器上C语言integer支持的最大size（我的32位机器为2147483647）
+ps1，ps2：设置Python解释器的>>>和…
+winver，返回注册表的版本，windows可用。
+
+常用的函数：
+_clear_type_cache()：Python会Cache对象（和他们所在的模块），一般是1024个最近的。这个函数可以清空这个Cache。
+_current_frame()：当前所处的frame。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#在python解释器中执行
+>>> sys._current_frames()
+{-1216022848: <frame object at 0x845458c>}
+
+sys.exit([n])：引起一个SystemExit异常，然后退出，如果不需要引起异常，可以执行os._exit(n)。
+sys.getdefaultencoding()：获取当前默认字符编码。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#貌似默认是ascii
+>>> import sys
+>>> sys.getdefaultencoding()
+'ascii'
+
+sys.setprofile()：设置这么一个profile，类似~/.bashrc只不过类型很随意，这么解释靠谱儿么？
+sys.getprofile()：获取楼上设置的profile。
+
+9、traceback模块：用于处理异常时候的，很管用。
+最常用的其实就是两个：
+traceback.print_exec()，直接把sys.exec（上次异常信息）格式化，并打印到stdout。
+traceback.format_exc()，和楼上类似，只不过是返回一个字符串。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#!/usr/bin/python
+ 
+import traceback
+ 
+def fun1():
+    try:
+        1/0
+    except:
+        traceback.print_exec()
+                #print traceback.format_exc()
+        pass
+ 
+if __name__ == "__main__":
+    fun1()
+
+10、types模块：就是Python对象的各种对应类型。
+
+11、warnings模块：会”弹出“，但不会抛出异常，也不会阻碍程序继续运行。
+warning是可以过滤的，两种方法：
+（1）代码方式
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+warnings.filterwarnings(action="ignore",message=".*xxx.*",category=xxxx)
+
+其中，action可以是ignore等。
+message是对哪些消息过滤，支持正则。
+category支持如下类型：
+Warning
+UserWarning
+DeprecationWarning
+SyntaxWarning
+RuntimeWarning
+FutureWarning
+（2）解释器的启动参数：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+python -Wignore:the \ regex:DeprecationWarning
+
+resetwarnings()：重置所有filter
+
+12、weakref，弱引用模块。
+可以加一个引用，但不增加原对象的引用计数。
+有时候（比如观察着模式），可以防止循环引用而导致gc无法回收！
+创建弱引用：wref = weakref.ref(obj)
+通过弱引用来方位原对象：wref()，如果有则返回原对象，如果已经被删除，则返回None。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> class A:pass
+...
+>>> a= A()
+>>> import weakref
+>>> ar = weakref.ref(a)
+>>> print ar
+<weakref at 0xb76e4694; to 'instance' at 0xb76e3cac>
+>>> print a
+<__main__.A instance at 0xb76e3cac>
+>>> del a
+>>> print ar
+<weakref at 0xb76e4694; dead>
+
+一个例子，这个Cache基本没用，因为在foocache中，使用的是弱引用，每次cache后，都留下一个弱引用，而原始对象马上被销毁，因此实际每次都要计算，cache是废的。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#!/usr/python
+ 
+import weakref
+ 
+class A:
+    def __init__(self,x):
+        self.val = x
+ 
+    def __str__(self):
+        return str(self.val)
+ 
+def foo(x):
+    print "foo(%s)" % (str(x))
+    return A(x)
+ 
+_resultcache = {}
+def foocache(x):
+    if _resultcache.has_key(x):
+        r = _resultcache[x]()
+        if r is not None:return r
+    r = foo(x)
+    _resultcache[x] = weakref.ref(r)
+    return r
+ 
+if __name__ == "__main__":
+    for i in xrange(10):
+        foocache(i)
+        #print foocache(i)
+ 
+    print "start..."
+ 
+    for i in xrange(10):
+        #print foocache(i)
+        foocache(i)
+        pass
+

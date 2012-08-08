@@ -1,0 +1,174 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-08T16:21:26+08:00
+
+====== C、C++枚举enum学习小记 ======
+Created Monday 08 August 2011
+
+参考文献:
+[1]C++程序设计语言(特别版), 裘宗燕译, 机械工业出版社
+[2]C++ Primer (3rd Ed.), S.B. Lippman and J. Lajoie, 人民邮电出版社
+
+===== 1、枚举enum的用途浅例 =====
+      写程序时，我们常常需要为**某个对象关联一组可选alternative属性**.例如，学生的成绩分A,B,C,D等，天气分sunny, cloudy, rainy等等。
+      更常见的，打开一个文件可能有三种状态：input, output和append. 典型做法是，对应定义3个常数，即：
+      const int input = 1;
+      const int output = 2;
+      const int append = 3;
+然后，调用以下函数：
+      bool open_file(string file_name, int open_mode);
+比如，
+    open_file("Phenix_and_the_Crane", append);
+       这种做法比较简单，但存在许多缺点，主要的一点就是无法限制传递给open_file函数的第2个参数的取值范围，只要传递int类型的值都是合法的。(当然，这样的情况下的应对措施就是在open_file函数内部判断第二个参数的取值，只有在1，2，3范围内才处理。)
+       使用枚举能在一定程度上减轻这种尴尬(注1)，__它不但能实现类似于之前定义三个常量的功能，还能够将这三个值组合起来成为独一无二的组。__例如：
+      enum open_modes {input = 1, output, append};
+      以上定义了open_modes为枚举类型enumeration type。每一个命名了的枚举都是唯一的类型，是一个类型标示器type specifier。例如，我们可以重新写一个open_file函数:
+      bool open_file(string file_name, open_modes om);
+      在open_modes枚举中，input, output, append称为__枚举子enumerator, 它们限定了open_modes定义的对象的取值范围__。这个时候，调用open_file函数和之前的方法还是一模一样：
+     open_file("Phenix_and_the_Crane", append);
+     但是，如果传递给open_file的第二个参数不是open_modes枚举类型值的话(注1)，那么编译器就会识别出错误；就算该参数取值等价于input, output, append中的某个，
+也一样会出错哦！例如：
+     open_file("Phenix_and_the_Crane", 1);
+
+===== 2、枚举的定义 =====
+      __一个枚举是一个类型，可以保存一组由用户刻画的值__。定义之类，枚举的使用很像一个整数类型。
+枚举的定义具有以下形式,即以关键词enum开头，接着一个可选的枚举名，下来是由大括号{}包含着一个由逗号分隔的枚举子列表enumerators list：
+      enum [enumeration name] {enumerator1[=value1], enumerator2[=value2], ...};
+
+===== 3、枚举子的类型和取值 =====
+      __枚举子的类型就是它所在的那个枚举__，例如前面说到的open_modes枚举中，input,output和append等枚举子的类型都是open_modes。这种做法，其实是为了赋予用户和编译器一些有关该变量拟议中的用途的提示。
+      默认下，第一个枚举子被赋值0，接下来的枚举子取值是前面一个枚举子的取值+1,例如：
+      enum weather {sunny, cloudy, rainy, windy};
+其中
+     sunny == 0,
+      cloudy == 1,
+      rainy == 2,
+      windy == 3;
+       以上是默认情况，有时候我们希望显式地指定某个枚举子的值，那么会出现什么情况呢？看看：
+       enum some_fruit {apple = 3, orange, banana = 4, bear};
+       好了，apple == 3, banana == 4; 那么orange和bear呢？记得前面说过一句，默认下”接下来的枚举子取值是前面一个枚举子的取值+1“。既然这两个枚举子没有显式赋值，那么就按照默认规则办事，所以 orange == 4, bear == 5.
+       从这个例子也可以看出，同一枚举中枚举子的取值不需要唯一。这样有什么用处呢？下面是个简单的例子：
+       enum some_big_cities {
+                                               Guangzhou = 4,
+                                                Shenzhen    = 4,
+                                               Hongkong   = 4,
+                                               Shanghai    = 2,
+                                               Beijing         = 3,
+                                               Chongqi      = 3
+                                           };
+以上简单地按区域，将五个城市按照华南(4),华东(2), 华北(3)的几个城市分类了。
+
+===== 4、枚举变量的定义、初始化和赋值 =====
+     既然每个枚举都是一个类型，那么由这个类型自然可以声明变量，例如，由前面定义的some_big_cities：
+     some_big_cities where_I_am;
+     需要注意的是，在声明where_I_am时__没有初始化__，如果这时打印where_I_am的值：
+     enum some_big_cities {
+                                            Guangzhou = 4,
+                                            Shenzhen = 4,
+                                            Hongkong = 4,
+                                             Shanghai = 2,
+                                            Beijing = 3,
+                                             Chongqi = 5};
+int main(void)
+{
+      some_big_cities wh;
+     cout<<"the value is: "<<wh<<endl;
+     return 0;
+}
+输出将是the value is: 1. 然而，如果声明wh为全局变量，则另一种情况：
+enum some_big_cities {Guangzhou = 1 Shenzhen = 1, Hongkong = 1,
+                                       Shanghai = 2, Beijing = 3, Chongqi = 5};
+some_big_cities wh;
+int main(void)
+{
+   cout<<"the value is: "<<wh<<endl;  
+   return 0;
+}
+输出将是the value is: 0;
+      以上结果是在Visual C++ 2005 Express中得到，不知道其它编译器情况如何，也不知为什么得到这样的结果。下来再找找资料。
+     __定义一个枚举变量时，可以给它初始化__，例如：
+     some_big_cities wh = Guangzhou;
+     注意等号右边__只能取枚举子中的某一个__；特别地，以Guangzhou为例，虽然Guangzhou==4, 但以下初始化是出错的：
+     some_big_cities wh = 4;
+     Visual C++ 2005编译器提示：
+        error C2440: 'initializing' : cannot convert from 'int' to 'some_big_cities'
+      可见，__不能直接地把一个整型赋值给一个枚举变量__，__因为枚举和整型是不同类型的，除非显式转换__。关于枚举与整型的关系，后面再讲。
+      除了初始化，枚举变量也有赋值运算：
+     some_big_cities wh；
+     wh = Guangzhou;
+     wh = Shanghai;
+或者
+    some_big_cities wh1 = Guangzhou；
+    some_big_cities wh2 = Shanghai；
+    wh2 = wh1;
+
+===== 5、枚举的取值范围 =====
+   如果某个枚举中所有枚举子的值均非负，该枚举的表示范围就是__[0:2^k-1]__,其中2^k是能使所有枚举子都位于此范围内的最小的2的幂；如果存在负的枚举值，该枚举的取值范围就是[-2^k,2^k-1].例如：
+   enum e1 {dark, light}; //范围0:1
+    enum e3 {min = -10, max = 1000}; //范围-1024:1023
+
+===== 6、枚举与整型的关系 =====
+    整型值只能__显式__地转换成一个枚举值，但是，如果转换的结果位于该枚举取值范围之外，则结果是无定义的。
+     enum e1 {dark = 1, light = 10};
+     e1 VAR1 = e1(50); //无定义
+     e1 VAR2 = e1(3); //编译通过
+     在这里也说明了__不允许隐式（编译器不会自动进行这种类型转换）__地从整型转换到枚举的原因，因为大部分整型值在特定的枚举里没有对应的表示。
+      至于枚举可以当作特定的整型数来用的例子，从open_modes可以体会。
+
+===== 7、自定义运算符 =====
+      枚举是用户自定义类型，所以在用户可以为它定义自身的操作，例如++或者<<等。但是，在没有定义之前，不能因为枚举像整型就可以默认使用,例如:
+   enum SomeCities
+{
+   zhanjiang,
+   Maoming,
+   Yangjiang,
+   Jiangmen,
+   Zhongshan
+};
+SomeCities oneCity;
+for (oneCity = zhanjiang; oneCity != Zhongshan; ++oneCity)
+{
+   cout<<oneCity<<endl;
+}
+
+以上的++OneCity是没有定义的，在Visual C++ 6 编译下得到如下错误：
+error C2675: unary '++' : 'enum main::SomeCities' does not define this operator or a conversion to a type acceptable to the predefined operator
+
+===== 8、Sizeof =====
+    一个枚举类型的sizeof就是某个能够容纳其范围的整型的sizeof, 而且不会大于sizeof(int), 除非某个枚举子的值不能用int或者unsigned int来表示。
+      在32位机器中，sizeof(int)一般等于4。前面介绍的所有枚举，例如，
+enum SomeCities
+{
+   zhanjiang,
+   Maoming,
+   Yangjiang,
+   Jiangmen,
+   Zhongshan
+};
+
+计算其sizeof， 可能是1，也可能是是4。在我的intel E2160双核、32位机器中，得到4。
+-----------------------------------------------------------------------------------
+[注1, Begin]
+由于通过将整型数显式转换就可能得到对应枚举类型的值，所以声明一个枚举来达到限制传递给函数的参数取值范围还是力不从心的，以下是一个例子：
+enum SomeCities
+{
+zhanjiang=1, //1
+Maoming,     //2
+Yangjiang,   //3
+Jiangmen,   //4
+Zhongshan = 1000 //1000
+};
+void printEnum(SomeCities sc)
+{
+cout<<sc<<endl;
+}
+int main(void)
+{
+SomeCities oneCity = SomeCities(50); //__将50通过显式转换__，为oneCity赋值
+printEnum(oneCity); //在VC++ 6 编译器下得到50输出
+return 0;
+}
+
+以上例子说明，虽然SomeCities的定义里没有赋值为50的枚举值，但是，由于50在该枚举的取值范围内，所以通过显式声明得到一个有定义的枚举值，从而成功传递给printEnum函数。
+[注1, End]
+

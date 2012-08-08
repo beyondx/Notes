@@ -1,0 +1,236 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-31T20:45:31+08:00
+
+====== 漫谈QWidget及其派生类(四) ======
+Created Monday 31 October 2011
+http://blog.csdn.net/dbzhang800/article/details/6745089
+
+    漫谈QWidget及其派生类(三)中我们了QMainWindow到底是个什么东西，接下来就看看QDialog吧，没办法，谁让它这么常用呢？
+
+很多人觉得QDialog比QWidget高级很多，为什么呢？
+
+* QDialog(this) 和 QWidget(this) 前者是窗口，后者不是。
+* QDialog 除 show()外，还有 exec() 和 open() 两个成员用来显示窗口。
+* QDialog ....
+
+本文内容：如何使用QWidget来实现QDialog的常用功能，通过定义一个名为HDailog的类希望对大家理解QWidget有所帮助。
+
+本文目的：QDialog只不过是QWidget的派生类，没有什么神秘的，离开它你依然都什么都能做，当然，本文不是鼓励大家不使用QDialog。
+
+**例子一**
+
+* 这是很多新手容易迷惑的一个问题：用QDialog则弹出窗口，用QWidget则不会弹出。
+
+void Widget::onXXXX()
+{
+     QDialog * dlg = new QDialog(this);
+     //QWidget * dlg = new QWidget(this);
+     dlg->show();
+}
+
+这是我们在漫谈QWidget及其派生类(一)中重点解释的内容。如果你看了我们下面的代码，依然不明所以，不妨再回过头看看。
+我们的新类HDialog，就从这儿起步喽：
+
+class HDialog:public QWidget
+{
+Q_OBJECT
+public:
+    HDialog(QWidget * parent=0)
+        :QWidget(parent,__ Qt::Window__)
+    {
+    }
+};
+
+恩，只需如此，new HDialog(this)便是一个窗口。
+
+**例子二**
+
+很多人有这个疑问？为什么用show()看不到窗口，而用exec()才可以！
+
+void Widget::onXXXX()
+{
+     QDialog dlg(this);
+     //dlg.show();
+     dlg.exec();
+}
+
+答案很简单，因为exec()是个__死循环__，使得你始终在这个函数内不退出，dlg不被销毁。关于它的分析，详见QEventLoop 的使用两例。由于篇幅所限，本文不再重复。
+
+大家都有这个常识，对话框有__模态和非模态__之分：
+
+* 模态(应用程序级)			QDialog::exec()
+* 模态(窗口级)				QDailog::open()
+* 非模态					QDialog::show()
+
+如果对这3个尚不了解，请看Manual，本文几乎不做解释
+
+我们在QDialog 模态对话框与事件循环一文中也反复强调了，模态还是非模态，与QDialog无关！接下来，我们用QWidget来实现open()和exec(),为什么不实现show()？呵呵，原因自己想呗。
+
+**open()/exec() 初版**
+
+先看最简单的open() 与 exec():
+
+void HDialog::open()
+{
+    setWindowModality(Qt::WindowModal);
+    show();
+}
+void HDialog::exec()
+{
+    setAttribute(Qt::WA_ShowModal, true);
+    show();
+    QEventLoop loop;
+    loop.exec();
+}
+
+有什么感触没？
+
+* 无论是open() 还是 exec()，里面都是调用了 show()这个东西。
+* 之所以模态不同，是由QWidget的成员函数__setWindowModality()或setAttribute()__进行的。
+* exec() 内部启用了__局部事件循环__(死循环)，所以本节开头的 dlg.exec() 才能让你留住窗口。
+
+对应的类定义如下：
+
+class HDialog:public QWidget
+{
+Q_OBJECT
+public:
+    HDialog(QWidget * parent=0)
+        :QWidget(parent, Qt::Window)
+    {
+    }
+public slots:
+    void open();
+    void exec();
+};
+
+**完善exec()**
+
+前面的exec()有个重大的问题：什么问题，你无法退出那个事件循环(死循环)！
+我们必须解决这个问题，不能退出可不行。什么时候退出呢？是close的时候么？是但不止。是__隐藏窗口__的时候!
+
+* 注意：我们要能访问那个loop？显然不能是局部变量了，需要做成__类变量__QEventLoop * m_loop;
+* 注意：无论是show()/hide()，还是setHidden(bool)，都是通过调用的虚函数 setVisible(bool)来实现的。
+
+void HDialog::setVisible(bool visible)
+{
+   if (!visible && m_loop) {
+       m_loop->exit();
+   }
+}
+
+恩，相应的，修改一下exec()
+
+void HDialog::exec()
+{
+    setAttribute(Qt::WA_ShowModal, true);
+    show();
+
+    QEventLoop loop;
+    m_loop = &loop; //new line
+    loop.exec();
+    m_loop = 0; //new line
+}
+
+返回值何在？
+
+我们都这样用exec() 的！
+
+    QDialog dlg(this);
+    if (dlg.exec()==QDialog::Accepted) {}
+
+或者
+
+    QDialog dlg(this);
+    dlg.exec();
+    if (__dlg.result() __== QDialog::Accepted) {}
+
+呵呵，我们接下来看看如何弄：
+
+class HDialog:public QWidget
+{
+    enum{Accepted, Rejected};
+public:
+   int result()  const {return m_result;}
+   int exec();
+    ...
+private:
+   int m_result;
+   ...
+
+很简单吧，只需要一个成员变量即可：然后你可以随便设置其值(常用的两个是Accepted,Rejected)，而后，我们的exec()
+
+int HDialog::exec()
+{
+...
+    return m_result;
+}
+
+还能如何拓展？
+
+从返回值开始拓展一点。如果我点击了窗口装饰器上的关闭，返回值应该是__Rejected__吧？如何实现？？
+
+如何处理__关闭事件__？
+
+void HDialog::closeEvent(QCloseEvent *e)
+
+恩，收到close事件，我们需要__覆盖__(override)这个函数
+
+void HDialog::closeEvent(QCloseEvent *e)
+{
+    hide();//调用我们前面的setVisible，如果有事件循环，将退出！
+    m_result = Rejected;
+    e->accept();
+}
+
+还继续么？
+
+东西是在太多了，比如，调用open()或exec()时，我们设置了窗口模态，理想状态，我们需要在hide()的时候，恢复窗口先前的模态！
+
+不过只要前面的理清了，这些都难不倒我们，对吧？所以不继续了。
+
+**例子三**
+
+例子二太长了，看个短的，放松一下。
+
+我们前面噼里啪啦说了一堆，也没有提到Qt::Dialog这个东西。没有它都可以实现这堆东西，要它何用？？
+
+想想：QDialog 和 普通的 Widget，窗口装饰器上的按钮是不是有所不同？？？
+
+这些按钮受神马控制？？windowFlags中的哪些Hint么？恩。
+
+可是，我们也没有设置哪些Hint啊？？
+
+===== Qt::Dialog是什么? =====
+
+看看这个吧，重温一下本系列第一篇“窗口与普通widget”
+
+    enum WindowType {
+        Widget = 0x00000000,
+        Window = 0x00000001,
+        Dialog = 0x00000002 | Window,
+        Sheet = 0x00000004 | Window,
+        Drawer = 0x00000006 | Window,
+        Popup = 0x00000008 | Window,
+        Tool = 0x0000000a | Window,
+        ToolTip = 0x0000000c | Window,
+        SplashScreen = 0x0000000e | Window,
+        Desktop = 0x00000010 | Window,
+...
+
+窗口类别，其实是将窗口细分了，之所以细分，是要提供各种默认的flags。
+我们在第一篇中提到，对于一个普通的(即，没有Qt::Window标记)且没有parent的widget，显示之前，会被强制设置一个Qt::Window标记。使得其变成窗口。
+
+其实是在同一个地方，还有这样的代码：
+
+if (customize)
+    ; // don't modify window flags if the user explicitly set them.
+else if (type == Qt::Dialog || type == Qt::Sheet)
+    flags |= Qt::WindowTitleHint | Qt::WindowSystemMenuHint | Qt::WindowCloseButtonHint;
+else if (type == Qt::Tool)
+    ....
+
+如果你没有显示设置标记位，对于Qt::Dialog,它会设置这3种Hint（含义？看Manual呗，呵呵）
+
+本文完(限于篇幅，也为了不至于太乱，只能写这些了。有问题欢迎讨论)

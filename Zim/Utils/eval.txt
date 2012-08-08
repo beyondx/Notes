@@ -1,0 +1,13 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-27T20:54:00+08:00
+
+====== eval ======
+Created Sunday 27 November 2011
+将其字符串参数调用shell来执行
+
+[geekard@geekard ~]$ eval 'i=$((2+3)); echo $i'
+5
+[geekard@geekard ~]$ 
+
+eval cat '~/.sss.sh'

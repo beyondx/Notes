@@ -1,0 +1,56 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-23T20:36:22+08:00
+
+====== Django静态文件的配置 ======
+Created Sunday 23 October 2011
+
+http://2goo.info/blog/panjj/Django/2010/10/07/131
+
+一直在寻找产品部署环境和开发环境时，Django静态文件配置的差异化。比如说网站的css js和一些非程序相关的文件，我暂时看成是静态文件。我们怎么正确配置，才能让Django网站解析到静态文件呢？简明来说，要注意两个文件：settings.py  urls.py。
+
+首先在settings文件中，引用os模块：
+
+import os
+
+然后我们定义一个常量，项目的**根目录地址**：
+PROJECT_PATH = os.path.abspath(os.path.dirname(__file__))
+
+再者就是给**MEDIA_ROOT**赋值为：
+MEDIA_ROOT= os.path.join(PROJECT_PATH,'static')
+（注意，我们的静态文件在根目录下的static文件里，如果文件夹名不一样，join的参数改成 自己起用的名字）
+
+settings.py 配置完了，urls.py呢？如下配置：
+
+from django.conf import settings
+
+url(r'^static/(?P<path>.*)$', 'django.views.static.serve',{'document_root': **settings.MEDIA_ROOT** },name="media"),
+
+^static/(?P<path>.*)$的static，可以随自己喜欢的名字，建议参考Django最佳实践做法。也许urls配置很重要，稍微不小心，url经常解析不到真正的静态文件。之前喜欢使用media，比如^media/(?P<path>.*)$，结果老解析不到静态文件，还瞎捣鼓MEDIA_ROOT，终究还是没有解析成功，后来把media改成static，一下子成功了。注意不一定是static，只要不是media，应该就可以了。很奇怪，不知道是不是Django其他地方用到media了，比如Django的Admin。
+
+最后就是如何在templates里使用静态文件了：
+
+<script type="javascript/text" **src="/static/js/config.js"**></script>
+<link rel="stylesheet" type="text/css" href="/static/css/contents.css"/>
+<img src="/static/images/logo.ipg" alt=""/>
+
+使用的时候注意 路径的开头需要加上/  
+
+这样的配置，在开发环境中式能正常解析的，在**产品部署环境**中，只需修改settings文件的
+MEDIA_URL 
+ADMIN_MEDIA_PREFIX
+
+把他们改成实际的域名
+
+MEDIA_URL='http://www.XXX.com/static/'
+ADMIN_MEDIA_PREFIX='http://www.XXX.com/static/admin/'
+
+ADMIN_MEDIA_PREFIX后面的admn，可能有点差异，我们是把Django的admin**静态文件拷贝**到一个名叫admin(static/admin)的文件夹里的。
+
+补充：根据实际的实践中，发现ADMIN_MEDIA_PREFIX如果指定了后缀media或者static，比如：ADMIN_MEDIA_PREFIX='http://www.XXX.com/media/'或者ADMIN_MEDIA_PREFIX='http://www.XXX.com/static/'；
+
+urls.py应该另起一个后缀，比如：
+url(r'^site_media/(?P<path>.*)$','django.views.static.serve',{'document_root':settings.MEDIA_ROOT },name="site_media"),
+我们指定了site_media作为后缀，而没有采用media和static，是**避免和后台的静态路径冲突**而我们应用的静态文件无法得到正常解析。
+
+(完)

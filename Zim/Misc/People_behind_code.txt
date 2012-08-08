@@ -1,0 +1,145 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T21:14:56+08:00
+
+====== People behind code ======
+Created Sunday 27 March 2011
+
+The People Behind the Code: Famous Programmers Who Have Influenced Computer Programming
+
+Rick Cook (author of the Wizadry series) once said, “Programmers are in a race with the Universe to create bigger and better idiot-proof programs, while the Universe is trying to create bigger and better idiots. So far the Universe is winning.”
+
+Programmers make the technologies we use possible, but often get little recognition for their major contributions outside the IT industry. A few months ago, one of our reader’s suggested we do a post on the creators of the most renowned programming languages. By creating this list, I hope to commemorate at least some of the many influential programmers of our time.
+{{./Ada Lovelace.jpg}}
+Ada Lovelace 
+Ada/Algorithm for the analytical engine (1843)
+
+Daughter of the poet Lord Byron, Ada Lovelace is credited as being the world’s first programmer for her work on Charles Babbage’s “analytical engine”, an early mechanical general-purpose computer. Incredible to think how far we’ve come with hosted exchange 2010.  Her notes on the engine are recognized as the first algorithm intended to be processed by a machine .  The Ada programming language was later named after her.
+
+Famous quote: In almost every computation a great variety of arrangements for the succession of the processes is possible, and various considerations must influence the selections amongst them for the purposes of a calculating engine. One essential object is to choose that arrangement which shall tend to reduce to a minimum the time necessary for completing the calculation.
+{{./Alan Turing.jpg}}
+Alan Turing 
+Turing Machine (1937)
+
+Alan Turing played a significant role in the creation of the modern computer, formalizing the concept of algorithm and computation with the Turing machine, or as he called it, the “automoatic machine”. A Turing machine can be adapted to simulate the logic of any computer algorithm, and is particularly useful in explaining the functions of a CPU inside a computer.
+
+Famous quote: A computer would deserve to be called intelligent if it could deceive a human into believing that it was human.
+{{./John von Neumann.jpg}}
+John von Neumann 
+von Neumann architecture (1945)
+
+John von Neumann, among his other major contributions to a vast range of fields, is the creator of the von Neumann architecture, which allowed computer programs to be stored in computer memory. This architecture introduced the use of a central processing unit (CPU) and a single separate storage structure (“memory”) to hold both instructions and data.
+
+Famous quote: Young man, in mathematics you don’t understand things. You just get used to them.
+{{./John W. Backus.jpg}}
+John W. Backus 
+FORTRAN (1954)
+
+Prior to FORTRAN, programming was very difficult and computers had to be meticulously “hand-coded”. In 1954, Backus assembled a team to define and develop Fortran for the IBM 704 computer. Fortran became the first high-level programming language to be put to broad use.
+
+Famous quote: Much of my work has come from being lazy. I didn’t like writing programs, and so, when I was working on the IBM 701, writing programs for computing missile trajectories, I started work on a programming system to make it easier to write programs.
+{{./John McCarthy.jpg}}
+John McCarthy
+Lisp (1958)
+Lisp was invented by John McCarthy in 1958 and is the second-oldest high-level programming language in widespread use today. McCarthy showed that with a few simple operators and a notation for functions, one can build a Turing-complete language for algorithms. Turing-completeness means that the rules followed in sequence, on arbitrary data, can produce the result of any calculation. Today, the most widely known general-purpose Lisp dialects are Common Lisp and Scheme.
+
+Famous quote: Program designers have a tendency to think of the users as idiots who need to be controlled. They should rather think of their program as a servant, whose master, the user, should be able to control it. If designers and programmers think about the apparent mental qualities that their programs will have, they’ll create programs that are easier and pleasanter — more humane — to deal with.
+{{./Donald Knuth.jpg}}
+Donald Knuth
+TeX (1978) and MMIX
+Donald Knuth created the WEB/CWEB computer programming systems designed to encourage and facilitate literate programming. Knuth is the creator of the TeX computer typesetting system, which is noted as one of the most sophisticated digital typographical systems in the world. Knuth also designed MMIX, a computer intended to illustrate machine-level aspects of programming. He is also the author of the multi-volume work The Art of Computer Programming and has been called the “father” of the analysis of algorithms.
+
+Famous quote: Let us change our traditional attitude to the construction of programs. Instead of imagining that our main task is to instruct a computer what to do, let us concentrate rather on explaining to human beings what we want a computer to do.
+{{./Ken Thompson and Dennis Ritchie.jpg}}
+
+(Ken Thompson (L) and Dennis Ritchie (R))
+Ken Thompson and Dennis Ritchie
+Unix (1969), B (1969) and C (1972) programming languages
+Dennis was the original developer of C, one of the most popular programming languages of all time and a core developer on UNIX, alongside Ken Thomson. Thomson is famous for his work with the B programming language as well as his leading role in the Unix and Plan 9 operating systems. More recently, Thompson was the co-creator of Google’s programming language Go.
+
+Famous Dennis quote: When I read commentary about suggestions for where C should go, I often think back and give thanks that it wasn’t developed under the advice of a worldwide crowd.
+
+Famous Ken quote: One of my most productive days was throwing away 1000 lines of code.
+{{./Bjarne Stroustrup.jpg}}
+Bjarne Stroustrup
+C++ (~1983)
+Bjarne Stroustrup is the designer and original implementer of C++, a general-purpose programming language that combines both high-level and low-level language features. Stroustrup began developing C++ in 1979 (then called “C with Classes) as an enhancement to C. Over time virtual functions, operator overloading, templates, and exception handling among other features were added. C++remains one of the most popular programming languages ever created.
+
+Famous quote: An organization that treats its programmers as morons will soon have programmers that are willing and able to act like morons only.
+{{./Richard Brodie.jpg}}
+Richard Brodie
+Microsoft Word (1983)
+Richard Brodie was the main writer of Microsoft Word and was also Microsoft’s 77th employee. He has authored two books: Virus of the Mind: The New Science of the Meme, and Getting Past OK: The Self-Help Book for People Who Don’t Need Help. He is also a professional poker player.
+
+Famous quote: When the teenage Bill Gates caught the poker-playing mind virus at Harvard, was that harmful because it kept it from his studies? Or was it beneficial because it helped sway his decision to drop out, start Microsoft and become a multi-billionaire? (Virus of the mind: The new Science of the Meme)
+{{./Richard Stallman.jpg}}
+Richard Stallman
+Emacs editor/Lead architect of the GNU project (1983)
+Richard Stallman is an American software freedom activist who launched the GNU Project in order to create a free Unix-like operating system, essentially to provide a “sufficient body of free software to software [...] to get along without any software that is not free.” With the launch of the GNU Project, he initiated the free software movement. In October 1985 he founded the Free Software Foundation.
+
+Famous Quote: If programmers deserve to be rewarded for creating innovative programs, by the same token they deserve to be punished if they restrict the use of these programs.
+{{./Larry Wall.jpg}}
+Larry Wall
+Perl (1987)
+Perl was created and developed by Larry Wall as a general-purpose Unix scripting language to make report processing easier. The language provides powerful text processing facilities without the arbitrary data length limits of many contemporary Unix tools, greatly simplifying text file manipulation. Wall is also the author of the rn (Read News) Usenet client and the universally-used patchprogram (a Unix program that updates text files according to instructions contained in a separate file, called a patch file).
+
+Famous quote: Many days I don’t write any code at all, and some days I spend all day writing code.
+{{./Guido van Rossum a.k.a BDFL.jpg}}
+Guido van Rossum a.k.a BDFL (Benevolent Dictator for Life)
+Python (1989)
+Van Rossum is best known as the author of the Python programming language, a general-purpose, high-level programming language whose design and philosophy centers on code readability. It permits several styles of programming, so that programmers aren’t forced to adopt a particular style. Van Rossum is known in the Python community as BDFL because even though he is currently employed by Google, he continues to oversee the Python development process, making decisions where necessary.
+
+Famous quote: I would guess that the decision to create a small special purpose language or use an existing general purpose language is one of the toughest decisions that anyone facing the need for a new language must make.
+{{./Tim Berners-Lee and Robert Cailliau.jpg}}
+Tim Berners-Lee (L) y Robert Cailliau (R)
+Tim Berners-Lee and Robert Cailliau
+HTTP, HTML, World Wide Web (1990)
+Tim Berners-Lee invented what we know as the World Wide Web with the help of Robert Cailliau and others at the nuclear physics laboratory Conseil Européen pour la Recherche Nucleaire (CERN). Berners-Lee first proposed the “WorldWideWeb” project in 1989. He and his team are credited with inventing the original HTTP protocol along with the HTML and other associated technology for a web server and a text-based web browser. On December 25, 1990, with the help of Cailliau, they implemented the first successful communication between an HTTP client and server via the Internet. Merry Christmas!
+
+Famous Tim quote: Anyone who has lost track of time when using a computer knows the propensity to dream, the urge to make dreams come true and the tendency to miss lunch.
+
+Famous Robert quote: When we have all data online it will be great for humanity. It is a prerequisite to solving many problems that humankind faces.
+{{./Linux Torvalds.jpg}}
+Linus Torvalds
+Linux Kernel /Git revision control system (1991)
+Linus Torvalds is best known for having initiated the development of the Linux kernel and git revision control system. Linux is one of the most prominent examples of free and open source software. Torvald became the chief architect of the Linux kernel, and now acts as the project’s coordinator. About 2% of the Linux kernel as of 2006 was written by Torvalds himself.
+
+Famous quote: If Microsoft ever does applications for Linux it means I’ve won.
+{{./John D. Carmack.jpg}}
+John D. Carmack
+Co-founder of id Software /Game programmer
+John D. Carmack is a widely recognized guru in the video game industry and was the lead programmer of id computer games: Wolfenstein 3D, Doom, Quake, their sequels as well as the Commander Keen series of games. Carmack released the source code for Wolfenstein 3D in 1995 and the Doom source code in 1997. He is an advocate of open source software, and has repeatedly voiced his opposition to software patents, which he equates to “mugging someone.”
+Famous quote: Story in a game is like a story in a porn movie. It’s expected to be there, but it’s not that important.
+{{./Tim Sweeney.jpg}}
+Tim Sweeney
+Founder of Epic Games/Unreal engine programmer
+Sweeney is frequently considered the counter-part of John Carmack. Both are industry leaders in game engine design. He also wrote the original Unreal Engine from 1995-1998, which introduced several breakthrough technologies including dynamic colored lighting, volumetric fog, and real-time what-you-see-is-what-you-get 3D level-building tools.
+
+Famous quote: In 100 years, after the last C and C++ programmers are long gone, there will still be LISP enthusiasts. But don’t expect large-scale software development to happen this way.
+{{./James Gosling.jpg}}
+James Gosling
+Java (1995)
+Considered the father of the Java programming language, James Gosling developed Java while working at Sun Microsystems (now a subsidiary of Oracle Corporation). Java was originally designed for interactive television, but it was too advanced. The language derives much of its syntax from C and C++ but has a simpler object model and fewer low-level facilities. Java applications are typically compiled to bytecode (class file) that can run on any Java Virtual Machine (JVM) regardless of computer architecture.
+
+Famous quote: If you come up with a good software development tool, that makes life easier for the developers and they can get their job done quicker, then the first thing the manager says is ‘oh you’ve got free time on your hands. Do this extra thing.
+{{./David Heinemeier Hansson.jpg}}
+David Heinemeier Hansson
+Ruby on Rails (2004)
+Ruby on Rails was extracted by David Heinemeier Hansson from his work on Basecamp, a project management tool by 37signals (now a web application company). As stated on Heinemeier Hansson’s site “ Ruby on Rails is an open-source web framework that’s optimized for programmer happiness and sustainable productivity. It lets you write beautiful code by favoring convention over configuration”.
+
+Famous quote: Flexibility is not free. It’s overrated. And if you trade that flexibility in for some constraints, you get a lot of complexity removed from the equation, you get a lot of productivity back from all the stuff you don’t have to do.
+
+***UPDATE***
+{{./Anders Hejlsberg.jpg}}
+
+Anders Hejlsberg
+Turbo Pascal (1981), Delphi (1999), C#(~2000)
+Anders Hejlsberg was the architect for all versions of the Turbo Pascal compiler (originally produced for the NasSys cassette-based operating system of the Nascom microcomputer), and the first three versions of Borland Delphi. He currently works for Microsoft as the lead architect of the C# programming language, a multi-paradigm programming language encompassing imperative, declarative, functional, class-based, and component-oriented programming disciplines.
+
+Famous quote: With a lot of programs today, you’re not only saying what you want the program to do, you are saying in painful detail how you want it done. The way we get to take advantage of all of the progress in CPUs and memory is offloading some of that ‘how to’ to the infrastructure.
+{{./Rasmus Lerdorf.jpg}}
+Rasmus Lerdorf
+PHP
+Rasmus Lerdorf is best known as the creator of the PHP programming language, a general-purpose scripting language that was originally designed for web development to produce dynamic web pages. He authored the first two versions of the language and also contributed to the Apache HTTP Server and came up with the LIMIT clause that was added to the mSQL Database in 1995.
+
+Famous quote: PHP is about as exciting as your toothbrush. You use it every day, it does the job, it is a simple tool, so what? Who would want to read about toothbrushes?

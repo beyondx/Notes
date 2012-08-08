@@ -1,0 +1,134 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-16T20:02:20+08:00
+
+====== Linux内核引导简析 ======
+Created Saturday 16 June 2012
+
+2009-03-01 16:47  
+
+以前学计算机的时候就很好奇，为什么电源一打开，操作系统就会在最后神奇般的出现？这中间到底发生了些什么事情？我试着用这篇小文来解释，但水平有限，难免有错误和不足。因为引导过程与体系结构有关，这里就只以Intel X86体系结构32位机为例来进行说明。  
+
+一，PC机物理编址  PC机最早是由IBM生产，使用的是Intel 8088处理器。这个处理器只有__20根地址线__，可以寻址1M的空间。这1M空间大概有如下的结构：  
++------------------+ <- 0x00100000 (1MB)  | BIOS ROM |  
++------------------+ <- 0x000F0000 (960KB)  | 16-bit devices, |  | expansion ROMs |  
++------------------+ <-0x000C0000 (768KB)  | VGA Display |  
++------------------+ <-0x000A0000 (640KB)  | Low Memory |  
++------------------+ <- 0x00000000  
+
+其中可以__自由使用__的空间是最低的640K（0x0000_0000 ~ 0x000A_0000）,称为Low Memory。余下的384K有特殊的用途，最突出的是最后的64K，那是__BIOS的代码__。  
+
+最后Intel终于打破了1MB的屏障，80286, 80386处理器分别支持16MB和4GB内存。然而，__为了向后兼容__，最初的1M内存空间仍然保留了下来。因此现代的PC机物理内存中存在着0x000A_0000到0x0010_0000的__“空洞“__, 它把RAM分成了两个部分，一是最低的640K，称为”传统内存“，一是”扩展内存“（它的地址空间不固定）。另外，位于__32位物理地址空间的最顶端__的部分，高于任何物理RAM，被BIOS保留了下来，__用于32位PCI设备__。目前，物理内存可以超过4G，被保留的32位PCI设备地址空间又会形成__新的“空洞”__。 
+
+二，BIOS  当打开PC机的电源时，__处理器处于实模式（使用的是段机制）__，CS：IP ＝ 0xF000:0xFFFF。这个逻辑地址的虚拟地址是0xFFFFF0，是将CS寄存器的值左移4个二进制位，再加上IP寄存器的值得到的。这种方法隐含了一个信息，就是在实模式中，也是有分段的，只不过段是固定的，每个段的大小都是64K（2^16），段寄存器中保存的就是段的物理地址。那么这个初始地址是哪里的指令了？
+
+在PC机的物理编址一节提到，BIOS的位于1M的最后64K，也即0x000F0000~0x000FFFFF,所以__第一条指令是 BIOS的代码__。BIOS，也即基本输入输出系统,它主要分为两个部分，POST（加电自检）以及Runtime Routines。实际上在0xFFFFF0这个地址上保存了一条**跳转指令**，跳转到BIOS的POST的第一代指令。
+
+POST主要进行一些硬件的检测操作，这时可以在屏幕上看到很多输出。当检测完毕后，BIOS根据CMOS里的设置，查找__引导设备__，并从主引导分区中读取第1个扇区，并加载到__0x7C00__ 的位置，BIOS会在最后跳转到这个地址。POST的代码会在结束后从内存中移除，而Runtime Routeines的代码不会。  
+
+三，Boot Loader  
+
+主引导记录位于一个扇区里，有512字节，分为三个部分。前446字节是__引导代码__部分，随后64字节是__分区表__，最后的2个字节是__魔数__0xAA55。分区表里含有4个表项，每个使用16字节描述，这里不详细说明。魔数起到一个标志的作用。
+
+操作系统是通过称为Boot Loader的程序**加载到内存**中，主引导记录的代码就与Boot Loader有关。在早期的操作系统中（包括Linux），Boot Loader是做为**内核的一部分**，和内核同时编译链接的。现在, Boot Loader和操作系统__进行了分离__，比如Grub就是一个Boot Loader，它即可以引导Linux,也可以引导Windows，而Linux还可以被LILO引导。  
+
+引导操作系统的过程就好像如何把大象从冰箱里拿出来一样（可怜的大象！），第一步，把冰箱门打开，第二步，把大象拿出来。目前的Boot Loader，比如Grub，也是一个__两阶段的过程__。第一阶段的代码就是位于MBR记录里的，它负责加载第二阶段的代码。第二阶段加载内核到内存中，并**为其准备引导参数。**
+
+GRUB（Grand Unified Bootloader）实际上是一个2.5阶段的Boot Loader，多出的第1.5阶段是为了__支持多文件系统__。为了实现操作系统与Boot Loader的分离，操作系统映像的第一个8K必须含有一个multiboot header，并以0x1BADB002结束。  
+
+四，Linux 2.6 内核加载过程  
+
+GRUB将Linux内核映像的__前两个扇区（init扇区以及setup扇区）__加载到物理内存的0x00090000地址处。这两个扇区的代码是__体系结构相关__的，位于arch/x86/boot/header.S中。
+
+init扇区最初是用做软盘MBR的引导代码的，现在的Linux不支持软盘引导，所以这个扇区**没有什么意义**，只是输出一些提示信息"Direct booting form floppy is no longer supported. Please use a boot loader program instead."，（用bochs虚拟机去执行内核的压缩映像bzImage，可以看到这些信息）。
+
+setup扇区是一些代码和__引导参数__，它被加载到 __0x00090200__处。代码部分的主要工作是**调用引导阶段的main函数**，比较重要的引导参数是进入保护模式后的32位代码的__入口点__。参数说明当内核是**大内核**时，内核映像会被加载到__0x0010000__的位置，否则，就被加载到0x1000处。  
+**code32_start:**  
+#ifndef BIG_KERNEL  
+.long 0x1000  # 0x1000 = default for zImage  
+#else  
+.long 0x100000 # 0x100000 = default for big kernel  
+
+引导阶段的main函数位于arch/x86/boot/**main.c**中，它首先会复制引导参数，然后初始堆，__检测物理内存布局__，最重要是__进入保护模式__，跳转到32位代码的入口点。进入保护模式是通过位于arch/x86/boot/pm.c中的go＿to_protected_mode()函数来实现的，它会__开启A20地址线__，设置boot阶段的IDT，GDT，（内核代码段0x10，数据段0x18），最后，执行 protected_mode_jump(__boot_params.hdr.code32_start__, (u32)&boot_params + (ds() << 4))，跳转到引导参数定义的入口点，如果是big kernel，则是0x00100000（1M）。  
+
+位于0x00100000之后的代码也可分为两部分，一是解压内核的代码，一是被压缩过的32位代码。解压缩的代码位于arch/x86/boot /compressed/__head_32.S__，值得注意的是，解压的最终位置会在计算后，保存在ebp寄存器中，实际上还是0x00100000。解压后，位于1M位置的就是位于arch/x86/kernel/**head_32.S**中的入口点了，这也是__真实意义的内核入口点__。这段代码会设置页目录，页表，内核的虚地址空间被设成0xC0000000~0xFFFFFFFF，也就是最后1G，并使用宏__PAGE_OFFSET表示起始地址 0xC00000000。
+
+经过一系列基本的与硬件有关的初始化工作后，执行流跳转到（*initial_code），也就是 i386_start_kernel函数。i386_start_kernel（）位于arch/x86/kernel/__head32.c__中，如果需要，它首先初始化与ramdisk相关的数据。ramdisk会在引导过程中做为**临时的根文件系统**，它包含一些可执行程序，脚本，可以用来加载内核模块等。最后调用start_kernel()。  
+
+五，start_kernel()函数  
+
+start_kernel()函数位于init/main.c中，是引导过程中最重要的一个函数，就像它的名字一样，__它初始化了内核所有的功能__。  
+
+1，调用lock_kernel（），防止内核被意外抢断，定义在lib/kernel_lock.c中。在SMP或者抢断式调度环境中，内核可以被抢断。内核初始化时，功能还不完善，为防止此种情况发生，使用称为Big Kernel Lock的spinlock。spinlock是一种忙等待锁，如果等待周期不是很长，它比信号有效，因为信号会造成进程调度。Big Kernel Lock只在内核初始化时使用,当初始化结束后，该锁被释放。  
+
+2，page_address_init()函数初始化页管理，创建了页管理所需的数据结构，定义在mm/highmem.c中。  
+
+3，输出内核版本信息，执行了两个内核输出语句printk(KERN_NOTICE)和printk(linux_banner)。因为此时__还没有初始化控制台__，所以这些信息不能输出到屏幕上或者输出到串口上，而是输出到一个buffer中。printk()函数定义在kernel/printk.c 中，KERN＿NOTICE宏定义在include/linux/kernel.h中，值为"<5>"。linux_banner定义在 init/version.c中，在我的实验环境中是这样的一个字符串：Linux version 2.6.28 (zctan@dbgkrnl) (gcc version 4.3.0 20080428 (Red Hat 4.3.0-8) (GCC) ) #1 SMP Sun Feb 8 20:56:17 CST 2009。  
+
+4，__setup_arch()__，位于arch/x86/kernel/setup.c，初始化了**许多体系结构相关的子系统**。  
+
+5，setup_per_cpu_area()，定义在arch/x86/kernel/setup_percpu.c中，如果是SMP环境，则为每个CPU创建数据结构，分配初始工作内存。  
+
+6，smp_prepare_boot_cpu()，定义在include/asm-x86/smp.h。如果是SMP环境，则设置boot CPU的一些数据。在引导过程中使用的CPU称为boot CPU。  
+
+7，sched_init()，定义在kernel/sched.c。初始化每个CPU的运行队列和超时队列。Linux使用多优先级队列的调度方法，就绪进程位于运行队列中。  
+
+8，build_all_zonelists()，定义在mm/page_alloc.c中，建立__内存区域链表__。Linux将所有物理内存分为三个区，ZONE_DMA, ZONE_NORMAM, ZONE_HIGHMEM。  
+
+9，trap_init()，定义在arch/x86/kernel/traps_32.c中，初始化IDT, 如除0错，缺页中断等。  
+
+10，rcu_init()，定义在kernel/rcupdate.c中，初始化Read-Copy-Update子系统。当使用spinlock会造成效率低下时，RCU被用来实现临界区的互斥。  
+
+11，init_IRQ()，定义在arch/x86/kernel/paravirt.c中，__初始化中断控制器__。  
+
+12，pidhash_init()，定义在kernel/pid.c中，Linux的进程描述符称为PID, 使用名称空间以及hash表来管理。  
+
+13，init_timers()，定义在kernel/timer.c中，初始化定时器。  
+
+14，softirq_init()，定义在kernel/softirq.c中，初始化中断子系统，如softirq, tasklet。  
+
+15，time_init()，定义在arch/x86/kernel/time_32.c中，初始化系统时间。  
+
+16，profile_init()，定义在kernel/profile.c中，为profiling data分配存储空间。Profiling data这个术语描述在程序运行过程中采集到的一些数据，用于性能的分析。  
+
+17，local_irq_enable()，定义在include/linux/irqflags.h中，开__启引导CPU的中断__。  
+
+18，console_init()，定义在drivers/char/tty_io.c中，__初始化控制台__，可以是显示器也可以是串口。此时屏幕上才会有输出，前面printk输出到buffer中的内容会在这里全部输出。  
+
+19，initrd检测。如果定义了Init Ram Disk，则检测其是否有效。  
+
+20，mem_init()，定义在arch/x86/mm/init_32.c，**检测所有可用物理页**。  
+
+21，pgtable_cache_init()，定义在include/asm-x86/pgtable_32.h，在slab存储管理子系统中创建页目录页表的cache。  
+
+22，fork_init()，定义在kernel/fork.c中，初始化多进程环境。此时，执行start_kernel的进程就是所谓的进程0。  
+
+23，buffer_init()，定义在fs/buffer.c中，__初始化文件系统的缓冲区__。  
+
+24，vfs_cache_init()，定义在fs/dcache.c中，创建虚拟文件系统的Slab Cache。  
+
+25，radix_tree_init()，定义在lib/radix-tree.c。Linux使用radix树来管理位于文件系统缓冲区中的磁盘块，radix树是trie树的一种。  
+
+26，signals_init()，定义在kernel/signal.c中，初始化信号队列。  
+
+27，page_writeback_init()，定义在mm/page-writeback.c中，初始化将脏页页同步到磁盘上的控制信息。  
+
+28，proc_root_init()，定义在fs/proc/root.c, __初始化proc文件系统__  
+
+29，rest_init()，定义在init/main.c中，__创建init内核线程__（也就是进程1）。init进程创建成功后，进程0释放Big Kernel Lock，重新调度（因为现在只有两个进程，所以调度的是init进程）。进程0，就变成了__idle进程__，只负责调度。  
+
+注：start＿kernel函数涉及到很多内容和硬件知识，比如SMP等，有很多是我不知道的，所以只能简要的从功能上说明一下，有些可能理解错了，也会略过一些函数，请见谅。  
+
+六，init进程 
+
+init进程执行定义在init/main.c中的__kernel_init()__函数，完成余下的初始化工作。  
+1，lock_kernel()，加上Big Kernel Lock。  
+
+2，初始化SMP环境。  
+
+3，do_basic_setup()。__调用driver_init()，加载设备驱动程序__。执行do_initcalls()，__调用内建模块的初始化函数__，比如kgdb。  
+
+4，init_post()函数会打开/dev/console做为标准输入文件，并复制出标准输出和标准错误输出。最后，按下列顺序偿试__执行init程序__，位于ramdisk的/init,以及磁盘上的/sbin/init, /etc/init, /bin/init和/bin/sh, 只要有一个能执行就可以。init进程会使用类exec()去调用其它进程，因而不会返回。  
+
+七，结语  
+以上简要说明了从打开电源到Linux内核引导成功之间发生的一些操作，可以使用bochs虚拟机安装一个Linux进行调试验证。各个部分之间的切换我觉得是没有什么大问题的，其余的就不好说了（^_^!）。

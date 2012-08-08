@@ -1,0 +1,13 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2010-08-03T21:47:46.310290
+
+====== 5 Filesystem syntax and semantics ======
+Created Tuesday 03 August 2010
+
+GRUB uses a special syntax for specifying disk drives which can be
+accessed by BIOS. Because of BIOS limitations, GRUB cannot distinguish
+between IDE, ESDI, SCSI, or others. You must know yourself which BIOS
+device is equivalent to which OS device. Normally, that will be clear if
+you see the files in a device or use the command `find' (*note find::).
+

@@ -1,0 +1,123 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-15T17:15:34+08:00
+
+====== Linux2.6.16的中断 ======
+Created Friday 15 June 2012
+http://blog.donews.com/qiaolin/archive/2006/11/06/1073441.aspx
+
+——针对intel i386结构
+
+===== 1. 屏蔽中断的两种方法 =====
+
+a) 汇编指令：cli和sti：
+设置CPU的eflags的IF标志位，可以允许和禁止__所有__可屏蔽中断。
+关于IA32的寄存器可以参考：[[../X86/第二讲--IA32寄存器简介.txt]]
+b) 通过PIC:：
+控制系统的可编程中断控制器，可以屏蔽你需要屏蔽的__一位或几位__中断。
+ 
+
+===== 2.异常： =====
+
+a) Intel i386一般有20个异常，20-31保留。从32开始就是中断。
+b) 对异常的处理，通常是给当前进程发送一个信号(signal)：比如0号异常，也即除零异常，发送信号SIGFPE。
+
+===== 3.IDT： =====
+
+a) Interrupt Description Table中保存每一个中断向量的**处理程序的地址和相关属性(不简单地是ISR的地址，这和实模式下的中断向两表不同，后者只存ISR的地址。IDT由中断号索引)**。而__idtr__保存了idt在内存的物理地址(**由硬件使用，所以不能为虚地址**)和长度。
+
+在idt中，每个中断向量占用8个字节，一共有三种类型的描述符：Task、Interrupt、Exectption，跟别代表不同的gate。
+b)IDT的第一步初始化
+在系统刚启动的时候，kernel用一个空的程序(ignore_int)充当所有中断处理程序，在arch\i386\kernel\__head.S__文件里面：
+setup_idt:
+       lea __ignore_int__,%edx ＃用ignore_int充当所有中断处理程序。这条指令的含义是取得ignore_int符号的内存地址存放到edx寄存器中。
+       movl $(__KERNEL_CS << 16),%eax
+       movw %dx,%ax           /* selector = 0×0010 = cs */
+       movw $0×8E00,%dx     /* interrupt gate – __dpl__=0, present */
+       lea __idt_table__,%edi
+       mov $256,%ecx     #所有256个中断向量
+rp_sidt:
+       movl %eax,(%edi)
+       movl %edx,4(%edi)
+       addl $8,%edi
+       dec %ecx
+       jne rp_sidt
+       ret
+而ignore_int只是打印一句“Unknown interrupt or fault at EIP”。
+
+c) 真正的初始化：
+在init/main.c的start_kernel函数里面__调用了trap_init和init_IRQ用不同的中断处理程序填充idt__。
+
+===== 4.trap_init =====
+异常是同步中断，一般由软件指令引起：如除0、单步调试、溢出、系统调用。
+在arch/i386/kernel/traps.c里面：
+void __init **trap_init**(void)
+{
+    ………………………………….
+       set___trap_gate__(0,&divide_error);
+       set___intr_gate__(1,&debug);
+       set_system_intr_gate(3, &int3); /* int3/4 can be called from all */
+       set_system_gate(4,&overflow);
+………………………
+       set_trap_gate(10,&invalid_TSS);
+       set_system_gate(SYSCALL_VECTOR,&system_call);
+
+Set_trap_gate和set_intr_gate设置dpl(dpl是描述符优先级的简称)为0，而set_system_×设置dpl为3（用户空间代码可以直接访问）。这里面的异常处理程序比如divide_error，debug都是在arch/i386/linux/entry.S里面用汇编定义的代码，
+ENTRY(overflow)
+       pushl $0             		＃没有硬件出错代码的异常人为压入0
+       pushl $do_overflow    	＃压入c语言的do_overflow函数的地址
+       jmp error_code        	#所有以后到达统一的处理地方
+
+在error_code里面调用c语言的do_overflow之后，统一跳转到__ret_from_exception__执行。而c语言的do_overflow在arch\i386\kernel\traps.c里面用DO_VM86_ERROR( 4, SIGSEGV, "overflow", overflow)定义，这个宏产生do_overflow函数，并且调用do_trap函数，在do_trap里面给进程发出相应的signal：force_sig(signr, tsk)。
+
+===== 5.init_IRQ： =====
+在arch/i386/kernel/__I8259.c__里面：
+void __init init_IRQ(void)
+{
+………………………………
+       for (i = 0; i < (NR_VECTORS – FIRST_EXTERNAL_VECTOR); i++) {
+              int vector = FIRST_EXTERNAL_VECTOR + i;
+              if (i >= NR_IRQS)
+                     break;
+              if (vector != SYSCALL_VECTOR)
+                     set_intr_gate(vector, __interrupt[i]__);
+       }
+
+Interrupt是一个函数指针数组，在arch/i386/kernel/entry.S有定义：
+.data
+	__ENTRY(interrupt)__
+.text
+	vector=0
+	__ENTRY(irq_entries_start)__
+.rept NR_IRQS
+       ALIGN
+1: 
+       pushl $vector-256
+       jmp __common_interrup__
+
+Common_interrup调用c语言的__do_IRQ__之后，跳转到__ret_from_intr__标号处统一返回。所有的interrup都在do_IRQ得到运行，从而提供了一个统一的运行框架，便于kernel扩展。
+
+在内核中有一个全局变量__irq_desc__，是__irq_desc__类型的数组；其中的元素对应一个中断，下标+0×20就是中断向量号。irq_desc结构体最重要的就是两个函数指针：hw_irq_controller *handler和**struct irqaction *action**。前者用来统一处理这个中断向量一些公共的地方，比如向ITC发ack等。而action构成一个列表，在do_IRQ里面用__handle_IRQ_event__函数来遍历这个列表。这样的话，多个device就可以共享一个中断向量，并且Linux还支持动态挂载。实现的方法就是在这个全局的irq_desc数组里面相应的元素的action上链接和删除节点。
+
+===== 6.SoftIRQ： =====
+softIrq起源于bottom half的概念：在一个中断处理程序里面一般可以分为两部分：需要即使处理的部分和可以延时的部分。举个例子，当网卡上收到新的数据包时，产生一个中断，那么中断处理程序需要知道数据包来了，并且数据部的地址也必须记录，这部分需要即使处理，否则会被后面来的数据包掩盖这个包；但是把这个数据包从网卡复制到内核空间，或者复制到用户指定的地方是需要耗时和可以稍微延迟处理的。这后面的部分在2.4内核里面就是bottom half。
+
+但在2.6(.16)里面，bottom half的概念已经完全消失了，取而代之的是softirq和tasklet。首先有一个全局变量softirq_vec，是一个softirq_action类型的数组，数组大小为32，数组里面的每一个元素代表一种优先级的softirq，下标越低，优先级越高。现在内核使用了前面的6个优先级：
+       HI_SOFTIRQ=0,
+       TIMER_SOFTIRQ,
+       NET_TX_SOFTIRQ,
+       NET_RX_SOFTIRQ,
+       BLOCK_SOFTIRQ,
+       TASKLET_SOFTIRQ
+
+在do_IRQ函数的最后，会执行一个irq_exit的函数：
+void **irq_exit**(void)
+{
+    account_system_vtime(current);
+    sub_preempt_count(IRQ_EXIT_OFFSET);
+    if (!in_interrupt() && local_softirq_pending())
+        invoke_softirq();
+    preempt_enable_no_resched();
+}
+
+Invoke_sofirt是一个宏，最终会调用____do_softrq__(kernel/softrirq.c)，在这个函数里面，会遍历softirq_vec数组，并且执行里面的action函数。而HI_SOFTIRQ注册的函数为tasklet_hi_action（open_softirq(HI_SOFTIRQ, tasklet_hi_action, NULL);），在每个cpu里面会维护链表tasklet_hi_vec，类型为tasklet_struct，tasklet_hi_actio会遍历这个链表的每一个元素，并执行tasklet_struct的函数指针func。通过这种方式，不同的驱动可以共享同一个softirq，这是分两步完成的：首先初始化一个tasklet_struct，填充需要执行的函数；然后调用tasklet_hi_schedule函数，把这个tasklet_struct连接到cpu的tasklet_hi_vec链表。

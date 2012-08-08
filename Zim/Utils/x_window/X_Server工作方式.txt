@@ -1,0 +1,59 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-16T16:50:00+08:00
+
+====== X Server工作方式 ======
+Created Monday 16 May 2011
+
+下午看了会儿Linux下X Window的工作方式，可能X Window的工作方式和我们平时所想了还是有些不一样，记录一下自己的假设。等些日子自己熟悉了，再回来看看自己的假设是否正确。
+ 
+
+先说些概念：GNU/Linux，X Server，X Client(xterm)，Window Manager。
+
+通常，我们所说的Linux是指Linux的发行版，比如Ubuntu，Fedora，Redhat等等。其实从概念上说Linux指得应该是Linux的内核。
+
+有了内核，再有了Bash这样的命令行解释器(加上一些命令工具)。一个可以工作的Linux也就形成了。但是不是所有人都可以/喜欢用命令行工作。世界是多彩的，Linux也需要一个图形界面。
+
+但Linux的图形界面，只是作为内核之外的一个工具提供的。你可以使用图形界面来完成工作，你也可以使用命令行来完成工作。图形界面只是Linux下一个普通的应用程序。
+
+ 
+
+从概念上来讲这个应用程序是C/S架构的一个应用程序，通常由一个X Server和一些X Client组成。我们的X Client可以请求X Server帮忙显示一些界面，比如说窗口啊，按钮啊，给用户。我们从概念上来张图，解释一下。
+
+image
+
+不同的Client端通常X11协议和X Server通信，并将自己的需求通过X11协议传给X Server。X Server在接到X Client的请求后，在与X Server相连的显示器上显示相关的窗口，按钮，等等。由上图可以看出，一个X Server可以同时满足几个X Client的需求，同时显示在显示器上。
+
+ 
+
+X Client的请求需求大概是：我想画一个窗口(200*200)，在窗口上有一个按钮(12*8)，相对位置是……。X Server接到要求绘出这样的界面给用户。
+
+但还有两个问题没有解决：首先，X Server要采用什么颜色呢，要不要一些标准组件呢(比如类似Windows应用程序右上角的最小化，最大化，关闭按钮)。这是一个问题。
+
+其次，显示问题解决了，但怎么处理交互呢。比如一个用户按下了按钮，X Client怎么知道呢。
+
+ 
+
+针对上面的问题Window Manager(窗口管理器)出现了。X Client的请求，交给X Server。X Server经过处理后，再将请求交给Window Manager。Window Manager根据相应的配置来显示请求中的那个窗口——不单单显示了200*200的窗口和按钮，显示了默认的标题，添加了窗口标准按钮，等等。如果X Client想显示自己的标题怎么办，给X Server发消息时指明标题不就可以了嘛 :)
+
+ 
+
+当用户在窗口按下按钮后，Window Manager根据用户在窗口上的动作，产生一个点击事件/消息。比如，按钮A已经被点击，点击的相对坐标为(2, 5)。这个消息打包发给X Server，再由X Server通过X11协议传给X Client。类似：嗨，X Clinet 5兄，你的鼠标被点了，你看着办吧。等X Client处理好点击消息后，比如X Client接到消息后，需要显示一个文本框。那么X Client会再次呼叫X Server。整个过程，如此反复。
+
+还有一点需要注意的是通常意义上的Server(服务器)，可能在X Server-X Client通信中，是一个X Client的角色。比如我们在自己的Laptop上需要管理3台服务器，我们可以在自己的Laptop上打开X Server和Window Manager。然后不同的服务器通过X11协议，将自己的应用程序窗口显示在Laptop上。此时这台Laptop显示三个服务器应用程序的窗口，并可以通过窗口来管理服务器的配置。
+
+ 
+
+上面只是由目前我了解到的信息和我个人的的猜想，可能并不正确。我们可以做一下替换，将技术替换成具体的应用程序。
+
+Linux发行版->Ubuntu,Fedora, SUSE….
+
+X Server –> XFree86, XOrg,….
+
+X Client –> Xterm.
+
+Window Manager –> FVWM, GNU/Window Maker,….
+
+ 
+
+我要抽些时间在我自己的Linux发行版上，找找这些东西都在什么地方 :)

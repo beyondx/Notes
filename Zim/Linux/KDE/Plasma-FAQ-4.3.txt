@@ -1,0 +1,415 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-16T21:03:13+08:00
+
+====== Plasma-FAQ-4.3 ======
+Created Wednesday 16 November 2011
+http://userbase.kde.org/Plasma/FAQ/4.3#How_can_I_add.2Fremove_an_activity.3F
+
+Plasma is one of the key technologies of KDE SC 4 (also known as the "Pillars(柱子、支柱) of KDE"), and one of the most visible to users. As Plasma treats the user interface **differently** than a traditional desktop, there may be confusion as to what Plasma is, what it does, and how to perform common tasks.
+
+This document attempts to address these problems by providing answers to the most common questions.
+
+**Information**
+The information presented here covers Plasma in KDE SC 4.3. For older versions you can turn to the KDE 4.2 specific page, KDE 4.1 specific page or the KDE 4.0 one
+
+
+===== 目录 =====
+
+    1 General Questions
+        1.1 What does Plasma do?
+        1.2 What is wrong with the current desktop technology?
+        1.3 I don't think it's such a good idea...
+        1.4 How does Plasma work?
+        1.5 It doesn't sound too new... other operating systems have done that.
+        1.6 Kicker and Kdesktop were working fine in KDE 3. Why did you have to change that?
+        1.7 I can't find my favorite <insert feature here>!
+        1.8 Why was the way the desktop operates changed?
+        1.9 I heard there are no more icons on the desktop...
+        1.10 What is the Folder View applet?
+        1.11 What's the deal with Kickoff (the new K Menu) ?
+        1.12 What is KRunner?
+        1.13 What are the "cashews"?
+        1.14 Please provide an option to disable the upper right cashew.
+        1.15 What is the Zooming User Interface (ZUI)?
+        1.16 How does the ZUI work?
+        1.17 Why can't I use the ZUI from Dashboard view?
+        1.18 On multi screen setups, the ZUI operates on all screens, the Dashboard just on one. Why is that?
+    2 Configuration
+        2.1 Can I place icons on the desktop?
+        2.2 I am using two screens, and I used to have Kicker over the two displays. Can I do that with Plasma?
+        2.3 Can I put the panel on only one screen?
+        2.4 How can I add applets to the panel?
+        2.5 Can I move the applets on the panel?
+        2.6 How can I change the height and the size of the panel?
+        2.7 Can I auto-hide the panel?
+        2.8 How can I remove a panel?
+        2.9 General Panel Configuration Help
+        2.10 I heard that you can use OS X's widgets with Plasma. Is this true?
+        2.11 How do I move, rotate or resize an applet on the desktop?
+        2.12 My widgets are hidden under the windows. How can I show them?
+        2.13 How can I lock the positions of the widgets?
+        2.14 How do I remove widgets?
+        2.15 How do I switch between Kickoff and the old style menu?
+        2.16 How can I add/remove an activity?
+        2.17 How can I quickly move between Activities?
+        2.18 Are there any keyboard shortcuts for Plasma?
+        2.19 How can I associate a keyboard shortcut with an applet?
+        2.20 Can the Dashboard show widgets other than those on my desktop?
+        2.21 How can I use virtual desktops as activities ?
+        2.22 Notifications take up too much screen - can I get rid of them?
+    3 Theming
+        3.1 I don't like the default look of the panel and other Plasma components. Can I change that?
+        3.2 How can I change my Plasma theme?
+        3.3 Is there support for advanced visual effects (transparency, etc.) without using compositing?
+    4 Troubleshooting
+        4.1 Plasma crashed, how can I bring my desktop back?
+        4.2 My panel is gone, how do I get it back?
+        4.3 Some GTK+ applications show wrong system tray icon sizes.
+        4.4 I experience extreme slowness when using Plasma with the NVIDIA binary driver.
+        4.5 Folder View and other plasmoids look badly rendered with an ATI video card and the open source radeon driver.
+    5 Hints & Tips
+        5.1 Add an application launcher to the panel
+        5.2 Add a launch menu to the panel
+        5.3 Disabling ARGB visuals
+        5.4 Right-click the panel when your task bar is full
+        5.5 Re-arrange the application tabs on your task bar
+        5.6 Watch some Screencasts
+        5.7 Miscellaneous tips
+    6 Glossary
+    7 HowTo
+    8 Thanks
+    9 Contributors
+
+===== General Questions =====
+
+==== What does Plasma do? ====
+
+Plasma is the **desktop interface** for KDE SC 4, including the **application launcher** (start menu), the **desktop** and the **desktop panel** (often referred to simply as the task bar). However Plasma is more than just this familiar collection of utilities, it is a **common framework** for creating integrated interfaces. It is flexible enough to provide interfaces for mobile devices, media centres and desktop computers; to support the traditional desktop metaphor as well as well as designs that haven't yet been imagined.
+
+===== What is wrong with the current desktop technology? =====
+
+Today's desktops are__ static__. Typically they are tied to a folder in which one can find icons (application launchers), or user-placed documents and folders. Along with pictures and images as backgrounds, the current desktop doesn't go any further, or work for the user. Plasma takes a different approach, engaging the user by creating a __dynamic__ and highly customizable environment.
+
+=== I don't think it's such a good idea... ===
+
+With Plasma, you can let your desktop (and accompanying support elements) act like it always did. You can have a task bar, a background image, shortcuts, etc. If you want to, however, you can use tools provided by Plasma to take your experience further, letting your desktop take shape based on **what you want and need**.
+
+=== How does Plasma work? ===
+
+Plasma's components are widgets called __Plasmoids__. Plasmoids can take on a variety of functions, ranging from displaying your desktop and associated wallpaper, showing your laptop's battery level, displaying your plugged in devices, and drawing the taskbar: basically, they are **small applications **that live on the desktop. Plasmoids can be grouped together in "__containers__" called containments. On a default desktop, there are two main elements: the** Panel** and the **desktop** itself. Both are containments in the Plasma sense.
+
+=== It doesn't sound too new... other operating systems have done that. ===
+
+The key difference here is that plasmoids __can interact together__. You want a better view of your laptop battery in order to find out when you are running low? You just drag it away from the taskbar and put it on the desktop. Also, applets can be resized and rotated at will, thanks to the use of Scalable Vector Graphics __(SVGs__). As you can see, the desktop not only interacts with you, as the user, but also with itself in new and interesting ways. You are now able to control how your workspace behaves and what it displays, in a visually pleasing and user-friendly manner. Since __Plasma is the sum of its plasmoids__, every element, even the desktop itself, is a widget. This allows you to move your desktop anywhere with respect to the windows (back and forward). It is no longer rooted behind everything and becomes instead another element of real interaction.
+
+=== Kicker and Kdesktop were working fine in KDE 3. Why did you have to change that? ===
+
+Especially regarding Kicker, there was the important** issue of maintainability**. The code was in place since the KDE 2 days, and it was difficult to add new features without breaking others. In the end, to proceed forward the only viable option was to start a new from scratch.
+
+=== I can't find my favorite <insert feature here>! ===
+
+Don't forget that the Plasma Desktop is still in heavy development and that KDE 3 was an extremely polished codebase: it took seven years to get to that, while Plasma is much younger. With time, the Plasma developers plan on reintroducing features that are missing and fix regressions. As it progresses through the KDE SC 4.x cycle, Plasma will improve with it.
+
+=== Why was the way the desktop operates changed? ===
+
+The idea of a Desktop folder is fundamentally a broken concept. It assumes that everything you will access there resides on a single physical directory on your disk. It may be convenient, but at the same time it __greatly limits__ what you can do. For example, you can't use custom layouts for different desktops, as everything would be read from the directory. Also, quite often a desktop structured like that becomes a **dumping ground** for files and folders, without any other function.
+
+=== I heard there are no more icons on the desktop... ===
+
+That is not entirely correct. You can have icons and launchers (shortcuts) by dragging them from Dolphin or the K-menu. What has changed is that __the desktop will no longer display the contents of the Desktop folder__. However, you can show an arbitrary number of folders (local or remote) on your desktop view, instead of being forced to display only the contents of the "Desktop" folder. To do so, the **Folder View **applet comes into play.
+
+Also, should you wish, you can replicate the "icons on desktop" paradigm with minimal effort.
+
+=== What is the Folder View applet? ===
+
+The Folder View applet, like its name says, is used to** display items** (folders, files) from a directory. Such a directory can be either a local one residing on your computer, but also a remote FTP, SSH, or SMB share. In the future, it will even contain results from Nepomuk searches and tagging.
+
+You can choose to view either all files, or __filter__ either by specific regular expressions (e.g., all files with a certain extension) or by file type (for example, just images).
+
+This applet also supports **basic file management **properties (moving, copying, cutting and pasting for example), and you can have as many as you want on your desktop.
+
+Lastly, you can use one Folder View as the whole desktop, effectively replicating the "old style" paradigm.
+
+=== What's the deal with Kickoff (the new K Menu) ? ===
+
+During the development of KDE 4.0, different approaches for a K menu (application launcher) were tried. Some projects were ambitious but there was no way they could be completed on time. At the time, one developer ported **SUSE Linux's application launcher** (Kickoff) to the new KDE desktop architecture. As it was the most ready and feature complete (not to mention the product of usability testing) it was chosen to be the default menu. If you don't like it, the traditional K-menu is available as well - right-click onto the K Menu to find an option "traditional style". Also, some alternative menu systems have been announced and some, such as Lancelot, are ready for daily usage and offer exciting new features.
+
+=== What is KRunner? ===
+
+KRunner is the versatile mini-command line you can activate by pushing Alt + F2 or by selecting Run Command from the desktop contextual menu. It can search for applications, bookmarks, even sessions basing on your input, show system activity and even do simple arithmetic calculations.
+
+KRunner's functionality can be extended through the use of plugins ("runners").
+
+=== What are the "cashews"? ===
+
+What is commonly referred as "cashew"（腰果） is the Plasma logo you can find on the default desktop, on the upper right corner, and on the panel, on the right hand side (left hand side if you use a Right-To-Left language). By clicking on them, you can access other configuration options, such as panel configuration and the Zooming User Interface (ZUI). Some of these, like the panel cashew, only appear if the widgets aren't locked (see below).
+
+=== Please provide an option to disable the upper right cashew. ===
+
+Although putting an option to disable the cashew for desktops sounds reasonable, from a coding point of view it would introduce unnecessary complexity and would break the design. What has been suggested is, since the desktop itself (a containment) is handled by plugins, to write a plugin that would draw the desktop without the cashew itself. As a matter of fact, some distributions ship already a "Desktop without cashew" plugin.
+
+=== What is the Zooming User Interface (ZUI)? ===
+
+The Zooming User Interface, or ZUI, is another component of Plasma. It enables the user to group different groups of plasmoids together, and to quickly switch between one and another using a zoom-and-pan approach. Notice that at the time, although significant improvements have been made, this feature is still under heavy development and may be fully functional only with later KDE SC 4.x releases.
+
+=== How does the ZUI work? ===
+
+Suppose you have three groups of plasmoids (such as widgets, application launchers, etc.) which you want arranged in specific combinations depending on what you want to do. You first group them according to your tastes, then you can switch between them by zooming out (getting a preview of all the groups) and then back in on the specific group you want to use. Notice that it is different from traditional X11 virtual desktop switching, as there is a higher degree of flexibility by using this approach, as the groups can be totally different from each other.
+
+A very good example of this behavior is shown by this image courtesy of Half-Left from #kde on freenode.
+
+That said, you can tie virtual desktops to ZUI activities.
+
+=== Why can't I use the ZUI from Dashboard view? ===
+
+That feature is a work-in-progress. We're looking into it, but can't yet say how and when it will be finished.
+
+=== On multi screen setups, the ZUI operates on all screens, the Dashboard just on one. Why is that? ===
+
+The workflows are different. When zooming out, the user wants to get an overview, therefore activities on all screens are zoomed out. Whereas when using the Dashboard, the user usually wants to access specific functionality and might not want to interrupt his or her workflow on other activities.
+
+===== Configuration =====
+
+=== Can I place icons on the desktop? ===
+
+Of course you can. Dragging an icon from Dolphin or Konqueror to the desktop will work. Notice that dragging on the desktop will not actually create a file there, just **a link **to it.
+
+To display the contents of your Desktop folder, or any other folder, use the Folder View applet.
+
+Alternatively, right-click on an empty area of the desktop, select **Desktop Settings** and in the dialog that will pop up locate the Desktop Activity text. Click on the type combo box and select F**older View**. Click OK and you will have a Folder View applet as desktop (showing the contents of the Desktop folder by default), like the "old style" paradigm.
+
+
+**Tip**
+
+If your widgets are locked, you must first unlock them, using the right-click menu
+
+=== I am using two screens, and I used to have Kicker over the two displays. Can I do that with Plasma? ===
+
+No. The reason is that having a panel over two displays adds a great deal of complexity, especially when the two displays have different resolution. As a result of this added complexity, this feature would not be guaranteed to work in all cases, hence it was not implemented.
+
+=== Can I put the panel on only one screen? ===
+
+All Plasma panels live in** one screen**. If you want panels on multiple screens, you can add panels and drag them to your preferred location using the panel controller you get when clicking on the Plasma icon in "Unlocked" mode.
+
+=== How can I add applets to the panel? ===
+
+Method 1: Open the Add Widgets dialog in the Plasma **cashew** (upper right corner of the screen) then select the widget of your liking and drag it directly (don't double click or use the Add Widget button) to the panel.
+
+Method 2: Drag an applet from the desktop to the panel.
+
+Method 3: Click on the cashew on the panel, and select Add widgets. Once you have selected the applet, it will be automatically added to the panel.
+
+=== Can I move the applets on the panel? ===
+
+To do so, open up the **panel controller** (by clicking on the cashew or by right clicking on the panel and selecting Panel Settings) and hover the mouse cursor over the applets. Its shape will turn into **four arrows**, and you'll be able to rearrange the applets as you wish.
+
+Lydia Pintscher's blog has a video showing movement in action. Another one is available on Aikurn's blog. Aikurn has also made an annotated video.
+
+=== How can I change the height and the size of the panel? ===
+
+Click on the panel cashew (the small icon on the right side of the panel) to open the panel configuration interface. By clicking on Screen Edge, you can position the panel on any of the edges of the screen. Clicking on height and dragging increases or decreases the size of the panel.
+
+The arrows on the sides of the panel define its size: there are two, which define "minimum" and "maximum" sizes. The maximum size is the size at which the panel can expand when items are added, while the minimum size is the minimum size the panel can have. If they are set differently, the panel will readjust its size depending on the contents.
+
+Under More Options there are additional options to align the panel and configure its behavior.
+
+=== Can I auto-hide the panel? ===
+
+Open the panel controller, select More Options, then click on the relevant option.
+
+=== How can I remove a panel? ===
+
+Click on the panel cashew, click on More settings, then select Remove this Panel. Alternatively you can right click on the panel itself, select Panel options and choose Remove this Panel.
+
+
+===== General Panel Configuration Help =====
+
+This forum page gives an illustrated guide to configuring the panel.
+
+=== I heard that you can use OS X's widgets with Plasma. Is this true? ===
+
+Yes, Plasma can use OS X's widgets. Work has been done to implement also Javascript-based widgets (reverse engineered due to Apple's license).
+
+=== How do I move, rotate or resize an applet on the desktop? ===
+
+First of all, hover over the applet you want to resize. The __applet handle__ will appear.
+
+The applet handle takes care of resize, rotate and move.
+* To move an applet: Click on the handle, then drag the applet around.
+* To rotate an applet: Click on the curved arrow then drag to rotate
+* To resize an applet: Click on the square icon and then drag to resize the applet. You can constrain the resize operation to the applet's aspect ratio by holding down the** Ctrl **key. 
+
+=== My widgets are hidden under the windows. How can I show them? ===
+
+You can bring all the widgets to the front by pushing __Ctrl + F12__, which will bring the Plasma Dashboard to the front. When you are done, you can either push the **Esc **key or select the Hide Dashboard option from the cashew.
+
+=== How can I lock the positions of the widgets? ===
+
+Method 1: Right click on an empty area of the desktop and select** Lock Widgets **from the contextual menu. If you want to reverse that, right click again and select **Unlock Widgets**. The same option is available if you right-click on the panel.
+
+Method 2: Select Lock Widgets from the Plasma cashew on the upper right corner or from the panel controller.
+
+=== How do I remove widgets? ===
+
+If they're on the panel, right click on the widget and select Remove this.... If the widgets are on the desktop, you have different options:
+
+* If you hover over them, clicking the X on the applet handle will remove them;
+* If you use the Add Widget dialog, you can click on the minus symbol icon next to the widget name to remove it. 
+
+=== How do I switch between Kickoff and the old style menu? ===
+
+Right click on the menu icon and select** Switch to Classic Menu Style **(if using Kickoff) or Switch to Kickoff Menu Style (if using the classic menu). Alternatively, you can add either type of menu using the Add Applets dialog.
+
+Aikurn has a video showing how to switch between the different styles.
+
+=== How can I add/remove an activity? ===
+
+Adding an activity: Zoom out from your current desktop view by clicking on the desktop view cashew (the icon in the top right corner) and selecting Zoom out. You see a toolbar under your current desktop. Click on Add Activity to create a new desktop view.
+
+Removing an activity: Zoom out from your current desktop view and select the red cross from the toolbar that will appear to remove the activity.
+
+Note: You must Unlock Widgets (__Ctrl + L__) before you can remove any activities.
+
+KDE Forums user Fengshaun has made a screencast showing ZUI usage.
+
+===== How can I quickly move between Activities? =====
+
+The ZUI method is rather slow, so a better way is to use an__ Activity Bar__. A short how-to here explains exactly what you need to do.
+
+=== Are there any keyboard shortcuts for Plasma? ===
+
+In addition to the mouse, there is a number of shortcuts available:
+
+    Lock widgets: Ctrl + L
+    Zoom out: Ctrl + -
+    Zoom in: Ctrl + = or Ctrl + +
+    Next applet: Ctrl + N
+    Previous applet: Ctrl + P
+    Add activity: Shift-Ctrl + A
+    Next activity: Shift-Ctrl + N
+    Previous activity: Shift-Ctrl + P
+    Applet settings: Ctrl + S
+    Remove applet: Ctrl + R 
+
+To change shortcuts, click on the desktop cashew and select "**Shortcut settings**".
+
+=== How can I associate a keyboard shortcut with an applet? ===
+
+Simply select an applet's settings (the wrench icon on the applet handle) and then click on Keyboard Shortcut. You will then be able to define a keyboard shortcut for your applet. Notice that some applets do not offer this feature (generally the ones that have no configuration).
+
+=== Can the Dashboard show widgets other than those on my desktop? ===
+
+Yes, it can. To configure it, click on the desktop cashew and zoom out. Choose Configure Plasma from the toolbox that it appears, and check the Use a separate dashboard option. Click on OK and you will have a different dashboard than your desktop when you access it.
+
+=== How can I use virtual desktops as activities ? ===
+
+Zoom out by clicking on the desktop cashew and a new toolbox will open. Click on Configure Plasma then check the box **Different activity for each virtual desktop**. Click on OK and you are done.
+
+=== Notifications take up too much screen - can I get rid of them? ===
+
+For those who do not like it, there is a simple way to disable them. Right click on the system tray notification area (the i icon) and select **System Tray Settings**.
+
+There you will have the options of disabling notifications for applications or for jobs (such as file transfers) by unchecking the relevant check boxes.
+
+===== Theming =====
+
+=== I don't like the default look of the panel and other Plasma components. Can I change that? ===
+
+Yes, the ability to change the look of Plasma was planned since the beginning. Plasma can use "__themes__", which are essentially a number of **SVG** images and files specifying the colors, to change its appearance. A number of themes are already available on kde-look.org.
+
+=== How can I change my Plasma theme? ===
+
+Right click on your current desktop, select **Desktop Settings** (alternatively, you can select the same option from the desktop cashew) and you will find the option under Desktop Theme. You can also download new themes directly from there by clicking the New Theme button, using **Get Hot New Stuff **(GHNS).
+
+Step by step instructions, although made for KDE 4.1, (including screenshots) are available on Aikurn's blog.
+
+=== Is there support for advanced visual effects (transparency, etc.) without using compositing? ===
+
+In an effort to keep the codebase clean of workarounds (if not even hacks), the Plasma developers have decided that features that require compositing to work will __not__ have a composite-less version. The main reasoning is that in the past (KDE 3.5.x), such approaches were one of the causes of the unmaintainability of the code, and also because supporting those features is actually pushing graphics card developers to write better graphics drivers.
+
+===== Troubleshooting =====
+
+=== Plasma crashed, how can I bring my desktop back? ===
+
+Normally Plasma automatically restarts in the event of a crash. If this doesn't happen, open KRunner by pushing Alt + F2 (it should be still running) and type "__plasma-desktop__". Plasma will be restarted.
+
+=== My panel is gone, how do I get it back? ===
+
+//kquitapp plasma-desktop; rm $KDEHOME/share/config/plasma-desktop-appletsrc; plasma-desktop//
+
+This deletes your plasma settings, so you'll get the default configuration back. If running the 3 commands at once doesn't work, try typing them in manually and wait a few seconds before running the next command.
+
+(Note that the $KDEHOME environment variable may not be set. Try** ~/.kde** (Fedora, Kubuntu Intrepid, Debian, upstream default) or ~/.kde4 (OpenSUSE, Kubuntu Hardy and several others).)
+
+=== Some GTK+ applications show wrong system tray icon sizes. ===
+
+That is unfortunately a problem in the Freedesktop.org system tray specification, which does not define the sizes for system tray icons properly.
+
+=== I experience extreme slowness when using Plasma with the NVIDIA binary driver. ===
+
+This is NVIDIA's fault entirely, due to their driver not supporting correctly the **XRender X11 extension**, and it also affects other parts of KDE SC such as Konsole. See this blog entry on how to report issues upstream to NVIDIA. This page contains a few suggestions on how to improve performance.
+
+NVIDIA has released the 18x.xx series driver that can improve performance dramatically with the Plasma Desktop and KDE SC 4.x in general.
+
+Users who have a NVIDIA 6 or 7 series card should add the following lines to their xorg.conf in the "Screen" section, which may improve performance. You don't need to add these lines if you have a 8/9 or above series NVIDIA card, since they're enabled by default.
+
+Option "PixmapCacheSize" "5000000"
+Option "AllowSHMPixmaps" "0"
+
+There are some other options you can try, which may improve things if you get poor Desktop Effects performance.
+
+Go to SystemSettings -> Desktop -> Desktop Effects -> Advanced, you will see **OpenGL **Options, make sure Bilinear or Nearest (fastest) is set as the Texture Filter option. You can also try turning off Use VSync there as well.
+
+=== Folder View and other plasmoids look badly rendered with an ATI video card and the open source radeon driver. ===
+
+To work around this issue, you have to change the 2D acceleration method from XAA (X Acceleration Architecture) to the newer EXA. As this involves editing your xorg.conf file, bear in mind that such a modification may damage your system. Do it at your own risk.
+
+To make the switch, edit your xorg.conf file (make a backup just in case) and locate the Device section for your graphics card. Add the line
+
+Option "AccelMethod" "EXA"
+
+before the "EndSection" line. If there is already a line with AccelMethod, change it from XAA to EXA. Save the file and restart the X server.
+
+Notice that EXA is still marked as unstable, and that some other applications such as some KDE3 programs may render incorrectly.
+
+===== Hints & Tips =====
+
+=== Add an application launcher to the panel ===
+
+If you use Kickoff as your menu, right-click on the application icon, and select Add to Panel. If you use **Lancelot** simply drag the application onto the panel - you may need to hold it there for a second or so before letting go.
+
+=== Add a launch menu to the panel ===
+
+Lancelot makes this possible. Click on the menu launcher, then drag Applications as described above. When the popup menu appears, select Lancelot part.
+
+Various parts of the Lancelot menu can be dragged to the panel in this way. Read this description of how to use it.
+
+'Favorites' may be a good choice for adding to the panel
+
+=== Disabling ARGB visuals ===
+
+For many of its effects, Plasma makes use of the so-called "ARGB visuals". For older video cards, this can mean a severe performance hit. To disable ARGB visuals and increase performance, you need to set the KDE_SKIP_ARGB_VISUALS environment variable to 1 (KDE_SKIP_ARGB_VISUALS=1) before Plasma starts. You can do so by putting a line setting this variable in /etc/profile or in [[~/.profile.]]
+
+=== Right-click the panel when your task bar is full ===
+
+To make some changes to the panel you need to right-click on it - and if you have open applications that may not be easy, The workaround for this problem is to use the panel **cashew **to bring up the panel settings, then you can right-click anywhere on the panel, including on application tabs, and the command will go to the panel, not the application.
+
+=== Re-arrange the application tabs on your task bar ===
+
+Right-click on an empty part of the task bar (or use the method described above) and select **Task Manager Settings**. In the Sorting combo-box, select Manual. OK to close it. Now you can re-arrange your task icons by holding down Alt and dragging the tabs to their new order. (If you use this alt-drag while the panel config panel is open the whole group of application tabs will move as one.)
+Watch some Screencasts
+
+This forum page has links to screencasts that will help you understand Desktop Settings, Panel Settings and the Zooming User Interface (a.k.a. the Cashew).
+
+===== Miscellaneous tips =====
+
+Some alternatives for those who like a sparse desktop:
+
+1 - you can remove the panel entirely. Open applications would be available using the** Alt + Tab** cycling.
+2 - Remove the panel and add a short one at the top of the screen, to hold only the **task manager**
+3 - Create a panel containing the task manager and use autohide.
+
+===== Glossary =====
+
+===== HowTo =====

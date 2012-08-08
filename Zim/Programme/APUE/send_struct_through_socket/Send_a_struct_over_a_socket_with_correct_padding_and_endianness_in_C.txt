@@ -1,0 +1,72 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-05T16:11:43+08:00
+
+====== Send a struct over a socket with correct padding and endianness in C ======
+Created 星期日 05 六月 2011
+
+I have several structures defined to send over different Operating Systems (tcp networks). Defined structures are:
+
+struct Struct1 { uint32_t num; char str[10]; char str2[10];}
+struct Struct2 { uint16_t num; char str[10];}   
+
+typedef Struct1 a;
+typedef Struct2 b;
+
+The data is stored in a text file. Data Format is as such:
+
+    123
+    Pie
+    Crust
+
+Struct1 a is stored as 3 separate parameters. However, struct2 is two separate parameters with both 2nd and 3rd line stored to the char str[] . The problem is when I write to a server over the multiple networks, the data is not received correctly. There are numerous spaces that separate the different parameters in the structures. How do I ensure proper sending and padding when I write to server? How do I store the data correctly (dynamic buffer or fixed buffer)?
+
+Example of write: write(fd,&a, sizeof(typedef struct a)); Is this correct?
+
+Problem Receive Side Output for struct2:
+
+    123( , )
+    0 (, Pie)
+    0 (Crust,)
+
+Correct Output
+
+123(Pie, Crust)
+------------------------
+write(fd,&a, sizeof(a)); is not correct; at least not portably, since the C compiler may introduce padding between the elements to ensure correct alignment. sizeof(typedef struct a) doesn't even make sense.
+
+How you should send the data depends on the specs of your protocol. In particular, protocols define widely varying ways of sending strings. It is generally safest to send the struct members separately; either by multiple calls to write or writev(2). For instance, to send
+
+struct { uint32_t a; uint16_t b; } foo;
+
+over the network, where foo.a and foo.b already have the correct endianness, you would do something like:
+
+struct iovec v[2];
+v[0].iov_base = &foo.a;
+v[0].iov_len  = sizeof(uint32_t);
+v[1].iov_base = &foo.b;
+v[1].iov_len  = sizeof(uint16_t);
+writev(fp, v, 2);
+
+------------------
+1 down vote
+	
+
+Sending structures over the network is tricky. The following problems you might have
+
+    Byte endiannes issues with integers.
+    Padding introduced by your compiler.
+    String parsing (i.e. detecting string boundaries).
+
+If performance is not your goal, I'd suggest to create encoders and decoders for each struct to be send and received (ASN.1, XML or custom). If performance is really required you can still use structures and solve (1), by fixing an endianness (i.e. network byte order) and ensure your integers are stored as such in those structures, and (2) by fixing a compiler and using the pragmas or attributes to enforce a "packed" structure.
+
+Gcc for example uses attribute((packed)) as such:
+
+struct mystruct {
+  uint32_t  a;
+  uint16_t b;
+  unsigned char text[24];
+} __attribute__((__packed__));
+
+(3) is not easy to solve. Using null terminated strings at a network protocol and depending on them being present would make your code vulnerable to several attacks. If strings need to be involved I'd use an proper encoding method such as the ones suggested above.
+----------------------

@@ -1,0 +1,115 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-26T14:16:30+08:00
+
+====== Introduction to Named Pipes ======
+Created Sunday 26 February 2012
+
+http://www.linuxjournal.com/article/2156
+
+Sep 01, 1997  By Andy Vaught in  SysAdmin
+
+A very useful Linux feature is __named pipes which enable different processes to communicate__.
+
+One of the__ fundamental features__ that makes Linux and other Unices useful is the “pipe”.
+
+__Pipes allow separate processes to communicate without having been designed explicitly to work together.__ This allows tools quite narrow in their function to be combined in complex ways.
+
+A simple example of using a pipe is the command:
+
+ls | grep x
+
+When bash examines the command line, it finds the vertical bar character | that separates the two commands. Bash and other shells run both commands, connecting the output of the first to the input of the second. The ls program produces a list of files in the current directory, while the grep program reads the output of ls and prints only those lines containing the letter x.
+
+The above, familiar to most Unix users, is an example of an __“unnamed pipe”__. The pipe exists only__ inside the kernel __and cannot be accessed by processes that created it, in this case, the bash shell. For those who don't already know, a parent process is the first process started by a program that in turn creates separate child processes that execute the program.
+
+The other sort of pipe is a **“named” pipe**, which is sometimes called a __FIFO__. FIFO stands for “First In, First Out” and refers to the property that the order of bytes going in is the same coming out. The “name” of a named pipe is actually__ a file name within the file system__. Pipes are shown by ls as any other file with a couple of differences:
+
+% ls -l fifo1
+__p__rw-r--r--   1 andy  users    0 Jan 22 23:11 fifo1|
+
+The p in the leftmost column indicates that fifo1 is a pipe. The rest of the permission bits control who can read or write to the pipe** just like a regular file.** On systems with a modern ls, the | character at the end of the file name is another clue, and on Linux systems with the color option enabled, fifo| is printed in red by default.
+
+On older Linux systems, named pipes are created by the **mknod** program, usually located in the /etc directory. On more modern systems, __mkfifo__ is a standard utility. The mkfifo program takes one or more file names as arguments for this task and creates pipes with those names. For example, to create a named pipe with the name pipe1 give the command:
+
+mkfifo pipe
+
+The simplest way to show how named pipes work is with an example. Suppose we've created pipe as shown above. In one virtual console1, type:
+
+ls -l > pipe1
+
+and in another type:
+
+cat < pipe
+
+Voila! The output of the command run on the** first console shows up on the second console**. Note that __the order__ in which you run the commands doesn't matter. 
+
+__内核自动处理pipe的读写两端进程的同步。__
+
+If you haven't used virtual consoles before, see the article “Keyboards, Consoles and VT Cruising” by John M. Fist in the November 1996 Linux Journal.
+
+If you watch closely, you'll notice that the first command you run appears to __hang__. This happens because the other end of the pipe is **not yet connected**, and so the kernel suspends the first process until the second process opens the pipe. In Unix jargon, the process is said to__ be “blocked”,__ since it is waiting for something to happen.
+
+One very useful application of named pipes is to __allow totally unrelated programs to communicate with each other__. For example, a program that services requests of some sort (print files, access a database) could open the pipe for reading. Then, another process could make a request by opening the pipe and writing a command. That is, the “server” can perform a task on behalf of the “client”. Blocking can also happen if the client isn't writing, or the server isn't reading.
+Pipe Madness
+
+Create two named pipes, pipe1 and pipe2. Run the commands:
+
+echo -n x | cat - pipe1 > pipe2 &
+cat <pipe2 > pipe1
+
+On screen, it will not appear that anything is happening, but if you run __top __(a command similar to__ ps__ for showing process status), you'll see that both cat programs are running like crazy copying the letter x back and forth in an endless loop.
+
+After you press __ctrl-C __to get out of the loop, you may receive the message __“broken pipe”__. This error occurs **when a process writing to a pipe when the process reading the pipe closes its end.** Since the reader is gone, the data has __no place to go__. Normally, the writer will finish writing its data and close the pipe. At this point, the reader sees the EOF (end of file) and executes the request.
+
+Whether or not the “broken pipe” message is issued depends on events at the exact instant the ctrl-C is pressed. If the second cat has just read the x, pressing ctrl-C stops the second cat, pipe1 is closed and the first cat stops quietly, i.e., without a message. On the other hand, if the second cat is waiting for the first to write the x, ctrl-C causes pipe2 to close before the first cat can write to it, and the error message is issued. This sort of random behavior is known as a __“race condition”__.
+
+===== Process Substitution =====
+**子进程替换是匿名临时管道的一种应用。在命令需要输入文件的地方可以用<(command which output filename) 来代替，在命令需要输出文件名的地方可以用>(command which output filename)来代替。**
+
+Bash uses named pipes in a really neat way. Recall that__ when you enclose a command in parenthesis, the command is actually run in a “subshell”; __that is, the shell clones itself and the clone interprets the command(s) within the parenthesis. Since the outer shell is running only a single “command”, the output of a complete set of commands can be redirected as a unit. For example, the command:
+
+__(ls -l; ls -l) >ls.out   __
+
+writes two copies of the current directory listing to the file ls.out.
+
+**Process substitution **occurs when you put a < or > in front of the left parenthesis. For instance, typing the command:
+
+cat <(ls -l)
+
+results in the command ls -l executing in a subshell as usual, but__ redirects the output to a temporary named pipe__, which bash creates, names and later deletes. Therefore, __cat has a valid file name to read from,__ and we see the output of ls -l, taking one more step than usual to do so. Similarly, giving __>(commands)__ results in Bash naming a temporary pipe, which the commands inside the parenthesis read for input.
+
+If you want to see whether two directories contain the same file names, run the single command:
+
+**cmp <(ls /dir1) <(ls /dir2)**
+
+The compare program cmp will see the names of two files which it will read and compare.
+
+**Process substitution ** also makes the __tee command__ (used to view and save the output of a command) much more useful in that you can cause **a single stream of input to be read by multiple readers** without resorting to temporary files—bash does all the work for you. The command:
+
+ls | tee >(grep foo | wc >foo.count) \
+         >(grep bar | wc >bar.count) \
+         | grep baz | wc >baz.count
+
+counts the number of occurrences of foo, bar and baz in the output of ls and writes this information to three separate files. Command substitutions can even be nested:
+
+cat <(cat <(cat <(ls -l))))
+
+works as a very roundabout way to list the current directory.
+
+As you can see, while __the unnamed pipes allow simple commands to be strung together, named pipes, with a little help from bash, allow whole trees of pipes to be created.__ The possibilities are limited only by your imagination.
+
+Andy Vaught is currently a PhD candidate in computational physics at Arizona State University and has been running Linux since 1.1. He enjoys flying with the Civil Air Patrol as well as skiing. He can be reached at andy@maxwell.la.asu.edu.
+
+----------------------------
+Linux code for a client/server program using named pipes to sare some data between clients through a server
+
+----------------------------
+I was wondering however if there was a way to** keep a process attached to a pipe permanently**. 
+The answer is yes. I solved my problem with:
+
+__tail -f <name_of_pipe>__ | <process_to_handle_output> &
+
+注意：cat > named_pipe 是不行的，因为一旦对方关闭了管道的写fd，cat就会返回。
+----------------------------
+

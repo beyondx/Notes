@@ -1,0 +1,164 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-09-26T21:31:51+08:00
+
+====== LaTex初学者模板 ======
+Created Monday 26 September 2011
+http://latex.yo2.cn/articles/latex-learning-3.htmlj
+% a4paper - A4纸  11pt -字体 twoside -双面 openany -新章节可在偶数页开始
+\documentclass[a4paper,11pt,twoside,openany]{article}
+%------------------------------纸张大小----------------------------------
+% 定义转换成pdf文档的纸张大小，应与\paperwidth \paperheight一致
+%\special{pdf: pagesize width 20cm height 30cm}
+% true的含义是保持尺寸不会随一些参数的变化而变化，具体可见Knuth的TeXbook
+%\paperwidth 20 true cm                  % 纸张宽
+%\paperheight 30 true cm                 % 纸张高
+%------------------------------页面布局----------------------------------
+%\textwidth 10 true cm                   % 正文宽
+%\textheight 20 true cm                  % 正文高
+%\headheight  14pt                       % 页眉高
+%\headsep    16pt                        % 页眉距离
+%\footskip   27pt                        % 页脚距离
+%\marginparsep 10pt                      % 边注区距离
+%\marginparwidth  100pt                  % 边注区宽
+%----------------------------页边空白调整-------------------------------
+\def\marginset#1#2{                      % 页边设置 \marginset{left}{top}
+\setlength{\oddsidemargin}{#1}         % 左边（书内侧）装订预留空白距离
+\iffalse                   % 如果考虑左侧（书内侧）的边注区则改为\iftrue
+\reversemarginpar
+\addtolength{\oddsidemargin}{\marginparsep}
+\addtolength{\oddsidemargin}{\marginparwidth}
+\fi
+
+  \setlength{\evensidemargin}{0mm}       % 置0
+\iffalse                   % 如果考虑右侧（书外侧）的边注区则改为\iftrue
+\addtolength{\evensidemargin}{\marginparsep}
+\addtolength{\evensidemargin}{\marginparwidth}
+\fi
+
+  % \paperwidth = h + \oddsidemargin+\textwidth+\evensidemargin + h
+\setlength{\hoffset}{\paperwidth}
+\addtolength{\hoffset}{-\oddsidemargin}
+\addtolength{\hoffset}{-\textwidth}
+\addtolength{\hoffset}{-\evensidemargin}
+\setlength{\hoffset}{0.5\hoffset}
+\addtolength{\hoffset}{-1in}           % h = \hoffset + 1in
+
+  \setlength{\voffset}{-1in}             % 0 = \voffset + 1in
+\setlength{\topmargin}{\paperheight}
+\addtolength{\topmargin}{-\headheight}
+\addtolength{\topmargin}{-\headsep}
+\addtolength{\topmargin}{-\textheight}
+\addtolength{\topmargin}{-\footskip}
+\addtolength{\topmargin}{#2}           % 上边预留装订空白距离
+\setlength{\topmargin}{0.5\topmargin}
+}
+% 调整页边空白使内容居中，两参数分别为纸的左边和上边预留装订空白距离
+\marginset{10mm}{12mm}
+%-----------------------------字体支持-----------------------------------
+\usepackage{times}                       % 使用 Times New Roman 字体
+\usepackage{CJK,CJKnumb,CJKulem}         % 中文支持宏包
+%\usepackage{ccmap}                      % 使pdfLatex生成的文件支持复制等
+%\usepackage[mtbold,mtpluscal,mtplusscr]{mathtime}%数学环境用Times New Roman
+%-----------------------------页眉页脚-----------------------------------
+\usepackage{fancyhdr}                    % 页眉页脚相关宏包
+\pagestyle{fancy}                        % 页眉页脚风格
+%-----------------------------段落字体格式-------------------------------
+\usepackage{color}                       % 支持彩色
+\usepackage{indentfirst}                 % 首行缩进宏包
+%\setlength{\parindent}{2em}             % 段落缩进
+\setlength{\parskip}{0.7ex plus0.3ex minus0.3ex} % 段落间距
+%\linespread{1.2}                        % 行距倍数
+\renewcommand{\baselinestretch}{1.2}     % 行距倍数（同上）
+%\renewcommand{\CJKglue}{\hskip 0pt plus 0.08\baselineskip} % 汉字字距
+%\newcommand{\aaa}{这是测试}             % 自定义文字块例子
+\newcommand{\song}{\CJKfamily{song}}     % 宋体
+\newcommand{\hei}{\CJKfamily{hei}}       % 黑体
+\newcommand{\fs}{\CJKfamily{fs}}         % 仿宋
+\newcommand{\kai}{\CJKfamily{kai}}       % 楷体
+\newcommand{\li}{\CJKfamily{li}}         % 隶书
+\newcommand{\you}{\CJKfamily{you}}       % 幼圆
+\newcommand{\wuhao}{\fontsize{10.5pt}{12.6pt}\selectfont}      % 五号字体
+\newcommand{\xiaosi}{\fontsize{12pt}{14pt}\selectfont}         % 小四字体
+\newcommand{\sihao}{\fontsize{14pt}{\baselineskip}\selectfont} % 四号字体
+%\marginparpush                          %
+%-----------------------------超链接和标签-------------------------------
+\iffalse % 将这里改为\iftrue即可使用
+\ifx\pdfoutput\undefined % Not run pdftex
+%  \ifx
+%    \usepackage[dvips]{hyperref}
+%  \else
+\usepackage[dvipdfm]{hyperref}
+%  \fi
+\AtBeginDvi{\special{pdf:tounicode GBK-EUC-UCS2}} % GBK -> Unicode
+\else
+\usepackage[pdftex]{hyperref}
+\fi
+\hypersetup{CJKbookmarks,%
+bookmarksnumbered,%
+colorlinks,%
+linkcolor=blue,%
+citecolor=blue,%
+hyperindex,%
+plainpages=false,%
+pdfstartview=FitH}
+\fi
+%--------------------------------注释------------------------------------
+\iffalse % 将这里改为\iftrue即可使用
+%注释掉一段内容
+\usepackage{verbatim}
+\begin{comment}
+This is a comment example.
+\end{comment}
+\fi
+%\makeatletter % @ is now a normal "letter" for Tex
+%\makeatother  % @ is restored as a "non-letter" for Tex
+%--------------------------------其他宏包--------------------------------
+%\usepackage{amsmath,amsthm,amsfonts,amssymb,bm} % 数学宏包
+%\usepackage{graphicx,psfrag}                    % 图形宏包
+%\usepackage{makeidx}                            % 建立索引宏包
+%\usepackage{listings}                           % 源代码宏包
+%---------------------------------正文-----------------------------------
+\begin{document} % 开始正文
+% song-宋体 hei-黑体 fs-仿宋 kai-楷体 li-隶书 you-幼圆 com为 song+hei
+\begin{CJK*}{GBK}{com}                           % 开始中文环境
+\CJKtilde                                        % 重定义~代表的空白距离
+\CJKindent                                       % 段首缩进
+\CJKcaption{GB}                                  % 中文章节标题
+\author{ceo}                                     % 作者
+\title{一个latex例子}                            % 题目
+\maketitle                                       % 生成标题
+%\thispagestyle{empty}                           % 设置首页的页眉页脚风格
+%\setlength{\baselineskip}{3ex plus1ex minus1ex} % 调整行距
+
+\TeX{}~是由图灵奖得主\index{Knuth, Donald E.}~Donald E. Knuth\cite{texbook}~
+编写的计算机程序，用于文章和数学公式的排版。
+
+1977~年~Knuth~开始编写~\TeX{}~排版系统引擎的时候，\\ % 换行
+是为了探索当时正开始进入出版工业的数字印刷设备的潜力。 \newline % 换行
+他特别希望能因此扭转那种排版质量下降的趋势，使自己写的书和文章免受其害。
+
+\noindent % 不缩进
+% 下面是特殊字符 # $ % ^ & _ { } ~ \  ... 的输入
+\# \$ \% \^{} \& \_ \{ \} \~{} $\backslash$ \ldots
+
+\indent   % 恢复缩进
+%不用CJKulem包时，\textit{我a} 或 \emph{我a} 或 {\em 我a}使英文斜体、中文变字体
+% 用CJKulem包后，\textit{我a} 依然是英文斜体、中文变字体，后两者变为加下划线
+\textit{中文textit} \emph{中文emph} {\em 中文em}
+\textbf{粗体textbf} % 粗体，对于中文推荐用黑体字代替粗体
+\uline{下划线uline} % 下划线（需要CJKulem包）
+\textcolor{yellow}{黄yellow} % 颜色（需要color包）
+{\color{blue}蓝blue} {\color{red}红red} {\color{green}绿green}
+{\hei 黑体}{\sihao 四号} {\song\xiaosi 宋体小四} % 字体大小
+{\tiny hi} {\small hi} {\normalsize hi} {\large hi} {\Large hi} {\huge hi}
+
+\clearpage % 换页，\newpage也可以，推荐\clearpage
+我们现在使用的~\TeX{}~系统是在~1982~年发布的，1989~年又略作改进，增进了
+对~8~字节字符和多语言的支持。\TeX{}~以具有优异的稳定性，可以在各种不同
+类型的计算机上运行，以及几乎没有错误而著称。\TeX{}~的版本号不断趋近于~$\pi$，
+现在为$3.14159$。
+
+\clearpage
+\end{CJK*}     % 结束中文环境
+\end{document} % 结束正文

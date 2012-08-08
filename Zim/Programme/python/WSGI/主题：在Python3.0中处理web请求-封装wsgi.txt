@@ -1,0 +1,411 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-13T22:13:34+08:00
+
+====== 主题：在Python3.0中处理web请求-封装wsgi ======
+Created Thursday 13 October 2011
+http://www.iteye.com/topic/396244
+# -*- coding: utf-8 -*-
+
+import socketserver, re, cgi, io, urllib.parse
+from wsgiref.simple_server import WSGIServer
+
+class AppException(Exception):
+    pass
+
+class Request(object):
+    """保存客户端请求信息"""
+    
+    def __init__(self, env):
+        self.env = env
+        self.winput = env["wsgi.input"]
+        self.method = env["REQUEST_METHOD"] # 获取请求方法(GET or POST)
+        self.__attrs = {}
+        self.attributes = {}
+        self.encoding = "UTF-8"
+
+    def __getattr__(self, attr):
+        if(attr == "params" and "params" not in self.__attrs):
+            fp = None
+            if(self.method == "POST"):
+                content = self.winput.read(int(self.env.get("CONTENT_LENGTH","0")))
+                #fp = io.StringIO(content.decode(self.encoding))
+                fp = io.StringIO(urllib.parse.unquote(content.decode("ISO-8859-1"),encoding=self.encoding))
+                
+            self.fs = cgi.FieldStorage(fp = fp, environ=self.env, keep_blank_values=1)# 创建FieldStorage
+            self.params = {}
+            for key in self.fs.keys():
+                self.params[key] = self.fs[key].value
+            self.__attrs["params"] = self.params
+        return self.__attrs[attr]
+
+class Response(object):
+    """对客户端进行响应"""
+
+    def __init__(self, start_response, write = None):
+        self.encoding = "UTF-8"
+        self.start_response = start_response
+        self._write = write
+
+    def write(self, string):
+        """向流中写数据
+            @param string:要写到流中的字符串
+        """
+        if(self._write is None):
+            self._write = self.start_response("200 OK", [("Content-type","text/html;charset="+self.encoding)])
+        self._write(string.encode(self.encoding).decode("ISO-8859-1"))
+
+    def redirect(self, url):
+        """跳转"""
+        if(self._write is not None):
+            raise AppException("响应流已写入数据，无法进行跳转。")
+        self.start_response("302 OK", [("Location",url)])
+                
+class ThreadingWSGIServer(WSGIServer, socketserver.ThreadingMixIn):
+    """一个使用多线程处理请求的WSGI服务类"""
+    pass
+
+class WSGIApplication(object):
+    """WSGI服务器程序"""
+    def __init__(self, urls=None):
+        self.urls = urls # URL映射
+
+    def getHandlerByUrl(self, url):
+        """根据URL获取处理程序，如果没有找到该处理程序则返回None"""
+        url = url.replace("//","/") # 避免输入错误引起的url解释错误
+        
+        urlArr = url.split('/')
+        for setUrl in self.urls.keys():
+            setUrlArr = setUrl.split("/")
+            #print(setUrl.replace("*",r'\w*'))
+            if(len(setUrlArr) == len(urlArr)):
+                for i in range(len(urlArr)):
+                    if(i == len(urlArr) - 1 and
+                       (setUrlArr[i] == '*' or setUrlArr[i] == urlArr[i] or
+                        ('*' in setUrlArr[i] and re.search(setUrlArr[i].replace("*",r'\w*'),urlArr[i])))):
+                        return self.urls[setUrl]
+                    if(setUrlArr[i] == '*' or setUrlArr[i]==' '):
+                        continue;
+                    if(setUrlArr[i] != urlArr[i]):
+                        break;
+
+    def make_app(self):
+        """建立WSGI响应程序"""
+        def wsgi_app(env, start_response):
+            #print(";\n".join([k+"="+str(v) for k, v in env.items()]))
+            url = env["PATH_INFO"] # 获取当前请求URL
+            handlerCls = self.getHandlerByUrl(url)
+            if(handlerCls is None):
+                # 未经定义的url处理
+                start_response("500 OK", [("Content-type","text/html;charset=utf-8")])
+                return "Error URL"
+            if(not hasattr(handlerCls,"doGET") and not hasattr(handlerCls,"doPOST")):
+                # 映射错误
+                start_response("500 OK", [("Content-type","text/html;charset=utf-8")])
+                return "Error Mapping"
+            request = Request(env)
+            response = Response(start_response)
+            try:
+                handler = handlerCls(request, response)
+            except TypeError as e:
+                handler = handlerCls()
+            methodName = "do" + request.method
+            returnValue = None
+            try:
+                returnValue = getattr(handler,methodName)(request, response)
+            except TypeError as e:
+                returnValue = getattr(handler,methodName)()
+            if(returnValue is None):
+                returnValue=[]
+            return returnValue
+        return wsgi_app
+
+    def make_server(self, serverIp='', port=8080, test=False):
+        """建立一个默认服务器
+           @param test: 是否只是做一次测试
+        """
+        from wsgiref.simple_server import make_server # 加载模块
+        httpd = make_server(serverIp, port, self.make_app(), server_class=ThreadingWSGIServer)
+        if test: # 如果只是测试
+            httpd.handle_request() # 处理单次请求
+        else:
+            httpd.serve_forever() # 处理多次请求
+        return True
+
+def main():
+    app = WSGIApplication(urls={"/a/*":TestHandler, "/a/b/*.do":TestHandler})
+    app.make_server(test=True)
+
+class TestHandler(object):
+    def __init__(self):
+        pass
+    def doGET(self, request=None, response=None):
+        request.encoding='UTF-8'
+        response.write("Hello")
+    def doPOST(self, request=None, response=None):
+        #request.encoding='UTF-8'
+        #response.write(request.params["name"])
+        response.redirect("/a/x")
+
+if __name__=="__main__":
+    main()
+    #input()
+
+接上篇 在Python3.0中处理web请求-继续封装wsgi ：
+
+这次加入了Cookies封装，session支持，从线程作用域获取request,response等。目前session还不能被持久化
+http://www.iteye.com/topic/397437
+# -*- coding: utf-8 -*-
+
+import socketserver, re, cgi, io, urllib.parse
+from wsgiref.simple_server import WSGIServer
+import threading, time, urllib, guid
+from http.cookies import SimpleCookie
+
+ctx = context = threading.local()
+
+class AppException(Exception):
+    pass
+
+class SessionPool(object):
+    sessionIdKey = "psessionid"
+    
+    """存储Session的地方"""
+    def __init__(self, session_store_time=30):
+        """初始化Session池
+            @param session_store_time:session存储时间，单位：分钟
+        """
+        self.session_store_time = session_store_time
+        self.sessions = {}
+
+    def getSession(self, key):
+        """从池中获取Session"""
+        if(key in self.sessions):
+            session = self.sessions[key]
+            if(session.isTimeOut()):
+                self.removeSession(session.sessionId)
+            else:
+                return session
+        return None
+
+    def createSession(self):
+        """创建一个新的Session"""
+        sessionId = self.newSessionId()
+        session = Session(sessionId, self.session_store_time)
+        self.sessions[sessionId] = session
+        return session
+
+    def removeSession(self, key):
+        """删除Session"""
+        #self.sessions.remove(key)
+        if(key in self.sessions):
+            del self.sessions[key]
+
+    def newSessionId(self, ip=None):
+        """创建一个新的SessionId"""
+        return guid.generate(ip)
+
+    def getSessionByCookie(self, cookie, response=None, create=True):
+        """根据Cookie信息找到session"""
+        sessionId = cookie.get(SessionPool.sessionIdKey, None)
+        if(sessionId is not None):
+            sessionId = sessionId.value
+            session = self.getSession(sessionId)
+            if(session is not None):
+                session.lastAccessTime = time.time()
+                return session
+        if(create):
+            session = self.createSession()
+            response.putCookie(SessionPool.sessionIdKey, session.sessionId)
+            return session
+        return None
+
+    def saveSessions(self):
+        pass
+
+class Session(dict):
+    """一个客户端会话"""
+    def __init__(self, sid, store_time):
+        self.sessionId = sid
+        self.lastAccessTime = self.createTime = time.time()
+        self.maxInactiveInterval = store_time # session存储时间，单位：分钟
+
+    def isTimeOut(self):
+        """判断是否已超时"""
+        return time.time() - self.lastAccessTime > self.maxInactiveInterval * 60
+
+class Request(object):
+    """保存客户端请求信息"""
+    
+    def __init__(self, env, sessions):
+        self.env = env
+        self.winput = env["wsgi.input"]
+        self.method = env["REQUEST_METHOD"] # 获取请求方法(GET or POST)
+        self.__attrs = {}
+        self.attributes = {}
+        self.encoding = "UTF-8"
+        self.cookies = SimpleCookie(env.get("HTTP_COOKIE",""))
+        self.response = ctx.response
+        self.sessionPool = sessions
+
+    def __getattr__(self, attr):
+        if(attr == "params" and "params" not in self.__attrs): # 获取客户端请求参数
+            fp = None
+            if(self.method == "POST"): #如果请求时以POST方式提交的，则以POST方式处理，否则以GET方式处理
+                content = self.winput.read(int(self.env.get("CONTENT_LENGTH","0")))
+                #fp = io.StringIO(content.decode(self.encoding))
+                fp = io.StringIO(urllib.parse.unquote(content.decode("ISO-8859-1"),encoding=self.encoding))
+                
+            self.fs = cgi.FieldStorage(fp = fp, environ=self.env, keep_blank_values=1)# 创建FieldStorage
+            self.params = {}
+            for key in self.fs.keys():
+                self.params[key] = self.fs[key].value
+            self.__attrs["params"] = self.params
+        if(attr == "session" and "session" not in self.__attrs): # 该request中不存在session则创建一个
+            self.session = self.sessionPool.getSessionByCookie(self.cookies, self.response)
+            return self.session
+        return self.__attrs[attr]
+
+class Response(object):
+    """对客户端进行响应"""
+
+    def __init__(self, start_response, write = None):
+        self.encoding = "UTF-8"
+        self.start_response = start_response
+        self._write = write
+        self.cookies = None
+        self.headers = {}
+
+    def write(self, string):
+        """向流中写数据
+            @param string:要写到流中的字符串
+        """
+        if(self._write is None):
+            __headers = [("Content-type","text/html;charset="+self.encoding)]
+            if(self.cookies is not None):
+                t = ('Set-Cookie', self.cookies.output(header=""))
+                __headers.append(t)
+            for k, v in self.headers.items():
+                t = (k,v)
+                __headers.append(t)
+            self._write = self.start_response("200 OK", __headers)
+        self._write(string.encode(self.encoding).decode("ISO-8859-1"))
+
+    def redirect(self, url):
+        """跳转"""
+        if(self._write is not None):
+            raise AppException("响应流已写入数据，无法进行跳转。")
+        self.start_response("302 OK", [("Location",url)])
+
+    def putCookie(self, key, value, expires=1000000, path='/'):
+        """添加Cookie信息"""
+        if(self.cookies is None):
+            self.cookies = SimpleCookie()
+        self.cookies[key] = urllib.parse.quote(value)
+        self.cookies[key]["expires"] = expires
+        self.cookies[key]['path'] = path
+
+    def addHeaders(key, value):
+        self.headers[key] = value
+
+#WSGIServer必须放在后面…否则没有异步效果
+class ThreadingWSGIServer(socketserver.ThreadingMixIn, WSGIServer):
+    """一个使用多线程处理请求的WSGI服务类"""
+    pass
+
+class WSGIApplication(object):
+    """WSGI服务器程序"""
+    def __init__(self, urls=None):
+        self.urls = urls # URL映射
+        self.sessions = SessionPool(1)
+
+    def getHandlerByUrl(self, url):
+        """根据URL获取处理程序，如果没有找到该处理程序则返回None"""
+        url = url.replace("//","/") # 避免输入错误引起的url解释错误
+        
+        urlArr = url.split('/')
+        for setUrl in self.urls.keys():
+            setUrlArr = setUrl.split("/")
+            #print(setUrl.replace("*",r'\w*'))
+            if(len(setUrlArr) == len(urlArr)):
+                for i in range(len(urlArr)):
+                    if(i == len(urlArr) - 1 and
+                       (setUrlArr[i] == '*' or setUrlArr[i] == urlArr[i] or
+                        ('*' in setUrlArr[i] and re.search(setUrlArr[i].replace("*",r'\w*'),urlArr[i])))):
+                        return self.urls[setUrl]
+                    if(setUrlArr[i] == '*' or setUrlArr[i]==' '):
+                        continue;
+                    if(setUrlArr[i] != urlArr[i]):
+                        break;
+
+    def make_app(self):
+        """建立WSGI响应程序"""
+        def wsgi_app(env, start_response):
+            print("start request....")
+            #print(";\n".join([k+"="+str(v) for k, v in env.items()]))
+            url = env["PATH_INFO"] # 获取当前请求URL
+            handlerCls = self.getHandlerByUrl(url)
+            if(handlerCls is None):
+                # 未经定义的url处理
+                start_response("500 OK", [("Content-type","text/html;charset=utf-8")])
+                return "Error URL"
+            if(not hasattr(handlerCls,"doGET") and not hasattr(handlerCls,"doPOST")):
+                # 映射错误
+                start_response("500 OK", [("Content-type","text/html;charset=utf-8")])
+                return "Error Mapping"
+            response = Response(start_response)
+            ctx.response = response
+            request = Request(env, self.sessions)
+            ctx.request = request # 将request和response放入当前线程作用域中，方便访问
+            try:
+                handler = handlerCls(request, response)
+            except TypeError as e:
+                handler = handlerCls()
+            methodName = "do" + request.method
+            returnValue = None
+            try:
+                returnValue = getattr(handler,methodName)(request, response)
+            except TypeError as e:
+                returnValue = getattr(handler,methodName)()
+            if(returnValue is None):
+                returnValue=[]
+            print("end request....")
+            return returnValue
+        return wsgi_app
+
+    def make_server(self, serverIp='', port=8080, test=False):
+        """建立一个默认服务器
+           @param test: 是否只是做一次测试
+        """
+        from wsgiref.simple_server import make_server # 加载模块
+        httpd = make_server(serverIp, port, self.make_app(), server_class=ThreadingWSGIServer)
+        if test: # 如果只是测试
+            httpd.handle_request() # 处理单次请求
+        else:
+            httpd.serve_forever() # 处理多次请求
+        return True
+
+def main():
+    app = WSGIApplication(urls={"/a/*":TestHandler, "/a/b/*.do":TestHandler})
+    app.make_server(test=False,port=9000)
+
+
+class TestHandler(object):
+    def __init__(self):
+        pass
+    def doGET(self):
+        ctx.request.encoding='UTF-8'
+        session = ctx.request.session
+        if("x" in ctx.request.params):
+            session["x"] = ctx.request.params["x"]
+            #time.sleep(3)
+        ctx.response.write("Hello "+session["x"])
+        
+    def doPOST(self):
+        #request.encoding='UTF-8'
+        #response.write(request.params["name"])
+        ctx.response.redirect("/a/x")
+
+if __name__=="__main__":
+    main()
+    #input()

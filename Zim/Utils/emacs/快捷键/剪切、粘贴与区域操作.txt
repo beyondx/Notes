@@ -1,0 +1,45 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-05T15:17:23+08:00
+
+====== 剪切、粘贴与区域操作 ======
+Created Thursday 05 May 2011
+
+C-d 				delete-char		删除插入点右边一个字符即光标所在的字符 　　
+M-d 			kill-word			删除一个单词 　　
+C-k 				kill-line			删除一行，注意：不删除行尾的换行符。 　　
+M-k 			kill-sentence		删除一句 
+Del				delete-backward-char 后向删除一个字符
+Backspace		同上
+M-Backspace		backward-kill-word后向删除一个单词
+M-Del 	               同上
+C-x Del			backward-kill-sentence	后向删除一个句子
+C-x Backspace	同上
+M- -			反向命令前缀
+M--C-k			从行首删除到光标位置
+
+C-@ 			set-mark-command		标记开始区域 
+C-SPACE		同上
+M-h				mark-paragraph		标记当前段落　　
+C-x h 			mark-whole-buffer		标记整个缓冲区中所有文字
+
+C-w 			kill-region			删除标记区域
+M-w 			kill-region-save		复制标记区域  
+C-y 				yank				粘贴删除的内容
+M-y				yank-pop				在用过C-y后粘贴更早的删除文本 　
+		注意：C-y可以粘贴连续C-k删除的内容；先按C-y，然后按M-y可以选择粘贴被删除的内容 　　
+ 
+C-x C-x 			exchange-point-and-mark	交换光标位置和区域标记区开头 
+C-u C-SPACE		跳到标记环中的上一个标记位置
+C-u C-@			同上
+　　
+C-M-k			向前剪切某个表达式，跨越的区域和C-M-f相同
+C-M-@			向前标记某个表达式，跨越的区域和C-M-f相同
+C-M-h			将当前函数的定义标记为区域
+　　
+C-_  			undo	撤消操作
+C-x u			同上
+M-x revert-buffer	撤销自上次存盘来的所有更改
+
+
+

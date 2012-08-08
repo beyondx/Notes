@@ -1,0 +1,136 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-13T14:56:25+08:00
+
+====== libtool的作用及应用 ======
+Created Wednesday 13 June 2012
+http://blog.csdn.net/larntin2002/article/details/1821430
+
+libtool常见于autoconf/automake，单独用的例子很少，所以我想仔细研究一下，为将来兄弟们看起来方便。
+ 
+
+==== 一。libtool的作用 ====
+offer a standard procedure for __creating__ shared libraries on different platforms
+libtool 是一个通用库支持__脚本__，将创建动态库的复杂性隐藏在统一、可移植的接口中，也就是说，你可以通过如下所示的标准方法，在不同平台上创建并调用动态库，我们可以认为libtool是gcc的一个抽象，也就是说，它包装了gcc或者其他的任何编译器，用户无需知道细节，只要告诉libtool说我需要要编译哪些库即可，并且，它只与libtool文件打交道，例如lo、la为后缀的文件。
+ 
+
+==== 二。libtool的使用 ====
+1.Creating libtool object files
+# libtool --mode=compile gcc -g -O -c foo.c
+ gcc -g -O -c foo.c  -fPIC -DPIC -o __.libs__/foo.o
+ gcc -g -O -c foo.c -o foo.o >/dev/null 2>&1
+# libtool --mode=compile gcc -g -O -c hello.c
+ gcc -g -O -c hello.c  -fPIC -DPIC -o .libs/hello.o
+ gcc -g -O -c hello.c -o hello.o >/dev/null 2>&1
+【说明】libtool编译出两个版本的relocatable object，一个是fPIC(位置无关的),放在.libs目录下；另一个则是普通的，放在本地。同时在当前目录还生成一个libtool 对象文件foo.lo
+ 
+2.linking shared library
+# libtool --mode=link --tag=CC gcc -g -O -o __libhello.la -rpath__ /usr/local/lib __foo.lo__
+ rm -fr  .libs/libhello.a .libs/libhello.la .libs/libhello.lai .libs/libhello.so libs/libhello.so.0 .libs/libhello.so.0.0.0
+ gcc -shared  .libs/foo.o   -Wl,-soname -Wl,libhello.so.0 -o .libs/libhello.so.0.0.0
+ (cd .libs && rm -f libhello.so.0 && ln -s libhello.so.0.0.0 libhello.so.0)
+ (cd .libs && rm -f libhello.so && ln -s libhello.so.0.0.0 libhello.so)
+ ar cru .libs/libhello.a  foo.o
+ ranlib .libs/libhello.a
+ creating libhello.la
+ (cd .libs && rm -f libhello.la && ln -s ../libhello.la libhello.la)
+【说明】link出两个共享库，一个是static，一个则是dynamic；需要注意的是，-rpath必须有才能产生dynamic库来，如果用-static，则只创建static库。
+ 
+
+==== ranlib的作用： ====
+On some older UNIX systems, ranlib added a table of contents to archive libraries, which converted each archive to a form that could be linked more rapidly. This is no longer needed as the ar command automatically provides all the functionality ranlib used to provide.
+在一些旧版本的系统上，ranlib负责把静态库转换为其他的某种格式，使得新的库能够更快的链接；现在ar命令已经包含了上述功能；
+This command is provided as a convenience for software developers who need to maintain Makefiles that are portable across a variety of operating systems.
+为了兼容性，在makefile中还是保留ranlib
+ 
+
+==== 3.install shared library ====
+libtool --mode=install cp libhello.la /usr/local/lib/libhello.la
+libtool --mode=install install -c libhello.la /usr/local/lib/libhello.la
+两个命令都可以，效果相同
+ 
+
+==== 4.linking executable file ====
+# libtool --mode=link gcc -g -O -o hello hello.lo **-rpath /usr/local/lib libhello.la**
+ gcc -g -O -o .libs/hello .libs/hello.o  ./.libs/libhello.so
+ creating hello
+ -rpath项负责添加__运行时库路径__，否则只能手工修改__LD_LIBRARY_PATH__环境变量了。
+ 验证一下：
+# ldd .libs/hello
+        linux-gate.so.1 =>  (0xffffe000)
+        libhello.so.0 => __/usr/local/lib/libhello.so.0__ (0x40019000)
+        libc.so.6 => /lib/tls/libc.so.6 (0x40031000)
+        /lib/ld-linux.so.2 (0x40000000)
+ 
+
+===== 5.install executable file       =====
+#libtool --mode=install cp hello /usr/local/bin/hello
+安装可执行程序。
+ 
+
+===== 6.运行 =====
+libtool --mode=execute hello
+或直接运行hello
+注意：此处hello已经安装在/usr/local/bin下了，可以用which hello来查看
+ 
+【附】源码
+
+=== foo.c ===
+#include <stdio.h>
+char msg[128]="Hello world";
+void print()
+{
+        printf("%s/n", msg);
+}
+ 
+
+=== hello.c: ===
+#include <stdio.h>
+extern char msg[128];
+extern void print();
+int main()
+{
+        print();
+}
+ 
+
+=== Makefile: ===
+LO_OBJS = foo.lo
+PACKAGE_VERSION = 1:1:1
+LIBDIR=/usr/local/lib
+BINDIR=/usr/local/bin
+ 
+all : hello
+ 
+install : libhello.la hello
+  libtool --mode=install install -c libhello.la
+ 
+${LIBDIR}/libhello.la
+  libtool --mode=install cp hello ${BINDIR}/hello
+ 
+uninstall : ${LIBDIR}/libhello.la ${BINDIR}/hello
+  libtool --mode=uninstall /bin/rm ${LIBDIR}/libhello.la
+  libtool --mode=uninstall /bin/rm ${BINDIR}/hello
+ 
+hello : libhello.la hello.o
+  libtool --mode=install install -c libhello.la
+ 
+${LIBDIR}/libhello.la
+  libtool --mode=link gcc -g -O -o hello hello.o -rpath ${LIBDIR} libhello.la
+ 
+libhello.la : $(LO_OBJS)
+   libtool  --mode=link --tag=CC gcc -g -O -o libhello.la
+ 
+$(LO_OBJS) -rpath ${LIBDIR} ${PACKAGE_VERSION}
+ 
+foo.lo : foo.c
+   libtool --mode=compile gcc -g -O -c foo.c
+ 
+hello.lo : hello.c
+   libtool --mode=compile gcc -g -O -c hello.c
+ 
+clean :
+  rm -f lib*.a *~ *core *.lo *.o *.la hello
+  rm -rf .libs
+ 
+这样，用户可以用make编译，make install/uninstall安装/卸载，make clean清除编译临时文件，安装成功后，可以直接执行hello，不必指明路径也不必再另设环境变量LD_LIBRARY_PATH，非常方便！ 

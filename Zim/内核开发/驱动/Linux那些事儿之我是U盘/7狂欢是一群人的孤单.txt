@@ -1,0 +1,22 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-01T10:57:21+08:00
+
+====== 7狂欢是一群人的孤单 ======
+Created Sunday 01 July 2012
+
+Linux设备模型中三个很重要的概念就是__总线,设备,驱动__.即bus,device,driver,而实际上内核中也定义了这么一些数据结构,他们是
+struct bus_type,
+struct device,
+struct device_driver,
+这三个重要的数据结构都来自一个地方,include/linux/device.h.
+
+我们知道总线有很多种,pci总线,scsi总线,usb总线,所以我们会看到Linux内核代码中出现pci_bus_type,scsi_bus_type,usb_bus_type,他们都是struct bus_type类型的变量.而struct bus_type结构中两个非常重要的成员就是__struct kset drivers和struct kset devices__.
+
+**kset**和另一个叫做**kobject**正是Linux Kernel 2.6中设备模型的基本元素,但此处我们却不愿多讲,因为暂时不用去认识他们.我们的生命中会遇见许许多多的人和事,但更多的人和事与我们只是擦肩而过,只是我们生命中的过客而已.在我们人生的电影中,他们也许只有一个镜头,甚至那一个镜头后来也被剪辑掉了.这里我们只需要知道,drivers和devices的存在,让struct bus_type与两个链表联系了起来,一个是devices的链表,一个是drivers的链表,也就是说,__知道一条总线所对应的数据结构,就可以找到这条总线所关联的设备有哪些,又有哪些支持这类设备的驱动程序__.
+
+而要实现这些,就要求每次出现一个设备就要向总线汇报,或者说注册,每次出现一个驱动,也要向总线汇报,或者说注册.
+
+比如系统初始化的时候,会**扫描**连接了哪些设备,并为每一个设备建立起一个struct device的变量,每一次有一个驱动程序,就要准备一个struct device_driver结构的变量.把这些变量统统加入相应的链表,device插入devices链表,driver插入drivers链表. 这样通过总线就能找到每一个设备,每一个驱动.
+
+然而,假如计算机里只有设备却没有对应的驱动,那么设备无法工作.反过来,倘若只有驱动却没有设备,驱动也起不了任何作用.在他们遇见彼此之前,双方都如同路埂的野草,一个飘啊飘,一个摇啊摇,谁也不知道未来在哪里,只能在生命的风里飘摇.于是总线上的两张表里就慢慢的就挂上了那许多孤单的灵魂.devices开始多了,drivers开始多了,他们像是两个来自世界,devices们彼此取暖,drivers们一起狂欢,但他们有一点是相同的,都只是在等待属于自己的那个另一半.看代码的我,一直好奇的想知道,他们是否和我们现实中一样,有些人注定是等别人,而有些人是注定被人等的.

@@ -1,0 +1,561 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-23T21:16:50+08:00
+
+====== Kickstart-Anaconda实现自动化安装原理探究 ======
+Created Friday 23 December 2011
+
+原创作品，允许转载，转载时请务必以超链接形式标明文章 原始出处 、作者信息和本声明。否则将追究法律责任。http://molinux.blog.51cto.com/2536040/548247
+
+===== 内容概要： =====
+
+1.  系统安装基本流程图示
+2.  Anaconda简介
+3.  Kickstart简介
+4.  引导并指定安装方式
+5.  kickstart文件中的主要项目及参数介绍
+6.  kickstart配置文件示例
+7.  RedHat 安装光盘安装树介绍
+8.  Anaconda/Kickstart系统安装过程简图
+9.  安装树中boot.img及stage.img解构图析
+10. 使用Kickstart进行安装的方式列举概述
+
+   本文仍为课程学习的总结笔记，书写过程参看了大量官方文档及网络上相关资料，在此谢过各位__无私奉献的Linuxer__们，也贴上自己的笔记供大家参考，本文重点关注原理性层面的东西，对试验实际操作过程不过多赘述；
+
+
+
+  实验环境： RedHat5.5
+
+===== 一.  系统安装一般流程 =====
+
+  首先了解系统安装一般流程：
+{{./1.jpg}}
+ 
+
+===== 二.  Anaconda简介 =====
+
+简介：
+     Anaconda是Red Hat、CentOS、Fedora等Linux的__安装管理程序__。它可以提供**文本、图形**等安装管理方式，并支持__Kickstart__等脚本提供自动安装的功能。此外，其还支持许多__启动参数__，熟悉这些参数可为安装带来很多方便。该程序是把位于光盘或其他源上的数据包，根据**设置**安装到主机上的一个程序；为实现该定制安装，其提供一个**定制界面**，可以实现交互式界面供用户选择配置（如选择语言，键盘，时区等信息）；
+
+Anaconda支持的安装管理模式：
+* 正常交互式安装
+* Kickstart提供的__自动化__安装
+* 对一个RedHat实施upgrade
+* __Rescuse__模式对不能启动的系统进行故障排除；
+   
+要进入安装步骤，需要先有一个__引导程序__引导启动一个__特殊的Linux安装环境系统(其实就是加载特殊的vmlinuz和initrd文件，initrd中包含一个执行anaconda的特殊/init程序脚本)__；
+
+引导有多种方式：
+1.  基于**网络方式**的小型引导镜像，需要提供小型的引导镜像；
+2.**  U盘引导**，通过可引导存储介质中的小型引导镜像启动安装过程；
+3.  基于PXE的**网络安装**方式，要提供PXE的完整安装环境；
+4.  其他bootloder引导（如GRUB）
+
+可用的安装方式：本地CDROM  磁盘驱动器(ISO文件放在磁盘分区中)  NFS映像   FTP  HTTP
+
+通过网络方式安装时：
+    不论通过FTP、HTTP还是NFS方式共享安装，可以将安装光盘先拷贝到网络服务器上保存为iso镜像，然后__loop挂载到共享目录或网页目录__（当然，拷贝镜像中的所有文件到指定位置或直接挂载到共享目录也可），而通过**NFS**方式时，可以直接将光盘的__iso文件__放到共享目录即可，安装程序挂载共享目录后可以**自动查找并识别系统的ISO镜像文件**；
+注：复制安装光盘，并保存为一个 iso 映像文件的方法，对于 DVD/CD：
+# dd if=/dev/cdrom  of=/location/of/disk/space/RHEL.iso ** bs=32k**
+注意拷贝时bs块大小设置为32k，我实验时设为1M，虽然减小了文件体积，但是安装读镜像时会报错。
+
+
+===== 三、 Kickstart简介： =====
+
+简介：
+kickstart是一个利用Anconda工具实现__服务器自动化安装__的方法；通过生成的kickstart配置文件**ks.cfg**，服务器安装可以实现从裸机到全功能服务的的__非交互式__（无人值守式）安装配置；ks.cfg是一个简单的文本文件，文件包含Anconda在__安装系统__**及**__安装后配置服务__时所需要获取的一些__必要配置信息__（如键盘设置，语言设置，分区设置等）；Anconda直接从该文件中读取必要的配置，只要该文件信息配置正确无误且满足所有系统需求，就不再需要同用户进行交互获取信息，从而实现安装的自动化；但是配置中如果忽略任何__必需的项目__，安装程序会提示用户输入相关的项目的选择，就象用户在典型的安装过程中所遇到的一样。一旦用户进行了选择，安装会以非交互的方式（unattended）继续。
+
+使用kickstart优势：
+1.  流线化自动化的安装；
+2.  快速大量的裸机部署；
+3.  强制建立的__一致性__（软件包，分区，配置，监控，安全性）
+4.  减少人为的部署失误
+
+使用Kickstart方法安装的过程：
+1.  创建一个kickstart配置文件
+2.  创建有kickstart文件的引导介质或者使这个文件在__网络__上可用；
+3.  筹备一个安装树
+4.  开始ks安装：bootloader引导(isolinux)-----> 选取__ks安装模式__---->内核及intrd加载并执行----->initrd中的anconda脚本启动 ------>-------> 从ks文件读取配置 ------> 安装
+
+创建kickstart配置文件的方式：
+1.  文本编辑器编辑生成：vim
+2． 用图形化界面配置：__system-config-kickstat__（需要安装system-config-kickstart.noarch包）
+   
+注：图形化界面配置时，磁盘选项无法创建配置LVM（逻辑卷）； 文件生成后，推荐使用ksvalidator命令检查配置文件语法及完整性错误；
+[root@bogon ~]# __ksvalidator__ ks.cfg
+ not enough arguments for format string
+
+图形化界面配置示例：
+{{./2.jpg}}
+ {{./3.jpg}}
+
+===== 四.  引导并指定安装方式： =====
+
+  系统引导界面(此时的界面是__由引导程序(bootloader) isolinux显示__的，**boot: 是其提示符**，按回车后**开始加载内核与intrd文件**)：
+{{./4.jpg}}
+系统引导后，会显示__boot：命令提示符__；如上，界面上会有各种模式操作提示；
+注：用户交互的文本安装方式中不能进行LVM的自定义配置，只能查看、接受默认设置；
+
+在boot：命令行里有用的几个参数项：
+* lowres：强制GUI安装时分辨率调低为640*480
+* noipv6：安装过程不支持ipv6网络
+* noprobe：不去自动检测硬件，而是提示用户；
+* __dd= __：通过网络加载设备驱动
+* __ks= __ ：指定kickstart文件的放置位置；
+另外还有ip、netmask、gateway、dns、vnc等选项；用ks选项被指定时kickstart文件位置时，Anaconda进入Kickstart安装模式；
+
+安装时获取kickstart文件的方式：
+（1） __boot：linux ks__
+
+ks变量未赋值时，系统会尝试通过**dhcp服务器**配置网络，并且__从DHCP会话中获取kickstart配置文件的位置__； 在dhcp服务器dhcp配置文件中有kickstart文件位置说明，__next-server__关键字指向共享文件的NFS主机，用filename关键字指向主机上的文件路径；如果没有filename关键字，则尝试在next-server关键字指向主机的**/kickstart文件夹**中找kickstart文件；下面是dhcp.conf文件中kickstart配置字段示例：
+
+# The following lines are examples of kickstart directives. 
+            **filename** "/data/ks/ks.cfg"; 
+            **next-server **192.168.1.10;   #**NFS主机**
+# 注：上面部分需要写在subnet子段中；
+     
+
+（2） boot：linux __ks=url__
+基于网络的文件服务器（网络服务器），获取配置文件，支持**HTTP、FTP、NFS**方式获取文件；例：
+* ks=ftp://192.168.0.254/pub/kistart/ks.cfg
+* ks=http://192.168.0.254/pub/kistart/ks.cfg
+* ks=nfs:ip_addr:/path/to/ks.cfg
+
+（3） boot：linux ks=__hd:device__/path/to/your/kickstart_file
+基于本地的安装方式，需要依次指定设备名，路径，文件名等；例如：   
+* 文件在光盘中：ks=**cdrom:**/ks.cfg
+* 文件在软盘中：ks=**floppy:**/filedirectory/ks.cfg
+* 文件在硬盘中：ks=**hd:/sdb1**/myfile/ks.cfg
+* 文件也可__被打包进initrd根文件系统中__：ks=__file:/ks.cfg __   __#非常有用！！！__
+
+kickstart文件结构介绍：
+* 命令部分：配置系统的属性及安装中的各种必要设置信息
+* %packages部分：设定**需要安装的软件包及包组**，Anaconda会自动解决依赖关系
+* 脚本部分：用于__定制系统__，分为%pre部分在安装前运行，%post在安装后运行
+        %pre 部分脚本作为一个**bash shell脚本**执行，在Kickstart文件__解析后__执行；
+        %post 解析器默认为bash，可以自定义，**缺省为chroot状态**，也可指定非chroot状态；
+
+==== 五.  Kickstart文件中的主要项目及参数介绍： ====
+
+每个项目都由关键字来识别；关键字可跟一个或多个参数；如果某选项后面跟随了一个等号（=），它后面就必须指定一个值。
+
+* install   (可选)
+    明确指定系统进行的是**全新安装**系统；是默认项；
+		
+		+  cdrom  （可选）
+		    以本地**CD-ROM为源**安装系统；
+		
+		+  harddrive  (可选)
+		    以硬盘分区中包含的__ISO镜像为源__（安装树）安装新系统；当以该种方式安装系统时，即使指定__clearpart --all__项，源所在分区也不会被重新抹去；
+		    --partition=    指定分区
+		    --dir=        指定包含镜像的目录
+		    例：
+		    harddrive  --partition=/dev/sdb2  --dir=/data/iso
+		
+		+ nfs   (可选)
+		    指定从NFS服务器上获取安装树；
+		    --server=    指定NFS服务器，主机名称或IP
+		    --dir=        包含安装树的目录
+		    --opts=      可以指定挂载NFS的目录时的**挂载选项**
+		    例：
+		    nfs  --server=192.168.1.254  --dir=/data/iso
+		
+		+ url   (可选)
+		    指定通过**FTP或HTTP**从网络获取安装树；
+		    --url    指定资源位置
+		    例：
+		    url  --url  ftp://<username>:<password>@install.example.com/iso
+		    url  --url  http://install.example.com/iso
+
+* bootloader （必需）
+    设定安装boot loader时的选项；
+    --append=         可以指定**内核命令行参数**
+    --driveorder=    设定设备BIOS中的开机设备启动顺序
+    --location=        设定__引导记录的位置__； mbr：默认值；partition：将boot loader安装于指定分区bootload块中；none：不安装boot loder。
+    示例：
+    bootloader  --location=mbr  --append=“rhgb quiet” --driveorder=sda,sdb
+   
+* clearpart （可选）
+    在建立新分区前重建系统上原有的分区表，默认**不删除**分区；
+    --all         擦除系统上原有所有分区；
+    --drives    删除指定驱动器上的分区
+    --initlabel    初始化磁盘卷标为系统架构的__默认卷标__
+    --linux        擦除所有的linux分区
+    --none（default）不移除任何分区
+   例：
+   clearpart  --drives=hda,hdb --all  --initlabel
+
+* zerombr  （可选）
+    清除mbr信息，会同时清空系统用原有分区表
+
+* drivedisk （可选）
+    如果使用特殊存储方式时，需要指定驱动程序盘位置以便加载存储驱动；
+   1.  将驱动盘拷贝到本地硬盘某分区根目录：
+     drivedisk <partition> [ --type=<fstype> ]
+   2.  也可以指定一个网络位置加载驱动程序盘
+     drivedisk  --source=ftp://path/to/drive.img
+     drivedisk  --source=http://path/to/drive.img
+     drivedisk  --source=nfs:host://path/to/drive.img
+
+* firewall （可选）
+    配置系统防火墙选项；
+    firewall –enable|--disable  [ --trust ] <device> [ --port= ]
+    --enable        拒绝__外部发起__的任何主动连接；
+    --disable        不配置任何iptables防御规则；
+    --trust          指定完全信任网卡设备；
+    --port        使用port:protocol格式指定__可以通过__防火墙的服务；
+    示例：
+    firewall --enable --trust eth0  --trust eth1  --port=80:tcp
+
+* selinux （可选）
+    设置系统selinux状态；__默认为启用__并处于enforcing模式；
+    selinux [ --disabled|–enforcing|--premissive ]
+
+* reboot （可选）
+    在系统成功安装完成后**默认自动重启系统**（kickstart方法时）；在收到你敢装系统完成后，会提示按任意键进行重启； 在本文件中没有明确指明其他方法时就默认完成方式为reboot； 使用 reboot 选项**可能会导致安装的死循环**，这依赖于安装介质和方法。需要特别注意；
+
+* halt  （可选）
+    在系统成功安装完成后关机；默认为reboot；其他选项还有shutdown、poweroff，需要使用请自行参考官方文档。
+
+* graphical （可选）
+    默认值，在__图形模式__下进行kickstart方式安装；
+
+* text （可选）
+    以文本方式进行kickstart安装；默认为图形界面
+
+* key  (可选)
+    设置一个安装码(installration number)，用于获取redhat官方的支持服务；
+    --skip    跳过key设置，不进行设置；如果不设置可能**跳转到交互模式**让用户选取动作；
+
+* keyboard （必需）
+    设置键盘类型；一般设置为us；
+
+* lang （必需）
+    设置__安装过程使用的语言及系统的缺省语言__；文本模式安装时可能不支持某些语言（中、韩...），所以可能仍以默认的英文方式安装；默认en_us，装中文时，需要后期%packages部分装上中文支持组件；
+    例：
+    lang en_US
+ 
+* timezone （可选）
+    设置系统的时区；
+    timezone  [ --utc ]  <timezone>
+    例：
+    timezone  --utc  Asia/Shanghai
+
+* auth/authconfig  (必需)
+    设置系统的认证方式；默认为加密但不隐藏(shadow)；
+    --enablemd5    使用MD5加密方式
+    --useshadow或—enableshadow    使用隐藏密码；
+    --enablenis=     使用**NIS**认证方式
+    --nisdomain=    NIS域
+    --nisserver=     NIS服务器
+    还可以设置**LDAP、SMB及Kerberos 5**认证方式，详细请参考官方文档；
+    例：
+    authconfig  --useshadow  --enablemd5
+
+* rootpw （必需）
+    设置系统root账号的密码；
+    rootpw [ --iscrypted ]  <passwd>
+    --iscrypted    表示设置的密码为__加密过的串__；
+    例：
+    rootpw  pa4word
+    rootpw --iscrypted  $1$RPYyxobb$/LtxMNLJC7euEARg2Vu2s1
+
+* network （可选）
+    配置网络信息；在网络安装（NFS/HTTP/FTP）时必须指定；
+    --bootproto=dhcp|bootp|static    指定ip获取方式，默认为dhcp/bootp;
+    --device=    设置安装时激活来进行系统安装的网卡设备；该参数只在__kickstart文件为本地文件__时有效；若kickstart配置文件在网络上，安装程序会先初始化网卡然后去寻找kickstart文件；
+    --ip=    ip设置
+    --gateway=   网关
+    --nameserver=  DNS设置
+    --nodns         不设置DNS
+    --netmask=   掩码
+    --hostname= 设置安装后主机名称
+    --onboot=    设置是否在系统启动时激活网卡
+    --class=        设置DHCP的class值
+    --noipv4        禁用该设备的ipv4功能
+    --noipv6        禁用该设备的ipv6功能
+    如将网络模式设置为静态模式，则__必须在一行内__写上ip，netmask、dns、gateway等信息；
+    例：
+    network –bootproto=static –ip=1.1.1.1 --metmask=255.0.0.0 --gateway=1.1.1.254 --nameserver=1.1.1.2
+    netmask --bootproto=dhcp  --device=eth0
+
+* skipx （可选）
+    如果该项存在，就不对系统的X进行设置；
+
+* xconfig （可选）
+    配置X window ；如果不给出选项，在安装过程中需要手动调整设置；当然不安装X时不应该添加该项；
+   --driver            为显卡设置__X驱动__
+   --videoram=    设置显卡的RAM大小
+   --defaultdesktop=    设置GNOME/KDE作为默认桌面；假定这两个桌面环境在%packages例已经安装
+   --startxonboot   使用图形界面登录系统
+   --resolution=     设置图形界面的分辨率；可用值有640*480、800*600、1024*768等；确保设置指适合于显示卡及显示器；
+   --depth=           设置显示色深；可用值有8/16/24/32；确保设置值适合于显示设备；
+    例:
+    xconfig    --startxonboot  --resolution=800*600 --depth=16
+
+* services （可选）
+    设置禁用或允许列出的服务；
+    --disabled 设置服务为禁用
+    --enabled  启动服务
+    例：
+    services --disabled autid,cups,smartd,nfslock  服务之间__用逗号隔开，不能有空格__
+   
+* iscsi（可选）
+    指定额外的ISCSI设备；
+    issci --ipaddr= ipaddr  [options].
+      --target
+      --port=
+      --user=
+      --password=
+
+* part/partition  （install模式必须）
+    建立新分区；
+    **part  **<mntpoint>|swap|pv.id|rdid.id  options
+    mntpoint:挂载点，是在创建普通分区时指定新分区挂载位置的项；挂载点需要格式正确
+    swap： 创建swap分区；
+    raid.id:  表示创建的分区类型为raid型；必须用id号进行唯一区别；
+    pv.id：  表示所创建的分区类型为LVM型；必须用唯一id号进行区别；
+    --size=  设置分区的**最小值**，默认__单位为M__，但是不能写单位；
+    --grow  让分区自动增长利用可用的磁盘空间，或是增长到设置的maxsize值；
+    --maxsize 设置分区自动增长(grow)时的**最大容量值**，以M为单位，但不能写单位；
+__    --onpart=/--usepart= __    设置使用原有的分区；
+__    --noformat__    设置不格式化指定的分区，在跟—onpart一同使用时，可以避免删除原有分区上的数据，在新安装的系统中保留使用数据；
+    --asprimary    强制制定该分区为主分区；若指定失败，分区会失败，导致安装停止；
+    --fstype=    新增普通分区时指定分区的类型，可以为ext2、ext3、ext4、swap、vfat及hfs；
+    --ondisk=/--ondrive=     设定该分区创建在一个具体的磁盘上；
+    --start   指定分区以磁盘上那个磁道开始；需要跟--ondisk参数一块使用；
+    --end    指定分区以磁盘上那个磁道结束；需要跟上述两个参数一起使用；
+    --recommended：让系统自行决定分区的大小；在创建swap分区时，若RAM<2G，则分区大小为2*RAM；若RAM>=2G时，分区大小为RAM+2G；
+    --bytes-pre-inode=    指定分区格式化时inode的大小；默认值为4096
+    --fsoptions=    指定创建fstab文件时该分区挂载参数项；
+    例：
+    part  /boot  --fstype=“ext3” --size=100
+    part  swap  --fstype=“swap” –size=512 
+    part  /  --bytes-pre-inode=4096  --fstype=“ext4”--size=10000
+    part  /data    --onpart=/dev/sdb1  --noformat
+    part  raid.100  --size=2000
+    part  pv.100     --size=1000
+
+* raid  (可选)
+    设置RAID。
+    raid 挂载点  --level=<level>  --device=<mddevices_name>  <raid组成分区>
+    挂载点：    选取根/时，注意尽量避免/boot在RAID内，除非为RAID1；
+    --level=     设置RAID级别
+    --device=  RAID设备名称，如md0，md1...
+    --byte-pre-inode=    设置该RAID分区上inode大小；若分区文件系统类型不支持该参数，会静默忽略参数；
+    --spares=  设置RAID的热备盘
+    --fstype=  设置文件系统类型
+    --fsoptions=  设置挂载该文件系统时自定义的一些参数，参数写入fstab文件；
+    --useexisting  使用现有的RAID设备并且重新格式化原设备
+    --noformat     在使用现有的RAID设备时不格式化原有RAID设备
+    例：完整创建一个RAID1设备示例；
+    part  raid.10  --size=1000  --ondisk=/dev/sdb
+    part  raid.11  --size=1000  --ondisk=/dev/sdc
+    raid  /data  --level=1  --device=md0  raid.10  raid.11
+
+* volgroup  (可选)
+    创建一个LVM卷组VG；
+    volgroup  vg_name  partition  [options]
+    --useexiting   使用现有的VG并且重新格式化
+    --noformat    使用现有的VG时不做格式化
+    --pesize          设置PE（physical extents）块大小
+    例：
+    part pv.11  --size=2000
+    volgroup  myvg  pv.11
+
+* logvol  (可选)
+    创建一个LVM逻辑卷LV；
+    logvel  mnt_point  --vgname=vg_name  --size=lv_size  --name=lv_name  [options]
+    --useexiting  使用现有的LV并且重新格式化
+    --noformat   使用现有的LV时不做格式化
+    --fstype=      指定RAID分区类型
+    --fsoptions=  设置挂载该文件系统时自定义的一些参数，参数写入fstab文件；
+    --byte-pre-inode=    设置该RAID分区上inode大小；
+    --precent=    设定LV大小为VG可用空间的比例；
+    例：
+    part pv.20  --size=5000
+    volgroup  mvvg  pv.20
+    logvol    /data  --vgname=myvg  --size=3000  --name=mydata
+
+六.  kickstart配置文件示例
+
+    ########################################################################## 
+    # 
+    # kickstart install script  
+    # RHEL version 5 
+    # Platform=x86, AMD64, or Intel EM64T 
+    # 
+    ########################################################################## 
+     
+    # Install OS instead of upgrade 
+    install 
+     
+    # Use text mode install 
+    text 
+    # Installation Number configuration 
+    key --skip 
+    # Local installation Use CDROM installation media  
+    cdrom 
+    # Network installation via FTP of HTTP 
+    #url --url ftp：//<username>:<password>@install.example.com/pub/RH 
+    #url --url http://install.example.com/pub/RH 
+    # Network installation via NFS 
+    #nfs --server=nfsserver.example.com  --dir=/pub/install-tree 
+    # Local installation Use HD source 
+    #harddrive --partition /dev/sda2 --dir=/data/iso 
+    # If you use harddrive, you must use ISO images, not a tree 
+    # Note that even if though we clearpart --all, the install 
+    # partition will remain, which can be quite useful. 
+     
+     
+    # System authorization information 
+    auth  --useshadow  --enablemd5 
+    #Root password 
+    rootpw --iscrypted $1$1P72E10M$b47abC13/yUSzV9uvCoML0 
+    #rootpw  redhat 
+     
+    # System bootloader configuration 
+    bootloader --append="rhgb quiet" --location=mbr 
+    # Clear the Master Boot Record 
+    zerombr 
+    # Partition clearing information 
+    clearpart --all --initlabel 
+     
+    # Run the Setup Agent on first boot 
+    firstboot --disable 
+    # System keyboard 
+    keyboard us 
+    # System language 
+    lang en_US 
+    # System timezone 
+    timezone --isUtc Asia/Shanghai 
+     
+    # Installation logging level 
+    logging --level=info 
+     
+    # Network information 
+    network --bootproto=dhcp --device=eth0 --onboot=on 
+     
+     
+    # Firewall configuration 
+    firewall --enabled --ssh  --trust=eth0 
+    # SELinux configuration 
+    selinux --enforcing 
+     
+    # X Window System configuration information 
+    xconfig  --defaultdesktop=GNOME --depth=16 --resolution=800x600 --startxonboot 
+    # Do not configure X 
+    #skipx 
+    # Reboot after installation 
+    reboot 
+     
+    # Disk partitioning information 
+    part /boot --bytes-per-inode=4096 --fstype="ext3" --size=100 
+    part / --asprimary --bytes-per-inode=4096 --fstype="ext3" --size=10240 
+    part pv.100 --size=4096  --grow 
+    volgroup myvg --pesize=32768 pv.100 
+    logvol /data --fstype="ext3" --name=mydata --vgname=myvg --size=1024 --grow --maxsize=2048 
+     
+    # This packages is for RedHat5.5 
+    %packages 
+    @base 
+    @gnome-desktop 
+    @development-libs 
+    @admin-tools 
+    @base-x 
+    @development-tools 
+    @sound-and-video 
+    @chinese-support 
+    @gnome-software-development 
+    @x-software-development 
+    @openfabrics-enterprise-distribution 
+    @printing 
+    @server-cfg 
+    @legacy-software-support 
+    @mail-server 
+    @system-tools 
+    @graphical-internet 
+    @editors 
+    @text-internet 
+    @graphics 
+    @dialup 
+    @java 
+    @office 
+     
+    %post --interpreter=/bin/bash 
+    # Let's log post-install 
+    ( 
+    # Create two user 
+    /usr/sbin/useradd florian 
+    /usr/sbin/useradd douglas 
+    /bin/echo "florian" | /usr/bin/passwd --stdin florian 
+    /bin/echo "douglas" | /usr/bin/passwd --stdin douglas 
+    # Print message onboot: We are the fighter... 
+    /bin/echo "We are the fighter......Mr.Li" > /etc/issue 
+     
+    ) 2>&1 >> /root/post-install.log 
+     
+
+===== 七.  RedHat 安装光盘安装树介绍： =====
+
+
+光盘中包含文件夹isolinux、images、Cluster、ClusterStorage、Server、VT（virtaul technology）六个文件夹；包含隐藏文件.discinfo及.treeinfo和一些普通文件如TRANS.TBL等；
+* isolinux文件夹包含__isolinux启动引导程序所需的数据文件__以及系统的**安装内核**（vmlinuz）及**RAM 镜像**(initrd.img)，在引导系统时会加载入内存，给系统提供一个Linux安装环境和界面；文件夹中还有在不同模式下显示信息的.msg文件；splash.lss是特殊格式的引导过程背景图片（640*320,16位色,ppm格式）；
+* images文件夹中包含有__各种引导镜像__；有用于制作微型**启动光盘**的__boot.iso__；有可放置于USB或其他大容量可引导介质的VFAT分区上，制作引导工具的镜像**diskboot.img(支持磁盘安装的启动镜像)**；也有用于制作PXE安装方式引导介质的**pxeboot文件夹**；及XEN所需的xen文件夹；
+* Server、VT、Cluster、ClusterStorage四个文件夹包含安装所需的__所有RPM包__；Server文件夹中包含**基础软件包**，VT包含xen相关的软件包；Cluster、ClusterStorage是**集群及集群存储相关**的软件包；根据这四个包可以__配置本地的yum源__；
+* TRANS.TBL文件记录当前目录文件列表，用mkisofs的-T参数重新生成，主要是为了长文件名称
+* .discinfo 是安装介质的识别信息；
+* .treeinfo 文件，记录不同安装方式安装程序所在的目录结构，如：PXE方式时，内核kernel=images/pxeboot/vmlinuz；根文件系统initrd=images/pxeboot/initrd.img
+* **stage2.img、minstg2.img**是引导后__第二阶段安装__需要用到的镜像文件（这两个镜像文件功能及结构在后面描述），若定制LiveCD，则需要修改；
+* repodata 是精确描述一个RPM包的详细信息，如依赖关系，包含文件，校验码信息等；
+* comps.xml是一个xml格式的数据文件，将各个RPM包按照一定的原则组织成__若干组__，安装时可以按照信息直接安装一组软件包；
+* （stage2.img映像文件中的主要部分是**安装程序anaconda**，它的主执行体是/usr/bin下的anaconda，由其调用的大量例程分布在/usr/lib/anaconda下，而安装过程中要用到的资源文件分布在/usr/share/anaconda下。
+
+当boot.img所代表的启动介质被系统引导之后，在__内存中__就建立了一个完整的Linux系统（包括Linux内核和一个内存虚拟文件系统），之后便执行文件系统中存在的**loader命令**，从适当的介质中执行安装程序(例：安装介质是CD-ROM,就解析CD-ROM上的stage2.img，并从中执行安装程序)，即执行anaconda，完成Linux系统的安装任务
+    详细可参看：（Linux发行版制作指南）http://leozhao.livejournal.com/3128.html）
+ 
+
+===== 八.  Anaconda/Kickstart系统安装过程图示： =====
+{{./5.jpg}}
+
+ 
+
+===== 九.  boot.img、stage2.img结构示意： =====
+
+ 注：现在新版本的两个镜像略有出入，依实际为准（图后附查看img方法）；
+{{./6.jpg}}
+{{./7.jpg}}
+ 
+
+ 
+
+loop方式挂载特殊格式的img镜像方法：
+
+    [root@bogon images]# ls 
+    boot.iso  diskboot.img  minstg2.img  pxeboot  README  **stage2.img**  TRANS.TBL  xen 
+    [root@bogon images]# file stage2.img  
+    stage2.img: __Squashfs __filesystem, little endian, version 3.0, 0 bytes, 8969 inodes, blocksize: 65536 bytes, created: Mon Mar 22 19:56:50 2010 
+    #从上面看出img文件格式为squashfs，所以在下面挂载时明确指定该格式，否则会报错；
+    [root@bogon images]# mkdir ../img 
+    [root@bogon images]# mount -o loop -t squashfs stage2.img ../img/ 
+    [root@bogon images]# ls ../img 
+    etc  lib  modules  proc  usr  var 
+    [root@bogon images]# 
+     
+
+ 
+
+===== 十.  使用Kickstart进行安装的多种方式列举 =====
+
+（过程不再赘述，对于一些重要的实验在后期会附上HOW-TO）：
+
+  1.   kickstart放置于镜像中，重新制作ISO并刻盘，从光盘实现引导，自动配置并提供安装树安装；
+  2.   kickstart可放置于网络上，用FTP/HTTP/NFS提供出来；用光盘引导及提供安装树；
+  3.   用FTP/HTTP/NFS提供kickstart及安装树，用光盘或其他可引导的存储设备引导；
+  4.   搭建PXE纯网络的架构，实现引导，kickstart，及安装树的提供__完全自动化__；
+
+ 
+参考：
+
+  Red_Hat_Enterprise_Linux-5-Installation_Guide-en-US
+  http://leozhao.livejournal.com/3128.html

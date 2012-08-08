@@ -1,0 +1,132 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-22T10:34:01+08:00
+
+====== 代码片段 ======
+Created Thursday 22 December 2011
+
+************提取命令行参数
+#!/bin/bash
+echo "$@"
+echo ""
+
+while getopts ":ad:" opt; do
+  case $opt in
+    a)
+	echo "-${opt} was triggered! OPTARG is $OPTARG, OPTIND is $OPTIND." __>&2__
+        ;;
+    d)
+	echo "-${opt} was triggered! OPTARG is $OPTARG, OPTIND is $OPTIND." >&2
+	;;
+    \?)
+      	echo "Invalid option: -$OPTARG, OPTIND is $OPTIND." >&2
+      	;;
+    :)
+	echo "-${OPTARG} require args! OPTIND is $OPTIND"
+	;;
+  esac
+done
+__shift__ "$(($OPTIND - 1))"  #or $((OPTIND - 1)) or~~ ((OPTIND - 1))  ~~# 
+
+***********对文件中的每行单独处理
+counter=0
+while read; do ((counter++)); done __</etc/passwd__
+echo "Lines: $counter"
+不能使用：
+counter=0
+cat /etc/passwd | while read; do __((counter++))__; done  
+echo "Lines: $counter"
+因为：
+                  	  +-- cat /etc/passwd
+xterm ----- bash --|
+	                    +-- bash (while read; do ((counter++)); done)
+
+*********警报程序：监视一个事件，如果发生则发出警报
+#/bin/bash
+
+until condition; do  #condition是一个可执行命令
+	sleep 10;
+done
+
+#now ring the bell and do somethings
+echo -e '\a\a'
+echo "********Alert****************"
+#do somethngs
+exit 0
+
+**********竞争处理
+if ( __set -o noclobber__; echo "$$" > "$lockfile") 2> /dev/null;   #如果lockfile存在，则**含有重定向的命令**出错返回
+then
+   trap 'rm -f "$lockfile"; exit $?' INT TERM EXIT
+   critical-section
+   rm -f "$lockfile"
+   trap __-__ INT TERM EXIT
+else
+   echo "Failed to acquire lockfile: $lockfile." 
+   echo "Held by $(cat $lockfile)"
+fi 
+而不能是
+
+if [ ! -e $lockfile ]; then
+   **trap "rm -f $lockfile; exit" INT TERM EXIT    #在捕获信号前需安装信号及其执行的命令**
+   #上述命令有一个bug，存在重复触发的死循环。
+   touch $lockfile
+   critical-section
+   rm $lockfile
+  ** trap - INT TERM EXIT                                 #将信号的处理处理恢复到缺省状态(一般异常地终止脚本的继续执行)**
+else
+   echo "critical-section is already running"
+fi
+
+****************Counted loops
+# Three expression for loop:
+for__ (( i = 0; i < 20; i++ ))__
+do
+    echo $i
+done
+# While loop:
+i=0
+while __[[ $i -lt 20 ]]__
+do
+    echo $i
+    let i++
+done
+# For loop using seq:
+for i in__ $(seq 0 19)__
+do
+    echo $i
+done
+
+A counted for loop using bash sequences requires the least amount of typing:
+
+for i in {0..19}
+do
+    echo $i
+done
+
+But beyond counted for loops, brace expansion is the only way to create a loop with non-numeric "indexes":
+
+for i in {a..z}
+do
+    echo $i
+done
+
+*********进程替换
+  # cat a
+  e
+  d
+  c
+  b
+  a
+  # cat b
+  g
+  f
+  e
+  d
+  c
+  b
+  # __comm -3 <(sort a | uniq) <(sort b | uniq)__
+  a
+        f
+        g
+

@@ -1,0 +1,49 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-05-01T13:27:11+08:00
+
+====== 内核模块内存分配全攻略 ======
+Created Tuesday 01 May 2012
+
+http://www.embexperts.com/forum.php/forum.php?mod=viewthread&tid=20&extra=page%3D1
+
+总结一下驱动程序中用到的内存分配方法。只有深入了解各种内存分配方法的幕后机制，才能灵活运用，而且这种学习的本身也是件很有意思的事情...
+
+**1. kmalloc 和 kfree**
+__基于page和slab之上__的内存分配函数。Linux初始化时构造13个大小分别为32, 64, 128, 256, 512, 1,024, 2,048, 4,096, 8,192, 16,384, 32,768, 65,536, 和 131,072 字节的Cache.因此如果调用kmalloc(100, GFP_KERNEL)实际上内核分配的空间为128.
+
+2. kzalloc
+3. **vmalloc和vfree**
+4. **get_free_page**
+**5.kmem_cache_create**
+
+kmalloc -- 该函数实现**小于128KB**的**内核内存**的申请，所申请的空间__物理连续__；
+__get_free_pages -- 实现**最大2MB**的内存申请，以页为单位，所申请的空间__物理连续__；
+vmalloc -- 所分配的内存空间不保证物理连续，可以分配很大的内存空间。
+
+以上Kernel API 内存分配函数都是从__常规内存__中分配，除常规内存外，Linux还有__DMA和High Memory(高端内存),__这三种内存物理上都是DDR内存，只是其管理方法和使用场合不同。
+
+**不同分配方法对页表映射的要求：**
+kmalloc分配的物理地址与虚拟地址**只有一个PAGE_OFFSET(0xC0000000) 偏移**，不需要为地址段修改页表。
+Vmalloc类函数地址__完全虚拟__，每次分配都需要对**内核页表**进行设置，当然效率低。
+vmalloc 的典型应用是在装载模块时为模块分配内存，请参考sys_init_module-->load_module中的代码。
+
+**kmalloc分配时使用哪种标志？**
+———————————————————————————————-
+情形                                                  相应标志
+———————————————————————————————-
+进程上下文，可以睡眠                 GFP_KERNEL
+进程上下文，不可以睡眠               GFP_ATOMIC
+中断处理程序                         GFP_ATOMIC
+软中断                               GFP_ATOMIC
+Tasklet                                            GFP_ATOMIC
+用于DMA的内存，可以睡眠         GFP_DMA | GFP_KERNEL
+用于DMA的内存，不可以睡眠       GFP_DMA | GFP_ATOMIC
+———————————————————————————————-
+
+Linux内存管理大图
+http://bbs.chinaunix.net/thread-2018659-1-1.htm
+{{./1.gif}}
+
+{{./2.gif}}
+{{./3.gif}}

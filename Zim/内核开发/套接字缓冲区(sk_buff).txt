@@ -1,0 +1,265 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-10T18:25:46+08:00
+
+====== 套接字缓冲区(sk buff) ======
+Created Saturday 10 December 2011
+http://blog.chinaunix.net/space.php?uid=20737871&do=blog&id=3028217
+
+套接字缓冲区和其他部分的缓冲区相比，它有自己的特点。在网络传输的源主机上，它创建于套接字层（其名字的来历），沿网络层自上而下传递，它先在协议层流动，最后在物理层消失，同时把它所带的数据传递给目标主机的物理层的套接字缓冲区，该缓冲区自下而上传递到目标主机的套接字层，并把数据传递给用户进程，目标主机的套接字缓冲区也同时消失。请参看图12.11示例： 
+{{~/sync/notes/zim/内核开发/套接字缓冲区(sk_buff)/1.jpg}}
+
+当套接字缓冲区在协议层流动过程中，每个协议都需要对数据区的内容进行修改，也就是每个协议都需要在发送数据时向缓冲区添加自己的**协议头和协议尾**，而在接收数据时去掉这些协议头和协议尾，这样就存在一个问题，当缓冲区在不同的协议之间传递时，每层协议都要寻找自己特定的协议头和协议尾，从而导致数据缓冲区的传递非常困难。__我们设置sk_buff数据结构的主要目的就是为网络部分提供一种统一有效的缓冲区操作方法，从而可让协议层以标准的函数或方法对缓冲区数据进行处理，这是Linux系统网络高效运行的关键。__
+
+===== 套接字缓冲区操作基本原理 =====
+
+在传输过程中，存在着**多个**套接字缓冲区，这些缓冲区组成一个**链表**，每个链表都有一个链表头__sk_buff_head__ ，链表中每个节点分别对应内存中一块的数据区。因此对它的操作有两种基本方式：第一种是对**缓冲区链表**进行操作；第二种是对缓冲区对应的**数据区**进行控制。
+
+当我们向物理接口发送数据时或当我们从物理接口接收数据时，我们就利用**链表操作**；当我们要对数据区的内容进行处理时，我们就利用**内存操作**例程。这种操作机制对网络传输是非常有效的。
+
+前面我们讲过，每个协议都要在发送数据时向缓冲区添加自己的协议头和协议尾，而在接收数据时去掉协议头和协议尾，那么具体的操作是怎样进行的呢？我们先看看对缓冲区操作的两个基本的函数：
+
+void append_frame(char *data, int len){
+__struct sk_buff__ *skb=__alloc_skb__(len, GFP_ATOMIC); /*创建一个缓冲区*/
+if(skb==NULL)
+my_dropped++;
+else {
+__skb_put__(skb,len);
+memcpy(skb->data,data,len); /*向缓冲区添加数据*/
+__skb_append__(&my_list, skb); /*将该缓冲区加入缓冲区队列*/
+}
+
+}
+void process_frame(void){
+struct sk_buff *skb;
+while((skb=skb_dequeue(&my_list))!=NULL)
+{
+process_data(skb); /*将缓冲区的数据传递给协议层*/
+__kfree_skb__(skb, FREE_READ); /*释放缓冲区，缓冲区从此消失*/
+}
+}
+
+这两个非常简单的程序片段，虽然它们不是源程序，但是它们恰当地描述了处理数据包的工作原理，append_frame( )描述了**分配缓冲区**。创建数据包过程process_frame( )描述了**传递数据包，释放缓冲区**的的过程。关于它们的源程序，可以去参见 net/core/dev.c 中__netif_rx( )__函数和 __net_bh( )__函数。你可以看出它们和上面我们提到的两个函数非常相似。这两个函数非常复杂，因为他们必须保证数据能够被**正确的协议接收**并且要负责流程的控制，但是他们最基本的操作是相同的。
+
+让我们再看看上面提到的函数--append_frame( )。当 alloc_skb( ) 函数获得一个长度为 len字节的缓冲区（如图12.12 (a)）后，该缓冲区包含以下内容：
+
+◆缓冲区的头部有零字节的__头部空间__
+◆零字节的__数据空间__
+◆缓冲区的尾部有零字节的__尾部空间__
+
+再看skb_put( )函数（如图12.12 (d)），它的作用是从数据区的尾部向缓冲区尾部不断**扩大数据区**大小,同时调整data和tail的值，为后面的memcpy( )函数分配空间。
+
+当一个缓冲区创建以后，所有的可用空间都在缓冲区的尾部。在没有向其中添加数据之前，首先被执行的函数调用是 **skb_reserve( )**（如图12.12 (b)）,它使你在缓冲区头部指定一定的空闲空间，因此许多发送数据的例程都是这样开头的：
+
+skb=__alloc_skb__(len+**headspace**, GFP_KERNEL);
+__skb_reserve__(skb, headspace);
+__skb_put__(skb,len);
+memcpy_fromfs(skb->data,data,len);
+pass_to_m_protocol(skb);
+
+图12.12向我们展示了以上过程进行时，sk_buff 的变化情况：
+{{~/sync/notes/zim/内核开发/套接字缓冲区(sk_buff)/2.jpg}}
+
+===== sk_buff数据结构的核心内容 =====
+
+sk_buff 数据结构中包含了一些**指针和长度信息**，从而可让__协议层以标准的函数或方法__对应用程序的数据进行处理，其定义于include/linux/skbuff.h中：
+
+struct sk_buff {
+/* These two members must be first. */
+struct sk_buff * next; /* Next buffer in __list__*/
+struct sk_buff * prev; /* Previous buffer in list*/
+struct** sk_buff_head** * list; /* List we are on */
+struct **sock** *sk; /* Socket we are owned by */
+struct **timeval **stamp; /* Time we** arrived** */
+struct **net_device** *dev; /* Device we arrived on/are leaving by */
+/* Transport layer header */
+union
+{
+struct tcphdr *th;
+struct udphdr *uh;
+struct icmphdr *icmph;
+struct igmphdr *igmph;
+struct **ip**hdr *ipiph;
+struct spxhdr *spxh;
+unsigned char *__raw__;
+} __h__;
+/* Network layer header */
+union
+{
+struct iphdr *iph;
+struct ipv6hdr *ipv6h;
+struct **arphdr** *arph;
+struct ipxhdr *ipxh;
+unsigned char *__raw__;
+} nh;
+/* Link layer header */
+union
+{
+struct **ethhdr** *ethernet;
+unsigned char *raw;
+} mac;
+struct dst_entry *dst;
+/*
+* This is the **control buffer**. It is free to use for every
+* layer. Please put your private variables there. If you
+* want to keep them across layers you have to do a skb_clone()
+* first. This is owned by whoever has the skb queued ATM.
+*/
+char cb[48];
+unsigned int __len__; /* Length of actual data*/
+unsigned int data_len;
+unsigned int **csum**; /* Checksum */
+unsigned char __unused, /* Dead field, may be reused */
+cloned, /* head may be cloned (check refcnt to be sure). */
+pkt_type, /* Packet class */
+ip_summed; /* Driver fed us an IP checksum */
+__u32 **priority**; /* Packet queueing priority */
+atomic_t users; /* User count - see datagram.c,tcp.c */
+unsigned short **protocol**; /* Packet protocol from driver. */
+unsigned short security; /* Security level of packet */
+unsigned int **truesize**; /* Buffer size */
+unsigned char *__head__; /* Head of buffer */
+unsigned char *data; /* Data head pointer
+unsigned char *tail; /* Tail pointer
+unsigned char *end; /* End pointer */
+void (*destructor)(struct sk_buff *); /* **Destruct** function */
+…
+}
+
+该结构的示意图如图12.13所示：
+{{~/sync/notes/zim/内核开发/套接字缓冲区(sk_buff)/3.jpg?width=509}}
+每个 sk_buff 均包含**一个数据块、四个数据指针以及两个长度字段**。利用四个__数据指针__，各协议层可操纵和管理套接字缓冲区的数据，这四个指针的用途是：
+head：指向内存中**数据区的起始地址**。sk_buff 和相关数据块在分配之后，该指针的值是__固定__的。
+data： 指向**协议数据**的当前起始地址。该指针的值随当前拥有 sk_buff 的协议层的变化而变化。
+tail：指向协议数据的当前结尾地址。和 data 指针一样，该指针的值也随当前拥有 sk_buff 的协议层的变化而变化。
+end：指向内存中数据区的结尾。和 head 指针一样，sk_buff 被分配之后，该指针的值也__固定不变__。
+sk_buff 有两个非常重要长度字段，len 和 truesize，分别描述当前**协议数据包**的长度和**数据缓冲区**的实际长度。
+
+===== 套接字缓冲区提供的函数 =====
+
+=== 1．操纵sk_buff链表的函数 ===
+
+sk_buff链表是一个**双向链表**，它包括一个链表头而且每一个缓冲区都有一个prev和next指针，指向链表中前一个和后一个缓冲区结点。
+
+struct sk_buff *__skb_dequeue__(struct skb_buff_head *list)
+
+这个函数作用是把**第一个缓冲区**从链表中移走。返回取出的sk_buff，如果队列为空，就返回空指针。添加缓冲区用到 skb_queue_head 和 skb_queue_tail两个例程。
+
+int__ skb_peek__(struct sk_buff_head *list)
+
+返回指向缓冲区链表第一个节点的指针。
+
+int __skb_queue_empty__(struct sk_buff_head *list)
+
+如果链表为空，返回 true 。
+
+void __skb_queue_head__(struct sk_buff *skb)
+
+这个函数在链表头部**添加一个缓冲区**。
+
+void __skb_queue_head_init__(struct sk_buff_head *list)
+
+初始化 sk_buff_head结构 。该函数必须在**所有的链表操作之前调用**，而且它不能被重复执行。
+
+__u32__ skb_queue_len__(struct sk_buff_head *list)
+
+返回队列中排队的缓冲区的数目。
+
+void__ skb_queue_tail__(struct sk_buff *skb)
+
+这个函数在链表的尾部添加一个缓冲区，这是在缓冲区操作函数中最常用的一个函数。
+
+void __skb_unlink__(struct sk_buff *skb)
+
+这个函数从链表中移去一个缓冲区。它只是将缓冲区从链表中移去，但**并不释放**它。
+
+许多更复杂的协议，如TCP协议，当它接收到数据时，需要保持链表中**数据帧的顺序**或对数据帧进行重新排序。有两个函数完成这些工作：
+
+void __skb_append__(struct sk_buff *entry, struct sk_buff *new_entry)
+void __skb_insert__(struct sk_buff *entry, struct sk_buff *new_entry)
+
+它们可以使用户把一个缓冲区放在**链表中任何一个位置**。
+
+=== 2．创建或取消一个缓冲区结构的函数 ===
+
+这些操作用到**内存处理**方法，它们的正确使用对管理内存非常重要。sk_buff结构的数量和它们占用内存大小会对机器产生很大的影响，因为网络缓冲区的内存组合是最主要一种的系统内存组合。
+
+struct sk_buff *__alloc_skb__(int size, int priority)
+
+创建一个新的sk_buff 结构并将它初始化。
+
+void__ kfree_skb__(struct sk_buff *skb, int rw)
+
+释放一个skb_buff。
+
+struct sk_buff *__skb_clone__(struct sk_buff *old, int priority)
+
+复制一个sk_buff，但**不复制数据部分**。
+
+struct sk_buff *__skb_copy__(struct sk_buff *skb)
+
+完全复制一个sk_buff。
+
+=== 3．对 sk_buff 结构数据区进行操作的操作。 ===
+
+这些函数用到了套接字结构体中两个域：**缓冲区长度**(skb->len) 和缓冲区中数据包的实际起始地址 (skb->data)。这些两个域对用户来说是可见的，而且它们具有只读属性。
+
+unsigned char *__skb_headroom__(struct sk_buff *skb)
+
+返回sk_buff结构**头部空闲空间**的字节数大小。
+
+unsigned char *__skb_pull__(struct sk_buff *skb, int len)
+
+该函数将 data 指针向数据区的末尾移动，减少了len 字段的长度。该函数可用于从接收到的数据头上__移去__数据或协议头。
+
+unsigned char *__skb_push__(struct sk_buff *skb, int len)
+
+该函数将 data 指针向数据区的前端移动，增加 了len 字段的长度。在发送数据的过程中，利用该函数可在数据的前端__添加__数据或协议头。
+
+unsigned char *__skb_put__(struct sk_buff *skb, int len)
+
+该函数将 tail 指针向数据区的末尾移动，增加了 len 字段的长度。在发送数据的过程中，利用该函数可在数据的末端__添加__数据或协议尾。
+
+unsigned char *__skb_reserve__(struct sk_buff *skb, int len)
+
+该函数在缓冲区头部创建一块__额外的空间__，这块空间在 skb_push 添加数据时使用。因为套接字建立时并没有为 skb_push 预留空间。它也可以用于在缓冲区的头部增加一块空白区域，从而调整缓冲区的大小，使缓冲区的长度统一。这个函数只对一个__空的缓冲区__才能使用。
+
+unsigned char *__skb_tailroom__(struct sk_buff *skb)
+
+返回sk_buff尾部空闲空间的字节数大小。
+
+unsigned char *__skb_trim__(struct sk_buff *skb, int len)
+
+该函数和 put 函数的功能相反，它将 tail 指针向数据区的前端移动，减小了 len 字段的长度。该函数可用于从接收到的数据尾上__移去__数据或协议尾。如果缓冲区的长度比“ len”还长，那么它就通过移去缓冲区尾部若干字节，把缓冲区的大小缩减到“ len”长度。
+
+===== 套接字缓冲区的上层支持例程 =====
+
+我们上面讲了套接字缓冲区基本的操作方法，利用它们就可以完成数据包的__发送和接收__工作。为了保证网络传输的高效和稳定，我们需要对整个过程进行__流控制__，因此，我们又引进了两个支持例程。它们是利用**信号的交互**来完成任务的。
+
+__sock_queue_rcv_skb__（）函数用来对数据的**接收进行控制**，通常调用它的的形式为：
+sk=my_find_socket(whatever);
+if(sock_queue_rcv_skb(sk,skb)==-1)
+{
+myproto_stats.dropped++;
+kfree_skb(skb,FREE_READ);
+return;
+}
+
+
+它利用套接字的**读队列的计数器**，从而避免了大量的数据包堆积在套接字层。一旦到达这个极限，其余的数据包就会被丢弃。这样做是为了保障高层的应用协议有足够快的读取速度，比如TCP协议，包含对该流程的控制，当接收端不能再接收数据时，TCP 协议就告诉发送端的机器停止传输。
+
+在数据传输方面， __sock_alloc_send_skb__（）可以对发送队列进行控制, 我们不能把所有的缓冲区都填充数据，使得发送队列总有空余, 避免了数据堵塞。这个函数在具体应用时有很多微妙之处,所以推荐编写网络协议的作者尽可能使用它。
+
+许多发送例程利用这个函数几乎可以做所有的工作：
+
+skb=sock_alloc_send_skb(sk,....)
+if(skb==NULL)
+return -err;
+skb->sk=**sk**;
+skb_reserve(skb, headroom);
+skb_put(skb,len);
+memcpy(skb->data, data, len);
+protocol_do_something(skb);
+
+
+上面大部分代码我们前面已经见过。其中最重要的一句是 skb->sk=sk。 sock_alloc_send_skb（） 负责把缓冲区送到套接字层。通过设置 skb->sk， 我们告诉内核无论哪个例程对缓冲区进行 kfree_skb（）处理，都必须保证缓冲区已经成功地送到套接字层。 因此一旦网络设备驱动程序发送一个缓冲区, 并将之释放，我们就认为数据已经发送成功,这样我们就可以继续发送数据了。在源代码中我们看到 kfree_skb 操作一执行就会触发sock_alloc_send_skb（）。

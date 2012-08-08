@@ -1,0 +1,411 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-27T16:36:05+08:00
+
+====== How do you get ECONNRESET on recv ======
+Created Monday 27 February 2012
+
+http://fixunix.com/unix/84635-how-do-you-get-econnreset-recv.html
+
+    The man page for __recv__ and __read__ list the error __ECONNRESET__ as an error
+    condition that happens when "A connection was forcibly closed __by a__
+   __ peer__."~~ I take this to mean that, assuming a TCP connection, if a~~
+~~    client is recv'ing from a server, and the server suddenly crashes,~~
+~~    then on the client side recv will return -1 and set errno to~~
+~~    ECONNRESET.~~
+
+    For the purpose of **robust error handling**, I'm trying to integrate
+    routines to take care of this sort of thing in my program. But I
+    simply** can't actually get recv to return ECONNRESET** in any of my
+    tests. For testing purposes, I set up a simple server and a simple
+    client. The server sends data, and a background thread raises a
+    __SIGSEGV__ while the server is sending, causing the whole program to
+    crash. Meanwhile, the client is recv'ing. But when the server
+    crashes, the client does not issue an ECONNRESET error. Rather, recv
+   __ returns 0 and errno is set to 0__. No error condition is generated at
+    all. But the man page says that recv should only return 0 if "the
+    peer has performed an orderly shutdown". But a SIGSEGV is certainly
+    not my idea of an "orderly shutdown"!
+
+    So, is the behavior of recv in this aspect something that is
+    implementation defined, i.e. not identical across platforms? Maybe
+    some UNIX environments return ECONNRESET on recv, but others don't?
+    Or does recv never return ECONNRESET with TCP?
+--------------------------------------------------------
+Reply With Quote Reply With Quote
+10-04-2007 12:09 AM #2
+Re: How do you get ECONNRESET on recv?
+
+    On 2007-08-09, chsalvia@gmail.com wrote:
+    > The man page for recv and read list the error ECONNRESET as an error
+    > condition that happens when "A connection was forcibly closed by a
+    > peer." I take this to mean that, assuming a TCP connection, if a
+    > client is recv'ing from a server, and the server suddenly crashes,
+    > then on the client side recv will return -1 and set errno to
+    > ECONNRESET.
+
+    Well, your understanding is__ probably wrong.__
+
+    The TCP answers with RESET when you try to __send__ some data to peer that
+    does not want to __read__ that data. In other words the peer has __closed__
+    connection or has done __shutdown of reading__.
+
+    Normally, if the peer__ closes__ connection, recv returns 0 without any
+    error. The same applies to the cases when the peer application crashes.
+
+    Now, if you try to send the data to peer after you got 0 from recv,
+    you should get RESET. 
+
+  __ recv返回0，说明对方已经关闭了(close)连接，或关闭了写端(shutdown(SHUT_WR))。__
+  在本地也调用close后再send，就会收到RESET报文。
+  以后再发send
+
+  如果是前者，客户端send数据时服务器端TCP会返回RESET报文，send出错，errno为
+  **ECONNRESET。**
+
+   If you try to send the data after you got RESET, you'll __get EPIPE or SIGPIPE__.
+   
+    So, theoretically, you can see ECONNRESET in recv only if the peer does
+   __ shutdown(SHUT_RD) __and you try to send some data after this. Which
+    usually never happens More often the peer__ closes __socket unexpectedly
+    while you are sending many chunks of data and as result you get
+    SIGPIPE, because your first send triggers RESET, and your second send
+    triggers SIGPIPE, because you didn't see the RESET.
+
+    --
+    Minds, like parachutes, function best when open
+
+Reply With Quote Reply With Quote
+10-04-2007 12:09 AM #3
+Re: How do you get ECONNRESET on recv?
+
+    chsalvia@gmail.com wrote:
+    > The man page for recv and read list the error ECONNRESET as an error
+    > condition that happens when "A connection was forcibly closed by a
+    > peer." I take this to mean that, assuming a TCP connection, if a
+    > client is recv'ing from a server, and the server suddenly crashes,
+    > then on the client side recv will return -1 and set errno to
+    > ECONNRESET.
+
+    Actually no When the server _system_ suddenly crashes, your
+    application receives nothing.
+
+    ECONNRESET means the connection has received a ReSeT (RST) segment
+    (ostesibly) from the remote TCP. There are a multitude of reasons
+    such a segment could be received, including, but not limited to:
+
+    *) the remote abused SO_LINGER and did an abortive close of the
+    connection
+
+    *) your application sent data which arrived after the remote called
+    shutdown(SHUT_RD) or close()
+
+    *) the remote TCP hit a retransmission limit and aborted (yes, if the
+    data segments weren't getting through the chances of the RST making
+    it are slim, but still non-zero)
+
+    *) there was some actual TCP protocol error between the two systems
+
+    99 times out of ten if the server _application_ terminates
+    (prematurely) the normal close() which happens on almost all platorms
+    will cause TCP to emit a FINished (FIN) segment. That would then be a
+    recv/read return of zero at your end. Of course if your application
+    ignored that and then tried to send something, that brings us to the
+    second bullet item above.
+
+    > But the man page says that recv should only return 0 if "the peer
+    > has performed an orderly shutdown". But a SIGSEGV is certainly not
+    > my idea of an "orderly shutdown"!
+
+    Ah, but as per above, 99 times out of ten, when the OS is cleaning-up
+    after the SIGSEGV'd application, it goes ahead and calls (the moral
+    equivalent to) close(), which unless perhaps the application has set
+    the abortive close SO_LINGER options will result in a FIN being sent.
+    The TCP code doesn't know the difference between a close() from the
+    app making a direct call, the system making a close() call on normal
+    program termination, or one from abnormal termination.
+
+    I suppse you could try setting the SO_LINGER options on the server
+    code to cause an RST when close() is called and then see what killing
+    the process does. Just be sure that you only do that in a debug
+    version and/or have code to put SO_LINGER back the way it should be
+    when doing a "normal" close() in your server app. Hmm, that might be
+    one of the few valid (IMO) reasons to use that otherwise heinous
+    direct-to_RST SO_LINGER option... Perhaps one day I will try that
+    with netperf.
+
+    rick jones
+    --
+    Process shall set you free from the need for rational thought.
+    these opinions are mine, all mine; HP might not want them anyway...
+    feel free to post, OR email to rick.jones2 in hp.com but NOT BOTH...
+
+Reply With Quote Reply With Quote
+10-04-2007 12:09 AM #4
+Re: How do you get ECONNRESET on recv?
+
+    Andrei Voropaev writes:
+    > So, theoretically, you can see ECONNRESET in recv only if the peer does
+    > shutdown(SHUT_RD) and you try to send some data after this. Which
+    > usually never happens More often the peer closes socket unexpectedly
+    > while you are sending many chunks of data and as result you get
+    > SIGPIPE, because your first send triggers RESET, and your second send
+    > triggers SIGPIPE, because you didn't see the RESET.
+
+    Actually, a more common cause is that the peer uses the SO_LINGER
+    option, sets l_onoff to 1 (true) and l_linger to 0 (zero time), then
+    closes the socket. On systems that implement BSD sockets properly,
+    that causes the system to emit TCP RST and blow away the connection.
+    Your application will then see ECONNRESET or SIGPIPE or EPIPE,
+    depending on where it was when the message was received.
+
+    --
+    James Carlson, Solaris Networking
+    Sun Microsystems / 1 Network Drive 71.232W Vox +1 781 442 2084
+    MS UBUR02-212 / Burlington MA 01803-2757 42.496N Fax +1 781 442 1677
+
+Reply With Quote Reply With Quote
+10-04-2007 12:09 AM #5
+Re: How do you get ECONNRESET on recv?
+
+    In article ,
+    Rick Jones wrote:
+
+    > chsalvia@gmail.com wrote:
+    > > The man page for recv and read list the error ECONNRESET as an error
+    > > condition that happens when "A connection was forcibly closed by a
+    > > peer." I take this to mean that, assuming a TCP connection, if a
+    > > client is recv'ing from a server, and the server suddenly crashes,
+    > > then on the client side recv will return -1 and set errno to
+    > > ECONNRESET.
+    >
+    > Actually no When the server _system_ suddenly crashes, your
+    > application receives nothing.
+
+    But if you were sending something at the time that it crashed, you
+    system will keep retransmitting. When the system reboots, it will
+    respond to the retransmission with a RST, and this will cause you to get
+    ECONNRESET.
+
+    --
+    Barry Margolin, barmar@alum.mit.edu
+    Arlington, MA
+    *** PLEASE post questions in newsgroups, not directly to me ***
+    *** PLEASE don't copy me on replies, I'll read them in the group ***
+
+Reply With Quote Reply With Quote
+10-04-2007 12:09 AM #6
+Re: How do you get ECONNRESET on recv?
+
+    Barry Margolin wrote:
+    > But if you were sending something at the time that it crashed, you
+    > system will keep retransmitting. When the system reboots, it will
+    > respond to the retransmission with a RST, and this will cause you to
+    > get ECONNRESET.
+
+    I thought one got some sort of timed-out or unreachable errno or
+    somesuch?
+
+    rick jones
+    --
+    No need to believe in either side, or any side. There is no cause.
+    There's only yourself. The belief is in your own precision. - Jobert
+    these opinions are mine, all mine; HP might not want them anyway...
+    feel free to post, OR email to rick.jones2 in hp.com but NOT BOTH...
+
+Reply With Quote Reply With Quote
+10-04-2007 12:09 AM #7
+Re: How do you get ECONNRESET on recv?
+
+    In article ,
+    Rick Jones wrote:
+
+    > Barry Margolin wrote:
+    > > But if you were sending something at the time that it crashed, you
+    > > system will keep retransmitting. When the system reboots, it will
+    > > respond to the retransmission with a RST, and this will cause you to
+    > > get ECONNRESET.
+    >
+    > I thought one got some sort of timed-out or unreachable errno or
+    > somesuch?
+
+    Only if the reboot takes longer than the retransmission limit. In the
+    days when a reboot took several minutes that would be likely, but these
+    days many systems can reboot in under a minute (unless they have to do
+    lengthy fsck's), so the ECONNRESET is a possibility.
+
+    --
+    Barry Margolin, barmar@alum.mit.edu
+    Arlington, MA
+    *** PLEASE post questions in newsgroups, not directly to me ***
+    *** PLEASE don't copy me on replies, I'll read them in the group ***
+
+Reply With Quote Reply With Quote
+10-04-2007 12:09 AM #8
+Re: How do you get ECONNRESET on recv?
+
+    Barry Margolin wrote:
+    > Only if the reboot takes longer than the retransmission limit. In
+    > the days when a reboot took several minutes that would be likely,
+    > but these days many systems can reboot in under a minute (unless
+    > they have to do lengthy fsck's), so the ECONNRESET is a possibility.
+
+    But what of the RFC suggested (or is it mandated?) quiet time on stack
+    start?-)
+
+    rick jones
+    --
+    a wide gulf separates "what if" from "if only"
+    these opinions are mine, all mine; HP might not want them anyway...
+    feel free to post, OR email to rick.jones2 in hp.com but NOT BOTH...
+
+Reply With Quote Reply With Quote
+10-04-2007 12:09 AM #9
+Re: How do you get ECONNRESET on recv?
+
+    In article ,
+    Rick Jones wrote:
+
+    > Barry Margolin wrote:
+    > > Only if the reboot takes longer than the retransmission limit. In
+    > > the days when a reboot took several minutes that would be likely,
+    > > but these days many systems can reboot in under a minute (unless
+    > > they have to do lengthy fsck's), so the ECONNRESET is a possibility.
+    >
+    > But what of the RFC suggested (or is it mandated?) quiet time on stack
+    > start?-)
+
+    If I understand it correctly, this just prohibits the rebooted system
+    from initiating connections during the quiet time. It doesn't affect
+    responding to segments received. In fact, the point of the quiet time
+    is to ensure that new connections don't inadvertently reuse the port and
+    sequence numbers of connections from before the reboot, which would
+    prevent responding to those packets with RST.
+
+    --
+    Barry Margolin, barmar@alum.mit.edu
+    Arlington, MA
+    *** PLEASE post questions in newsgroups, not directly to me ***
+    *** PLEASE don't copy me on replies, I'll read them in the group ***
+
+Reply With Quote Reply With Quote
+10-04-2007 12:10 AM #10
+Re: How do you get ECONNRESET on recv?
+
+
+    I have written a multi-threaded C client application running on HP UX
+    11 Pa RISC that sends a SOAP request via send( ) to a webservice
+    residing on a Windows PC. The send( ) is always successful, and I
+    perform no other socket calls until I issue a recv( ) to get the
+    webservice response. Very occasionally the application either gets no
+    reponse or an ECONNRESET response. We suspect some sort of network
+    issue between the client and server. I have built and deployed my
+    client application for several other platforms including Solaris and
+    Windows and have never experienced this issue.
+
+    I feel that my application should handle this situation more
+    gracefully, and to this end my questions are:
+
+    Is it safe to assume anything regarding the state of the send( )
+    request on the webservice server? More specifically, what would be the
+    proper way for my client application to recover?
+
+    On Aug 9, 3:27 pm, Rick Jones wrote:
+    > chsal...@gmail.com wrote:
+    > > The man page for recv and read list the error ECONNRESET as an error
+    > > condition that happens when "A connection was forcibly closed by a
+    > > peer." I take this to mean that, assuming a TCP connection, if a
+    > > client is recv'ing from a server, and the server suddenly crashes,
+    > > then on the client side recv will return -1 and set errno to
+    > > ECONNRESET.
+    >
+    > Actually no When the server _system_ suddenly crashes, your
+    > application receives nothing.
+    >
+    > ECONNRESET means the connection has received a ReSeT (RST) segment
+    > (ostesibly) from the remote TCP. There are a multitude of reasons
+    > such a segment could be received, including, but not limited to:
+    >
+    > *) the remote abused SO_LINGER and did an abortive close of the
+    > connection
+    >
+    > *) your application sent data which arrived after the remote called
+    > shutdown(SHUT_RD) or close()
+    >
+    > *) the remote TCP hit a retransmission limit and aborted (yes, if the
+    > data segments weren't getting through the chances of the RST making
+    > it are slim, but still non-zero)
+    >
+    > *) there was some actual TCP protocol error between the two systems
+    >
+    > 99 times out of ten if the server _application_ terminates
+    > (prematurely) the normal close() which happens on almost all platorms
+    > will cause TCP to emit a FINished (FIN) segment. That would then be a
+    > recv/read return of zero at your end. Of course if your application
+    > ignored that and then tried to send something, that brings us to the
+    > second bullet item above.
+    >
+    > > But the man page says that recv should only return 0 if "the peer
+    > > has performed an orderly shutdown". But a SIGSEGV is certainly not
+    > > my idea of an "orderly shutdown"!
+    >
+    > Ah, but as per above, 99 times out of ten, when the OS is cleaning-up
+    > after the SIGSEGV'd application, it goes ahead and calls (the moral
+    > equivalent to) close(), which unless perhaps the application has set
+    > the abortive close SO_LINGER options will result in a FIN being sent.
+    > The TCP code doesn't know the difference between a close() from the
+    > app making a direct call, the system making a close() call on normal
+    > program termination, or one from abnormal termination.
+    >
+    > I suppse you could try setting the SO_LINGER options on the server
+    > code to cause an RST when close() is called and then see what killing
+    > the process does. Just be sure that you only do that in a debug
+    > version and/or have code to put SO_LINGER back the way it should be
+    > when doing a "normal" close() in your server app. Hmm, that might be
+    > one of the few valid (IMO) reasons to use that otherwise heinous
+    > direct-to_RST SO_LINGER option... Perhaps one day I will try that
+    > with netperf.
+    >
+    > rick jones
+    > --
+    > Process shall set you free from the need for rational thought.
+    > these opinions are mine, all mine; HP might not want them anyway...
+    > feel free to post, OR email to rick.jones2 in hp.com but NOT BOTH...
+
+
+Reply With Quote Reply With Quote
+10-04-2007 12:10 AM #11
+Re: How do you get ECONNRESET on recv?
+
+    Fish Maker wrote:
+    > I have written a multi-threaded C client application running on HP
+    > UX 11 Pa RISC that sends a SOAP request via send( ) to a webservice
+    > residing on a Windows PC. The send( ) is always successful, and I
+    > perform no other socket calls until I issue a recv( ) to get the
+    > webservice response. Very occasionally the application either gets
+    > no reponse or an ECONNRESET response. We suspect some sort of
+    > network issue between the client and server. I have built and
+    > deployed my client application for several other platforms including
+    > Solaris and Windows and have never experienced this issue.
+
+    > I feel that my application should handle this situation more
+    > gracefully, and to this end my questions are:
+
+    > Is it safe to assume anything regarding the state of the send( )
+    > request on the webservice server? More specifically, what would be
+    > the proper way for my client application to recover?
+
+    If you have received nothing but the ECONRESET on the recv() you can
+    assume nothing about the state of the request on the server. You do
+    not know if the server application received the data, nor if it acted
+    upon the data if it did receive it. To know that you need to receive
+    some sort of message from the server application.
+
+    I'm not fully up on all the terminology, but you may want to web
+    search on "two phase commit."
+
+    rick jones
+    --
+    web2.0 n, the dot.com reunion tour...
+    these opinions are mine, all mine; HP might not want them anyway...
+    feel free to post, OR email to rick.jones2 in hp.com but NOT BOTH...

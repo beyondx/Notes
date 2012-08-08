@@ -1,0 +1,16 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2010-08-03T21:26:51.232285
+
+====== 1.1 Overview ======
+Created Tuesday 03 August 2010
+
+Briefly, a "boot loader" is the first software program that runs when a  computer starts.  It is responsible for loading and transferring control to an operating system "kernel" software (such as Linux or GNU Mach).  The kernel, in turn, initializes the rest of the operating system (e.g. a GNU system).
+
+   GNU GRUB is a very powerful boot loader, which can load a wide variety of free operating systems, as well as proprietary operating systems with chain-loading(1) (*note Overview-Footnote-1::). GRUB is designed to address the complexity of booting a personal computer; both the program and this manual are tightly bound to that computer platform,although porting to other platforms may be addressed in the future.
+
+   One of the important features in GRUB is flexibility; GRUB understands filesystems and kernel executable formats, so you can load an arbitrary operating system the way you like, without recording the physical position of your kernel on the disk. Thus you can load the kernel just by specifying its file name and the drive and partition where the kernel resides.
+
+   When booting with GRUB, you can use either a command-line interface (*note Command-line interface::), or a menu interface (*note Menu
+interface::). Using the command-line interface, you type the drive specification and file name of the kernel manually. In the menu interface, you just select an OS using the arrow keys. The menu is based on a configuration file which you prepare beforehand (*note Configuration::). While in the menu, you can switch to the command-line mode, and vice-versa. You can even edit menu entries before using them.
+

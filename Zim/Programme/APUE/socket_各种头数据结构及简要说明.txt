@@ -1,0 +1,186 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-04T13:13:16+08:00
+
+====== socket 各种头数据结构及简要说明 ======
+Created 星期六 04 六月 2011
+http://www.cppblog.com/franksunny/archive/2007/01/11/17537.html
+socket 各种头数据结构及简要说明
+
+ 
+
+发布者： 许超 　　发表日期： 2006-06-12 18:44:51.153 原作者： supermgr
+
+ 
+
+socket  各种头数据结构，及简要说明。
+
+//DATATYPE
+
+typedef signed char         int8;
+
+typedef signed short        int16;
+
+typedef signed long         int32;
+
+typedef signed long long    int64;
+
+typedef unsigned int        uint;
+
+typedef unsigned char       uint8;
+
+typedef unsigned short      uint16;
+
+typedef unsigned long       uint32;
+
+typedef unsigned long long  uint64;
+
+typedef float               float32;
+
+typedef double              float64;
+
+typedef wchar_t             wchar;
+
+//typedef void*               ptr;
+
+typedef int32               boolen;
+
+ 
+
+//IP 头结构
+
+typedef
+
+struct _x_iphdr
+
+{
+
+    uint8 ver;                      //4 位头结构长度 ,4 位 IP 版本号
+
+    uint8 tos;                      //8 位服务类型 TOS
+
+    uint16 len;                     //16 位总长度（字节）
+
+    uint16 ident;                   //16 位数据包标识
+
+    uint16 frag;                    //3 位标志位 /13 位偏移地址
+
+    uint8 ttl;                      //8 位生存时间 TTL （生命期）
+
+    uint8 proto;                    //8 位协议 (TCP, UDP 或其他 )
+
+    uint16 sum;                     //16 位 IP 头结构校验和
+
+    uint32 srcip;                   //32 位源 IP 地址
+
+    uint32 dstip;                   //32 位目的 IP 地址
+
+}x_iphdr;
+
+//TCP 伪头结构
+
+typedef
+
+struct _x_tcphdrpsd
+
+{
+
+    uint32 saddr;                   // 源地址
+
+    uint32 daddr;                   // 目的地址
+
+    uint8 mbz;                      // 没用
+
+    uint8 proto;                    // 协议类型
+
+    uint16 tcpl;                    //TCP 长度
+
+}x_tcphdrpsd;
+
+//TCP 头结构
+
+typedef
+
+struct _x_tcphdr
+
+{
+
+    uint16 sport;                   //16 位源端口
+
+    uint16 dport;                   //16 位目的端口
+
+    uint32 seq;                     //32 位序列号
+
+    uint32 ack;                     //32 位确认号
+
+    uint8 len;                      //4 位头结构长度 /6 位保留字
+
+    uint8 flag;                     //6 位标志位 （控制用）
+
+    uint16 win;                     //16 位窗口大小
+
+    uint16 sum;                     //16 位 TCP 校验和
+
+    uint16 urp;                     //16 位紧急数据偏移量
+
+}x_tcphdr;
+
+//UDP 头结构
+
+typedef
+
+struct _x_udphdr
+
+{
+
+    uint16 sport;                   //16 位源端口
+
+    uint16 dport;                   //16 位目的端口
+
+    uint16 len;                     //16 位长度
+
+    uint16 sum;                     //16 位校验和
+
+}x_udphdr;
+
+//ICMP 头结构
+
+typedef
+
+struct _x_icmphdr
+
+{
+
+    uint8 type;                     //8 位类型
+
+    uint8 code;                     //8 位代码
+
+    uint16 cksum;                   //16 位校验和
+
+    uint16 ident;                   // 识别号（一般用进程号作为识别号）
+
+    uint16 seq;                     // 报文序列号
+
+    uint32 tamp;                    // 时间戳
+
+}x_icmphdr;
+
+//IGMP 头结构
+
+typedef
+
+struct _x_igmphdr
+
+{
+
+    uint8 code;                     //8 位代码
+
+    uint8 type;                     //8 位类型
+
+    uint16 res;                     // 没用
+
+    uint16 cksum;                   //16 位校验和
+
+    uint32 addr;                    //32 位组地址
+
+}x_igmphdr;

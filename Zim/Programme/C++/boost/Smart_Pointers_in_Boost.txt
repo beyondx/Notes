@@ -1,0 +1,313 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-14T14:27:48+08:00
+
+====== Smart Pointers in Boost ======
+Created Tuesday 14 February 2012
+
+http://drdobbs.com/cpp/184401507
+
+Welcome to Boost, the peerless community of C++ innovators. If you can't find what you need in the Standard C++ library, chances are Boost has it production-ready.
+
+===== Introducing Boost =====
+
+According to the Boost website, Boost is "a repository of free, portable, peer-reviewed C++ libraries. Boost acts as a proving ground for new libraries, particularly those that work well with the** ISO C++ Standard library**." But Boost is more than a collection of libraries. It is also the focus of a rapidly growing community of developers who create, use, and discuss the Boost libraries. Beyond making these excellent libraries available, Boost also offers a place to learn. The libraries are examples of __solid library design__ in a world that seldom seems to look further than the next release. Joining the discussions on the Boost mailing list (either actively or just by listening) is a good way to improve your understanding of library design problems and solutions. Boost also provides a rapidly growing Boost-Users mailing list that focuses on questions related to using the libraries.
+
+The quality and the technological standard of the Boost libraries are __amazing__. And the Boost portability standard ensures that when you move your code to another platform, you'll know the libraries will __still work__. The current release, Boost 1.25.0, consists of libraries ranging from **smart pointers **to **regular expressions** to **a portable threading library**. Boost currently supports 35 libraries, all of which have been thoroughly reviewed by community members. These libraries can be freely used, and many of them are being used in commercial applications.
+
+Boost is one of the strongest C++ communities. Among the 2,000 members are many of the __world's top C++ programmers__. Members stay involved because they like working with some of the best minds in programming. They also know their efforts are bound to have an impact on the C++ community, since much of what you see in Boost is a strong candidate for inclusion in the next C++ Standard.
+
+The best way to get acquainted with Boost is **to tour the Boost libraries**. In this article, I'll introduce you to the **Boost smart pointer** library smart_ptr. smart_ptr is a good example of the innovation and sound design you'll find in Boost. I encourage you to visit the Boost website (www.boost.org) for more on the other 34 libraries in the Boost collection.
+
+===== Smart Pointers =====
+
+One of the smaller (size-wise) Boost libraries is smart_ptr. smart_ptr is one of the libraries that I think is going to end up in the C++ Standard. This article discusses the Boost smart_ptr library. But first, I'll begin with a brief introduction to smart pointers.
+
+===== 30-Second Introduction to Smart Pointers =====
+
+Smart pointers are __classes __that store pointers to dynamically allocated __(heap) objects__. They behave much like built-in C++ pointers except that they __automatically delete the object__ pointed to at the appropriate time. Smart pointers are particularly useful in the face of exceptions as they ensure proper destruction of dynamically allocated objects. They can also be used to__ keep track__ of dynamically allocated objects shared by multiple owners.
+
+Actually, smart pointers can do more, such as __handle thread safety__, provide copy-on-write, ensure protocols, and provide remote communication services. There are ways to create generic smart pointers for these ESPs (Extremely Smart Pointers), but those won't be covered here. (See [1] for in-depth coverage of this topic. By the way, Alexandrescu is currently considering submitting his C++ library Loki to Boost.)
+
+Most uses of smart pointers are __for lifetime control__, period. They implement **operator-> and operator*** to yield** the raw pointer**, allowing the smart pointer to look like an ordinary pointer.
+
+One such class comes with the standard library:** std::auto_ptr**. It is designed to handle ownership of a resource, but lacks support for **reference counting** and **arrays**. Also, std::auto_ptr transfers ownership when it is copied. In many cases, you need more and/or different functionality. Enter the smart_ptr classes.
+
+===== smart_ptr Classes =====
+
+The smart pointers in Boost are:
+
+* **scoped_ptr**, which handles** sole ownership** of single objects; unlike std::auto_ptr, scoped_ptr __cannot be copied__
+* scoped_array, which is similar to scoped_ptr, but handles arrays
+* shared_ptr, which allows object ownership to __be shared__
+* shared_array, which allows sharing of ownership for arrays
+
+===== • scoped_ptr =====
+
+The scoped_ptr smart pointer differs from std::auto_ptr in that it__ doesn't transfer ownership__. In fact, it explicitly **forbids** any attempt to do so! This is important for any scenario where you need to be sure that there is only ever one owner to a pointer. Without scoped_ptr, you would probably be inclined to use std::auto_ptr, but take a look at the following code:
+
+auto_ptr<string> MyOwnString
+  (new string("This is mine to keep!"));
+auto_ptr<string> NoItsMine(MyOwnString);
+ 
+cout << *MyOwnString << endl; // Boom
+
+This code will __obviously fail__, since ownership of the string has been transferred to NoItsMine. This is not a design flaw in std::auto_ptr — it is a feature. However, when you need MyOwnString to be just that, you'll want to use scoped_ptr:
+
+scoped_ptr<string> MyOwnString
+  (new string("This is mine to keep for real!"));
+// __Compiler error__ - there is no copy constructor.
+scoped_ptr<string> TryingToTakeItAnyway
+  (MyOwnString);
+
+The scoped_ptr accomplishes this behavior by **inheriting **from__ boost::noncopyable__ (found in the library **Boost.utility**). The non-copyable class declares the copy constructor and the assignment operator as__ private__.
+
+===== • scoped_array =====
+
+scoped_array is obviously the equivalent of scoped_ptr, but __for arrays.__ You'll get no help from the standard library here — unless of course you're using std::vector, which is the right way to go in most cases.
+
+typedef __tuples::tuple<string, int>__ ArrayTuple;
+ 
+scoped_array<ArrayTuple> MyArray(new ArrayTuple[10]);
+tuples::get<0>(MyArray[5]) =
+  "The library Tuples is also part of Boost";
+
+Tuples are collections of elements — for example **pairs, triples, and quadruples**. A typical use of tuples is__ returning multiple values from a function__. The __Boost Tuple Library __can be thought of as an extended generalization of the **standard library's pair**, and it currently works with up to 10 tuple elements. It supports tuple streaming, comparison, assignment, unpacking, and more. For more information about the Boost Tuple Library, see [3].
+
+As the scoped_array goes out of scope, delete[] will be properly called. This eliminates a common mistake, namely invoking the wrong operator delete.
+
+===== • shared_ptr =====
+
+Here's an offering that you won't find in the standard library — __a reference-counted smart pointer.__ Most of you have rolled your own smart pointers, and there is plenty of literature regarding the issues involved in reference counting. One of the most important details is how the reference count is implemented — __intrusive__, which means that you add support to the classes being reference counted, or __non-intrusive__, which means you don't. __The Boost shared_ptr is non-intrusive__, and the implementation uses a reference counter allocated from the **heap**. There has been much discussion about providing parameterized strategies to best suit any given situation, but in the end it was decided against to focus on usability. Don't expect the discussions to go away though.
+
+The usage of shared_ptr does what you'd expect: it takes responsibility of deleting the pointee when **there are no more users of the instance**, and it shares its pointee freely.
+
+void PrintIfString(const __any__& Any) {
+  if (const shared_ptr<string>__* __s =
+    __any_cast__<shared_ptr<string> >(__&Any__)) {
+      cout << **s << endl;
+    }
+}
+ 
+int main(int argc, char* argv[])
+{
+  std::vector<__boost::any__> Stuff;
+ 
+  shared_ptr<string> SharedString1
+    (new string("Share me. By the way,
+     Boost.any is another useful Boost
+     library"));
+ 
+  shared_ptr<string> SharedString2
+    (SharedString1);
+  shared_ptr<int> SharedInt1
+    (new int(42));
+  shared_ptr<int> SharedInt2
+    (SharedInt1);
+ 
+  Stuff.push_back(SharedString1);
+  Stuff.push_back(SharedString2);
+  Stuff.push_back(SharedInt1);
+  Stuff.push_back(SharedInt2);
+ 
+  // Print the strings
+  __for_each__(Stuff.begin(), Stuff.end(),
+    PrintIfString);
+ 
+  **Stuff.clear();**
+ 
+  // The pointees of the shared_ptr's
+  // will be released on leaving scope
+  return 0;
+}
+
+The __any library __offers a way to store just about anything [2] [4]. The requirements on contained types are that they are __CopyConstructible__, the destructor must not throw, and they should typically be __Assignable__. How do we store and pass "anything"? Indiscriminate types (read void*) can refer to just about anything, but that means throwing type safety (and knowledge) out the door. Using any, **type safety is preserved**. All types satisfying the requirements for any can be assigned, but** extraction demands knowing the exact type**. any_cast is the key for unlocking the value held by any. __any_cast works like dynamic_cast__ — casts to pointer types succeed or fail __by returning a null pointer__ whereas casts to reference types throw an exception (bad_any_cast) on failure. 
+
+* ===== shared_array =====
+
+
+Again, shared_array is the equivalent of shared_ptr, but it is used with arrays.
+	
+shared_array<Base> MyStrings( new Base[20] );
+
+
+===== Diving into the shared_ptr Implementation =====
+
+Creating a simple smart pointer is fairly easy. Creating a smart pointer that will work with most compilers is more difficult. Creating a smart pointer with exception safety in mind is a lot more difficult.** Boost::shared_ptr** does it all, and here's how. (Note: includes, broken compiler fixes, and parts of the implementation are omitted, but you'll find them in Boost.smart_ptr).
+
+First, the class definition: obviously, smart pointers are (almost always) templates.
+	
+template<typename T> class shared_ptr {
+
+The public interface:
+	
+explicit shared_ptr(T* p =0) : px(p) {
+  // fix: prevent leak if new throws
+  try { pn = new long(1); } 
+  catch (...) { checked_delete(p); throw; }
+}
+
+Now, in the constructor there are two things that are easily forgotten. The constructor is explicit, just like most constructors that can take a single argument. The other important thing to note is that the heap allocation of the reference counter is protected by a try-catch block. Without it, you would have a flawed smart pointer that wouldn't do its only job if the reference counter can't be allocated.
+
+	
+~shared_ptr() { dispose(); }
+
+The destructor has another important task: if the reference count goes down to zero, it should safely delete the pointee. The destructor delegates this task to another method: dispose.
+
+	
+void dispose() { if (—*pn == 0)
+{ checked_delete(px); delete pn; } }
+
+As you can see, the reference count (pn) is decremented. If it comes down to zero, checked_delete is called on the pointee (px), and then the reference count (pn) is also deleted.
+
+So, what does checked_delete do? This handy function (which you'll find in Boost.utility) makes sure that the pointer represents a complete type. Do you have that in your own smart pointer classes?
+
+Now, here's the first assignment operator:
+
+template<typename Y> shared_ptr& operator=
+  (const shared_ptr<Y>& r) {
+  share(r.px,r.pn);
+  return *this;
+}
+
+This is a member template, and if it had not been, there are two scenarios:
+
+    If there is no parameterized copy constructor, assignment of the type Base = Derived won't work.
+    If there is a parameterized copy constructor, assignments will work, but it involves creating an unnecessary temporary smart_ptr.
+
+Again, this shows you a very good reason why you shouldn't roll your own smart pointers — these are not obvious issues.
+
+The actual work of this assignment operator is done by share:
+	
+void share(T* rpx, long* rpn) {
+  if (pn != rpn) { // Q: why not px != rpx?
+                   // A: fails when both == 0
+    ++*rpn; // done before dispose() in case
+            // rpn transitively dependent on
+            // *this (bug reported by Ken Johnson)
+    dispose();
+    px = rpx;
+    pn = rpn;
+  }
+}
+
+Note that the comparison for self assignment (or rather self sharing) is done by comparing the reference counters, not the pointers. Why? They both can be zero, but not necessarily the same.
+
+template<typename Y> shared_ptr
+  (const shared_ptr<Y>& r) : px(r.px) {  // never throws
+    ++*(pn = r.pn);
+  }
+
+This version is a templated copy constructor. See above for a good reason why.
+
+The assignment operator and copy constructor also have non-templated versions:
+
+	
+shared_ptr(const shared_ptr& r) :
+// never throws
+  px(r.px) { ++*(pn = r.pn); }
+shared_ptr& operator=
+  (const shared_ptr& r) {
+  share(r.px,r.pn);
+  return *this;
+}
+
+The reset function is true to its name by resetting the pointee. Very handy if you need to destroy a pointee before leaving scope, or simply to invalidate some cached values.
+
+	
+__void reset__(T* p=0) {
+  // fix: self-assignment safe
+  if ( px == p ) return; 
+  if (—*pn == 0)
+  { checked_delete(px); }
+  else { // allocate new reference
+         // counter
+    // fix: prevent leak if new throws
+    try { pn = new long; } 
+    catch (...) {
+      // undo effect of —*pn above to
+      // meet effects guarantee
+      ++*pn; 
+      checked_delete(p);
+      throw;
+    } // catch
+  } // allocate new reference counter
+  *pn = 1;
+  px = p;
+} // reset
+
+Again, note the care that has been taken to avoid potential leaks and to maintain exception safety.
+
+Then you have the operators that enable the "smart" of the smart pointer:
+
+
+// never throws
+__T& operator*() __const   { return *px; }
+// never throws
+__T* operator->()__ const  { return px; }
+// never throws
+__T* get() __const         { return px; } 
+
+Just a note: there are smart pointers that implement a cast operator to T*. This is not a good idea, and more often than not, you'll burn your fingers. The inconvenience of having to write get disables the compiler from playing games with your sanity.
+
+I think it was Andrei Alexandrescu who said "If your smart pointer behaves exactly like dumb pointers, they are dumb pointers." True enough.
+
+In closing, here are a couple of convenient functions.
+
+long use_count() const 
+{ return *pn; }  // never throws
+bool unique() const    
+{ return *pn == 1; }  // never throws
+
+The names are self-explanatory, right?
+
+There is a lot more to mention about Boost.smart_ptr (such as specializations for std::swap and std::less, members for compatibility and convenience together with std::auto_ptr, etc.), but I'm running out of space. See smart_ptr.hpp in the Boost distribution (<www.boost.org>) for the gory details. Even without those extras, isn't this indeed a very smart pointer?
+
+===== Conclusion =====
+
+This has been a short introduction to the world of Boost. Anyone is welcome to join, and frankly, I think that most C++ programmers have very good reasons to do so. I'd like to thank Beman Dawes, David Abrahams, and Jens Maurer for their help in answering questions and sharing their opinions (see sidebar, "Answers from the Original Boosters") on the next page.
+
+See you at Boost!
+
+Notes and References
+
+[1] Andrei Alexandrescu. Modern C++ Design (Addison-Wesley, 2001).
+
+[2] Boost, www.boost.org.
+
+[3] Jaako Jarvi. Tuple Types and Multiple Return Values, C/C++ Users Journal, August 2001.
+
+[4] Jim Hyslop and Herb Sutter.I'd Hold Anything for You,C/C++ Users Journal C++ Experts Forum, December 2001.
+
+[5] Boost mailing list, http://groups.yahoo.com/group/Boost.
+
+[6] Boost-Users mailing list, http://groups.yahoo.com/group/Boost-Users
+
+[7] C++ Standard, International Standard ISO/IEC 14882.
+
+
+The three moderators of the Boost mailing list are Beman Dawes, Dave Abrahams, and Jens Maurer. (If you're not familiar with these names, see their biographies on www.boost.org). I interviewed Beman, Dave, and Jens on their views of Boost. Following is a summarized version of what they had to say:
+
+Why do you think Boost is important?
+
+Boost is one of the only communities working on the process and practice of library design. There are lots of libraries available elsewhere whose design pre-dates the ISO C++ Standard. These libraries often fail to exploit the potential of compile-time evaluation (i.e., templates) and thus miss type-checking and optimization opportunities. The license requirements allow the use of Boost libraries in commercial and non-commercial projects free of charge, thereby helping them to produce better programs.
+
+In today's professional software development world, it can be hard to make the case for long-term investment in reusable components. Developers are (often rightly) expected to do the simplest thing that could possibly work, under the assumption that the generalization won't be needed. As the problems they need to solve become more complex, however, they need library components that can help them keep their solutions simple. The C++ Standard library goes some distance towards filling that role, but programmers will continue to need more than it provides. What should be the design, documentation, and coding practices for the libraries that programmers need? Boost's emergent collaborative process provides one answer.
+
+What will happen to the libraries when (if) they become a part of Standard C++? Will they still be available in Boost? Will compiler vendors be able to use the implementation of Boost libraries in their packages?
+
+It is likely that the libraries that become a part of Standard C++ will still be available in Boost for quite some time after the release of the respective standard. Experience with C99 and C++98 shows that compiler vendors require some time to catch up with the latest standard. Compiler vendors are certainly allowed to use the Boost-provided implementation of the specified library interfaces, by virtue of Boost's license requirements. However, some Boost libraries could benefit from compiler support or manual adaptation to the target platform.
+
+Why should C++ users (rather than those that submit libraries) join Boost?
+
+A new mailing list called boost-users@yahoogroups.com has been set up, specifically targeted at Boost users. However, Boost users are always welcome to join the main mailing list as well. Since Boost provides C++ libraries, Boost users are C++ programmers. I believe all C++ programmers can learn a lot from following discussions on the Boost mailing list. It's also a chance to see how world-class developers approach and solve problems.
+
+If companies were to specialize in supporting the Boost libraries, would that be a problem?
+
+Not at all, that would be a welcome step. It would be even better if such companies would contribute any bug fixes or changes they make back to the community.
+
+David adds: I'd like to start such a company myself.
+
+Does Boost aim to be widely used by developers before libraries have been included in the Standard, or should it be regarded as research work?
+
+Boost is absolutely not to be regarded as research work, though many of the techniques are cutting-edge. During the formal review process, membership relentlessly pursues issues of practical importance to real-world software. After all, experience can only be gained by using it, not by waiting until the paperwork is done.

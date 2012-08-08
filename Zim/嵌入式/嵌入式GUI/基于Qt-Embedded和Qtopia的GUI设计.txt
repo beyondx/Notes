@@ -1,0 +1,206 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-06T12:49:09+08:00
+
+====== 基于Qt-Embedded和Qtopia的GUI设计 ======
+Created Tuesday 06 March 2012
+http://www.unixreference.net/articles/linux/embedded/gui/2007/0302/617.html
+
+===== 1 引言 =====
+
+随着当前各种手持设备、无线设备及信息家电等嵌入式产品的迅猛发展，相应的**嵌入式软硬件设计**技术也在发生深刻的变化。如今，越来越多的嵌入式终端需要一个__图形化的人机接口界面__（GUI），良好的人机接口界面是嵌入式系统设计的一个关键技术，能够极大地提高人机交互的效率。本文详细阐述了在自行开发的嵌入式主板上实现某平台的图形显示终端过程。
+
+===== 2 系统平台介绍 =====
+
+根据系统设计需求，本文目的是实现一个__具有图形接口界面的嵌入式显示终端__，该系统使用嵌入式系统设计技术。硬件上，使用自行开发的基于Samsung S3C2440A CPU的目标板，该CPU使用**arm920T**内核，其主频可达400Mhz；在软件上，选择嵌入式linux为操作系统，因为它源码开放，而且稳定性与安全性较高。
+
+整个系统软件由__引导装载程序__(uboot)、 __设备驱动__（包括帧缓存fb）、嵌入式__Linux内核__、__文件系统__(yaffs)、基于QT/Embedded和Qtopia的__用户图形界面__以及应用程序组成，系统平台结构如图(1)所示。
+{{./1.png}}
+图(1) 系统平台软件结构图
+
+===== 3 Qt/Embedded和Qtopia 介绍及其开发环境的建立 =====
+目前嵌入式Linux的主流GUI系统主要有__MiniGUI__、Microwindows、OpenGUI、__Qt/Embedded__，这些GUI在接口定义、体系结构、功能特性存在很大差别，采取的技术路线也有所不同[1]。MiniGUI是建立在比较成熟的图形引擎之上，开发的**重点在于窗口系统**，其小巧精致并且尽量__与Win32兼容__。MicroWindows目前开发的重点在底层的图形引擎，窗口系统和图形接口方面功能比较欠缺，与Win32和X Windows窗口系统保持兼容，提供了相对完善的图形功能。OpenGUI基于一个用汇编实现的x86图形内核，提供了一个高层的C/C++图形/窗口接口，它的资源消耗小，可移植性差，不支持多进程。
+
+Qt/Embedded是一个__多平台的C++图形用户界面应用程序框架__，其对象容易扩展，可移植性好，支持多个GUI平台的交互开发[2,3]。现在，Qt/Embedded被广泛地应用于各种嵌入式产品和设备中，从消费电器（如智能手机、机顶盒）到工业控制设备（如医学成像设备、移动信息系统等）。因此本文选择Qt/Embedded为本系统的GUI。
+
+(1) Qt/Embedded和Qtopia体系结构
+
+Qt/Embedded是Trolltech公司开发的__面向嵌入式系统的Qt版本__，与X11版本的Qt在最大程度上接口兼容，采用__帧缓存（framebuffer）作为底层图形接口__。Qt/Embedded类库完全采用C++封装，并且有着丰富的控件资源以及较好的可移植性，大范围的Qt/Embedded API可用于多种开发项目。Qt/Embedded的实现结构如图(2)所示：
+{{./2.png}}
+图(2) Qt/Embedded实现结构
+
+Qt/Embedded的底层图形引擎基于framebuffer。__ framebuffer是一种驱动程序接口，它将显示设备抽象为帧缓冲区__[4]。该驱动程序的设备文件一般是**/dev/fb0、/dev/fb**1等。对用户而言，它和/dev下的其他设备没有什么区别，用户可以把framebuffer看成**一块内存**，既可以从这块内存中读取数据，也可以向其中写入数据，而写操作立即反应在屏幕上。为运行Qt/Embedded，__嵌入式Linux内核要支持framebuffer__。
+
+**Qt/Embedded是Qt的面向嵌入式应用的简化版本**，它包括一组完备的GUI类、操作系统封装、数据结构类、功能类和组合类。大部分Qt的应用程序可以经过简单的编译与重设窗口大小移植到Qt/Embedded。
+
+**Qtopia是基于QT/Embedded开发的一个嵌入式的**__窗口系统和应用程序集__，如地址本、图像浏览、Media播放器等，还包括娱乐和配置工具，广泛用于PDA等掌上设备。Qtopia平台由Qtopia 库(Qt/E,libqpe,libqtopia1,qtopiapim)和Qtopia server/laucher组成。**Qtopia server/laucher**是控制窗口系统、进程间通信、发起所有应用和其他核心任务的主要服务程序。
+
+(2) Qt/Embedded和Qtopia的交叉编译与运行
+
+整个GUI系统的构建需要对Qt/Embedded、Qtopia依次分别编链，然后有机地整合在一起。__Qt/Embedded为Qtopia提供了底层支持__，GUI系统的图形库窗口组件都由Qt/Embedded实现。
+
+在构建GUI时用于Qt开发的典型工具如下：
+
+* tmake：跨平台的Makefile生成器。
+* __moc__：用于Qt C++扩展的metra-object编译器。
+* __uic__：从XML文件生成代码的用户界面编译器。
+* designer：用于设计窗口组建的应用程序。
+
+**Qtopia的开发工具包SDK**（Software Development Kit）是Qtopia开发环境的核心部分，编译后得到创建应用程序所需的软件包如下：
+
+* __qvfb__(virtual frame buffer)：X窗口用来**运行和测试**Qtopia应用程序的系统程序。
+* qpe(Qtopia executable)：用来处理所有的用户程序界面[2,5]。
+
+由于我们使用的是ARM CPU，因此需要对Qt/Embedded和Qtopia开发工具包进行__交叉编译__。本文使用arm-linux-gcc-3.3.2来建立交叉编译环境。为了对Qt/Embedded和Qtopia进行交叉编译，需要使用如下的**源码树**：
+
+* tmake-1.13.tar.gz：用来得到tmake工具。
+* qt-embedded-2.3.7.tar.gz：Qt的嵌入式版本。
+* qt-x11-2.3.2.tar.gz：Qt的X11版本。
+* qtopia-free-1.7.0.tar.gz：官方网站提供的Qtopia免费版。
+* e2fsprogs-1.38.tar.gz：为了得到qtopia所需的uuid.h和libuuid.so。
+
+假设将上述源码树放在同一目录下，例如：/root/qtopia，并依次解压，然后进行编译，步骤如下：
+
+①设定tmake的环境变量如下：
+
+ export T**MAKEPATH**=/root/qtopia/tmake-1.13/lib/qws/linux-arm-g++
+
+此处指定了tmake在生成Makefile时**使用arm交叉编译**。
+
+②编译qt-x11，其目的是生成__moc、uic、qvfb、designer__，并将它们放在qt-embedded\bin目录下。
+③配置qt-embedded编译选项，命令为：
+
+    ./configure -platform linux-arm-g++  -qconfig qpe -qvfb -depths 4,8,16,32.
+
+此处-platform linux-arm-g++表示在arm平台上进行交叉编译；-qconfig local表示使用src/tools/qconfig-local.h；-depths 4,8,16,32表示需要qt支持的显示**颜色深度**。
+
+④使用make命令编译qt-embedded，用来生成__Qt库(libqte.so)__。
+⑤配置并交叉编译Qtopia，生成**应用程序以及桌面环境**。
+
+假设编译完成后将qt和qtopia相关的库及所需文件分别存放于目标板文件系统的/opt/qt和/opt/qtopia下，运行Qtopia的方法是：
+
+①设置QTDIR、QPEDIR和键盘鼠标等环境变量
+
+    export QTDIR=/opt/qt
+    export QPEDIR=/opt/qtopia
+    export QWS___KEYBOARD__=USB:/dev/input/event1
+    export QWS___MOUSE_PROTO__=USB:/dev/input/mouse0
+
+②开启qpe，也就是在Linux图形模式下执行/opt/qtopia/bin/qpe &
+
+这样就可以__在显示终端上看到qtopia桌面环境__了。
+
+===== 4 Qt/Embedded和Qtopia下应用程序的实现 =====
+
+(1) Qt/Embedded应用程序的实现
+
+Qt是一个创建GUI程序的__C++类库__，编写Qt应用程序的主要工作是__基于已有的Qt类编写用户类__。Qt应用程序的设计使用**基于工程**的方法，并通过__.pro文件__进行工程管理。实现应用程序的第一步是编写.pro文件，然后使用tmake根据该文件生成Makefile，最后进行源代码的编写。tmake的语法如下：
+
+    tmake *.pro –o Makefile
+
+.pro的具体内容可以参考/qt/examples/下其他应用程序的.pro文件。
+
+在本项目的研究中，需要涉及基本的窗口构建、应用程序的调用、图像背景的显示以及中文显示，下面对此进行详细阐述。
+
+==== 构建主窗口 ====
+
+Qt拥有众多的窗口部件，如按钮、菜单、滚动条和应用程序窗口等，它们组合起来可以创建各种用户界面。__QWidget__ 是所有用户界面对象的基类，窗口部件是QWidget或其子类的实例。
+
+创建主窗口先要在main.cpp函数中创建__QApplication__类型的对象。QApplication类管理图形用户界面应用程序的__控制流和主要设置__，它包含主事件循环，在其中来自窗口系统和其它资源的所有事件被处理和调度，它也处理应用程序的**初始化和结束**，并提供对话管理。对于任何一个使用Qt图形用户界面应用程序，都正好存在一个QApplication对象。然后定义主窗口变量，并通过QApplication类型的函数调用主窗口变量来启动主窗口。
+
+创建主窗口部件最常用的方法是__基于QWidget或QDialog类__创建一个用户类。QDialog类是**对话框窗口**的基类，主要用于短期任务以及和用户进行简要通讯的顶级窗口。在本程序中使用QWidget类创建用户类，并使用户类通过公有继承派生于Qwidget类。
+
+在构建窗口时需要注意用户界面的**风格和布局**。Qt提供了Windows、WindowsXP、Motif、MotifPlus、CDE、Platinum、SGI和Mac的__内置风格__。自定义风格可以通过继承QStyle、QCommonStyle或其他QCommenStyle类来完成。应用程序的风格可以如下设置：
+
+    QApplication::setStyle（new MyCustomStyle）
+
+在布局上Qt提供了__布局管理器__来组织父部件区域中的子部件，Qt内建的布局管理器有QHBoxLayout，QVBoxLayout和QGridLayout，而且布局也可以嵌套在任意层。例如使用QHBoxLayout（按行放置部件）的部件管理器为例在窗口水平放置两个按钮B1和B2的代码如下：
+
+    QHBoxLayout *hbox = new QHBoxLayout(this);
+    Hbox->addWidget(B1);
+    Hbox->addWidget(B2);
+
+==== 创建按钮实现对应用程序的调用 ====
+
+Qt部件与用户的交互方式不同于其他的GUI工具包，其他的GUI工具包使用**回调函数**创建用户交互，但是__Qt提供了信号/槽__(signal/slots)[5]__通信机制__描述对象间的无缝通讯。槽(slot)是标准的成员函数，它能够连接到信号，每当槽所连接的信号被发射时，槽（函数）就被执行。信号(signal)是一种特殊类型的函数,都是**返回void型**，它们被定义为当某个__事件发生时__就被发射，之后执行所有被连接的槽。当定义信号时必须使用QT的宏SIGNAL()，定义槽时必须使用宏SLOT()。
+
+通过调用**QObject对象的connect**函数可以将某个对象的信号与另一个对象的槽相关联，这样当发射对象发射信号时，接收对象的槽将被调用。该函数定义如下：
+
+    bool QObject::connect(const QObject *sender,const char *signal,const QObject *receiver, const char *member)
+
+与这个函数对应的disconnect函数，可以将信号和槽断开连接。
+
+本文使用了QT库提供的**按钮clicked()**信号，自定义了槽函数run()来实现对应用程序的调用，并且定义了槽函数mycall()调用已经使用了特定参数的run()函数。
+
+例如当一个按钮B1被点击时，它就发送“clicked”信号，通过connect()函数将信号与槽“mycall”连接起来，调用/opt/qt/examples/clock/下的应用程序“clock”的代码如下：
+
+    void MyMainWindow::mycall()
+    {
+      MyMainWindow::run(“(cd /opt/qt/examples/clock; exec ./clock;)”);
+    }
+
+    connect(B1,SIGNAL(clicked()),this,SLOT(mycall()));
+
+==== 图像背景的显示 ====
+
+为了在Qt中**装载和显示**所支持的图像格式，需要创建一个__QPixmap对象__。QPixmap本质上是一个“**屏幕外的部件**（off-screen）”，图像可以先复制到一个QPixmap对象上，然后传送到QWidget。
+
+QWidget部件使用如下的成员函数来为窗口添加图像背景：
+
+    public Members
+    const QPixmap* backgroundPixmap () const
+    virtual void setBackgroundPixmap ( const QPixmap & ) 
+
+例如有一幅名为flower.png的图片,将其设为背景的代码如下:
+
+    QPixmap picture(“flower.png”)
+    SetbackgroundPixmap(picture)
+
+===== 中文显示 =====
+
+Qt的中文显示是Qt国际化的一部分，“国际化”简称为i18n，用来提供一个架构，让同样的代码可以适用于各种语种习惯和编码系统，程序设计人员只要利用这个架构的机制、准则编写应用程序，就可以在不新编译代码的情况下，支持各种语言。
+
+__Qt支持Unicode—国际标准字符集__，程序员可以在程序里自由的混用英语、汉语和其他Unicode所支持的语言。为Qt增加一种编码只需要增加该编码和Unicode的转化编码就可以了，Qt支持中文的GBK/Big5编码。
+
+Qt支持的字体常用的是__ttf和qpf__。qpf是Qt/Embedded专用的一种适合嵌入式应用的字体，它属于__位图字体__，不可以缩放，而ttf字体可以缩放。默认情况下Qt/Embedded在**lib/fonts**目录下提供了一种可以显示中文的字体库UniFont，但是该字体库中没有ttf的字体。为了使用ttf字体显示中文，本文采取如下的方法：拷贝一种支持unicode编码的ttf字体到lib/fonts目录下，例如，windows系统下的宋体simsun.ttf；同时还需要在此目录的fontdir脚本中添加下面一行：
+
+    simsun simsun.ttf FT n 50 0 su
+
+fontdir脚本用来向系统注册所支持的字体，它的每一行定义了一种字体的设置，其格式如下：
+
+    <字体名称><字体文件名><字体渲染类型><是否斜体><尺寸><字体标志>[尺寸列表]
+
+在程序设计中，首先指定编码方式以支持中文：
+
+    QTextCodec *code=QTextCodec::codecForName("GBK")
+
+接着为部件（例如Mywidget）执行 Unicode的转化编码：
+
+    QString uniStr=code -> toUnicode("要显示的中文字符")
+    Mywidget-> setFont(QFont("simsun",20,QFont::Bold))
+    Mywidget-> setText(uniStr)
+
+===== (2) 向Qtopia移植应用程序 =====
+Qtopia是一个基于QT/Embedded开发的一个嵌入式的桌__面环境和应用程序集__，可以方便地在Qtopia桌面环境中添加用户应用程序或者对桌面进行配置。为了添加用户应用程序，需要在Qtopia/apps/Application目录下建立一个**.desktop**的桌面文件，该文件指明了**桌面文件的图标以及应用程序的入口点**。应该注意的是为了让新的应用程序在Qtopia桌面环境中运行，应用程序必须使用QT提供的图形库进行编译。
+
+下面以移植嵌入式的web浏览器konqueror为例，说明添加新的应用程序的过程。
+
+(1)下载konqueror源代码，对其进行交叉编译。为了支持中文显示和flash，还需要进行必要的源代码修改，并且加入相应的插件。
+(2)将konqueror.png图标文件拷贝到在/opt/Qtopia/pic/下。
+(3)将konqueror可执行文件放于/opt/konqueror/下，然后在Qtopia/apps/Application目录下建立konqueror.desktop文件，具体内容可参考qtopia自带的.desktop文件。需要注意的是konqueror.desktop的Exec项应指明可执行文件的具体位置。例如：Exec=/opt/konqueror/bin/konqueror
+(4)导出konqueror的运行环境变量，就可以直接在桌面上点击其图标浏览网页了。
+
+===== 5 结束语 =====
+
+嵌入式产品的广泛应用带动了图形用户界面(GUI)的迅速发展，嵌入式系统需要一个高性能、高可靠的GUI的支持。基于Qt/Embedded的Qtopia桌面系统为系统用户提供了良好的使用和交互环境。本文系统介绍了基于Qt/Embedded开发应用程序的方法以及将现有的应用程序移植进Qtopia的具体过程，为类似的系统开发供了一个参考。
+
+　　参考文献
+
+　　[1] 丁丁，习勇，魏急波，三种主流嵌入式图形用户界面的移植及性能比较，《电子产品世界》，2004,9(5):73-74
+　　[2] QT 3.3白皮书，http://www.trolltech.com
+　　[3] 袁鹏飞，24小时学通qt编程，北京：人民邮电出版社，2000/11
+　　[4] 于明俭，陈向阳，方汉， LINUX程序设计权威指南，北京：机械工业出版社，2001/4
+　　[5] 张娟，张雪兰，基于嵌入式的GUI应用程序的实现，《计算机应用》，2003,23(4):115-117
+
+　　作者简介：王丽洁（1981-），女，硕士研究生，研究方向为嵌入式系统的开发与应用。
+　　作者联系方式：410073，湖南长沙国防科大四院2系，0731－4575752，13873163041，lilywang_04601@163.com

@@ -1,0 +1,8 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-06T20:10:54+08:00
+
+====== vmstat ======
+Created Tuesday 06 December 2011
+
+非常有用的性能监视工具

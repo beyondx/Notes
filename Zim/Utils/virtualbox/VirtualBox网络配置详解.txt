@@ -1,0 +1,190 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-27T10:57:26+08:00
+
+====== VirtualBox网络配置详解 ======
+Created Friday 27 May 2011
+http://www.linuxsir.org/bbs/showthread.php?t=293771
+标题: [原创]VirtualBox网络配置详解
+
+欢迎转载, 转载请注明作者, 谢谢
+
+下面简单介绍一下Test-bed Environment:
+
+Host : 偶的本本
+OS : Arch Linux (Kernel Version 2.6.20) 已安装uml_utilities(包含tunctl工具)和bridge-utils(包含brctl工具)两个包.
+Username : leemars
+LAN IP : 192.168.1.106/24
+Interface : ath0
+
+Guest : 偶的本本上的一个虚拟机
+OS : Win2003
+Host Interface : tap0
+
+Non-Host : 偶的台式机
+OS : WinXP
+LAN IP : 192.168.1.120/24
+
+Wireless Router:
+LAN IP : 192.168.1.1/24 Gateway
+WAN IP : 172.18.60.55/24 绑定MAC
+Router开启了DHCP
+
+Network Environment :
+Non-Host直接接在无线路由上, Host通过无线网卡与无线路由连接. 无线路由开启了DHCP功能.
+
+===================================
+
+最简单的方案 : NAT(by VirtualBox)
+
+Host :
+直接使用VirtualBox提供的NAT功能.
+
+Guest :
+网卡设置为使用DHCP.
+
+Guest -> WAN :
+由VirtualBox的NAT提供WAN的访问服务.
+
+Guest -> Host :
+需要注意的是, 如果直接访问Guest拿到的网关IP, 会发现这个IP似乎是Host. 不过事实上不能直接访问网关IP来访问Host. 因为这个IP是由VirtualBox负责的, 只实现了NAT的功能, 其他的一些功能并不能正常运行(如FTP). 如果要访问Host, 应该访问Host的真实IP.
+
+Host -> Guest :
+不可访问. 虽然VirtualBox的NAT功能中包括了Port Forwarding的功能, 但截至到1.3.6 Snapshot, 这个功能仍没有出现在GUI中. 不过在OSE Version中已经可以使用这个功能. 通过Port Forwarding可以实现部分的向内访问.
+
+VirtualBox NAT没有什么玩法了. 下面的方案都是使用VirtualBox的Host Interface功能.
+
+-----------------------------------------------------------------------------
+方案一 : NAT(by Linux) + Route
+
+Host :
+#echo 1 > /proc/sys/net/ipv4/ip_forward #打开转发功能
+#iptables -t nat -A POSTROUTING -j MASQUERADE #利用iptables完成NAT功能
+
+#chmod 0666 /dev/net/tun #设置访问权限
+#tunctl -t tap0 -u leemars #建立一个tap设备, 名字为tap0, 所有者为leemars
+#ifconfig tap0 up #激活tap0
+#ifconfig tap0 10.10.10.1 netmask 255.255.255.0 #为tap0指定IP和网段, 为10.10.10.1/24.
+
+Guest :
+网卡设置如下:
+IP : 10.10.10.10
+Netmask : 255.255.255.0
+Gateway : 10.10.10.1
+
+Guest -> WAN :
+由Linux的iptables完成NAT功能, 提供WAN的访问服务.
+
+Guest -> Host :
+10.10.10.1是真实的Host. Guest对Host的任何访问都可以通过访问10.10.10.1来完成.
+
+Host -> Guest :
+10.10.10.10是真实的Guest. Host对Guest的任何访问都可以通过访问10.10.10.10来完成.
+
+Non-Host -> Guest :
+因为Guest是在Host的NAT之后的一个私有子网中, 所以直接访问是不行的. 不过可以通过iptables来完成Port Forwarding, 实现部分的向内访问.
+
+-----------------------------------------------------------------------------
+
+方案二 : Transparent Bridge (Layer 2)
+
+在我的机器上测试下来的结果很遗憾, 无线网卡似乎不能配合Bridge工作. 建好Bridge之后, Guest只能访问Host, 连网关都访问不到. 所以我改用有线网卡来进行测试, 有线网卡为eth0, IP地址同ath0.
+
+Host :
+
+#chmod 0666 /dev/net/tun #设置访问权限
+#tunctl -t tap0 -u leemars #建立一个tap设备, 名字为tap0, 所有者为leemars
+
+#ifconfig eth0 0.0.0.0 promisc #使eth0进入promiscuous模式
+#ifconfig tap0 0.0.0.0 promisc #使tap0进入promiscuous模式
+#brctl addbr br0 #增加一个网桥
+#brctl addif br0 eth0 #将eth0加入网桥
+#ifconfig eth0 up #激活eth0
+#dhclient br0 #为br0设置IP地址
+#brctl addif br0 tap0 #将tap0加入网桥
+#ifconfig tap0 up #激活tap0
+
+Guest :
+网卡设置为DHCP. 或者在设置为Host的Subnet中的一个IP地址, 如下例:
+IP : 192.168.1.201
+Netmask : 255.255.255.0
+Gateway : 192.168.1.1
+
+Guest -> WAN :
+由网关提供WAN的访问服务.
+
+Guest -> Host :
+直接访问Host的IP地址即可.
+
+Host -> Guest :
+直接访问Guest的IP地址即可.
+
+Non-Host -> Guest :
+直接访问Guest的IP地址即可.
+(由于建立了eth0和tap0的Bridge, Non-Host的ARP包被eth0接收到后, 被Brideg转发至tap0上, 数据链路得以建立.)
+
+-----------------------------------------------------------------------------
+
+方案三 : Transparent IP (Layer 3) proxy ARP bridge (by parprouted)
+
+Host :
+#echo 1 > /proc/sys/net/ipv4/ip_forward #打开转发功能
+
+#chmod 0666 /dev/net/tun #设置访问权限
+#tunctl -t tap0 -u leemars #建立一个tap设备, 名字为tap0, 所有者为leemars
+#ip link set tap0 up #激活tap0
+#ip addr add 169.1.1.1/32 dev tap0 #为tap0任意指定一个私有地址
+#parprouted [-d] ath0 tap0 #启动parprouted监听ath0和tap0. -d参数为Debug模式
+
+Guest :
+网卡设置如下:
+IP : 192.168.1.201
+Netmask : 255.255.255.0
+Gateway : 192.168.1.1
+
+Guest -> WAN :
+由网关来提供WAN的访问服务.
+
+Guest -> Host :
+直接访问Host的IP地址即可.
+
+Host -> Guest :
+直接访问Guest的IP地址即可.
+
+Non-Host -> Guest :
+直接访问Guest的IP地址即可.
+
+Troubleshooting:
+这个parprouted软件有时会出现无法连通的情况. 这时可以尝试更换Guest的IP地址来解决问题. 这个貌似是parprouted软件的BUG.
+
+-----------------------------------------------------------------------------
+
+方案四 : ARP Proxy(by Linux) + Route
+
+Host :
+#echo 1 > /proc/sys/net/ipv4/ip_forward #打开转发功能
+
+#chmod 0666 /dev/net/tun #设置访问权限
+#tunctl -t tap0 -u leemars #建立一个tap设备, 名字为tap0, 所有者为leemars
+#ip link set tap0 up #激活tap0
+#route add -host 192.168.1.201 dev tap0 #增加一个路由, 将192.168.1.201定向到tap0
+#echo 1 > /proc/sys/net/ipv4/conf/ath0/proxy_arp #打开ath0上的ARP Proxy
+#echo 1 > /proc/sys/net/ipv4/conf/tap0/proxy_arp #打开tap0上的ARP Proxy
+
+Guest :
+网卡设置如下:
+IP : 192.168.1.201
+Netmask : 255.255.255.0
+Gateway : 192.168.1.1
+
+Guest -> WAN :
+由网关来提供WAN的访问服务.
+
+Guest -> Host :
+直接访问Host的IP地址即可.
+
+Host -> Guest :
+直接访问Guest的IP地址即可.
+
+Non-Host -> Guest :
+直接访问Guest的IP地址即可.

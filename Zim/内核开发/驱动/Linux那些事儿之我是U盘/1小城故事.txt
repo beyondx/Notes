@@ -1,0 +1,35 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-01T10:32:47+08:00
+
+====== 1小城故事 ======
+Created Sunday 01 July 2012
+
+这个故事中使用的是2.6.10的内核代码.Linux内核代码目录中, 所有去设备驱动程序有关的代码都在drivers/目录下面,在这个目录中我们用ls命令可以看到很多子目录.
+
+localhost:/usr/src/linux-2.6.10/drivers # ls
+Kconfig   atm        cdrom    eisa      ide       macintosh  message  net       parport  s390    tc         w1
+Makefile  base       char     fc4       ieee1394  mca        misc     nubus     pci      sbus    telephony  zorro
+acorn     block      cpufreq  firmware  input     md         mmc      oprofile  pcmcia   scsi    __usb__
+acpi      bluetooth  dio      i2c       isdn      media      mtd      parisc    pnp      serial  video
+
+其中usb目录包含了所有usb设备的驱动,而usb目录下面又有它自己的子目录,进去看一下,
+
+localhost:/usr/src/linux-2.6.10/drivers # cd usb/
+locahost:/usr/src/linux-2.6.10/drivers/usb # ls
+Kconfig  Makefile  README  atm  class  core  gadget  host  image  input  media  misc  net  serial  __storage__  usb-skeleton.c
+
+注意到__每一个__目录下面都有一个Kconfig文件和一个Makefile,这很重要.稍后会有介绍.
+
+而我们的故事其实是围绕着drivers/usb/storage这个目录来展开的.实际上这里边的代码清清楚楚地展示了我们日常频繁接触的U盘是如何工作的,是如何被驱动起来的.但是这个目录里边的冬冬并不是生活在世外桃源,他们总是和外面的世界有着千丝万缕的瓜葛.可以继续进来看一下,
+
+localhost:/usr/src/linux-2.6.10/drivers/usb # cd storage/
+localhost:/usr/src/linux-2.6.10/drivers/usb/storage # ls
+Kconfig    debug.c  freecom.c       isd200.c    protocol.c  sddr09.c  shuttle_usbat.c  unusual_devs.h
+Makefile   debug.h  freecom.h       isd200.h    protocol.h  sddr09.h  shuttle_usbat.h  usb.c
+datafab.c  dpcm.c   initializers.c  jumpshot.c  scsiglue.c  sddr55.c  transport.c      usb.h
+datafab.h  dpcm.h   initializers.h  jumpshot.h  scsiglue.h  sddr55.h  transport.h
+
+咋一看,着实吓了一跳,用`wc -l *`这个命令统计一下,12076行,晕死...
+
+但是,也许,生活中总是充满了跌宕起伏. 认真看了一下Makefile和Kconfig之后,心情明显好了许多.

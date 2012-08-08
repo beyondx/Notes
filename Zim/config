@@ -1,0 +1,14 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[remote "origin"]
+	fetch = +refs/heads/*:refs/remotes/origin/*
+	url = /media/backup/sync/Note.git
+[branch "master"]
+	remote = web
+	merge = refs/heads/master
+[remote "web"]
+	url = git@github.com:geekard/Note.git
+	fetch = +refs/heads/*:refs/remotes/web/*

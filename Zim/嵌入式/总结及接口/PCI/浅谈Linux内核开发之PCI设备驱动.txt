@@ -1,0 +1,251 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-01T19:26:21+08:00
+
+====== 浅谈Linux内核开发之PCI设备驱动 ======
+Created Sunday 01 July 2012
+
+赵 昊翔 (haoxiang@hotmail.com), 软件工程师, Cisco Systems
+简介： 本文介绍了 PCI 的基本概念，并从 Linux 内核的角度出发，介绍了 PCI 设备的初始化以及配置。
+发布日期： 2009 年 6 月 11 日
+级别： 初级
+
+===== PCI 介绍 =====
+随着计算机应用的不断更新和发展（比如百兆网卡、视屏流等），计算机内数据传输的带宽要求越来越高，传统内部总线带宽已经远远不能满足这些应用的需要，因此人们推出了 PCI 总线标准
+
+PCI 是 Peripheral Component Interconnect 的缩写，它因为高性能、低成本以及良好的扩展性而在计算机系统中被广泛使用。上至服务器，下至嵌入式设备都能找到它的身影。图 1 显示了一个标准 PCI 总线的组织结构图。
+{{./image001.jpg}}
+图 1. 标准 PCI 总线的组织结构图
+
+从图中我们可以看出 PCI 总线架构主要被分成三部分：
+
+* PCI 设备。符合 __PCI 总线标准__的设备就被称为 PCI 设备，PCI 总线架构中可以包含多个 PCI 设备。图中的 Audio、LAN 都是一个 PCI 设备。PCI 设备同时也分为主设备和目标设备两种，主设备是一次访问操作的发起者，而目标设备则是被访问者。
+* PCI 总线。PCI 总线在系统中可以有多条，类似于__树状结构__进行扩展，每条 PCI 总线都可以连接多个 PCI 设备/桥。上图中有两条 PCI 总线。
+* PCI 桥。当一条 PCI 总线的承载量不够时，可以用新的 PCI 总线进行扩展，而 PCI 桥则是连接 **PCI 总线之间**的纽带。图中的 PCI 桥有两个，一个桥用来连接处理器、内存以及 PCI 总线，而另外一条则用来连接另一条 PCI 总线。
+
+===== PCI 总线操作 =====
+
+PCI 总线是一种时分复用的双向应答总线， 传输发起方称为主设备， 接收方称为从设备。主设备用 FRAME 信号指示，从设备拉低它的 DEVSEL 线来表示响应传输请求。PCI 总线的数据传输__以帧为单位__，每次传输由一个地址周期（Address Phase）和多个数据周期（Data Phase）组成。AD0～AD31 首先给出本次传输的首地址，后面紧跟一个或多个 32 位（4 字节）的数据，多个数据的地址自动递增。在地址周期，C/BE0～C/BE3这四根线的不同组合指示出在 AD0～AD31 上将要进行何种类型的操作， 如 C/BE0～C/BE3=0110 表示存储器读(Memory Read)，C/BE0～C/BE3=0011 表示 I/O Write。在数据周期，C/BE0～C/BE3 对应 AD0～AD31 上四个字节的使能。IRDY 和 TRDY 分别表示主设备准备好和从设备准备好。在传输过程中，只有IRDY 和 TRDY 同时有效，传输才能继续；否则插入等待周期，用于在不同速度的设备之间协调工作。 
+
+PCI 总线操作表示主设备向目标设备所发起的操作请求，最多有16种类型。主要类型有：IO 方式读/写，Memory 方式读/写，Configuration 方式读/写等，它们是由在地址阶段C/BE[0-3]的不同组合来确定的：
+**C/BE#   Command**
+0000  Interrupt Acknowledge
+0001 Special Cycle
+0010 I**/O Read**
+0011 **I/O Write**
+0100 Reserved
+0101 Reserved
+0110 **Memory Read**
+0111 **Memory Write**
+1000 Reserved
+1001  Reserved
+1010 **Configuration Read** with **IDSEL**
+1011 **Configuration Write** with **IDSEL**
+1100 Memory Read Multiple
+1101 Dual Address Cycle
+1110 Memory Read Line
+1111 Memory Write And Invalidate
+
+地址阶段A0-A31所传的是PCI Memory或IO空间的地址，总线上的各PCI设备都会收到并解码这个地址，这个解码过程被称为**分布式地址解码，其实就是判断该地址是否在自己的BAR寄存器指定的地址空间中，**如果是则自己为接收方，然后将DEVSEL线拉底以告诉主设备这个地址的事务(Transaction)被某个设备响应。
+
+==== 总线配置事务 ====
+各PCI设备__配置空间__中BAR寄存器的值是在总线枚举和配置过程中通过__总线配置事务__(Configuration Transaction)进行设置的。由于设__备的配置空间没有被映射到Memory或IO空间__，因此对总线上各设备配置空间的访问就不能使用上面描述的方法。为了解决这个问题，PCI spec为各PCI设备引入了一个名为IESEL信号的引脚，一般将其与AD11-31中的一个相连(**之所以不使用低位，是因为低位用于指定选定设备的配置空间的偏移量**)。Controller或Bridger在访问或配置某个设备的配置空间时(事务类型为1010 或1011)，先将该设备所连的IDSEL引脚拉高，然后在地址线上传递要访问的配置空间的偏移地址。
+{{./image007.jpg}}
+在设备枚举配置阶段，Controller或Bridger会依次使每一个IDSEL信号有效，同时地址线中指定该设备配置空间中BAR1寄存器的偏移量，然后向该偏移量处写入 0FFFFFFFFH ，假设重新读这个寄存器获得的结果是 0FFFFFFC1H，二进制表示法中低位有 6 位为0（最低位的 1 也算为 0），表示板卡的寻址空间为 0～3F，共需要 40H 大小的 IO空间 ，③  假设可用的空闲地址为 0E480H，BIOS把这个值写回到基址寄存器中。 ④  现在从这个地址读出来的值为 0E481H 。
+
+from：http://www.edaboard.com/thread13227.html
+IDSel is the "chip select" for the configuration space accesses. As the configuration space has no Base Address Register that can be programmed (the card isn't configured yet so how would the BIOS address an unique card?) the IDSel is a per-device unique chip select. __Configuration space accesses don't do address decoding__, except for the lower 10 (or so) bits, to know which register in their configuration space you want to address.  地址线上出现的是要读取的设备(通过IDSEL信号选中)配置空间中的偏移量，而不是向正常情况下指定的地址。
+
+As the address lines during configuration cycles are only used from **bit zero to 10** (or so), it is customary to __hardwire each device's IDSEL to a unique bit__, starting from 16 upwards to 31.
+
+This way, __each PCI slot has its unique IDSel__, and addresses are automatically mapped. And you don't need extra address decoding chips.
+
+slot 0 has 1<<16 | addr => 0x00010xxx as configuration space
+slot 1 has 1<<17 | addr => 0x00020xxx as configuration space
+slot 2 has 1<<18 | addr => 0x00040xxx as configuration space
+
+You should use a 100 ohm resistor on the AD(16+slot)-to-IDSEL connection.
+
+------------------------------------------
+IDSEL信号的作用：IDSEL信号是在配置事务中作为目标的选中信号，对PCI从设备接口卡来说是输入信号，它的给出一般设计成与AD[31:11]中的对应位相连，地址直接选通。而DEVSEL#信号的作用也是目标设备的选中标志，当一个交易在接口上启动时，每个潜在的目标都要__将地址与自身的BAR相比较__，以确定自己是否就是当前要进行交易的目标，如果是，它就要是DEVSEL#有效以声明访问。我的问题是IDSEL和DEVSEL#的区别就是IDSEL是配置命令中的信号而DEVSEL#是非配置命令中的选中信号吗？使用两个选中信号目的是什么？在存储器**读写交易中IDSEL似乎没起到什么作用**，如果当前只有一个目标设备，可不可以将IDSEL信号设置为一直有效？
+
+下面引用由jingli888ca在 2005/07/21 10:21pm 发表的内容：
+
+DEVSEL is used in every transaction when the target claims the cycle address to it. It is like saying this cycle in mine, and nobody touches it!
+IDSEL is equivalent to **chip select** on the CPU side during __address phase of  CFG RD or CFG WR__ command.
+
+-----------------------------
+
+===== PCI 配制空间 =====
+对于软件开发者来说，该如何对 PCI 设备进行编程呢？PCI 总线标准中定义了一套__配置空间寄存器__用于读取或者设置 PCI 设备的信息。每个 PCI 设备/桥都有自己的配置空间寄存器。
+
+配置空间共有**256**字节，设备类型不同，其配置空间的布局也不尽相同。设备类型的区分可以通过配置空间内的 **Header Type** 寄存器（0Eh）进行，该寄存器值为 00h 表示当前设备是一个 PCI 设备，01h 表示当前设备是一个 PCI 桥。
+
+配置空间的前64字节是配置空间起始段，它对于每种类型的设备__都是相同__的。 显示了 PCI 设备的配置空间起始段。
+{{./image002.jpg}}
+图 2. PCI 设备的配置空间起始段
+
+图 3 显示了 PCI 桥的配置空间起始段。
+{{./image003.jpg}}
+图 3. PCI 桥的配置空间起始段
+
+配置空间寄存器有些是只读的，有些是可写的，下面介绍几个在编程时会用到的寄存器。
+
+* Device ID 和 Vendor ID 寄存器
+这两个寄存器分别存放了设备信息和厂商信息（值在 0x0000 和 0xFFFF 之间，但__不能__取 0xFFFF），因此软件开发者可以通过读取这两个寄存器的值，并与 0xFFFF 比较，从而判断当前设备是否有效。
+
+* Command 和 Status 寄存器
+Command 寄存器存放了设备的__配置信息__，比如是否允许 Memory/IO 方式的总线操作、是否为主设备等。Status 寄存器存放了设备的__状态信息__，比如中断状态、错误状态等。
+
+* Header Type 寄存器
+这个寄存器前面曾经提过，它定义了__设备类型__，比如 PCI 设备、PCI 桥等。
+
+* Base Address 寄存器
+
+这个寄存器有三个作用：
+		* 该寄存器存放了 Memory/IO 访问空间的大小，这个数据可以通过下面的方式读出：
+			* 往寄存器里写 0xFFFFFFFF；
+			* 读出寄存器的值，并取反；
+			* 将上一步的值加上1后就是该空间的大小。
+		* 该寄存器定义了这段地址空间的访问类型（Memory 方式还是 IO 方式）。
+		* 该寄存器存放了 Memory/IO 访问空间的__起始地址__(bridge**先读取**这个寄存器，取得其需要的大小和类型需求后，从可分配的空间中分配一部分给该设备使用，并将这部分空间的首地址写入到BAR寄存器中。具体的读取和写入过程可以参考上面介绍IDSEL信号时的描述。)。
+
+PCI 设备最多有6个 Base Address 寄存器，而 PCI 桥最多有2个 Base Address 寄存器。
+
+* Subordinate Bus Number，Secondary Bus Number 和 Primary Bus Number 寄存器
+这三个寄存器只在 **PCI 桥**配置空间中存在，因为 PCI 桥会连接两条 PCI 总线，上行的总线被称为 Primary Bus，下行的总线被称为 Secondary Bus，Primary Bus Number 和 Secondary Bus Number 寄存器分别存储了__上行和下行总线的编号__，而 Subordinate Bus Number 寄存器则是存储了当前桥所能直接或者间接访问到的__总线的最大编号__。
+
+===== PPC 对于 PCI 的支持 =====
+通常 PPC 会提供一个（或更多的）__PCI 控制器__来连接 PCI 总线，通过 PCI 控制器，CPU 可以发起 //Configuration 读写操作  //来访问所连接的所有 PCI 设备/桥的配置空间。每个 PCI 设备/桥都会用（__总线号，设备号，功能号__）这一组合来进行编号，因此在 PCI 控制器中输入设备对应的（总线号，设备号，功能号）就能寻址到具体的 PCI 设备/桥。以 PPC8548 为例，它提供了两个寄存器来实现 Configuration 操作(**所有**PCI控制器/总线/桥和设备共享。)，分别是 CFG_ADDR 和 CFG_DATA 寄存器，如果想对某个设备发起读/写操作，则首先将该设备的（总线号，设备号，功能号）写入 CFG_ADDR 中，这代表寻址一个具体的 PCI 设备，同时在 CFG_ADDR 中写入需要操作的配置空间寄存器的编号（偏移量），最后从 CFG_DATA 中读取/写入相应的数据即可。
+
+注意：总线号、设备号(不是设备中固化的device id 或vender id)和功能号是固定的，它们只与设备的总线位置和具体设备有关，因此在没有configure前，就可以通过这三个参数访问到具体设备的配置空间。通过向这两个寄存器中写入相应的值来访问对应设备的配置空间的方法__其实就是上面介绍的“总线配置事务”的执行过程__。
+
+===== Linux 内核对 PCI 的支持 =====
+Linux 内核（2.6 版本）在初始化之初就对所有 PCI 设备进行了**扫描并且配制**，具体操作分为下面几个步骤。
+
+=== • 编译时的 PCI 配制 ===
+如果想要 Linux 内核支持 PCI，首先需要对其配制文件进行相应的修改，在 config 文件中需要配置下面的宏参数。
+
+* Linux 提供了 PCI 配制全局控制宏参数 CONFIG_PCI，它控制着 PCI 控制器和设备是否能够被配制的流程，因此该宏值需要被设置成“Y”。
+* 对于某些处理器来说，比如 PPC85XX、PPC83XX 等，它们提供了两个或者更多的 PCI 控制器，因此在 config 文件中专门提供了诸如 CONFIG_MPC85xx_PCI2、CONFIG_MPC83xx_PCI2 等宏参数，它们控制着第二个（或更多的）PCI 控制器的配置流程，因此如果需要使用第二个（或更多的）PCI 控制器时，需要将相应的宏值设置成“Y”。
+
+在编译内核之前，如果在 config 文件中提供了以上宏参数的设置，则编译出来的内核映像提供了对于 PCI 支持的功能。
+
+==== • PCI 相关数据结构 ====
+
+Linux 提供了三类数据结构用以描述 PCI 控制器、PCI 设备以及 PCI 总线。
+
+=== PCI 控制器 ===
+
+PCI 控制器用 pci_controller 结构来描述，它有以下几个主要的属性：
+
+* index：该属性标志 PCI 控制器的编号。
+* next：该属性指向下一个 PCI 控制器，通过 next 属性，PCI 控制器可以形成一个**单向链表**。
+* first_busno：该属性标志了连接在该控制器上**第一条总线**的编号。
+* last_busno：该属性标志了连接在该控制器上**最后一条总线**的编号。
+* ops：该属性标志了__当前 PCI 控制器所对应的 PCI 配制空间__读写操作函数。
+* io_space：该属性标志了当前 PCI 控制器所支持的 __IO 地址空间__。
+* mem_space：该属性标志了当前 PCI 控制器所支持的 __Memory 地址区间__。
+* cfg_addr：该属性标志了当前 __PCI 控制器发起__ Configuration 访问方式时所需要写入的**地址空间**。
+* cfg_data：该属性标志了当前 PCI 控制器发起 Configuration 访问方式时所需要读写的**数据空间**。
+* bus：该属性标志了当前 PCI 控制器所连接的 __PCI 总线__，它对应的数据结构是 pci_bus。
+
+PCI 总线
+
+PCI 总线用 pci_bus 结构来描述，它有以下几个主要的属性：
+
+* parent：可通过该属性索引到__上层 PCI 总线__。
+* self：该属性标志了连接的__上行 PCI 桥__（对应的数据结构是 **pci_dev**）。
+* children：该属性标志了总线连接的**所有 PCI 子总线链表**。
+* devices：该属性标志了总线连接的**所有 PCI 设备链表**。
+* __ops__：该属性标志了总线上所有 PCI 设备的配制空间读写操作函数。
+* number：该属性标志了**当前 PCI 总线的编号**。
+* primary：该属性标志了 **PCI 上行总线编号**。
+* secondary：该属性标志了 **PCI 下行总线编号**。
+* subordinate：该属性标志了能够访问到的**最大总线编号**。
+* resource：该属性标志了 __Memory/IO 地址空间__。
+
+PCI 设备
+
+PCI 设备用 pci_dev 结构来描述，它有以下几个主要的属性：
+
+* global_list：Linux 定义了一个全局列表来索引所有的 PCI 设备，该属性标志了这个全局列表的首指针。
+* bus：该属性标志了**当前设备所在的 PCI 总线**（对应的数据结构是 pci_bus）。
+* devfn：该属性标志了__设备编号和功能编号(总线扫描时分配的，一般只与设备的位置有关)__。
+* vendor：该属性标志了供应商编号。
+* device：该属性标志了设备编号(vendor和device号是固化在PCI设备的配置空间中的)。
+* driver：该属性标志了设备对应的__驱动代码__（对应的数据结构是 __pci_driver__）。
+* irq：该属性标志了__中断号__。
+* resource：该属性标志了 __Memory/IO 地址区间（一个数组类型）__。
+
+===== 内核里的 PCI 数据结构图 =====
+当 Linux 内核在做 PCI 初始化工作时，它会根据图 4 建立一个由 pci_controller、pci_bus 和 pci_dev 三者组成的一个组织结构图。根据这个结构，软件开发者可以很方便的通过 PCI 控制器索引到每个 PCI 设备或者 PCI 总线。
+{{./image004.jpg}}
+图 4. 组织结构图
+
+===== PCI 控制器初始化(包括后文介绍的总线枚举和设备配置) =====
+当一个支持 PCI 的内核映像开始运行时，它会在系统初始化时对 PCI 进行配置。函数调用链如下所示（以 PPC85XX 为例）。
+{{./image005.jpg}}
+图 5. 函数调用链
+
+内核从 start_kernel() 函数处开始进行系统初始化，一直执行到 mpc85xx_setup_hose() 函数处便是配制 PCI 控制器以及连接在该控制器上所有设备的过程。
+
+所有这些函数的定义处都加上了 __init 的符号类型，由 __init 修饰的函数表明在链接最终的内核映像时，这些函数将被放在一个特殊的初始化代码段中（.init.text，可以在链接文件 vmlinux.lds.S 中找到相关的段描述），这个初始化代码段会随着内核初始化完成而被释放。
+
+在这一步骤中，内核会对它所支持的所有 **PCI 控制器**进行初始化工作，每个 PCI 控制器都对应一个 pci_controller 属性的变量，初始化工作会在这些变量中设置 Memory/IO 访问空间的起始地址以及结束地址、设置当前 PCI 控制器所连接的第一条和最后一条 PCI 总线编号等等。
+
+===== PCI 自动扫描 =====
+系统如何知道当前连接了多少 PCI 设备？有多少根 PCI 总线？每个 PCI 设备的访问空间如何配置？等等。这些都得靠 PCI 自动扫描来完成。PCI 自动扫描主要做下面的工作：
+
+* 扫描 PCI 总线，识别 PCI 总线上的所有设备。
+* 对于连接在 PCI 总线上的所有 PCI 桥进行**总线编号**。
+* 对于连接在 PCI 总线上的所有 PCI 设备和 PCI 桥进行 __Memory/IO 访问空间的配置__。
+
+这部分代码在 pciauto_bus_scan() 函数中（位于 arch/ppc/syslib/pci_auto.c 中）。
+
+==== • 识别 PCI 总线上的设备 ====
+PCI 总线扫描的原理是从总线 0 扫描到总线 255，对于每条总线，系统都会__扫描所有（总线号，设备号，功能号）__，通过 Configuration Transaction 方式读出每个设备的 Device ID 和 Vendor ID 寄存器，如果这两个寄存器的值是个**有效值（非 0xFFFF）**，则说明当前设备是个有效的 PCI 设备/桥，如果无效则说明号码对应的设备不存在或功能不支持。进而再读取该设备的 Header Type 寄存器，如果该寄存器为 1，则表示当前设备是 PCI 桥，否则是 PCI 设备。
+
+==== • 对所有 PCI 总线进行编号 ====
+PCI 桥如何知道它所连接的 PCI 总线情况呢？这就需要对 PCI 桥进行总线编号。前面介绍过 PCI 桥提供了 Primary Bus Number、Secondary Bus Number 和 Subordinate Bus Number 三个寄存器用于标志该桥所连接的 PCI 总线，下面通过一个示例来说明内核对于 PCI 总线是如何进行编号的。
+{{./image006.jpg}}
+图 6. 示例
+
+* 系统运行初始，Bus A 为 0，通过上面的 PCI 总线扫描得到连接在 Bus A 上的 PCI 桥（即图中的 Bridge 1）。
+* 下面开始设置 Bridge 1 的 Bus 寄存器。将 Primary Bus Number 寄存器设置成 Bus A 的编号，即 0。将 Secondary Bus Number 寄存器设置成 Bus B 的编号，它的值等于（Bus A + 1），也就是 1。由于**暂时**无法知道该桥所能访问的所有下行总线数目，Subordinate Bus Number 寄存器暂时设置成 0xFF。
+* 当扫描完所有 Bus A 上所有（设备号，功能号）后，开始扫描 Bus B，Bus B 的编号在扫描完 Bus A 后已经得到，为 1。Bus B 的扫描方法同步骤（1），先扫描出 Bus B 上的 PCI 桥（即图中的 Bridge 2），然后配置 Primary Bus Number 寄存器为 1，Secondary Bus Number 寄存器为 2，而 Subordinate Bus Number 寄存器依然为 0xFF。
+* Bus B 扫描完后得到 Bus C 的编号，为2。下面开始扫描 Bus C，因为 Bus C 上没有 PCI 桥，于是在扫描完其它（设备号，功能号）后，Bus C 的扫描结束。
+* 由于 Bridge 2 所能访问到的最大 Bus 编号是 2，因此重新设置 Bridge 2 的 Subordinate Bus Number 寄存器为 2。
+* 由于 Bridge 1 所能访问到的最大 Bus 编号也是 2，因此重新设置 Bridge 1 的 Subordinate Bus Number 寄存器为 2。
+* 总线编号结束。
+
+==== • 配置访问空间 ====
+当系统需要访问 PCI 设备时，它需要产生 __Configuration、Memory 或者 IO__ 的读写操作(Address Phase的C/BE[0-3]指定事务类型，地址线输出映射到某个PCI设备的Memory或IO地址，然后各PCI设备分布式解码这个事务地址，最后响应。)，对于 Memory/IO 的访问方式来说，它们需要定义一个地址范围，落在这个地址范围的操作会被认为是相应的 Memory/IO 的读写操作。
+
+通常 PCI 设备提供了最多6组 Base Address 寄存器，在 PCI 总线扫描时，每当扫描出一个可用的 PCI 设备后，会对该设备的 Base Address 寄存器进行 Memory/IO 访问空间的配置。而对于 PCI 桥来说，它只提供了2组 Base Address 寄存器，当 PCI 总线扫描出一个 PCI 桥后，也会对该桥的 Base Address 寄存器进行 Memory/IO 访问空间的配置。具体是那种类型，需要多大的空间是由设备的BAR中初始值指示的，具体的配置过程如下：
+
+①  BIOS 或内核向基址寄存器写入 0FFFFFFFFH 
+②  假设重新读这个寄存器获得的结果是 0FFFFFFC1H，二进制表示法中低位有 6 位为0（最低位的 1 也算为 0），表示设备的寻址空间为 0～3F，共需要 40H 大小的 IO空间 
+③  假设可用的空闲地址为 0E480H，BIOS或内核把这个值写回到基址寄存器中。 
+④  现在从这个地址读出来的值为 0E481H  
+
+需要注意的是，在构建系统之初，需要__明确规划当前系统的地址映射情况__，划分出特定的物理地址作为 PCI Memory 或者 PCI IO 空间，在给 PCI 设备/桥进行访问空间配置时，就是取事先约定的地址空间中的某段地址进行配置，所有设备/桥的访问地址不能冲突。定义系统的 Memory/IO 访问空间是在 mpc85xx_setup_hose() 函数中提供的（位于 arch/ppc/syslib/ppc85xx_setup.c 中）。
+
+==== PCI 设备和总线初始化 ====
+这一操作在 pcibios_init() 函数中进行（位于 arch/ppc/kernel/pci.c 中）。它会在前面操作结束后，对 PCI 总线和 PCI 设备分别分配 pci_bus 和 pci_dev 类型的节点，并建立如所示的组织结构关系。
+
+==== Linux 的 PCI 设备初始化 ====
+Linux 会将 PCI 的相关信息保存在一个文件中，从而方便用户的查阅。这一文件的创建就在 pci_proc_init() 函数中进行（位于 drivers/pci/proc.c 中）。首先它在 /proc/bus 目录下建立起一个名为 pci 的目录，然后在该目录中建立一个名为 devices 的文件，该文件中存放了当前内核所配置的所有 PCI 设备的信息。
+
+我们通常会使用 __lspci__ 命令来查看系统中的 PCI 设备，这条命令就是从 devices 文件中解析相应的字段来显示的。
+
+===== 总结 =====
+PCI 标准更新很快，现在最新的标准被称为 PCI Express，从硬件角度来看与以前的 PCI 有了很大的区别。但是由于 PCI 标准的兼容性，其设备配置空间的布局仍然相同，从而也保证了软件的兼容性，对于 PCI Express 的内核配置与 PCI 基本相同。良好的兼容性——这大概也是 PCI 的一个魅力所在吧！
+
+参考资料
+    请参考：PCI Local Bus Specification, Revision 3.0, PCI SIG, 2004
+    请参考：PCI-to-PCI Bridge Architecture Specification, Revision 1.2, PCI SIG, 2003
+    请参考：MPC8548E Reference Manual, Revision 2, Freescale, 2007
+   
+关于作者
+赵昊翔，南京大学计算机系硕士毕业，目前从事嵌入式方面的开发工作，对 Linux 和 MIPS 多核处理器有浓厚的兴趣。

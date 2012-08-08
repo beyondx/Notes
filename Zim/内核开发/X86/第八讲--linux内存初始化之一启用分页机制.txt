@@ -1,0 +1,173 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-15T13:55:00+08:00
+
+====== 第八讲--linux内存初始化之一启用分页机制 ======
+Created Friday 15 June 2012
+http://www.eefocus.com/article/09-05/71948s.html
+
+在对内存管理（MM）的各种机制介绍之前，首先需要对MM的初始化过程有所了解，以下介绍的内容是以第二章分段和分页机制为基础的，因此，读者应该先温习一下相关内容。因为在嵌入式操作系统的开发中，内存的初始化是重点关注的内容之一，因此本节将对内存的初始化给予详细描述。
+
+6.2.1 启用分页机制
+
+当Linux启动时，__首先运行在实模式下，随后就要转到保护模式下运行__。因为在第二章段机制中，我们已经介绍了Linux对段的设置，在此我们主要讨论与分页机制相关的问题。
+
+Linux内核代码的入口点(__物理内存地址为0x00100000的地方，是__**arch\i386\boot\setup.S执行完后的跳转点**)就是/arch/i386/kernel/__head.S中的startup_32__。
+
+LILO使用__BIOS提供的磁盘读写(中断)服务__，把kernel Image的前面几个扇区(**bootsect.S和Setup.S**)的内容拷贝到0x00090000，然后把Image的其余部分（被压缩）拷贝到__0x00100000(这个是内核代码在物理内存中实际位置)__，最后一步跳转到0x00090200处执行，也就是__Setup.S的第一条指令__。
+
+1．页表的初步初始化：
+/*
+* The page tables are initialized to only 8MB here - the final page
+* tables are set up later depending on memory size.
+*每个页表的大小为4KB，能映射的物理内存为1K*4KB=4MB，这里建立
+*了两个页表，故可以映射8MB的内存。/
+__.org 0x2000   __
+ENTRY(pg0)
+
+__.org 0x3000__
+ENTRY(pg1)
+
+/*
+* empty_zero_page must immediately follow the page tables ! (The
+* **initialization loop** counts until empty_zero_page)
+*/
+
+.org 0x4000
+ENTRY(empty_zero_page)    //是全为0的页，而非页表。
+
+／*
+* Initialize page tables
+*/
+
+movl __$pg0__-__PAGE_OFFSET,%edi 		/* initialize page tables */
+movl $007,%eax 	/* "007" doesn't mean with right to kill, but PRESENT+RW+USER */
+2: stosl   			/*将eax中保存的值存到ES:EDI指向的内存地址中，注意pg0为gcc生成的虚拟地址，因此物理地址为__$pg0__-__PAGE_OFFSET。*/
+add $0x1000,%eax  /*加0x1000是因为，**每个页表页表项对应的页框大小为4KB**，所以这表示映射下一个4KB物理内存地址。*/
+cmp $empty_zero_page-__PAGE_OFFSET,%edi  
+jne 2b
+
+
+STOSL指令相当于将EAX中的值保存到ES:EDI指向的地址中，若设置了EFLAGS中的方向位置位(即在STOSL指令前使用STD指令)则EDI自减4，否则(使用CLD指令)EDI自增4。
+
+内核的这段代码执行时，因为页机制还没有启用，还没有进入保护模式，因此__指令寄存器EIP中的地址还是物理地址，但因为pg0中存放的是虚拟地址（想想gcc编译内核以后形成的符号地址都是虚拟地址）__，因此，“$pg0-__PAGE_OFFSET ”**获得pg0的物理地址**，可见pg0存放在相对于内核代码起点(0x2000的地方,即物理地址为0x00102000(__内核映像总是被bootloader加载到物理内存地址为0x00100000的地方即1MB结束的位置，而内核空间的虚地址起点是0xC000000, 所以pg0的虚拟地址为0xC102000。这里的映像一般是去掉__**bootsect.S和Setup.S后的内容**)，而pg1的物理地址则为0x00103000。
+
+当系统启动时，__Linux内核映像被安装在物理地址0x00100000开始的地方__，即1MB开始的区间(第1M留作它用)。然而，**在正常运行时， 整个内核映像应该在虚拟内核空间中**，__因此，连接程序在连接内核映像时，在所有的符号地址上加一个偏移量PAGE_OFFSET__，这样，**内核映像在内核空间的起始地址(虚拟)就为0xC0100000**。参见：[[../第七讲--内核空间和用户空间.txt]]
+{{../第五讲--分页机制及linux中的表示/Selection_031.png}}
+		页表项的格式字段(每个页表项占4B，一个页表由1024各页表项) 参见：[[../I386的体系结构.txt]]
+
+pg0和pg1这个**两个页表中的表项**则依次被设置为__0x007、0x1007、0x2007__等(每次都增加0x1000, 即增加一个物理页框)。其中最低的三位均为1，表示这两个页为用户页，可写，且页的内容在内存中（参见图2.24）。所映射的__物理页的基地址则为0x0、0x1000、0x2000等__，也就是物理内存中的页面0、1、2、3等（**总是从物理内存的0地址开始映射**），共映射2K个页面，即8MB的存储空间。
+
+由此可以看出，__Linux内核对物理内存的最低要求为8MB__。紧接着存放的是empty_zero_page页(即零页)，**零页存放的是系统启动参数和命令行参数**，具体内容参见第十三章。
+
+通过上面的映射，现在**内核空间的0xC000000~0xC800000共8MB的虚地址空间被映射到物理内存的0～8MB地址空间中。**
+
+2．启用分页机制：
+* This is initialized to create an identity-mapping at 0-8M (for bootup
+* purposes) and another mapping of the 0-8M area at virtual address
+* PAGE_OFFSET.
+*/
+.org **0x1000**
+	ENTRY(__swapper_pg_dir__)
+.long 0x00102007
+.long 0x00103007
+.fill BOOT_USER_PGD_PTRS-2,4,0
+/* default: __766 entries__ */
+.long 0x00102007
+.long 0x00103007
+/* default: 254 entries */
+.fill BOOT_KERNEL_PGD_PTRS-2,4,0
+
+/*
+* Enable paging
+*/
+3:
+movl $swapper_pg_dir-__PAGE_OFFSET,%eax
+__movl %eax,%cr3__ /* set the page table pointer.. */
+movl %cr0,%eax
+orl $0x80000000,%eax
+__movl %eax,%cr0__ /* ..and set paging (PG) bit */
+**jmp 1f** /* flush the prefetch-queue */
+1:
+movl $1f,%eax    #前面的__1标号的地址__而不是内存单元值
+jmp *%eax /* 绝对跳转，make sure eip is relocated */
+1:
+
+我们先来看这段代码的功能。这段代码就是把页目录swapper_pg_dir的物理地址装入控制寄存器cr3，并把cr0中的最高位置成1，这就开启了分页机制。
+
+但是，启用了分页机制，并不说明Linux内核真正进入了保护模式，因为此时，**指令寄存器EIP中的地址还是物理地址，而不是虚地址**。“jmp 1f”指令从逻辑上说不起什么作用，但是，从功能上说它起到__丢弃指令流水线中预取的指令__作用（这是Intel在i386技术资料中所建议的），__因为这是一个短跳转，EIP中还是物理地址__。紧接着的mov和jmp指令把第二个标号为1的地址装入EAX寄存器并跳转到那儿。在这两条指令执行的过程中, EIP还是指向物理地址“1MB＋某处”。因为**编译程序使所有的符号地址都在虚拟内存空间**中，因此，**第二个标号1的地址就在虚拟内存空间的某处**（(PAGE_OFFSET+某处)，于是，jmp指令执行以后，EIP就指向虚拟内核空间的某个地址，这就使CPU转入了内核空间，从而完成了从实模式到保护模式的平稳过渡。
+
+然后再看页目录swapper_pg_dir中的内容。从前面的讨论我们知道pg0和pg1这两个页表的起始物理地址分别为0x00102000和0x00103000。从图2.22可知，页目录项的最低12位用来描述页表的属性。因此，在swapper_pg_dir中的第0和第1个目录项0x00102007、0x00103007，就表示pg0和pg1这两个页表是用户页表、可写且页表的内容在内存。
+
+接着，__把swapper_pg_dir中的第2～767共766个目录项全部置为0__。因为一个页表的大小为4KB，每个表项占4个字节，即每个页表含有1024个表项，每个页的大小也为4KB，因此这768个目录项所映射的虚拟空间为768x1024x4K＝3G，也就是__swapper_pg_dir表中的前768个目录项映射的是用户空间（因为用户空间的虚地址为0-3G）__。
+
+最后，在第768和769个目录项中__又存放__pg0和pg1这两个页表的地址和属性，而把第770～1023共254个目录项置0。这256个目录项所映射的虚拟地址空间为256x1024x4K＝1G，也就是__swapper_pg_dir表中的后256个目录项映射的是内核空间__。
+
+由此可以看出，在初始的页目录swapper_pg_dir中，**用户空间和内核空间都只映射了开头的两个目录项，即8MB的空间，而且有着相同的映射**，如图6.6所示。
+{{./6.6.jpg}}
+
+读者会问，内核开始运行后运行在内核空间，那么，为什么把用户空间的低区（8M）也进行映射，而且与内核空间低区的映射相同？简而言之，__是为了从实模式到保护模式的平稳过渡。__具体地说，当CPU进入__内核代码的起点startup_32__后，是以物理地址来取指令的。在这种情况下，如果页目录只映射内核空间，而不映射用户空间的低区，则一旦开启页映射机制以后就不能继续执行了，这是因为，__此时CPU中的指令寄存器EIP仍指向低区，仍会以物理地址取指令，直到以某个符号地址为目标作绝对转移或调用子程序为止__。所以，Linux内核就采取了上述的解决办法。
+
+但是，在CPU转入内核空间以后，应该把用户空间低区的映射清除掉。后面读者将会看到，__页目录swapper_pg_dir经扩充后就成为所有内核线程的页目录__。在内核线程的正常运行中，处于内核态的CPU是不应该通过用户空间的虚拟地址访问内存的。清除了低区的映射以后，如果发生CPU在内核中通过用户空间的虚拟地址访问内存，就可以因为产生页面异常而捕获这个错误。
+
+3．物理内存的初始分布
+
+经过这个阶段的初始化，初始化阶段**页目录及几个页表在物理空间中的位置**如图6.7所示：
+{{./6.7.jpg}}
+
+其中empty_zero_page中存放的是在操作系统的引导过程中所收集的一些数据，叫做__引导参数__。因为这个页面开始的内容全为0，所以叫做“零页”，代码中常常通过宏定义__ZERO_PAGE__来引用这个页面。不过，这个页面要到**初始化完成，系统转入正常运行**时才会用到。为了后面内容介绍的方便，我们看一下复制到这个页面中的__命令行参数和引导参__数。这里假定这些参数已被复制到“零页”，在**setup.c**中定义了引用这些参数的宏：
+/*
+* This is set up by the setup-routine at boot-time
+*/
+#define PARAM ((unsigned char *)**empty_zero_page**)
+#define SCREEN_INFO (*(struct screen_info *) (PARAM+0))
+#define EXT_MEM_K (*(unsigned short *) (PARAM+2))
+#define ALT_MEM_K (*(unsigned long *) (PARAM+0x1e0))
+#define E820_MAP_NR (*(char*) (PARAM+E820NR))
+#define __E820_MAP__ ((struct e820entry *) (PARAM+E820MAP))
+#define APM_BIOS_INFO (*(struct apm_bios_info *) (PARAM+0x40))
+#define DRIVE_INFO (*(struct drive_info_struct *) (PARAM+0x80))
+#define SYS_DESC_TABLE (*(struct sys_desc_table_struct*)(PARAM+0xa0))
+#define MOUNT_ROOT_RDONLY (*(unsigned short *) (PARAM+0x1F2))
+#define RAMDISK_FLAGS (*(unsigned short *) (PARAM+0x1F8))
+#define ORIG_ROOT_DEV (*(unsigned short *) (PARAM+0x1FC))
+#define AUX_DEVICE_INFO (*(unsigned char *) (PARAM+0x1FF))
+#define LOADER_TYPE (*(unsigned char *) (PARAM+0x210))
+#define __KERNEL_START__ (*(unsigned long *) (PARAM+0x214))
+#define __INITRD_START__ (*(unsigned long *) (PARAM+0x218))
+#define __INITRD_SIZE__ (*(unsigned long *) (PARAM+0x21c))
+#define __COMMAND_LINE__ ((char *) (PARAM+2048))
+#define __COMMAND_LINE_SIZE__ 256
+
+其中宏PARAM就是empty_zero_page的起始位置，随着代码的阅读，读者会逐渐理解这些参数的用途。这里要特别对宏E820_MAP进行说明。E820_MAP是个struct e820entry数据结构的指针，存放在参数块中位移为0x2d0的地方。这个数据结构定义在include/i386/e820.h中：
+struct e820map {
+	int nr_map;
+	struct e820entry {
+	unsigned long long addr; /* start of memory segment */
+	unsigned long long size; /* size of memory segment */
+	unsigned long type; /* type of memory segment */
+	} map[E820MAX];
+};
+
+extern struct e820map e820;
+
+其中，E820MAX被定义为__32__。从这个数据结构的定义可以看出，每个e820entry都是对一个物理区间的描述，并且一个物理区间必须是同一类型。如果有一片地址连续的物理内存空间，其一部分是RAM，而另一部分是ROM，那就要分成两个区间。即使同属RAM，如果其中一部分要保留用于特殊目的，那也属于不同的一个分区。在e820.h文件中定义了4种不同的类型：
+
+#define __E820_RAM__ 1
+#define __E820_RESERVED__ 2
+#define E820_ACPI 3 /* usable as RAM once ACPI tables have been read */
+#define __E820_NVS__ 4
+#define __HIGH_MEMORY__ (1024*1024)  #1MB
+
+其中E820_NVS表示“Non-Volatile Storage”,即“不挥发”存储器，包括ROM、EPROM、Flash存储器等。
+
+在PC中，对于最初1MB存储空间的使用是特殊的：开头640KB（0x0~0x9FFFF为系统基本内存，从0xA0000开始的空间则用于CGA、EGA、VGA等__图形卡__。现在已经很少使用这些图形卡，但是不管是什么图形卡，__开机时总是工作于EGA或VGA模式__。
+
+从0xF0000开始到0xFFFFF，即最高的4KB，就是在EPROM或Flash存储器中的__BIOS__。所以，只要有BIOS存在，就至少有两个区间，如果nr_map小于2，那就一定出错了。由于BIOS的存在，本来连续的RAM空间就不连续了。当然，现在已经不存在这样的存储结构了。1MB的边界早已被突破，但因为历史的原因，把1MB以上的空间定义为“HIGH_MEMORY”，这个称呼一直沿用到现在，于是代码中的常数HIGH_MEMORY就定义为“1024*1024”。现在，配备了128MB的内存已经是很普遍了。但是，__为了保持兼容__，就得留出最初1MB的空间。
+
+这个阶段初始化后，物理内存中内核映像的分布如图6.8所示：
+{{./6.8.jpg}}
+
+符号_text对应物理地址0x00100000，表示内核代码的第一个字节的地址。内核代码的结束位置用另一个类似的符号___etext__表示。内核数据被分为两组：初始化过的数据和未初始化过的数据。初始化过的数据在_etext后开始，在_edata处结束，紧接着是未初始化过的数据，其结束符号为_end，这也是整个内核映像的结束符号。
+
+图中出现的__符号是由编译程序在编译内核时产生__的。你可以在System.map文件中找到这些符号的**线性地址**（或叫虚拟地址），System.map是编译内核以后所创建的。

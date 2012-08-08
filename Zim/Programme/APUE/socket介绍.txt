@@ -1,0 +1,76 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-04T13:23:53+08:00
+
+====== socket介绍 ======
+Created 星期六 04 六月 2011
+http://blog.sina.com.cn/s/blog_6c8f8eba0100rgze.html
+(2011-04-12 09:53:22)
+
+Processes that communicate using sockets use a **client server model**. A server provides a service and clients make use of that service. One example would be a Web Server, which provides web pages and a web client, or browser, which reads those pages. A server using sockets, first **creates a socket** and then **binds a name** to it. The format of this name is dependent on the **socket's address family** and it is, in effect, the **local address** of the server. The socket's name or address is specified using the** sockaddrdata structure**. An INET socket would have an IP port address bound to it. The registered port numbers can be seen in **/etc/services**; for example, the port number for a web server is 80. Having bound an address to the socket, the server then** listens for incoming connection requests** specifying the bound address. The originator of the request, the client, creates a socket and **makes a connection request **on it, specifying the target address of the server. For an INET socket the address of the server is its IP address and its port number. These incoming requests must find their way up through the various protocol layers and then wait on the **server's listening socket**. Once the server has received the incoming request it either accepts or rejects it. If the incoming request is to be accepted, the server must **create a new socket to accept it on**. Once a socket has been used for listening for incoming connection requests **it cannot be used to support a connection**. With the connection established both ends are free to send and receive data. Finally, when the connection is no longer needed it can be shutdown. Care is taken to ensure that data packets in transit are correctly dealt with.
+
+The exact meaning of operations on a BSD socket depends on its underlying **address family**. Setting up **TCP/IP** connections is very different from setting up an amateur radio **X.25** connection. Like the **virtual filesystem**, Linux abstracts the socket interface with the BSD socket layer being concerned with the BSD socket interface to the application programs which is in turn supported by independent address family specific software. 
+
+    At kernel initialization time, the** address families **built into the kernel register themselves with the BSD socket interface. 
+    Later on, as applications create and use BSD sockets, an association is made between the BSD socket and its supporting address family. 
+    This association is made via cross-linking data structures and tables of address family specific support routines. 
+    For example there is an address family specific socket creation routine which the BSD socket interface uses when an application creates a new socket.
+
+TCP/IP协议结构：
+{{./TCP&IP协议结构.jpeg}}
+Linux网络层：
+{{./Linux网络层.gif}}
+python在进程通信和并行计算方面具有明显优势，这是由于python的出身血统，她起源于一个最早的分布式操作系统（Amoeba），而python socket是直接翻译BDS socket层。
+
+工程技术的科学思想方法是把对象系统看成由
+
+    “层”（Layers）
+    “子系统”（Subsystems）
+    “子模块”（Submodules）
+等等组成的整体。
+linux file strucy:
+{{../linux-file-struct.gif}}
+各种格式的数据例如xml、json在机器之间和网络之间传输的前提是建立了一个socket并且按照传输协议例如，http、ftp、cgi等等。socket解决不同机器上的进程之间的通信。
+-
+python socket
+http://docs.python.org/release/3.1.3/library/socket.html#module-socket
+The Python interface is a straightforward transliteration of the Unix system call and library interface for sockets to Python’s object-oriented style: the socket() function returns a socket object whose methods implement the various socket system calls. Parameter types are somewhat higher-level than in the C interface: as with read() and write() operations on Python files, buffer allocation on receive operations is automatic, and buffer length is implicit on send operations.
+-
+python网络协议实现和支持
+各种格式的数据例如xml、json在机器之间和网络之间传输的前提是建立了一个socket并且按照传输协议例如，http、ftp、cgi等等。socket解决不同机器上的进程之间的通信。
+Internet Protocols and Support
+
+    20.1. webbrowser — Convenient Web-browser controller
+    20.2. cgi — Common Gateway Interface support
+    20.3. cgitb — Traceback manager for CGI scripts
+    20.4. wsgiref — WSGI Utilities and Reference Implementation
+    20.5. urllib.request — Extensible library for opening URLs
+    20.6. urllib.response — Response classes used by urllib
+    20.7. urllib.parse — Parse URLs into components
+    20.8. urllib.error — Exception classes raised by urllib.request
+    20.9. urllib.robotparser — Parser for robots.txt
+    20.10. http.client — HTTP protocol client
+    20.11. ftplib — FTP protocol client
+    20.12. poplib — POP3 protocol client
+    20.13. imaplib — IMAP4 protocol client
+    20.14. nntplib — NNTP protocol client
+    20.15. smtplib — SMTP protocol client
+    20.16. smtpd — SMTP Server
+    20.17. telnetlib — Telnet client
+    20.18. uuid — UUID objects according to RFC 4122
+    20.19. socketserver — A framework for network servers
+    20.20. http.server — HTTP servers
+    20.21. http.cookies — HTTP state management
+    20.22. http.cookiejar — Cookie handling for HTTP clients
+    20.23. xmlrpc.client — XML-RPC client access
+    20.24. xmlrpc.server — Basic XML-RPC servers
+
+python网络开发框架
+
+    Django
+    webpy
+    Tornado
+    zope
+
+python网络代理开发和应用
+

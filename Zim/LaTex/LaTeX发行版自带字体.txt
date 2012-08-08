@@ -1,0 +1,62 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-09-24T16:15:21+08:00
+
+====== LaTeX发行版自带字体 ======
+Created Saturday 24 September 2011
+http://blog.sina.com.cn/s/blog_5e16f1770100ludh.html
+
+可能有不少人像我一样在用LaTeX不久就开始跟字体较劲。我走的是这样一个过程：
+- 最初用惯了Word，从而无法理解为什么LaTeX调用字体那么难；
+- 为了在LaTeX中调用字体，想用现有的工具一蹴而就（像TTFshape，MTFI，xGBKfonts），往往不能轻易成功，沮丧；
+- 之后重新静下心来逐渐了解了什么是字体，LaTeX中字体成功调用的方式，才注意到Mapping，TFM，vf等文件的相互关系，理顺了这一切后，把前面几个软件装不成功的字体装好（我印象中装上过Verdana，GE Quartz等几个）；
+- 后来发现也有些宏包有现成的字体可用，那个时候主要就是关心TrueType字体，所以见到了winfonts宏包（这个宏包不在MiKTeX的宏包列表中），开始用上一些系统中有的字体；
+- 又发现OpenType字体更棒，再去看的时候才知道解包OpenType不但麻烦，还会失去glyphs；
+- 在一个相当漫长的时间内没有动过LaTeX，再碰它时，又是从一篇Philipp Lehman的《The font installation guide》开始，这篇文章100多页从头到尾看完，已经比较清楚如何用fontinst来安装手头拥有的Type1字体。也正是从这篇文章开始喜欢上了 Minion字体并且成功安装。由于安装过程相当繁琐，我还写了一些安装Type1字体的批处理，有时间的话会整理出来（因为通用性太差）；
+- 再次碰字体就是在CTAN上看到MinionPro宏包，这时我已经开始搜集字体，所以MinionPro宏包要求的所有Optical Size我都有。MinionPro包特别大，装上它后刷新文件名数据库都慢几十秒，这也说明了OpenType字体的复杂性。我想要不是Adobe把这个经典字体免费提供，应该不会有谁有心去为它生成那么多的TFM文件（1511个之多）。Minion Pro字体对我而言真的是压倒性的，我估计学校允许的话我的论文都会申请用这个字体排版。
+- 后来XeTeX被port到Windows，我这才终于把MiKTeX升级到2.7beta，并且花了大量时间研究XeTeX。XeTeX似乎就是为字体而生的，但同样需要有字体的相关知识，这些知识并不同于前面Type1字体，而更多是字体的OpenType features，这些features，Type1字体要么是根本没有(calt, salt)，有也不容易打开(smcp, onum)。
+
+
+但XeTeX同样有这样那样的问题，而且如果直接访问OpenType字体，编译速度就更不如PDFLaTeX访问Type1字体那么快，在长文章中表现得非常明显。所以才有了今天这个帖子，因为在这几天求助区的讨论过程中，自己又回去看了看。加上之前也注意到，其实打开$texmf/fonts目录就能发现LaTeX发行版中早就自带了不少字体，这些字体虽然是免费，功能上确不输专业字体。更重要的是，这些字体很多都是精心设计过的字体包，用来同时载入正文和数学环境的字体，保持文档统一的风格（在严谨的学术文章中，也确实不该想在哪改字体就在哪改）。
+
+原来自己有个文本文件，就是记录机器上可以为我所用的现成字体包（主要来自于$texmf\doc\latex\psnfss\psnfss2e.pdf文档的介绍），但最近去到tug看过，早就有人写了完整的LaTeX字体巡礼：
+http://www.tug.dk/FontCatalogue/
+这个网站罗列了156个LaTeX中可以免费使用的字体，并且给出了例子和调用的源代码，需要注意的是这些字体并非默认安装在机器上，但至少都能从 CTAN得到——不光是宏包，还有字体文件（因为像winfonts，MinionPro这些宏包需要用户自己拥有相应的字体，CTAN上并没有）。不过拾人牙慧的工作还是要作，那就是推荐一下几个字体/字体包：
+
+1. Palatino
+Will Robertson的文档总是用Palatino，这字体的名气也不小。胖胖的很活泼，笔锋也优雅，有羽毛笔的进化痕迹。LaTeX中最省事的是用\usepackage{mathpazo}来统一修改正文和数学字体，这个宏包还有[sc, osf]参数，分别对应小大写字母和不齐线数字。此外还有一个palatinox宏包可以直接调用Windows系统中的Palatino Linotype（这是微软认证发布赫尔曼·察普夫的原作），相关网址是：http://www.ctan.org/tex-archive/fonts/truetypemetrics/palatinox/%EF%BC%8C%E9%9C%80%E8%A6%81%E6%89%8B%E5%8A%A8%E5%AE%89%E8%A3%85%E3%80%82%E5%9C%A8%E8%BF%99%E4%B8%AAURL%E7%9A%84%E4%B8%8A%E4%B8%80%E5%B1%82%E8%BF%98%E8%83%BD%E7%9C%8B%E5%88%B0%E5%8F%A6%E4%B8%80%E4%B8%AA%E7%BB%8F%E5%85%B8%E5%AD%97%E4%BD%93frutiger%EF%BC%8C%E5%8F%AA%E6%98%AF%E6%88%91%E6%89%8B%E5%A4%B4%E6%B2%A1%E6%9C%89Linotype Frutiger。
+
+2. Garamond
+1530年诞生的经典字体，LaTeX中通过mathdesign可以使用：\usepackage[garamond]{mathdesign}来使用。Garamond字体十分大气，打印在纸张上也特别好看，法国很多口袋图书用的是Garamond。
+需要注意的是虽说免费，URW的garamond字体在默认安装的发行版中可能不存在，但是可以下载到，例如
+http://ctan.binkerton.com/nonfree/fonts/urw/garamond/
+下载所有pfb文件
+ugmr8a.pfb ugmri8a.pfb ugmm8a.pfb ugmmi8a.pfb
+放到font\type1\里面的某个目录后刷新数据库即可
+
+3. Times
+除了\usepackage{times}外，\usepackage{mathptmx}可以把数学字体也改成类似Times的字体。这个字体真的不需要再多说什么了，总之我觉得看久了眼睛会累，但是打印的效果非常稳妥。
+
+4. Utopia
+Utopia有点像Times，但更宽敞一些。\usepackage{fourier}统一修改正文和数学字体为Utopia，\usepackage[adobe-utopia]{mathdesign}则是mathdesign的调用方法，差别不太明显。
+
+5. Avant Garde/Courier/Bookman/New Century Schoolbook
+不是我懒，这几个字体在PSNFSS中是可以搭配着用的：
+\usepackage{avant}只载入Avant Garde
+\usepackage{bookman}则同时载入Bookman(衬线)，Avant Garde(无衬线)和Courier(等宽)字体
+\usepackage{newcent}同时载入New Century Schoolbook(衬线)，Avant Garde(无衬线)和Courier(等宽)字体
+
+6. Charter
+十分饱满的衬线字体，适合屏幕阅读。\usepackage{charter}
+
+7. Helvetica/Optima
+这两个字体放一块是因为我觉得它们是无衬线字体，比较适合用来作幻灯片。Helvetica可以\usepackage{helvet}，Optima没有写成宏包的形式，就可以用\renewcommand{\sfdefault}{uop}然后\renewcommand* \familydefault{\sfdefault}来调用。在幻灯片这样的尺寸上，Optima变化的线宽才显现出优美来。
+（不过beamer的作者认为Optima不适合做幻灯片）
+
+8. 其他数学宏包
+建议看看ftp://tug.ctan.org/pub/tex-archi ... t_Survey/survey.pdf 这篇文章，介绍得相当详细，而且有效果图展示。
+
+9. Minion Pro
+http://tug.ctan.org/tex-archive/fonts/minionpro/ 有详细的安装说明，只要不出错是肯定能安上的，装了Acrobat Reader 7.0以上的用户都能在Acrobat安装目录下找到MinionPro-Bold.otf, MinionPro-BoldIT.otf, MinionPro-It.otf, MinionPro-Regular.otf这四个文件，按照安装说明拆解它们四个已经能满足日常文档的需要。此外，MnSymbol宏包（MiKTeX 可以自动安装）是配合Minion Pro的数学宏包，最好装上，不过\usepackage{MinionPro}就够了，会自动载入MnSymbol宏包。
+
+其实用来用去才发现，LaTeX自带的这些字体才是真正经过时间和实践检验的经典字体，是TUG智慧的结晶。而且，这150多种字体也涵盖了绝大部分（LaTeX能触及到的）字体使用领域。这是不应该被遗忘的宝藏。

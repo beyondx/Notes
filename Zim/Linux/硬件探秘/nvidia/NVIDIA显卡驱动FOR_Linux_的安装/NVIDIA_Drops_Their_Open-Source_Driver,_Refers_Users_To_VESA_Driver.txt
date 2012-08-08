@@ -1,0 +1,46 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-21T19:33:15+08:00
+
+====== NVIDIA Drops Their Open-Source Driver, Refers Users To VESA Driver ======
+Created Monday 21 November 2011
+http://www.phoronix.com/scan.php?page=article&item=nvidia_kills_nv&num=1
+
+NVIDIA's open-source Linux efforts as it concerns their GPU support have historically been minimal. The **xf86-video-nv** driver has been around that provides very basic 2D acceleration and a crippled set of features besides that (no proper RandR 1.2/1.3, KMS, power management, etc) while the code has also been obfuscated to try to protect their intellectual property. However, NVIDIA has decided to__ deprecate__ this open-source driver of theirs. No, NVIDIA is not working on a new driver. No, NVIDIA is not going to support the **Nouveau** project. Instead, NVIDIA now just recommends its users use the X.Org VESA driver to get to NVIDIA.com when installing Linux so they can install their __proprietary driver__.
+
+This xf86-video-nv announcement is coming as the GeForce 400 "Fermi" graphics cards launch. NVIDIA will not be providing open-source support for Fermi or any future NVIDIA products. NVIDIA will continue** barely **supporting xf86-video-nv only as it concerns existing GPUs and functionality and what they see "within reason" future versions of the X.Org Server. NVIDIA will also not support DisplayPort on any GPU with the open-source NVIDIA driver.
+
+Here is Andy Ritger's recommendation verbatim that he wrote to the X.Org list:
+
+    "Our advice to owners of NVIDIA GPUs running Linux is to use the __VESA X driver__ from the time of Linux distribution installation until they can download and install the NVIDIA Linux driver from their distribution repositories or from nvidia.com."
+
+The VESA driver does not provide much besides user mode-setting for most all VESA-compatible graphics cards and its acceleration is limited to ShadowFB (a shadow frame-buffer on the CPU). It is really **not **a solution for anything besides being useful when __recovering __from a bad X configuration or other problems. Fortunately, for the end-user, this will not be the case with most distributions. The real reason NVIDIA is likely canning their xf86-video-nv mess is since the __Nouveau__ driver is reaching a point where its entering the limelight with its mainline DRM, kernel mode-setting support, and emerging Gallium3D support for providing OpenGL acceleration in free software. The Nouveau kernel code entered the Linux 2.6.33 kernel a few months back. As of last December though, Andy Ritger told us that at that point they were not going to change their nv driver support strategy based on Nouveau.
+
+NVIDIA will continue supporting their high-performance, feature-rich __proprietary Unix driver __on Linux / FreeBSD / OpenSolaris systems, but they are **kissing goodbye to xf86-video-nv**. This is not a bad thing per se as the Nouveau driver is certainly a superior solution, but it is unfortunate that NVIDIA will not be supporting the Nouveau development, releasing open-source documentation, or providing other open-source support like their competitors at ATI/AMD and Intel have done and continue to do in supporting X.Org. In fact, NVIDIA is now less open-source friendly with their deprecation of xf86-video-nv support. It was inevitable that NVIDIA would drop xf86-video-nv once the Nouveau driver took off, but their decision to recommend the VESA driver over even mentioning Nouveau is a pity and it's a shame they are not announcing any support of this community free software driver.
+
+The Nouveau driver has been used by Fedora for a while now with Fedora 13 even supporting the 3D drivers. Ubuntu 10.04 LTS is using the **kernel mode-setting** with 2D/X-Video support provided by Nouveau as their __default __NVIDIA hardware driver, but there is no "out of the box" 3D support in this release. Other distributions are also switching over to Nouveau and more will certainly be after seeing xf86-video-nv is being laid to rest.
+
+The Nouveau project seeks to provide support for all NVIDIA GPUs going back to the oldest NV04/NV05 ASICs. The Kernel mode-setting, RandR 1.2, 2D EXA, X Render, and X-Video support is considered done for all current NVIDIA graphics processors, according to their status matrix. In regards to the 3D support, there is the Gallium3D driver that has been their sole focus for the NV30 series and higher. We have recent Gallium3D benchmarks comparing its performance to the proprietary NVIDIA driver. A few months back a classic Mesa3D driver came about for the very old NVIDIA hardware that is better suited than the Gallium3D architecture for that vintage hardware. Still being worked on with this open-source driver is TV-Out, dual-link DVI, power management, SLI / multi-GPU rendering, HDMI audio, and OpenCL/GPGPU support. The Nouveau project also will shortly have the additional burden of reverse-engineering the new GeForce GTX 470 / 480 "Fermi" graphics cards and to begin supporting them, without the assistance of NVIDIA or even being able to look at the xf86-video-nv driver for the basic mode-setting bits.
+
+Below is Andy's complete message. You may also be interested in our interview with Andy Ritger from last year.
+
+    Historically, NVIDIA developed and maintained the xf86-video-nv X driver, primarily as a very __minimal driver__ that works "well enough" to give users accelerated X rendering **from the time they install their Linux distribution until the time** they install the NVIDIA driver available from nvidia.com [1].
+
+    The xf86-video-nv driver intentionally has** a very small feature set**, both to minimize the maintenance cost of this driver, and to minimize exposure of any IP NVIDIA might consider sensitive.
+
+    However, the rendering needs of a modern X Window System desktop have changed drastically in recent years to rely heavily on the __X Render extension__, which is not well accelerated in the nv driver. At this point, on a modern X desktop the nv driver does not offer much beyond what is provided by the stock __VESA X driver__. Providing proper Render acceleration in the nv driver would be a substantial task, and would require diverting significant engineering resources away from NVIDIA's nvidia.com driver.
+
+    For this reason, NVIDIA is **dropping support**, on new GPUs, for the xf86-video-nv driver.
+
+    Details:
+
+    - NVIDIA will continue to support the existing functionality and existing level of acceleration in the nv driver for existing GPUs, on existing, and (within reason) future, X server versions.
+    - NVIDIA will not support the xf86-video-nv driver on Fermi or later GPUs.
+    - NVIDIA will not support DisplayPort, on any GPU, in the xf86-video-nv driver.
+
+    Our advice to owners of NVIDIA GPUs running Linux is to use the __VESA X driver__ from the time of Linux distribution installation until they can download and install the NVIDIA Linux driver from their distribution repositories or from nvidia.com.
+
+    We believe that focusing our Linux driver engineering efforts exclusively on the NVIDIA driver, in order to leverage NVIDIA's cross-platform graphics driver code base, is the optimal route for the best possible user experience for NVIDIA Linux users.
+
+    Thanks,
+    Andy Ritger

@@ -1,0 +1,51 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-28T11:09:42+08:00
+
+====== 使用script记录Linux终端会话 ======
+Created Monday 28 November 2011
+http://hi.baidu.com/sdusoul/blog/item/c731833d7d8f19e53d6d9794.html
+
+许多系统管理员都知道保留一个包含各种任务、配置改变等__活动日志__的重要性。对一些组织而言，保留“我做了这件事”或“约翰做了那件事”的简单日志就已足够；但另一些组织则需要记录所有改变。
+
+对终端输出进行复制粘贴可能非常乏味，我们使用一个叫做script的鲜为人知的程序来解决这个问题，它是大多数Linux产品util-linux软件包的一部分。
+
+script记录会话的一切内容：**你输入的内容和你看到的内容**。它甚至**记录颜色**；因此如果你的命令提示符或程序输出中包含颜色，script将记录它。
+
+要使用script，简单执行以下命令：
+
+$ script
+
+默认情况下，它向当前目录的typescript文件中写入内容。然后，你输入的一切内容都被记录到那个文件中。要往另一个文件中记录日志，只需使用script/path/to/file命令。
+
+完成记录后，输入exit退出。这个命令将关闭script会话并保存文件。现在你可以使用cat或其它任何程序来检查日志文件。
+
+在ubuntu/或者其他linux下运行,script screen.log,记录屏幕信息到screen.log里,一直记录到你exit为止,记录屏幕log的好方法…
+
+root@ubuntu2:/# script screen.log
+Script started, file is screen.log
+root@ubuntu2:/# ls -ltr
+total 76
+省略若干行>>>>>>>>>>>>>>>
+root@ubuntu2:/# exit
+exit
+Script done, file is screen.log
+root@ubuntu2:/# **cat screen.log**
+Script started on Wed Sep 24 21:34:52 2008
+root@ubuntu2:/# ls -ltr
+total 76
+省略若干行>>>>>>>>>>>>>>>
+root@ubuntu2:/# exit
+exit
+
+Script done on Wed Sep 24 21:35:04 2008
+
+已经找到了解决方法,异常退出也没有问题,仍然记录log,需要加上参数,script -f ido.log,如果在一个终端上使用**mkfifo ido.log;script -f ido.log **然后在另一个终端登录,找到这个ido.log文件,你__tail -f __就会滚动输出你操作的内容..这个非常方便…
+
+2.使用script的缺点在于，它记录所有特殊的字符；因此你输入的文件中**将充满控制字符和ANSI转义序列**。你可以在script中使用一个非常简单的shell来解决这个问题：
+
+SHELL=/bin/bash PS1=”$ ” script
+
+使用script时，不要使用交互式程序或处理窗口的程序，如vior top。它们会破坏会话的输出结果。另外，日志文件会记录你使用的任何命令行程序和你完成一项任务所采取的步骤。如果你需要在脚本中编辑一个文件，考虑退出script会话，然后用script –a（它在旧会话后添加新会话）对文件进行编辑后再重新启动会话。
+
+播放是不依赖于系统命令的，只要是一个支持ANSI控制码的终端就能再现；要求播放终端的大小和录制终端的大小一致，否则可能会出现显示偏差；显示的内容完全存放在demo.session中，辅以demo.timing中的时刻和控制操作来在屏幕显示；甚至可以录制vim的编辑过程，在没有（或者配置不同的）vim的机器上也能完美再现编辑操作的过程；多好的命令啊。。。

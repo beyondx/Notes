@@ -1,0 +1,20 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-05-01T13:35:30+08:00
+
+====== 存在依赖关系的内核模块的编译问题 ======
+Created Tuesday 01 May 2012
+
+http://www.embexperts.com/forum.php/forum.php?mod=viewthread&tid=440&extra=page%3D1
+
+内核模块如果引用到__Linux内核中的符号__，这个则不属于模块间的依赖，因为内核导出的符号本身就是供内核模块所使用。本帖要讨论的是在两个**独立编译的模块**A和B之间，B如果要引用A导出的符号，在Makefile中该如何把这一信息加入的问题。
+
+绝大多数情形下，内核配置时能会启用__CONFIG_MODVERSIONS__，这意味着无论是内核还是内核模块，在导出符号时**内核编译工具链都会为该符号生成CRC校验码**，这个校验码保存在模块代码的__顶层目录的Module.symvers文件中__。
+
+最常见的是，模块会引用到内核导出的符号，此时模块的Makefile没有什么特殊的地方。现在假设A导出一个符号A_sym，那么A_sym的CRC校验码会存在于**A模块所在目录**的Module.symvers文件中，如果B模块引用到A模块的A_sym符号，那么是需要在它的__'__versions' section__中生成A_sym符号的校验码的，这个校验码__直接取自于__A模块的Module.symvers文件。如果B模块在编译时从它的Makefile中无法获得这一信息，首先编译阶段就会产生一个WARNING，其次加载阶段也会因为符号没有CRC校验码而导致加载失败。
+
+此时我们需要在B模块的Makefile文件中加上下面一行，以告诉模块的编译工具链到何处查找A_sym符号的CRC校验码：
+
+**KBUILD_EXTMOD ：= A模块所在的目录**
+
+如此，modpost工具除了到内核所在目录下查找外，还会到KBUILD_EXTMOD指定的目录下查找Module.symvers，以确定本模块所有未定义符号的CRC值。

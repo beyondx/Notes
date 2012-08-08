@@ -1,0 +1,118 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-21T11:03:45+08:00
+
+====== 业内知名半导体公司 ======
+Created Thursday 21 June 2012
+http://www.2ic.cn/html/73/t-349673.html
+
+全名                  	流行缩写           	官方中文名                     	总部 
+                                 台湾半导体厂家 
+MediaTek              	MTK                	联发科                         	台湾 
+Princeton             PTC                		普诚科技                       	台湾 
+Richtek               /                  			立崎                           	台湾 
+Sunplus               /                  		凌阳                           	台湾 
+Anapec                                   		茂达                           	台湾 
+EUTech                                   		德信                           	台湾 
+Realtek                                  			瑞煜                           	台湾 
+Winbond                                  		华邦                           	台湾 
+VIA                                      			威盛                           	台湾 
+
+                                 日本半导体厂家 
+EPSON                                    		爱普生                         	日本 
+Fujitsu                                  			富士通                         	日本 
+NEC                                      			日电                           	日本 
+OKI                                      			冲电子                         	日本 
+ROHM                                     		罗姆                           	日本 
+Renesas                                  		瑞萨                           	日本 
+SHARP                                    		夏普                           	日本 
+Seiko NPC                                		精工                           	日本 
+YAMAHA                                   		雅马哈                         	日本 
+Toshiba                                  			东芝                           	日本 
+RICOH                                    			理光                           	日本 
+TOREX                                    			特瑞仕                         	日本 
+mitsubishi                               		三菱                           	日本 
+Sanyo                                    			三洋                           	日本 
+AKM                                      		                              			日本 
+
+                                 韩国半导体厂家 
+Samsung                                  		三星                           	韩国 
+Corelogic                                		/                              	韩国 
+Hynix                                    			海力士                         	韩国 
+LG                                       			乐金                           	韩国 
+Atlab                                    			/                              	韩国 
+
+                                 美国半导体厂家 
+Analog Device  ADI                       		模拟器件                       	美国 
+Agere System                             		杰尔                           	美国 
+Agilent                                  			安捷伦                         	美国 
+AMD/Spansion                             		/                              	美国 
+Atmel                                    爱特梅尔                       美国 
+Broadcom                                 博通                           美国 
+Cirrus Logic                             思睿逻辑                       美国 
+Fairchild                                飞兆                           美国 
+Freescale                                飞思卡尔                       美国 
+Intel                                  英特尔                         美国 
+LSI                                    /                             美国 
+Maxim                                  美信                          美国 
+Micron                                 美光                          美国 
+National             NS                国家半导体/国半               美国 
+Nvidia                                 恩维达                        美国 
+
+Omnivision           OV                豪威                          美国 
+ON semi                                安森美                        美国 
+Qualcomm                               高通                          美国 
+Sandisk                                晟碟                          美国 
+TI                                     德州仪器                      美国 
+Analogic Tech  AATI                    研诺科技                      美国 
+VISHAY                                 威世                          美国 
+Cypress                                赛普拉斯                      美国 
+Pericom                                百利通                        美国 
+
+Linear                                 凌力尔特                      美国 
+Catlyst                                凯特利斯                      美国 
+Sipex                                  /                             美国 
+RFMD                                   /                             美国 
+Micrel                                 迈瑞                          美国 
+Microchip                              微芯                          美国 
+intersil                               英特矽尔                       美国 
+MPS                                    芯源                          美国 
+SIRF                                   瑟孚科技                      美国 
+Allegro                                /                             美国 
+Silicon labs                           /                             美国 
+Skyworks                               思加讯（中国公司名） 美国 
+Conexant                               科胜讯                        美国 
+Dallas                                 达拉斯                        美国 
+IR                                     国际整流                       美国 
+
+                                其他半导体厂家 
+infineon                                 英飞凌                         德国 
+ST                                     意法                          欧洲 
+Wolfson                                欧胜                          英国 
+ATI                                    /                             加拿大 
+NXP                                    恩智浦                        欧洲 
+austria microsystems                   奥地利微电子 
+
+                                    无源器件 
+EPCOS                                  爱普科斯                      德国 
+Amphenol                               安费诺                        美国 
+Tyco                                   泰科电子                      美国 
+Molex                                  莫仕                          美国 
+FCI                                    /                             美国 
+Innochips             ICT              /                              韩国 
+Yageo                                    国巨                           台湾 
+LITEON                                   光宝                           台湾 
+JST                                      /                              日本 
+SMK                                      /                              日本 
+Hirose                HRS                广濑电机                       日本 
+Murata                                   村田                           日本 
+TDK                                      /                              日本 
+Kyocera                                  京瓷                           日本 
+Taiyo Yuden                              太阳诱电（太诱）               日本 
+Rohm                                     罗姆                           日本 
+Nichicon                                 尼吉康                         日本 
+ALPS                                     阿尔卑斯                       日本 
+Nais                                     松下电工                       日本 
+Citizen                                  西铁城                         日本
+
+ 

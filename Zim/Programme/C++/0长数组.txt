@@ -1,0 +1,83 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-21T16:33:24+08:00
+
+====== 0长数组 ======
+Created Thursday 21 April 2011
+
+0长度的数组：在标准c里面，是不允许0长度的数组的，gcc允许。的确带来了一些方便吧。最主要的应用是表示可变长度的内容时。
+
+
+例如：
+struct line
+{
+int length;
+char contents[0];
+};
+struct line * x = (struct line*)malloc(sizeof(struct line) + content_length);
+x->length = content_length;
+在标准c里面，contents长度至少为1才行，这样写malloc的时候长度计算就要复杂一点。
+
+realtang 前辈例子中的可变长度似乎最好直接定义为指针再单独分配空间：
+代码:
+
+struct line { int length; char* contents; } ...
+ struct line * x = (struct line*)malloc(sizeof(struct line));
+ x->length = content_length; 
+x->contents = (char *)malloc(x->length);
+
+下面是典型的用法
+代码:
+
+#include <stdio.h> 
+#include <stdlib.h> 
+#include <string.h>
+int main() { 
+	struct line {
+	 int length; 
+	char content[0]; 
+	}; 
+	char *hello = "Hello"; 
+	struct line * x = (struct line*)malloc(sizeof(struct line) + strlen(hello) + 1); 
+	x->length = strlen(hello) + 1; 
+	strcpy(x->content,hello); 
+	printf("%s\n",x->content); 
+	return 0;
+ }
+
+数组为0的例子，能想到比较而且需要的例子是通信的领域。 一个数据包括头部(header)和数据(payload)， 头部一般有一字段指定数据长度。 但有时并没有数据要发送，为了让对端知道自己还是正常的，通信没有中断，可以发一个空包，在处理时可以用0大小的数组来表示空包。
+一般如果不支持0大小数组的系统，__在结构体定义的时候， 可以定义一个最小的数组__（如数组大小为1），不过如果要发的是空包时， 这个大小为1的数组已经浪费了一些内存，在大容量的嵌入式系统的，这些浪费内存的相当宝贵。 至于数组越界，那是程序员要注意的事情，根数组大小是不是0没有什么关系。
+
+以下的结构理论上也可以，但处理上已经不方便了， header 和 payload已经分离了。发送数据得根据payload或length的值调用两次memcpy 把要发送的数据复制到发送缓冲区。
+代码:
+
+struct { 
+	unsigned int length; 
+	char* payload; 
+}
+
+http://gcc.gnu.org/onlinedocs/gcc/Zero-Length.html
+6.17 Arrays of Length Zero
+
+Zero-length arrays are allowed in GNU C. They are very useful as the last element of a structure which is really a header for a variable-length object:
+
+     struct line {
+       int length;
+       char contents[0];
+     };
+     
+     struct line *thisline = (struct line *)
+       malloc (sizeof (struct line) + this_length);
+     thisline->length = this_length;
+
+In ISO C90, you would have to give contents a length of 1, which means either you waste space or complicate the argument to malloc.
+
+In ISO C99, you would use a flexible array member, which is slightly different in syntax and semantics:
+
+    Flexible array members are written as contents[] without the 0.
+    Flexible array members have incomplete type, and so the sizeof operator may not be applied. As a quirk of the original implementation of zero-length arrays, sizeof evaluates to zero.
+    Flexible array members may only appear as the last member of a struct that is otherwise non-empty.
+    A structure containing a flexible array member, or a union containing such a structure (possibly recursively), may not be a member of a structure or an element of an array. (However, these uses are permitted by GCC as extensions.) 
+
+
+

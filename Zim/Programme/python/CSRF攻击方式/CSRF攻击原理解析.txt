@@ -1,0 +1,82 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-20T14:53:47+08:00
+
+====== CSRF攻击原理解析 ======
+Created Thursday 20 October 2011
+http://www.80sec.com/csrf-securit.html
+|=——————————————————————=|
+|=————–=[ CSRF攻击原理解析 ]=——————=|
+|=——————————————————————=|
+|=——————-=[ By rayh4c ]=————————=|
+|=————-=[ rayh4c@80sec.com ]=——————-=|
+|=——————————————————————=|
+
+Author: rayh4c [80sec]
+EMail: rayh4c#80sec.com
+Site: http://www.80sec.com
+Date: 2008-9-21
+
+===== 0×00. 前言 =====
+
+在Web程序中普通用户一般只在Web界面里完成他想要的操作，Web程序接受的正常客户端请求一般来自用户的**点击链接和表单提交**等行为，可是恶意攻击者却可以**依靠脚本和浏览器的安全缺陷**来劫持客户端会话、伪造客户端请求。
+
+
+===== 0×01. CSRF攻击分类 =====
+
+CSRF是__伪造客户端请求__的一种攻击，CSRF的英文全称是Cross Site Request Forgery，字面上的意思是__跨站点伪造请求__。这种攻击方式是国外的安全人员于2000年提出，国内直到06年初才被关注，早期我们团队的剑心使用过CSRF攻击实现了DVBBS后台的SQL注射，同时网上也出现过动易后台管理员添加的CSRF漏洞等，08年CSRF攻击方式开始在BLOG、SNS等大型社区类网站的脚本蠕虫中使用。
+
+CSRF的定义是强迫受害者的浏览器向一个易受攻击的Web应用程序发送请求,最后达到攻击者所需要的操作行为。CSRF漏洞的攻击一般分为**站内和站外**两种类型：
+
+CSRF站内类型的漏洞在一定程度上是由于程序员滥用$_REQUEST类变量造成的，一些敏感的操作本来是要求用户从表单提交发起**POST请求**传参给程序，但是由于使用了$_REQUEST等变量，程序也接收**GET请求**传参，这样就给攻击者使用CSRF攻击创造了条件，一般攻击者只要把预测好的请求参数放在**站内一个贴子或者留言的图片链接里**，受害者浏览了这样的页面就会被强迫发起请求。
+
+CSRF站外类型的漏洞其实就是传统意义上的__外部提交数据__问题，一般程序员会考虑给一些留言评论等的__表单加上水印__以防止SPAM问题，但是为了用户的体验性，一些操作可能没有做任何限制，所以攻击者可以先预测好请求的参数，在站外的Web页面里编写javascript脚本伪造文件请求或和自动提交的表单来实现GET、POST请求，**用户在会话状态下点击链接访问站外的Web页面，客户端就被强迫发起请求**。
+
+===== 0×02. 浏览器的安全缺陷 =====
+
+现在的Web应用程序几乎都是使用Cookie来识别**用户身份以及保存会话状态**，但是所有的浏览器在最初加入Cookie功能时并没有考虑安全因素，从WEB页面产生的文件请求都会带上COOKIE，如下图所示，Web页面中的一个正常的图片所产生的请求也会带上COOKIE：
+
+<img src=”http://website/logo.jpg”>
+
+↓
+
+GET http://website.com/log.jpg
+Cookie: session_id
+客户端 ——————————————————-服务器
+
+浏览器的这种安全缺陷给CSRF漏洞的攻击创造了最基本的条件，因为Web页面中的任意文件请求都会带上COOKIE，所以我们将文件地址替换为一个链接的话，用户访问Web页面就相当于会话状态下自动点击了链接，而且带有SRC属性具有文件请求的HTML标签，如图片、FLASH、音乐等相关的应用都会产生伪造GET请求的CSRF安全问题。一个web应用程序可能会因为最基本的渲染页面的HTML标签应用，而导致程序里所有的GET类型传参都不可靠。
+
+===== 0×03. 浏览器的会话安全特性 =====
+
+参照Set-Cookie的标准格式，现今浏览器支持的cookie实际上分为两种形式：
+
+Set-Cookie: <name>=<value>[; <name>=<value>] [; expires=<date>][; domain=<domain_name>] [; path=<some_path>][; secure][; HttpOnly]
+
+一种是内存COOKIE，在没有设定COOKIE值的expires参数，也就是没有设置COOKIE的失效时间情况下，这个COOKIE在关闭浏览器后将失效，并且不会保存在本地。另外一种是本地保存COOKIE，也就是设置了expires参数，COOKIE的值指定了失效时间，那么这个COOKIE会保存在本地，关闭浏览器后再访问网站，在COOKIE有效时间内所有的请求都会带上这个本地保存COOKIE。
+
+Internet Explorer有一个隐私报告功能，其实这是一个安全功能，它会阻挡所有的第三方COOKIE，比如A域Web页面嵌入了B域的文件，客户端浏览器访问了A域的Web页面后对B域所发起的文件请求所带上的COOKIE会被IE拦截。除开文件请求情况，A域的Web页面如果使用IFRAME帧包含B域的Web页面，访问A域的Web页面后，B域的Web页面里的所有请求包括文件请求带上的COOKIE同样会被IE拦截。不过Internet Explorer的这个安全功能有两个特性，一是不会拦截内存COOKIE，二是在网站设置了P3P头的情况下，会允许跨域访问COOKIE，隐私报告功能就不会起作用了。
+
+所以在Internet Explorer的这个安全特性的前提下，攻击者要进行站外的CSRF攻击使用文件请求来伪造GET请求的话，受害者必须在使用内存COOKIE也就是没有保存登陆的会话状态下才可能成功。而Firefox浏览器并没有考虑使用这样的功能，站外的CSRF攻击完全没有限制。
+
+===== 0×04. 关于Javascript劫持技术 =====
+
+近年来的web程序频繁使用__Ajax__技术，__JSON__也开始取代XML做为AJAX的数据传输格式，JSON实际上就是一段javascript，大部分都是定义的数组格式。fortify公司的三位安全人员在2007年提出了Javascript劫持技术，这是一种针对JSON动态数据的攻击方式，实际上这也是一种变相的CSRF攻击。攻击者从站外调用一个script标签包含站内的一个JSON动态数据接口，因为<script src=”>这种脚本标签的文件请求会带上COOKIE，用户访问后相当于被迫从站外发起了一个带有身份认证COOKIE的GET请求，web程序马上返回了用户相关的JSON数据，攻击者就可以取得这些关键的JSON数据加以利用，整个过程相当于一个站外类型的CSRF攻击。
+
+WEB应用中的JSON数据大部分使用在个人资料、好友列表等隐私功能里，这类数据一般是web蠕虫最重要的传播功能所需要的数据，而CSRF攻击结合Javascript劫持技术完全可以分析这类数据制作自动传播的web蠕虫，在一定情况下这种web蠕虫比网站出现跨站脚本漏洞制作的web蠕虫更具威胁性，几乎不受网站架构的限制，因为攻击者利用的不是传统的Web漏洞而是网站自身正常的功能，如果出现这类CSRF蠕虫，对网站的打击将是灾难性的。
+
+===== 0×05. 安全提醒 =====
+
+各个大型社区类网站必须警惕CSRF攻击和相关web蠕虫的爆发,并且针对这类web攻击制定有效的应急措施。同建议程序员不要滥用$_REQUEST类变量，在必要的情况下给某些敏感的操作加上水印，考虑使用类似DISCUZ论坛的formhash技术提高黑客预测请求参数的难度，注意JSON数据接口的安全问题等。最后希望大家全面的考虑客户端和服务端整体的安全，注意Internet Explorer等客户端浏览器一些安全缺陷和安全特性，防止客户端程序的安全问题影响整个Web应用程序。
+
+参考：
+
+http://blog.csdn.net/lake2/archive/2008/04/02/2245754.aspx
+
+http://www.cgisecurity.com/articles/csrf-faq.shtml
+
+http://www.playhack.net/view.php?id=31
+
+http://www.fortify.com/servlet/downloads/user/JavaScript_Hijacking.pdf
+
+http://www.w3.org/P3P/
+

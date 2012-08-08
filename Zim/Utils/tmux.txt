@@ -1,0 +1,138 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-05T10:20:22+08:00
+
+====== tmux ======
+Created Monday 05 March 2012
+
+http://josephjiang.com/entry.php?id=373
+
+進化版 screen - tmux  此篇文章最近更新時間為2011-10-22 02:48:28 目前共有8篇留言
+關於作者 - JosephJ
+{{./1.jpg}}
+
+===== 一、screen 使用上的問題 =====
+
+開始使用 Linux 開發後，screen 就一直是不可或缺的工具。可幫我隨時隨地回復先前的工作階段，但總有幾個小問題存在：
+
+* 不正常斷線後無法 re-attach
+* 在公司的 CentOS，若因各種原因不正常斷線，要再回復連線經常會被卡住。
+* 家裡的 Debian 比較少發生這種狀況、使用 tcsh 的同事（我用 zsh）也沒碰到。
+* 我一直沒花時間去了解此問題發生的原因，可以用就好 :p
+* 分割視窗功能過於陽春
+* 最近有個功能的開發，必須同時監控多份 Log 檔。
+* 因此開了一個 pietty 做監控，利用 screen 切了多個分割視窗達成我監控的目的。
+* 但 screen 沒辦法切垂直的視窗，所以我得另外開一個 pietty 做開發。
+* 此功能又得開至少兩個瀏覽器來做測試，多任何一個應用程式視窗都會讓我困擾。
+* 還有的小麻煩是 screen 的分割視窗沒辦法在 detach 後保持。
+
+是時間來研究一下湯姆所分享的 tmux，果然他解決了我以上所有問題，也感謝猴巴幫我裝起來 :D
+
+===== 二、tmux 是什麼？ =====
+
+tmux 的全名是__ Terminal Multiplexer__，也就是終端多工器的意思。
+我查了發音應該可唸成「踢馬克思」（若有錯誤請提出指教啦 ）。
+據說作者也是因為 screen 用起來有許多不方便的地方，才打造了一顆新輪子！
+
+===== 三、screen 與 tmux 的比較 =====
+
+稍微整理一下 screen 與 tmux，大家就會知道 tmux 有多好了。
+
+===== screen =====
+{{./2.png}}
+
+screen 的架構很簡單，一個 screen 連線只能被一個 SSH 連線存取、一個 screen 可有多個 window、
+只支援水平分割、同時觀看多個 window。
+
+==== tmux ====
+{{./3.png}}
+
+tmux 管理的東西較多：包括 Session（連線）、Window（視窗）與 Pane（窗格）。
+
+==== • tmux 優點 1 - 可以被多個 SSH 同時連線 ====
+tmux Session 可以被多個 SSH 同時連線，這點跟 Screen 很不同。
+過去用 screen 你離開辦公桌的電腦，晚上回到家裡繼續工作時，必定得 detach 再 attach。
+但是用 tmux 的話，你可以在家裡 attach，隔天到公司 tmux 並__不會被 detach__。
+所以若你**開兩個 tmux 同時 attach 到同一個 Session 時**，可以看到兩個視窗__同時動作__的有趣畫面喔。
+所以在這樣的架構下，你就不用擔心像 screen **不正常斷線**無法 detach 再 attach 的問題了。
+
+==== • tmux 優點 2 - 可在 Session 中切換到不同 Session ====
+過去要從 screen 到另一個 screen 得先 detach，但 tmux 只要用快速鍵（預設 Ctrl-b + s）即可切換到
+其他 Session。是不是很方便呢？
+
+==== • tmux 優點 3 - 強大的分割視窗 ====
+screen 只能做單一水平分割，但是 tmux 可以**自由自在地水平或垂直分割**。
+一個窗格被稱為 Pane，分割會被記錄至 Window 保存（screen 只要一 detach 就沒了）
+且一個 Pane 可隨時轉換成 Window，Pane 調整大小、位置的功能更是完整。
+
+==== 四、我的 .tumx.conf ====
+
+與大多數人相同，我並不想改變 screen 的使用習慣，仍然設定 Ctrl + a (C-a) 為我的 prefix，
+以下是我在 tmux 常用的快速鍵：
+
+?	列出所有綁定的 Key
+r	重新整理目前的畫面
+$	重新命名目前的 Session 連線
+`	重新命名目前的 Window 視窗
+&	重新命名目前的 **Window 視窗**
+o	翻滾吧！Pane
+!	將 Pane 獨立成為單一 Window
+h	水平分割（上、下）
+-	水平分割（上、下）
+v	垂直分割（左、右）
+|	垂直分割（左、右）
+__x__	移除目前的 Pane
+{	將目前的 Pane 向左移動
+}	將目前的 Pane 向右移動
+(alt) + 上下左右鍵	調整目前 Pane 的大小
+q	顯示 Pane 編號
+(Space)	換 Layout
+
+# General configuration.
+# $ tmux show-options -g
+set -g base-index 1
+set -g display-time 5000
+set -g repeat-time 1000
+set -g status-keys vi
+set -g status-utf8 on
+set -g status-bg black
+set -g status-fg white
+set -g status-justify left
+set -g status-interval 1
+set -g status-left-length 15
+set -g status-right-length 55
+set -g status-left "#[fg=white,bright,bg=blue] Session #[fg=yellow,bright,bg=blue]#S #[default] |" # session-name
+set -g status-right "#[fg=red,bright][ #[fg=cyan]#(cd ~/miiicasa;git branch --no-color | sed -e '/^[^*]/d' -e 's/* //') #[fg=red]]#[default] #[fg=yellow,bright] %Y-%m-%d #[fg=green]%H:%M:%S #[default]#[fg=magenta,bright]#[default]"
+
+# Configuration for each window.
+# $ tmux show-window-options -g
+setw -g utf8 on
+setw -g window-status-format " #I$ #W "
+setw -g window-status-current-format " #I$ #W "
+setw -g window-status-current-bg yellow
+setw -g window-status-current-fg blue
+setw -g window-status-current-attr default
+
+# Customization for key bindings.
+# Check it using "C-a + ?".
+## Make tmux like screen, using Ctrl+A
+unbind C-b
+set -g prefix ^A
+bind a send-prefix
+
+## Use h and v for splitting.
+unbind %
+unbind '"'
+bind v split-window -h
+bind | split-window -h
+bind h split-window -v
+bind - split-window -v
+
+## Use a for renaming the window prompt.
+unbind ','
+bind ` command-prompt -I '#W' "rename-window '%%'"
+
+
+===== 五、如何安裝 tmux ? =====
+可能是我的 Debian 版本較舊，沒辦法使用 apt-get install tmux 直接安裝。我是依據這一篇文章來做安裝的：Dsawiki: Install Tmux on Ubuntu
+其他像是 CentOS 的安裝，建議都是手動下載 build 以下兩個套件：libevent-1.4.x-stable 與 tmux。

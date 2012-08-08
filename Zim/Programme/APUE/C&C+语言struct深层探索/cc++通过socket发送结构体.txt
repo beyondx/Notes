@@ -1,0 +1,51 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-05T14:55:37+08:00
+
+====== cc++通过socket发送结构体 ======
+Created 星期日 05 六月 2011
+
+  c/c++通过socket发送结构可以直接先将结构转化到内存中，再通过send直接发送。
+
+　　在网络通讯过程中往往涉及一些有关联的参数传递，例如数组，结构体之类的。对于结构体其实方法挺简单，由于结构体对象在内存中分配的空间都是连续的，所以可以将整个结构体直接转化成字符串发送，到了接收方再将这个字符串还原成结构体就大功告成了。
+
+　　首先，我们建立一个结构体。
+
+　　struct UsrData{
+
+　　char usr_id[16];
+
+　　char usr_pwd[16];
+
+　　char usr_nickname[16];
+
+　　};
+
+　　当然，这个结构体在发送方与接收方都必须声明。
+
+　　接下来创建对象并初始化，然后发送。
+
+　　UsrData sendUser;
+
+　　memcpy( sendUser.usr_id, “100001”, sizeof(“100001”) );
+
+　　memcpy( sendUser.usr_pwd, “123456”, sizeof(“123456”) );
+
+　　memcpy( sendUser.usr_nickname, “Rock”, sizeof(“Rock”) );
+
+　　send( m_socket, (char *)&sendUser, sizeof(UsrData), 0 );
+
+　　这样发送方就已经将这个mUser对象以字符串的形式发送出去了。
+
+　　最后在接收方做接收。
+
+　　char buffer[1024];
+
+　　UsrData recvUser;
+
+　　recv( m_socket, buffer, sizeof(buffer), 0 );
+
+　　memcpy( &recvUser, buffer, sizeof(buffer) );
+
+　　这样得到的recvUser对象里的数据与sendUser相同了。具体原因其实很简单，就是因为结构体对象的内存区域连续，同时每个成员的区块大小都分配好了，当接收完自己的区块，其实自己的数据已经接收完成。挺简单的，但还是挺有用的。 
+

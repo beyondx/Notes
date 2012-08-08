@@ -1,0 +1,214 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-25T13:52:34+08:00
+
+====== The coproc keyword ======
+Created Sunday 25 December 2011
+http://wiki.bash-hackers.org/syntax/keywords/coproc
+
+===== Synopsis =====
+
+ coproc [NAME] command [redirections]
+
+===== Description =====
+
+Bash 4.0 introduced the coprocesses, a feature certainly familiar to __ksh__ users.
+
+coproc starts __a command__ in the backgound __setting up pipes__ so that you can interact with it. Optionally, the co-process can have a name NAME.
+
+If NAME is given, the following command must be a__ compound command__. If no NAME ist given, the command can be a simple command or a compound command.
+
+===== Redirections（这里的重定向是对于coproc里的command而言的） =====
+
+The redirections are normal redirections that are set __after the pipe has been set up__, some examples:
+
+# redirecting stderr in the pipe
+$ coproc { ls thisfiledoesntexist; read ;} __2>&1 #1代表coproc的标准输出，即COPROC[1]__
+__#将在子shell里执行的{ ls thisfiledoesntexist; read ;}标准出错重定位到其标准输出(而不是当前shell的标准输出)。由于重定向是在pipe建立之后而且coproc的标准输入和标准输出是和执行该语句的当前shell相连接的，所以coproc的出错和输出将可以通过pipe访问到。__
+[2] 23084
+$ read -u ${__COPROC[0]__};printf "%s\n" "$REPLY"  
+ls: cannot access thisfiledoesntexist: No such file or directory   #coproc的出错可以通过其标准输出fd访问到。
+
+#COPROC是__当前shell__中与coproc的标准输入/输出相连的描**述符数组，COPROC[0]与coproc的标准输出相连，COPROC[1]与coproc的标准输入相连**。
+
+#let the output of the coprocess go to stdout
+$ __{ coproc mycoproc { awk '{print "foo" $0;fflush()}' ;} >&3 ;} 3>&1__
+
+
+
+{....} 分组命令代表在**当前shell中**执行其中的命令，所以3>&1，表示将{...}中使用的3描述符与__当前shell__的1描述符相连接。
+而 {...}中的>&3是在coproc与当前shell的pipe建立之后执行的，其标准输出的描述符其环境中的3相连后，实际上是与当前shell的标准输出相连。
+
+[2] 23092
+$ echo bar >&${mycoproc[1]}
+$ foobar
+
+Here we need to **save the previous file descriptor of stdout**, because by the time we want to redirect the fds of the coprocess stdout has been redirected to the pipe.
+
+注意，不能是：
+[geekard@geekard ~]$ { coproc mycoproc { awk '{print "foo" $0; fflush()}'; }__ 3>&1  >&3;__ }    #只是重定向协程自身的fd，__与外界shell无关__。
+[geekard@geekard ~]$ echo ddd >&${mycoproc[1]} 
+[geekard@geekard ~]$ jobs
+[1]+  Running                 coproc mycoproc { awk '{print "foo" $0; fflush()}'; } 3>&1 1>&3 &
+[geekard@geekard ~]$ __lsof -p 31330__
+COMMAND   PID    USER   FD   TYPE DEVICE SIZE/OFF    NODE NAME
+bash    31330 geekard  cwd    DIR    8,7     4096 2490369 /home/geekard
+bash    31330 geekard  rtd    DIR    8,2     4096       2 /
+bash    31330 geekard  txt    REG    8,2   705652      15 /bin/bash
+bash    31330 geekard  mem    REG    8,2    47044  411422 /lib/libnss_files-2.15.so
+bash    31330 geekard  mem    REG    8,2  7015792  303590 /usr/lib/locale/locale-archive
+bash    31330 geekard  mem    REG    8,2  1949865  411409 /lib/libc-2.15.so
+bash    31330 geekard  mem    REG    8,2    13952  391721 /lib/libdl-2.15.so
+bash    31330 geekard  mem    REG    8,2   351704  264729 /usr/lib/libncursesw.so.5.9
+bash    31330 geekard  mem    REG    8,2   281388  391738 /lib/libreadline.so.6.2
+bash    31330 geekard  mem    REG    8,2   151125  411426 /lib/ld-2.15.so
+bash    31330 geekard   ** 0r ** FIFO    0,8      0t0  199595 pipe
+bash    31330 geekard    **1w ** FIFO    0,8      0t0  199594 pipe
+bash    31330 geekard    2u   CHR  136,6      0t0       9 /dev/pts/6
+bash    31330 geekard **   3w ** FIFO    0,8      0t0  199594 pipe
+bash    31330 geekard   **10w**  FIFO    0,8      0t0  199594 pipe
+bash    31330 geekard  255u   CHR  136,6      0t0       9 /dev/pts/6
+[geekard@geekard ~]$ **echo** </proc/31330/fd/3    __#错误__，echo只输出命令行上的字符，__不使用重定向__。
+
+[geekard@geekard ~]$** cat **!$    #cat是**行缓冲**，一次读入一行，直到遇到EOF。
+cat /proc/31330/fd/3
+__fooddd__
+^C
+[geekard@geekard ~]$ echo "ddd2" >&${mycoproc[1]}
+[geekard@geekard ~]$ __read line__ <&${mycoproc[0]}  #read只读取一行后返回。
+[geekard@geekard ~]$ echo $line
+fooddd2
+[geekard@geekard ~]$ 
+
+这其实是将**协程的文件描述符3**重定向到mycoproc[0]，协程的标准输出并没有改变。
+
+
+===== Pitfalls =====
+Avoid the command__ | __while read subshell
+
+The traditional KSH workaround to avoid the subshell when doing command | while read is to use a coprocess, unfortunately, it seems that bash's behaviour differ from KSH.
+
+In KSH you would do:
+
+ls |& #start a coprocess
+while read -p file;do echo "$file";done #read its output
+
+In bash:
+
+#DOESN'T WORK
+$ coproc ls
+[1] 23232
+$ while read __-u__ ${COPROC[0]} line;do echo "$line";done
+bash: read: line: invalid file descriptor specification
+[1]+  Done                    coproc COPROC ls
+
+By the time we start reading from the output of the coprocess, the file descriptor has been closed.
+
+===== Buffering =====
+
+In the first example, we used fflush() in the awk command, this was done on purpose, as always when you use__ pipes the I/O operations are buffered__, let's see what happens with sed:
+
+$ coproc sed s/^/foo/
+[1] 22981
+$ echo bar >&${COPROC[1]}
+$ read __-t 3__ -u ${COPROC[0]}; (( **$? >127** )) && echo "nothing read"
+nothing read
+
+Even though this example is the same as the first awk example, the read doesn't return, simply because the output is waiting in a buffer.
+
+
+===== background processes =====
+
+The file descriptors of the coprocesses are __available to the shell where you run coproc__, but they are __not inherited__. Here a not so meaningful illustration, suppose we want something that continuely reads the output of our coprocess and echo the result:
+
+#NOT WORKING
+$ coproc awk '{print "foo" $0;fflush()}'
+[2] 23100
+$ while read -u ${COPROC[0]};do echo "$REPLY";done __&__
+[3] 23104
+$ ./bash: line 243: read: 61: invalid file descriptor: Bad file
+descriptor
+
+it fails, because__ the descriptor is not avalaible in the subshell created by &__.  evoking shell中的协程文件描述符并不会被后续的子shell继承。但是，在evoking shell中打开的其它文件描述符一般会被子shell继承。
+
+A possible workaround:
+
+#WARNING: for illustration purpose ONLY
+# this is not the way to make the coprocess print its output
+# to stdout, see the redirections above.
+$ coproc awk '{print "foo" $0;fflush()}'
+[2] 23109
+$__ exec 3<&${COPROC[0]}__
+$ while read -u 3;do echo "$REPLY";done &
+[3] 23110
+$ echo bar >&${COPROC[1]}
+$ foobar
+
+Here the** fd 3 is inherited**.
+
+===== Only one coprocess at a time =====
+
+The title says it all, complain to the bug-bash mailing list if you want more.
+
+===== Examples =====
+
+=== Anonymous Coprocess ===
+
+First let's see an example without NAME:
+
+$ coproc awk '{print "foo" $0;fflush()}'
+[1] 22978
+
+The command starts in the background, coproc returns immedately. 2 new files descriptors are now available via the __COPROC array__, We can send data to our command:
+
+$ echo bar >&${COPROC[1]}
+
+And then read its output:
+
+$ read -u ${COPROC[0]};printf "%s\n" "$REPLY"
+foobar
+
+When we don't need our command anymore, we can kill it via its pid:
+
+$ kill __$COPROC_PID__
+$
+[1]+  Terminated              coproc COPROC awk '{print "foo" $0;fflush()}'
+
+=== Named Coprocess ===
+
+Using a named coprocess is as simple, we just need a compound command like when defining a function:
+
+$ coproc mycoproc __{ awk '{print "foo" $0;fflush()}' ;}__
+[1] 23058
+$ echo bar >&${mycoproc[1]}
+$ read -u ${mycoproc[0]};printf "%s\n" "$REPLY"
+foobar
+$ kill $mycoproc_PID
+$
+[1]+  Terminated              coproc mycoproc { awk '{print "foo" $0;fflush()}'; }
+
+Redirecting the output of a script to a file and to the screen
+
+#!/bin/bash
+# we start tee in the background
+# redirecting its output to the stdout of the script
+{ coproc tee { tee logfile ;} __>&3 __;} __3>&1__     #invoking shell写打开文件描述符3(duplicate from its fd 1)，然后该描述符__3被子进程继承__。
+# we redirect stding and stdout of the script to our coprocess
+__exec >&${tee[1]} 2>&1__
+
+在使用复制文件描述符特性时，被复制到的文件描述符必须事先读打开或写打开。所以，内层的3其实继承的是外层shell打开的描述符。
+The operator
+
+     [n]>&word
+
+is used similarly to duplicate output file descriptors. If n is not specified, the standard output (file descriptor 1) is used. If the digits in word do not specify __a file descriptor open for output__, a redirection error occurs.
+
+===== Portability considerations =====
+
+* the coproc keyword is not specified by POSIX(R)
+* other shells might have different ways to solve the coprocess problem
+* the coproc keyword appeared in Bash version 4.0-alpha
+
+===== See also =====
+Anthony Thyssen's Coprocess Hints - excellent summary of everything around the topic
+http://www.ict.griffith.edu.au/anthony/info/shell/co-processes.hints

@@ -1,0 +1,57 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-05T16:09:55+08:00
+
+====== Struct packing ======
+Created 星期日 05 六月 2011
+http://tedlogan.com/techblog2.html
+
+Last week, I was debugging some code and came across a troubling situation: A variable that I set in one function was suddenly and quickly being mutilated before I managed to read it in another function. After hours at the debugger, I discovered the culprit was struct packing.
+
+To understand what struct packing means, let's start with an arbitrary C struct:
+struct example_struct {
+    char my_char;
+    short my_short;
+    int my_int;
+};
+
+Let's play compiler and try to lay out this structure in memory. Assume that char is one byte, short is two bytes, and int is four bytes, and that we can ignore byte ordering. Our first attempt will be to use as little memory as possible:
+
+Address 	0 	1 	2 	3 	4 	5 	6
+Data 	my_char 	my_short 	my_int
+
+That's it; our struct takes 7 bytes in memory. That's great, right?
+
+Well, not really. Modern 32-bit computers like to access data in 32-bit chunks, and more importantly, they like the data to be aligned in multiples of 32 bytes. (You may correctly extrapolate that 64-bit systems like to access data in 64-bit chunks and like these chunks to be aligned in multiples of 64 bits.) What this means is that the structure we laid out above will probably be less efficient to access than it could be. So let's make another attempt:
+
+Address 	0 	1 	2 	3 	4 	5 	6 	7 	8 	9 	10 	11
+Data 	my_char 	  	  	  	my_short 	  	  	my_int
+
+Wait! Isn't that horribly wasteful of memory? We use twelve bytes to store seven bytes of data. Well, yes, but that's not important. Here's a secret:
+
+    Modern computers have gobs and gobs of main memory. 
+
+You may not be aware that "gobs" is the technical term for "gigabytes upon gigabytes". The point is that, unless you're writing code for an embedded system or for One Laptop per Child, you're not going to run out of memory by "wasting" space inside your structs.
+
+Ok, so now you're asking what the point is. After all, we went off on this tangent because of a real-world problem. Take a look at the two ways we came up to arrange the structures, and imagine what happens if some code tried to use the first arrangement to read the struct while the code that wrote the structure used the second arrangement. Chaos would ensue -- the second and third elements in the struct have different addresses, so the code will read bogus values. That was the problem I saw. But what caused it, and how could I fix it?
+
+It turns out that compilers allow their users to manipulate struct packing, which may come in handy if you're trying to ensure that two pieces of code compiled at different times agree on the structure packing. The two compilers I've used in the past year, gcc and Microsoft Visual C++, support the same notation, where N is a small power of two which specifies the new alignment in bytes:
+
+    #pragma pack(N) simply sets the new alignment.
+    #pragma pack() sets the alignment to the one that was in effect when compilation started.
+    #pragma pack(push[,N]) pushes the current alignment setting on an internal stack and then optionally sets the new        alignment.
+    #pragma pack(pop) restores the alignment setting to the one saved at the top of the internal stack (and removes that stack entry).
+
+(Text from the GCC manual.)
+
+GCC will generate code using the first structure packing above if one includes the following line in the code before the structure is declared:
+#pragma pack(1)
+
+GCC will use the second struct packing if the following pragma is used:
+#pragma pack(4)
+
+In my situation, the problem was that a header file felt the need to change the struct packing without changing it at the end of the header, and not all of my source files were including the offending header. I filed a bug report and protected myself from the header with this code:
+#pragma pack(push)
+#include "evil-header.h"
+#pragma pack(pop)
+

@@ -1,0 +1,50 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-05T15:07:43+08:00
+
+====== 光标移动 ======
+Created Thursday 05 May 2011
+
+C-f 				forward-char		前进一个字符 　　
+C-b 				backward-char	后退一个字符 　　
+M-f 				forward-word		前进一个单词 　　
+M-b 			backward-word	后退一个单词 　　
+
+C-a 				beginning-of-line	移到行首 　　
+C-e 				end-of-line		移到行尾 　　
+M-a 			backward-sentence移到句首 　　
+M-e				forward-sentence	移到句尾 　
+M-r				移到中间行
+M-m			移到当前行非空首字符
+　
+C-p 				previous-line		后退一行 　　
+C-n 				next-line			前进一行 　　
+M-g M-g 		goto-line			按行号跳转
+M-x goto-line 					同上
+M-x goto-char 					按字符跳转
+　
+C-v 				scroll-up			向下翻页 　　
+M-v 			scroll-down		向上翻页 　　
+M-< 			beginning-of-buffer缓冲区头部 　　
+M-> 			end-of-buffer		缓冲区尾部 
+M-{				forward-paragraph	光标向前移动一个段落
+M-}				backward-paragraph光标向后移动一个段落
+C-l				recenter			当前行居中 　
+　　
+C-M-f 			向前匹配光标右侧的记号(如字符串，各种括号) 　　
+C-M-b 			向后匹配光标左侧的记号 　　
+C-M-a			向后移动光标到函数定义的开始
+C-M-e			向前移动光标到函数定义的结束
+
+C-M-v			将临近的窗口中内容前翻
+C-M-S-v			....后翻
+　
+　　
+M-n				digit-argument	重复操作N次
+C-u n 			universal-argument 同上
+C-u 				重复操作随后的命令4次 　　
+C-u C-u 			重复操作随后的命令8次 　　
+
+C-x ESC ESC 		执行历史命令记录中的上一条命令(不包括移动光标命令)
+M-p				选择上一条命令
+M-n				选择下一条命令 

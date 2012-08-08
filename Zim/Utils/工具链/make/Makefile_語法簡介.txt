@@ -1,0 +1,360 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-08T15:33:01+08:00
+
+====== Makefile 語法簡介 ======
+Created Friday 08 June 2012
+http://tetralet.luna.com.tw/index.php?op=ViewArticle&articleId=185
+
+Makefile 語法簡介 
+Tetralet | 10 九月, 2007 23:39
+
+有稍稍在 Linux 下碰過程式設計的開發者應該會知道，make 是用來將程式碼、函式庫、標頭檔及其它資源檔 build 成最終成果（即：最終的應用程式）的超強力輔助工具。
+
+當然了，並不是非得動用到 make 才能 build 程式，或許有什麼程式設計魔人喜歡什麼都自己手動進行；但利用 make 及其參考檔（輸入檔案）Makefile 將會讓整個編譯工作輕鬆許多。若您曾經打包過 Debian Package，那麼應該會發現 debuan/rule 這個檔案的語法和 Makefile 幾乎是一模一樣，所以學習 Makefile 的語法對於 Debian Package Maintainer 而言也是一門必要的功課。
+
+===== Makefile 語法： =====
+
+    以下為 Makefile 的基本語法：
+
+    **註解：**
+
+        以 # 開頭的即為註解。
+
+    **變數宣告：**（有人稱之為巨集）
+
+        語法：
+
+            MACRO = value
+
+        變數名稱為大小寫相異。在慣例上，Makefile __內部使用的變數名稱使用小寫__；而使用者很__可能從命令列自行另外指定數值的變數__，像是 CFLAGS，則是使用大寫。利用 MACRO = 來__取消__該變數。
+
+        在 Makefile 中，可利用 $(MACRO) 或 ${MACRO} 來存取已定義的變數。例：
+
+            targets = foo
+            $(targets): common.h
+                gcc -o $(targets) foo.c
+
+        效果等同：
+
+            foo: common.h
+                gcc -o foo foo.c
+
+        **:= 語法**
+
+            注意到，make 會將整個 Makefile 展開後，再決定變數的值。也就是說，變數的值將會是整個 Mackfile 中__最後__被指定的值。例：
+
+                x = foo
+                y = $(x) bar
+                x = xyz
+                # y 的值為 xyz bar
+
+            在上例中，y 的值將會是 xyz bar，而不是 foo bar。
+
+            您可以利用 := 來避開這個問題。__:= 表示變數的值決定於它在 Makefile 中的位置__，而不是整個 Makefile 展開後最終的值。
+
+                x := foo
+                y := $(x) bar
+                x := xyz
+                # y 的值為 foo bar
+
+            在上例中，y 的值將會是 foo bar，而不是 xyz bar 了。
+
+        **?= 語法：**
+
+            ?= 是一個簡化的語法：若變數未定義，則替它指定新的值。否則，採用原有的值。例：
+
+                FOO ?= bar
+
+            若 FOO 未定義，則 FOO = bar；若 FOO 已定義，則 FOO 的值維持不變。
+
+        //+= 語法：//
+
+            例：
+
+                CFLAGS = -Wall -g
+                CFLAGS += -O2
+
+            此時 CFLAGS 的值就變成 -Wall -g -O2 了。
+
+        **define 語法：**
+
+            使用 define 語法的唯一優點是__它可以讓變數直接使用『斷行』__。例：
+
+                define foo
+                uname -a
+                echo $$SHELL
+                endef
+
+                all:
+                        $(foo)
+
+            上例可以視同於：
+
+                foo = uname -a__;__ echo $$SHELL
+
+                all:
+                        $(foo)
+
+            注意到在上例中使用了 $$，__讓 '$' 能傳到 Shell 中__。
+
+        **在 target 裡另外指定變數的值**
+
+            可以在 target 裡另外指定變數的值。例：
+
+                foo = abc
+
+                all: foo = xyz
+                all:
+                        echo $(foo)
+                        # 此時，foo 的值為 xyz
+
+            以下的語法提供了和上例相同的功能：
+
+                all: override foo = xyz
+
+                all: export foo = xyz
+
+        make 也可以存取__環境變數__。例：
+
+            all:
+                @echo $(CFLAGS)
+
+        在上例中，雖然在 Makefile 裡雖然沒有指定 CFLAGS 的值，但 make 會試圖以環境變數來代出 CFLAGS 的值。
+        可搭配 __wildcard 指令__在變數裡展開 * ? [...] 等萬用字元。例：
+
+            objects=$(wildcard *.o)
+
+    **規則：（Rule）**
+
+        指示 make 如何進行編譯。
+        主要語法：
+
+            target: dependencies
+            <Tab>Commands
+
+            或
+            target: dependencies__;__ Commands
+            <Tab>Commands
+
+            Rule 指示了 make 如何建立 target；及何時要重新建立 target。
+            target：所要建立的檔案
+            dependencies：相依項目。 make 會據此決定是否要重新編譯 target。
+            Commands：建立 target 的指令。
+
+            在 Makefile 裡並__沒有限定 Rule 的先後順序__。但預設上，make 會參考 all 這個目標項目，並依據它的 dependencies 來決定要建立哪些項目。若沒有 all 項目，則會採用 Makefile 裡的第一個項目。
+
+        target：（目標項目）
+
+            這個項目所要建立的檔案，__必須以 : 結尾__。例：
+
+                foo.o: common.h
+                    gcc -c foo.c
+
+            其中，foo.o 是這個項目要建立的檔案；common.h 是相依性的項目/檔案；而 gcc -c foo.c 則為要產生這個項目所要執行的指令。
+
+            make 在編譯時，若__發現 target 比較新__，也就是 dependencies 都比 target 舊，那麼將不會重新建立 target，如此可以避免不必要的編譯動作。
+
+            若該項目**並非**檔案(//不生成对应的文件//)，則為 fake 項目。如此一來將不會建立 target 檔案。但為了避免 make 有時會無去判斷 target 是否為檔案或 fake 項目，建議利用 __.PHONY__ 來指定該項目為 fake 項目。例：
+
+                .PHONY: clean
+                clean:
+                    rm *.o
+
+            在上例中，若不使用 .PHONY 來指定 clean 為 fake 項目的話，若目錄中同時存在了一個名為 clean 的檔案，則 clean 這個項目將被視為要建立 clean 這個檔案，但 clean 這個項目卻又沒有任何的 dependencies，也因此，clean 項目將永遠被視為 up-to-date，**永遠不會被執行**。
+
+            因為利用了 .PHONY 來指定 clean 為 fake 項目，所以 make __不會去檢查__目錄中是否存在了一個名為 clean 的檔案。如此也可以提昇 make 的執行效率。
+
+            其它類以 .PHONY 的語法請參考：
+
+                GNU `make': 4.9 Special Built-in Target Names
+
+            另外，__如果某個非 fake 項目的 target 的 dependencies 包含了 fake 項目的話，因為 make 一定會執行 fake 項目，這樣一來，這個非 fake 項目的 target 一定也會被執行__。這可能不是理想的做法。
+
+        dependencies：（相依性項目，以空白間隔）
+
+            dependencies 是指定在建立 target 之前，必須先檢查的項目。可以不指定。例：
+
+                foo.o: common.h
+                    gcc -c foo.c
+
+            上例中是指：檢查 common.h。如果它的建立日期比 foo.o 新，就執行 gcc -c foo.c 來重新產生 foo.o。也就是說，可以依需求建立 dependencies，即使它和 target 一點關係也沒有。
+
+            相依性項目可以是 Makefile 中其它的 target。也因此，在建立該 target 之前，它會先檢查在 dependencies 裡所指定的所有 target。
+
+        Commands：（即為要執行的 Shell 指令）
+
+            必須以 <Tab> 開頭。使用 Shell Script 語法。在 Makefile 裡，__只要以 <Tab> 開頭都將會被視為 Shell Script 執行__。
+
+            每條法則必須寫在同一行。__每條 Command 會啟動一個新的 Shell__，預設為 /bin/sh。若執行完某條 Command 但傳回了錯誤值，make 就會__中斷__執行。
+
+            因為每條 Command 會啟動一個新的 Shell，所以有時執行的指令必須寫在同一行，像是使用 if 來進行條件判斷，此時可以用 ; 來分隔指令。例：
+
+                all:
+                    if [ -f foo ]; then rm foo; fi
+
+            而以下是錯誤示範：
+
+                all:
+                    cd subdir; $(MAKE)
+
+            這時因為 __make 只會檢查最後一個指令的傳回值__，所以在以上指令中，即使 subdir 不存在，但 make 並不會因而中斷執行，並會繼續執行 $(MAKE) 指令，而產生了不可預期的結果。
+
+            為了避免這個問題，可以利用 && 來檢查其中某個指令是否成功執行，再決定是否執行下個指令。例：
+
+                all:
+                    cd subdir && $(MAKE)
+
+            特別字元：
+
+                __@__：不要顯示執行的指令。
+
+                __-__：表示即使該行指令出錯，也不會中斷執行。
+
+                例：
+
+                    .PHONY: clean
+                    clean:
+                        @echo "Clean..."
+                        -rm *.o
+
+                因為 make 會一行一行將正在執行的 Commands 顯示在螢幕上，但您可以利用 @ 來暫時關閉這個功能。
+
+                而 make 只要遇到任何錯誤就會中斷執行。但像是在進行 clean 時，也許根本沒有任何檔案可以 clean，因而 rm 會傳回錯誤值，因而導致 make 中斷執行。我們可以利用 - 來關閉錯誤中斷功能，讓 make 不會因而中斷。
+
+            **隱性法則：**
+
+                在上例中的：
+
+                    foo.o: common.h
+                        gcc -c foo.c
+
+                由於產生 foo.o 的指令就是 gcc -c foo.c，因此在 Makefile 裡可以將其簡化為：
+
+                    foo.o: common.h
+
+                此時 make 會依據 target 的副檔名來__猜測__該如何編譯 target。如此可以讓 Makefile 更為簡潔。
+
+                您可以__利用【空白指令】來避免 make 依據隱性法則而進行編譯__。例：
+
+                    foo.o: common.h
+                    <Tab>
+
+    內部變數：
+
+        $?： 	代表__已被更新__的 dependencies 的值。
+        也就是 dependencies 中，比 targets 還新的值。
+        $@： 	代表 targets 的值。
+        $<： 	代表第一個 dependencies 的值。
+        $* :
+        	代表 targets 所指定的檔案，但不包含副檔名。
+
+        例：
+
+            print: foo1.c foo2.c foo3.c
+                lpr -p $?
+                touch print
+
+        這樣會將 foo1.c foo2.c foo3.c 中已有更新的內容印至印表機。 
+
+    **內部函數：**
+
+        您可以在 Makefile 使用 make 所支援的一些內部函數。詳情請參考：
+
+            GNU `make': 8 Functions for Transforming Text
+
+    //條件判斷：//
+
+        可以在 Makefile 中使用以下的條件判斷語法。但由於__它們不是 rule，所以不可以 <Tab> 開頭；但其後要執行的指令則必須以 <Tab> 開頭，make 才會視其為 Shell 指令__。
+
+        ifeq：（檢查 value1, value2 是否相等）
+
+            ifeq (value1, value2)
+                ...
+            else
+                ...
+            endif
+
+        ifneq：（提供和 ifeq 相反的功能）
+
+            ifneq (value1, value2)
+                ...
+            else
+                ...
+            endif
+
+        ifdef：（檢查 variable 變數是否為空的）
+
+            ifdef variable
+                ...
+            else
+                ...
+            endif
+
+
+        ifndef：（提供和 ifdef 相反的功能）
+
+            ifdef variable
+                ...
+            else
+                ....
+            endif
+
+    **引入檔案：**
+
+        將外部檔案引入 Makefile 中。可以視為直接在此將該檔案內容全數插入 Makefile 中。
+
+        例：
+
+            include foo.in
+
+        將 foo.in 的內容全數引入 Makefile 裡。
+
+        可以同時引入多個檔案、使用變數 $(MACRO) 或是使用萬用字元（* ? 或 [...]）。例：
+
+            include foo.in common*.in $(MAKEINCS)
+
+    **子目錄：**
+
+        如果該專案有多個目錄，且每一個目錄中都有 Makefile，則利用以下指令來進入子目錄並進行編譯：
+
+            cd dir && $(MAKE)
+
+        例：
+
+            SUBDIRS = dir1 dir2 dir3
+
+            all:
+                    for i in $(SUBDIRS); do
+                            (cd $$i && make);
+                    done
+
+            clean:
+                    for i in $(SUBDIRS); do
+                            (cd $$i && make clean);
+                    done
+
+            install:
+                    for i in $(SUBDIRS); do
+                            (cd $$i && make install);
+                    done
+
+//make 參數：//
+
+    可以用 make 的參數來蓋過 Makefile 裡，用變數所指定的參數。例：
+
+        make CFLAGS="-g -O2"
+
+    您可以__在 Makefile 裡使用 override 來避免變數的值被 make 的參數所取代__。例：
+
+        override CFLAGS = -Wall -g
+
+    可以在 make 後指定要重新建立的 target。例：
+
+        make clean
+
+    以上會執行 Makefile 中的 clean 區段。
+
+參考資訊：
+
+    GNU `make' 說明手冊（英文版）

@@ -1,0 +1,29 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-21T16:04:17+08:00
+
+====== The Great Linux World Map ======
+Created Saturday 21 May 2011
+
+I just realized something. There is no Great Linux World Map. There's one for social networking, but there's no such thing for my favorite operating system. Needless to say, where's there's demand, someone ought to supply it. So I created one.
+
+The Great Linux World Map is a fun endeavor trying to portray the world of the Linux desktop as a sort of a Typus Orbis Terrarum. The map is no way representative in terms of actual market share usage or popularity. It's just a wild envisioning of how I see things, more or less. But I think you will like this one - a lot.
+{{./linux-world-map-small.jpg}}
+Of course, I could not plaster every single distribution or Linux-related item onto the map, as it would clutter this precious work of art. You get old distributions and you get new distributions, you get big ones and small ones, popular and obscure, but not all of them. If you feel your Linux distribution has been neglected, it's not out of malice, it's just pure aesthetics. Finally, naturally, since this is a bold expedition unto humor, you should not take anything seriously, neither names, nor terms, nor shapes, nor phrases used. It's all jolly good fun.
+
+So, without further ado ...
+
+The Great Linux World Map
+
+Here it is, the Great Linux World Map, the Atlas of the Theater of the World, Dedoimedo style. The smaller image below links to a full-sized 2752x1536px 1.19MB PNG map. Click to enlarge. I've purposefully made the map in 16:9 aspect ratio, so you can use it as a wallpaper, if you fancy so. Enjoy!
+
+Linux World Map
+
+I hope you like this! If so, feel free to spread the word! If you want a black and white version or if you have suggestions for version 2.0 of the Great Linux World Map, you're welcome to email me.
+
+Major winning. Dedoimedo out!
+May 15, mini update
+
+A handful of you pointed out that Kubuntustan should reside at the shores of KDE Sea. This is such an obvious omission on my end that I felt compelled to release a tiny version 1.1 update right now, relocating Kubuntustan to its rightful place. Many thanks to you all!
+
+Cheers. 

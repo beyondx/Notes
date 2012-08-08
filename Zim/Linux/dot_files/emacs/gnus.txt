@@ -1,0 +1,51 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-22T13:42:44+08:00
+
+====== gnus ======
+Created Sunday 22 May 2011
+
+(setq user-full-name "geekard")
+(setq user-mail-address "geekard@gmail.com")
+
+;; newsgroups
+(setq gnus-select-method '(nntp "news.gmane.org"))
+
+;; SMTP
+(setq message-send-mail-function 'smtpmail-send-it)
+(setq smtpmail-default-smtp-server "smtp.gmail.com")
+(setq smtpmail-smtp-service 587)
+(setq smtpmail-starttls-credentials
+      '(("smtp.gmail.com"
+	 587
+	 nil
+	 nil)))
+(setq smtpmail-auth-credentials
+      '(("smtp.gmail.com"
+	 587
+	 "geekard@gmail.com"
+	 nil)))
+;; IMAP
+(add-to-list 'gnus-secondary-select-methods '(nnimap "gmail"
+                                  (nnimap-address "imap.gmail.com")
+                                  (nnimap-server-port 993)
+				  (nnimap-authinfo-file "~/.authinfo")
+                                  (nnimap-stream ssl)))
+;;the format of authinfo is:
+;;machine imap.gmail.com login username@gmail.com password secret port 993
+;;eg: machine smtp.gmail.com login geekard@gmail.com  701178zj12912 secret  port 857
+
+(setq nnimap-split-inbox '("INBOX"))
+(setq nnimap-split-rule 'nnmail-split-fancy)
+(setq gnus-parameters
+      '(("nnimap+imap.gmail.com.*" (gcc-self . t))))
+
+(setq gnus-fetch-old-headers t)
+(setq gnus-permanently-visible-groups "gmail")
+
+(setq gnus-posting-styles
+      '((".*"
+	 ("CC" "geekard@gmail.com")
+         (address "geekard@gmail.com"))))
+
+

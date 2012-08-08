@@ -1,0 +1,261 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-08T21:41:30+08:00
+
+====== git ======
+Created Sunday 08 May 2011
+
++ 我在GitHub上保存的笔记地址信息：
+  笔记位置：/home/geekard/Notes
+  git remote add origin git@github.com:geekard/Note.git
+  git push -u origin master
+
++ git的配置文件位置可以用--system/--global/--file指定，配置命令为**git config **，配置项目的引用格式为__ 段名.变量名。__
++ git config 配置git仓库的参数，可以使用则正表达式来指定要获取和配置的多个参数,如下面的命令将获取所有变量名以remote开头的值
+[geekard@geekard note]$ git config --get-regexp __ remote.*__
++ 假如配置文件（./.git/config）中有如下的片段:
+   ; Proxy settings
+           [core]
+                   gitproxy="proxy-command" for kernel.org
+                   gitproxy=default-proxy ; for all the rest
+
+     The hypothetical proxy command entries actually have a postfix to discern what URL they apply to. Here is how to change the entry
+       for kernel.org to "ssh".
+
+           % git config core.gitproxy '"ssh" for kernel.org' **'for kernel.org$'**
+
+       This makes sure that only the key/value pair for kernel.org is replaced.
+
+       If you want to delete an entry for a multivar (like core.gitproxy above), you have to provide a regex matching** the value **of
+       exactly one line.
+
+        to query a multivar:
+
+           % git config --get core.gitproxy "for kernel.org$"
+
++ git init 在当前目录创建一个git仓库，如果指定了 --separate-git-dir=<git dir>参数，则标示将.git目录放在该参数指定的位置，而本目录中只是指向那个位置的符号链接。如果仓库已经存在，则该参数会将仓库.git仓库移动到指定的位置。
+
++ git的每一次提取(clone, fetch, pull)都是对仓库的**完整备份**，其关心的是文件整体的变化而非内容的差异，它将变化的文件做__快照__(每次运行git add命令时，都会将变化文件的快照保存在__staged区域__中。)，然后保存在内部的微型文件系统中。每次提交（commit）更新时, git会会纵览一遍__staged区域__中所有文件的快照(其实staged区域中有工作目录中__已跟踪所有文件__的快照，只不过没变化的文件是__历史快照__而已。)，然后保存一个指向这次快照的__索引__。
+
++ git的操作基本上__都是只“添加”__数据到仓库中，即使执行git rm --cached命令，也只是将相应文件的状态设置为__“未追踪”__而不是删除。只要添加到仓库中的数据，不管当前目录是否还有它，都可以恢复。
+
++ git管理的文件(已追踪)有四种状态和三个位置：__未修改，已修改，已暂存，已提交__；前两个状态的文件位于**工作目录**中，已暂存的文件位于**staged区域**中，已提交的文件位于**git 仓库**中。
+    - staged区域中存的是__已修改文件的快照__，但可能**不是最终版本**：在提交前，我们可以**多次**通过git add命令将同一个文件添加到staged区域中，提交时使用的__最后一次__添加的版本。
+
++ git reset HEAD filename  #**将staged区域中filename的快照**__丢弃__，目录中filename文件**内容不变**但是状态为**已修改**。
+    - git checkout -- filename  #__丢弃__对当前目录中filename文件的修改，将其__恢复为已保存的快照__内容(注意，快照的内容可能是staged区域中未提交更新（恢复后的文件状态为已暂存），也可能是仓库中的(恢复后的文件状态为未修改)。)。注意，这种方法也适合**恢复**以前提交的但是当前在工作目录中__已经删除__的文件。
+   - 如果想保存当前对工作目录中文件的修改，但又想退回到以前的某个版本继续开发，则可以使用stashing或分支机制。如将当前目录中的内容提交到一个临时分支中。然后checkout历史版本继续工作。
+
++ git内部设有**已跟踪**文件清单、**未跟踪**文件清单、以及用户设置的**忽略跟踪**文件清单。可以使用gir rm命令将某个文件从__已跟踪文件清单和当前目录__中删除(仓库中的历史快照文件并不会删除)。使用git rm时__支持glob模式，__对于没有指定路径的单个文件名匹配__所有目录__下的该模式文件。
+
++ git rm filename  #将当前工作目录中的filename文件**删除**，同时git**停止对该文件的跟踪**。如果staged区域中有filename__未提交的快照__，则删除失败，这时可以使用**git rm -f **filename命令强制删除(注意，有可能造成数据丢失)。
+    - git rm --cached filename #停止对filename的跟踪，但不删除工作目录中的文件。如果staged区域中有filename未提交的快照，则会将该快照标记为**删除状态**，在下一次提交时将停止跟踪。
+    
++  git status  #查看已暂存和未暂存的更新，只**列出相关的文件**。
+
++  git diff   #将当前工作目录中的已跟踪文件与其**已保存**的快照文件(可能是staged区域中，__也可能是__仓库中的)进行差异比较，diff的第一个参数为快照文件。
+    - git diff --cached或--staged  #将staged区域中的文件与已commit的repo中的文件进行比较，diff的第一个参数为repo中的文件。
+
++ 一般在**项目开始**的时候就在工作目录及各个子目录中设立.gitignore文件。如果某个文件已被git跟踪，然后再将其添加到.gitignore文件，这时git不会自动忽略该文件，除非用户执行：**git rm --cached** file-name命令。也就是说对于**已跟踪**的文件，.gitignore是不起作用的。
+   - .gitignore使用的bash的__glob文件模式__，如果匹配目录中所有文件，则需在目录名后加**正斜线(这是因为git的递归特性，如果不加正斜线，git将不能区分该文件是目录文件还是普通文件。)**；如果不忽略指定模式文件或目录，需在模式前加**叹号(这适合先定义一个宽松的忽略条件，然后再指定不忽略的文件)**。
+  - git help gitignore命令可以查看.gitignore文件的语法规则
+  - git一般递归地处理目录名下的文件，例如 git rm --cached Document/\*.a会递归地删除Document目录下的所有以.a结尾的文件，而不仅仅是Document目录下的该类型文件。但是如果用git rm --cached Document/*.a 则是后一种情况(因为git看不到这个*号，它看到的只是被shell扩展后的文件名列表)。
+
++工作目录中的文件只有两种状态：已跟踪和未跟踪。初次clone某个库时，所得到的文件的状态为**已跟踪但未修改**。
+
++ git add是一个**多用途命令**，其功能取决于所作用的__文件当前状态__：它可以开始跟踪新文件，将修改的文件添加到暂存区，提交合并时冲突的文件。git add name，name可以是一个目录也可以是一个pattern，git将**递归地添加**目录中的所有文件。git add__ -u __pattern，只添加已经追踪的文件更新。
+
++ 提交时记录的是放在**暂存区域的快照**，任何还未暂存的仍然保持已修改状态，可以在下次提交时纳入版本管理。每一次运行提交操作，都是对你__整个项目__作一次快照，以后可以回到这个状态，或者进行比较。
+
++ git commit -a -m messages #**跳过暂存区**，将当前目录中所有__已跟踪__的文件的快照添加到**仓库**中(如果暂存区中有未提交的快照则会__丢弃__)。
+
++ Git 并不跟踪文件移动操作。如果在 Git 仓库中**利用mv命令重命名**了某个文件，仓库中存储的元数据并不会体现出这是一次改名操作。所以，git提过了__git mv oldname newname__命令，它等效为三条命令：**mv** oldname newname; **git rm** oldname; **git add** newname.
+
++ git log命令用于查看历史的__提交记录__，默认不用任何参数的话，git log 会按__提交时间__列出所有的更新。git log 有**许多选项**可以帮助你搜寻感兴趣的提交,这些选项可以__联合使用__。
+		选项 说明
+		__-p__ 按补丁格式显示每个更新之间的差异。
+		__--stat__ 显示每次更新的文件修改统计信息,包括更新的各个文件的详细信息和最后的统计信息。
+		--shortstat 只显示 --stat 中最后修改的**文件数目，添加、删除的行数**。
+		--name-only 仅在提交信息后显示已修改的**文件清单**。
+		--name-status 除了显示已修改的文件清单外，还在文件名前添加一个字符如N**，M，D**表示新增、修改、删除的文件清单。
+		--abbrev-commit 仅显示 SHA-1 的前几个字符，而非所有的 40 个字符。
+		--relative-date 使用较短的相对时间显示（比如，“2 weeks ago”）。
+		__--graph__ 显示 ASCII 图形表示的分支合并历史。
+		__--pretty__ 使用其他格式显示历史提交信息。可用的选项包括 **oneline**，short，full，fuller 和 __format__（后跟指
+		定格式）。
+		
+		format的参数：
+		选项 说明
+		%H 提交对象（commit）的完整哈希字串
+		%h 提交对象的简短哈希字串
+		%T 树对象（tree）的完整哈希字串
+		%t 树对象的简短哈希字串
+		%P 父对象（parent）的完整哈希字串
+		%p 父对象的简短哈希字串
+		%an 作者（author）的名字
+		%ae 作者的电子邮件地址
+		%ad 作者修订日期（可以用 -date= 选项定制格式）
+		%ar 作者修订日期，按多久以前的方式显示
+		%cn 提交者(committer)的名字
+		%ce 提交者的电子邮件地址
+		%cd 提交日期
+		%cr 提交日期，按多久以前的方式显示
+		%s 提交说明
+下面这些选项可以对上面的输出__结果进行筛选__，
+		-(n) 仅显示最近的 n 条提交
+		--since, --after 仅显示指定时间之后的提交，如：--since=**2.weeks**
+		--until, --before 仅显示指定时间之前的提交
+		--author 仅显示指定作者相关的提交。
+		--committer 仅显示指定提交者相关的提交。		
+
+		
+      如果只关心某些文件或者目录的历史提交，可以在 git log **选项的最后**指定它们的**路径**。因为是放在最后位置上的选项，所以用两个短划线 （__--__）隔开之前的选项和后面限定的路径名(使用bash的__glob通配符__)。如：$ git log --pretty="%h:%s" --author=gitster --since="2008-10-01" \
+--before="2008-11-01" --no-merges__ -- t/__
+
+**撤销更改**
+__+ git commit --amend __修改**最后一次提交**。此命令将使用__当前的__暂存区域快照提交，这个快照可以与上次commit时的__不同__，但是git会以__当前__的为准（上次提交时的暂存区快照会和当前暂存区__合并__，但不会替换同名文件的快照。例如上次提交时新增了一个文件，而后用git rm删除了该文件，这时运行git commit --amend时，该文件就不会被添加进仓库。）。如果刚才提交完没有__再将__任何文件放到暂存区，直接运行此命令的话，相当于有机会**重新编辑提交说明**，而所提交的文件快照和之前的一样。启动文本编辑器后，会看到上次提交时的说明，编辑它确认没问题后保存退出，就会使用新的提交说明覆盖刚才失误的提交。如果刚才提交时忘了暂存某些修改，可以__先补上暂存操作__，然后再运行 --amend 提交.
+注意：不要将已提交到远程仓库中的commit执行amend操作，因为别人在获得了的amend前的commit时再获得amend后的版本时会出错。
+__+git reset HEAD file-name  __取消当前放到暂存区的文件，而__工作区中的该文件内容不受影响__，但状态为已更改。如果暂存区中的文件file-name在工作区中已经更改(例如对添加到暂存区但未提交的文件再次修改)，则取消失败，除非指定-f参数。
+__+git checkout -- file-name __ 取消对文件file-name的修改(先从暂存区中恢复文件，如果暂存区中没有则从已提交的仓库中恢复。)，工作目录中的文件将会被恢复。
+__+git checkout HEAD file-name __取消对文件file-name的修改，但是是__从已提交的仓库中恢复__的。因此，__会改变暂存区和当前工作目录__中该文件的内容。
++ 任何已经提交到仓库中的文件都可以恢复，所以，你可能失去的数据，仅限于没有提交过的（如工作目录中修改的文件，__暂存区__中未提交的快照），对 Git 来说它们就像从未存在过一样。
+
+**远程仓库的管理：**
++ 管理远程仓库的工作，包括__添加__远程库，__移除__废弃的远程库，__管理__各远程库__分支__，定义是否__跟踪__这些分支，等等。
+    - 本地仓库的建立有两种方法，1.使用git clone url [dirname]命令从远程的git代码仓库服务器中克隆到本地的dirname目录中。2. 在本地要建立仓库的目录中运行git init命令。对于前者，git会自动添加__名为origin__的远程仓库，同时建立本地master分支来跟踪origin的master分支。对本地仓库，最多只能clone自一个远程仓库。
+    - 要查看本地仓库与哪些远程仓库相关联，可以用 __git remote__ 命令，它会列出每个远程库的简短名字。也可以加上 -v 选项（为 --verbose 的简写，取首字母），显示详细信息。    
+    - 远程仓库的信息记录在本地./git/config文件的remote section中。因此，可以直接查看或修改该文件。
+    - 要添加一个新的远程仓库，可以指定一个简单的名字，以便将来引用，运行 **git remote add [shortname] [url]**，现在可以用字串 shortname 指代对应的仓库地址了。比如说，要抓取所有 Paul 有的，但本地仓库没有的信息，可以运行 __git fetch__ shortname。fetch到的objects将保存到__本地的remote/shortname分支__中，例如shortname中的master分支，在本地可以通过shortname/master分支访问。注意，shortname/master分支只用于保存远程仓库中的信息，本地用户__不能直接修改其中的内容__。但是可以通过将**其中的某一个分支合并到本地分支**，然后在本地分支中修改并提交后再提交到远程仓库中。或者只是checkout其中的某个分支一探究竟。
+    - 现在，Paul 的主干分支（master）已经完全可以在本地访问了(但是还没有被跟踪)，对应的名字是 __pb/master__，你可以将它合并到自己的某个分支，或者切换到这个分支，看看有些什么有趣的更新。远程仓库的分支在本地仓库中以__ remote-name/branch-name__的形式访问。
+    - __git branch -r __查看本地仓库中跟踪的远程分支。
+    - git fetch [remote-name] 此命令会到远程仓库中拉取所有你本地仓库中__还没有__的数据。运行完成后，你就可以在本地访问该远程仓库中的所有分支，将其中某个分支合并到本地，或者只是取出某个分支。。有一点很重要，需要记住，fetch 命令只是将远端的数据__拉到__本地仓库，并__不自动合并__到当前工作分支，只有当你确实准备好了，才能手工合并。
+    - 如果本地仓库__创建了某个分支用于跟踪某个远端仓库的分支(可以使用git remote show命令查看远程分支的配置、跟踪情况，可以使用git checkout -b branchname remote-branch-name创建跟踪远程分支的本地分支。)__，如果当前处于该分支中，则可以使用 __git pull __命令自动抓取数据下来，然后将远端分支__自动合并__到本地仓库中当前分支。默认情况下 git clone 命令本质上就是**自动创建了本地的 master 分支用于跟踪远程仓库中的 master 分支**（假设远程仓库确实有master 分支）。
+    - __git push [remote-name] [branch-name]__可以将本地仓库branch-name数据推送到远程仓库，只有当对远程服务器仓库上有写权限，或者同一时刻没有其他人在推数据，这条命令才会如期完成任务。如果在你推数据前，__已经有其他人__推送了若干更新，那你的推送操作就会被驳回。你必须先把他们的更新__抓取到本地，合并到自己的项目__中，然后才可以再次推送。对clone到本地的仓库，git push, git fetch和git pull不用指定任何参数。
+    - __git remote show__** [remote-name] **查看某个远程仓库的详细信息，git会通过__连接远程仓库服务器__获得相关信息。
+    - git remote rename 命令修改某个远程仓库的名称，相关文件也会自动修改。注意，对远程仓库的重命名，也会使对应的__分支名称__发生变化，原来的 pb/master 分支现在成了 paul/master。
+    - git remote rm 命令，移除本地与之关联的远端仓库，但是并不删除相关的文件。
+
+**git remote命令是管理远程仓库的重要命令**，下面显示的内容都可以通过该命令修改。
+[geekard@geekard note]$ git remote **show web**
+Enter passphrase for key '/home/geekard/.ssh/id_rsa': 
+* remote **web**
+  Fetch URL: git@github.com:geekard/Notes.git
+  Push  URL: git@github.com:geekard/Notes.git
+  HEAD branch: master   #git追踪的远程仓库的**默认分支**由相应仓库的HEAD(refs/remote/web/HEAD)指向，这里为web的master分支。
+  Remote branch:
+    master tracked
+  __Local branch__ configured for 'git pull':  
+    **github **merges with remote **master  #本地处于github分支时，如果执行git pull命令，则远程web的master分支与本地的github分支会自动合并**
+  __Local ref __configured for 'git push':
+   ** master **pushes to** master** (local out of date)
+#git pull , git fetch , git push都可以指定__refspec__参数，用于指出本地分支和远程分支的关系。
+
+[geekard@geekard note]$ __git branch -r    #列出本地仓库跟踪的远程仓库的分支__
+  hardisk/HEAD -> hardisk/master
+  hardisk/master
+  web/master
+[geekard@geekard note]$
+ 
+[geekard@geekard note]$ cat .git/config 
+[core]
+        repositoryformatversion = 0
+        filemode = true
+        bare = false
+        logallrefupdates = true
+[remote "hardisk"]		  #远程仓库名
+        url = /media/backup/Sync/Notes.git/   #仓库的URL，同时蕴含了协议类型
+        fetch = __+refs/heads/*:refs/remotes/hardisk/*__  #git fetch hardisk时默认使用的refspec：**远程refs:本地refs**
+[remote "web"]
+        url = git@github.com:geekard/Notes.git    #使用的**ssh协议**
+        **fetch** = +refs/heads/*:refs/remotes/web/*   #使用git fetch web时默认使用的refspec. git push的refspec默认。
+[branch "github"]   #本地分支名 
+        remote = web     #该分支跟踪的远程仓库名称
+        merge = refs/heads/master  #当在本分支上执行git pull时，使用的**远程refspec,**即将远程refspec的内容**与本分支**合并**.**
+[branch "master"]
+        remote = hardisk
+        merge = refs/heads/master
+
+**标签管理**
++ Git 也可以对某一时间点上的版本打上标签，也就是为某次commit的快照打上标签。
+  - __git tag__ #列出当前分支中现有标签。可以用特定的__搜索模式__列出符合条件的标签，如$ git tag** -l 'v1.4.2.*'**
+  - Git 使用的标签有两种类型：轻量级的（lightweight）和含附注的（annotated）。附注标签，实际上是存储在仓库中的一个**独立对象**，它有自身的校验和信息，包含着标签的名字，电子邮件地址和日期，以及标签说明，标签本身也允许使用 GNU Privacy Guard (GPG) 来签署或验证。
+  -  git tag__ -a__ v1.4 -m 'my version 1.4'  #为__当前__commit打上附注标签。
+  - 用 __git show__ 命令查看相应**标签的版本信息**，并连同显示打标签时的提交对象： git show v1.4
+  - __git show object__命令可以打印git中的**各种object**如blob，tree，commit，tag等的信息。
+  - 如果你有自己的私钥，还可以用 GPG 来签署标签，只需要把之前的 -a 改为 -s （译注：取 Signed 的首字母）即可：
+  __   git tag -s v1.5 -m 'my signed 1.5 tag'__
+  - 轻量级标签实际上就是一个保存着对应提交对象的校验和信息的文件。要创建这样的标签，一个 -a，-s 或__ -m 选项__都不用，直接给出标签名字即可： git tag v1.4-lw
+  - 可以使用 __git tag -v [tag-name]__ （译注：取 verify 的首字母）的方式验证已经签署的标签。此命令会调用 GPG 来验证签名，所以你需要有签署者的公钥，存放在 keyring 中，才能验证。
+  - 可以在后期对早先的某次提交加注标签，只要在打标签的时候跟上__对应提交对象的校验和__（或前几位字符，可以通过git log --pretty=online获得）即可：
+   __ $ git tag -a v1.2 9fceb02__
+  - 默认情况下，git push 并__不会__把标签传送到远端服务器上，只有通过显式命令才能分享标签到远端仓库。其命令格式如同推送分支，运行 
+    __git push origin [tagname] ； 如果要一次推送所有（本地新增的）标签上去，可以使用 --tags 选项： git push origin --tags__
+
+
+**分支管理**
++ 在 Git 中提交时，会保存一个提交（commit）对象，它包含一个指向__暂存内容根目录树对象的指针__，作者和相关附属信息，以及一定数量（也可能没有）指向该提交对象__直接祖先的指针。__
+   - 当使用 git commit 新建一个提交对象前，Git 会先计算**每一个子目录（项目根目录）的校验和**，然后在 Git 仓库中将这些目录保存为__树（tree）对象__。之后 Git 创建的__提交对象__，除了包含相关提交信息以外，还包含着指向这个**树对象（项目根目录）的指针**，如此它就可以在将来需要的时候，重现此次快照的内容了。
+  - Git 仓库中有多种对象：表示文件快照内容的__ blob 对象__；一个记录着目录树内文件列表及其中各个文件对应 blob 对象索引的 __tree 对象__；以及一个包含指向 tree 对象的索引和其他提交信息元数据的__ commit 对象__。修改后再次提交，那么这次的提交对象会包含一个__指向上次提交对象的指针（parent）。blob对象是在每次向暂存区add文件时创建的。tree和commit对象是在commit时创建的。__
+  - git add命令会对相应文件计算校验和(SHA-1字符串，40个字符)，然后用blob格式的对象将当前文件的快照保存到Git仓库中，但是不会创建根目录的tree对象。因为tree对象实在commit时创建的，而在这之前，用户可能对同一个文件多次使用git add命令，这样commit时创建的tree对象只引用最后一次add的快照(其它的都删除)。
+  - Git 中的分支，其实__本质上仅仅是个指向 commit 对象的可变指针__。Git会使用 master 作为分支的**默认**名字。在若干次提交后，你其实已经有了一个指向最后一次提交对象的 master 分支，它在每次提交的时候都会__自动向前移动__。
+  - 要创建一个分支__仅需要创建一个分支指针__即可，可以使用 __git branch name__，这会新建一个指向**当前分支的最后一次 commit 对象(而不是工作区或暂存区)的**指针，由于只是创建了当前分支快照的另一个指针而**不从快照中提取文件**到当前工作目录中，所以工作区__可以有__未提交的更改。
+  - Git 是如何知道你当前在哪个分支上工作的呢？其实答案也很简单，它保存着一个名为 __HEAD 的特别指针__。在 Git 中，它是一个指向你__正在工作中的本地分支的指针，每次提交时HEAD随分支一起向前移动__。运行 git branch branch-name 命令，仅仅是建立了一个新的分支，但**不会自动切换(指向)**这个分支中去，你仍然在以前的分支总工作。
+  - 当前仓库中所有的本地分支(包括远程仓库的跟踪分支)指针都保存在./.git/refs/headers目录中，远程仓库的分支保存在./.git/refs/remotes/仓库名/目录中。
+  - 要切换到其他分支，可以执行 __git checkout branch-name__ 命令，这条命令做了两件事：它**把 HEAD 指针指向branch-name分支**，并__把工作目录中的文件换成了branch-name分支所指向的快照内容__。因此，在使用git checkout 命令前，最好查看当前分支的工作目录的所有修改是否已经提交（如果不想将修改提交档当前的分支中，可以建立一个临时分支，然后将当前目录中的内容提交到这个临时分支里，然后再checkout到某个分支，完成工作后在checkout到这个临时分支继续工作。）。
+  - git checkout branch-name：检出branch-name上__最后一次提交的快照__到当前工作目录中，如果当前工作目录中有**未提交**的修改与即将检出的__快照中同名文件冲突__(如，快照中的文件与当前的修改有冲突或比当前新)，则git会阻__止本次切换__，直到将当前工作目录中的**未保存的冲突文件提交(如提交到临时分支)**或丢弃。但是如果未提交的修改不与即将检出的版本冲突(如__新建__了一个文件,处于untracked 状态)或修改的文件在检出的快照中**不存在**，则切换成功，而且这个__修改会保留在切换到的分支中__。但是对于**已提交**的修改，即使两者不同也不会出错，因为git 会使用快照中的版本__替换__当前目录中的版本同时当前版本因已提交到仓库中所以也不会丢失。
+     — 例如，在master分支中新添加一个文件dumy.c，然后编辑它，但不stage，即文件处于**untrack状态**。这时切换到dev分支后，该文件就会出现在工作目录中
+  - 这些改变(对于__已提交的更改__)分别__孤立在不同的分支__里：我们可以在不同分支里反复切换，并在时机成熟时把它们合并到一起。同时，因为每次提交时都记录了__祖先信息__（译注：即 parent 对象），所以以后要合并分支时，寻找恰当的__合并基础__（即共同祖先）的工作其实已经完成了一大半，实现起来非常容易。
+- git创建一个分支就是创建一个指向特定快照的指针，其实就是在.git/refs/heads目录下创建一个保存指向快照提交对象的SHA-1字符串的文件。因此，git创建和销毁分支非常迅速。
+- __git checkout -b branch-name__ 新建并切换到branch-name分支中(注意：该分支__以当前分支的快照为基础__，目录通常应该保持干净。如果不想将目录中的修改提交，可以创建一个临时分支，然后将修改提交到该临时分支中，然后再运行该命令)。该命令其实是下面两条命令的简缩版：git branch branch-name; git checkout branch-name.
+- __git checkout -b new-branch-name branch __创建branch分支的__跟踪分支__new-branch-name，然后切换到该分支中。在该跟踪分支中使用git pull或git push命令时，将自动从branch分支拉取合并或向branch推送该分支的提交。所以该命令的branch参数一般为fetch到本地的远程分支。
+- Git checkout命令会把工作目录的内容恢复为检出某分支时它所指向的那个commit 的快照。它会自动添加、删除和修改文件以确保目录的内容和你上次提交时完全一样。
+-__ git merge branch-name__会将branch-name分支中的提交的修改合并到当前分支中。如果顺着一个分支(A)走下去可以到达另一个分支(B)，那么 Git 在合并两者时（处在分支A中，运行git merge B），只会简单地把指针(A)前移，因为没有什么分歧需要解决，所以这个过程叫做__快进（Fast forward）__。                     
+- __git branch -d branch-name __删除已经合并的分支branch-name，如果该分支还没有被合并过，需要用-D选项来删除它。
+- 对于非快进式分支合并操作，git不得不进行一些处理：git会用两个分支的末端和它们的共同祖先进行一次简单的__三方合并计算__，并将合并的结果作为一个新的快照，并自动创建一个指向它的commit对象，该对象称为__合并提交__，因为它的直接祖先不止一个。
+- 有时修改了两个待合并分支中同一文件的同一部分，git就无法自动地合并它们，这时它会报告merge conflict。__git做了合并，但是没有提交__，它会暂停下来等你解决它指出来的冲突。可用git status查看冲突的文件.任何合并后包含未解决的冲突的文件都以__unmerged状态__列出，同时文件中加入了__冲突解决标记__。你需要打开并修改这些冲突文件，然后删除冲突解决标记，并用git add命令将这些文件再次提交(提交状态显示为resolved)。然后用git status确认，最后用git commit提交。
+- git branch 命令不带参数时，列出仓库中所有的本地分支。git branch -v列出所有本地仓库中分支的同时，显示最后一次提交的信息。git branch -r 显示所有的远程分支。git branch --merged或--no-merged，从分支清单中只列出已经合并的分支或未合并的分支，对于已经合并的分支可以使用git branch -d branch-name删除。未合并的分支可以使用-D选项强制删除。
+
+**远程分支及其跟踪分支**
+- 远程分支（remote branch）是对**远程仓库状态的索引**。它们是一些__无法移动的本地分支__；只有在进行 Git 的网络活动时才会更新。远程分支就像是书签，提醒着你上次连接远程仓库时上面各分支的位置。git 用__ 远程仓库名/分支名 __这样的形式表示远程分支，因此本地可以使用与远程同名的分支而不会混淆。
+- 远程仓库的分支保存在./.git/refs/remotes/仓库名   目录中
+- git clone URL命令会自动地将远程仓库命名为origin，并在本地建立一个origin/master的指向远程仓库的master的指针，但是你无法在本地对该分支进行更新。git会自动在本地建立一个属于你自己的本地master分支，该分支用于跟踪origin/master分支的更新。你可以用git pull命令从origin/master拉取数据并自动合并到master分支中，也可以在master分支中修改数据，然后使用git push命令更新到远程的origing/master分支中。
+- 如果你在本地的master分支中做了修改，与此同时别人向origin/master分支推送了内容，那么你们的提交历史将朝不同方向发展。但是只要你不和服务器通信，你的origin/master指针不会移动。你可以先使用git fetch origin将别人的更新拉取到本地的oringin/mater分支中，同时origin/master指针也将移动到远程仓库中的最新位置。
+- __git push origin master __将本地的master分支推送到origin的master分支中。这里的master是refs/heads/master:refs/heads/master的简写。git push origin master:YY, 将本地的master分支推送到远程仓库的YY分支中。
+- git fetch origin 从origin仓库中抓去所有的更新到本地。如果远程有新的分支YY,则git会在本地建立origin/YY分支来指向它。但是你无法在本地编辑origin/YY分支，因为它是无法移动的用于指向服务器中YY分支的指针。你可以使用__git merge origin/master__将远程分支合并到当前分支中。也可以使用__git checkout -b new-branch origin/YY__命令创建一个远程分支的__跟踪分支(tracking branch)__，该分支以origin/YY为基础分化而来。可以在该分支中编辑文件然后使用git push命令推送到服务器中，使用git pull从远程分支中抓取并合并更新。
+- git push origin :branch-name 在远程仓库中删除名为branch-name的分支。这里最后一个参数完整的形式是 __本地分支：远程分支__，但现在本地分支为空，所以意味着删除仓库中的branch-name分支。
+
+**衍合(rebase)**
+- 把一个分支中的数据整合到另一个分支中有两种办法：merge和rebase。
+- rebase命令是把在一个分支中提交的改变在另一个分支中重放一遍。衍合能产生一个更为干净的提交历史记录。
+- 将分支A中的修改衍合到分支B中：1.先切换到分支A中，git checkout A; 2.在分支A中执行：git rebase master；这时git会查找A，B的共同祖先，然后将A分支中的每次提交差异在分支B中提交(__每一次重演都使用分支A的提交信息如日期与提交说明__)，最终分支A的指针指向A，B合并后的结果对象。3.切换到B分支中，执行一次快速合并：git checkout B; git merger A。
+- 无论是衍合还是三方合并，最后生成的快照对象指向的是相同的内容(但是它们的SHA-1值不同)，只是提交的历史记录不同罢了。衍合是将发生的改变在另一个分支中重演，而合并是将两个分支的最后提交对象合并在一起。
+- git rebase __--onto __master server client;命令的含义是：检出client分支，找出client分支与server分支共同祖先后的变化，然后把他们在分支master上重演一遍。注意，rebase后client指向最新的生成对象，__而master和server指针不变__。这时可以快进master指针了：git checkout master; git merge client.
+-git rebase [主分支] [特性分支] ; 找出特性分支和主分支的共同祖先，然后将特性分支的修改在主分支上重演。注意，rebase后特性分支的指针指向最新的rebase对象，而主分支指针不变，但是可以用用快进的方式指向最新的合并对象。使用这条命令不需要事先切换到特性分支中。
+- 衍合的风险：永远不要衍合哪些已经推送到公共仓库的更新。因为衍合实际上是删除一些commit，然后创造一些类似(提交日期和提交说明与特性分支相同)但新的commit。应该将衍合作为一种在推送之前清理历史记录的手段，而且仅仅衍合那些永远不会公开的commit。
+
+**服务器上的Git**
+- 服务器上的git仓库一般是一个纯仓库(bare repository) — 一个没有当前工作目录的仓库。可以使用命令$ git clone --bare my_project my_project.git来从已有的仓库建立一个纯仓库，大体上相当于：$ cp -Rf my_project/.git my_project.git；但是在配置文件中**有几个小改变**；不过从效果角度讲，克隆的内容是一样的。
+- Git可以使用四种协议来传输数据：本地传输，SSH协议，Git协议，和HTTP协议。Git协议和HTTP协议通常是只读的，因为他们没有授权机制。SSH协议是唯一可以用来对git仓库进行读写的协议。路径中不指明协议时，git默认使用ssh协议。
+- 架设git服务器最复杂的方面在于账户管理，如需要仓库对一些用户只读，而对另外一些用户可都写。
+- 简单的情况下可以使用服务器操作系统提供的本地文件访问许可机制即可，但是如果需要团队中的每个人都对仓库有写权限，但是又不想给每个人在服务器上建立一个账户，那么SSH机制就是较好的选择。
+- 让其他人能访问git服务器的方法有很多。第一个办法是给每个人建立一个账户，直截了当但过于繁琐。反复的运行 adduser 并且给所有人设定临时密码可不是好玩的。第二个办法是在主机上建立一个 git 账户，让每个需要写权限的人发送一个 SSH 公钥，然后将其加入 git 账户的 ~/.ssh/authorized_keys 文件。这样一来，所有人都将通过 git账户访问主机。这丝毫不会影响提交的数据——访问主机用的身份不会影响commit的记录。第三个办法是让 SSH 服务器通过某个 LDAP 服务，或者其他已经设定好的集中授权机制，来进行授权。只要每个人都能获得主机的 shell 访问权，任何可用的 SSH 授权机制都能达到相同效果。
+- 简单的匿名读取权限可以使用一个静态的WEB服务来实现，把它的根目录设为git仓库所在的目录。然后开启post钩子， mv hooks/post-update.sample hooks/post-update；chmod a+x hooks/post-update。post-update 挂钩的作用是当通过 SSH 向服务器推送时，Git 将运行这个钩子文件中的命令来更新 HTTP 获取所需的文件。
+- 架设一个简单的网页界面使其更加可视化。为此，Git 自带了一个叫做 GitWeb 的 CGI 脚本。安装过程如下：
+$ git clone git://git.kernel.org/pub/scm/git/git.git
+$ cd git/
+$ make GITWEB_PROJECTROOT="/opt/git"  prefix=/usr gitweb/gitweb.cgi
+$ sudo cp -Rf gitweb /var/www/
+
+上面的GITWEB-PROJECTROOT指定了已经存在的git仓库的根目录。然后make命令会将这个仓库中的内容和cgi脚本放到gitweb目录下。
+接着将gitweb目录放到HTTP服务器读取的更目录下。
+
+- 权限管理器 Gitosis ；Gitosis 简单的说就是一套用来管理authorized_keys 文件和实现简单连接限制的脚本。最有意思的是，该软件用来添加用户和设定权限的界面不是网页，而是一个特殊的 Git 仓库。你只需要设定好某个项目；然后推送，Gitosis 就会随之改变服务器设定，酷吧？
+
+
+**分布式GIT**
++ 在 Git 网络中，每个开发者同时扮演着节点和集线器的角色，这就是说，每一个开发者都可以将自己的代码贡献到另外一个开发者的仓库中，或者建立自己的公共仓库，让其他开发者基于自己的工作开始，为自己的仓库贡献代码。于是，Git 的分布式协作便可以衍生出种种不同的工作流程。
++ **集中式工作流**：集中式工作流程使用的都是__单点协作模型__。一个存放代码仓库的中心服务器，可以接受所有开发者提交的代码。所有的开发者都是普通的节点，作为中心集线器的消费者，平时的工作就是和中心仓库同步数据。如果两个开发者从中心仓库克隆代码下来，同时作了一些修订，那么只有第一个开发者可以顺利地把数据推送到共享服务器。第二个开发者在提交他的修订之前，必须__先下载合并服务器上的数据，解决冲突之后才能推送数据到共享服务器上__。这么做是告诉第二个开发者：你所作的修订无法通过快近（fast-forward）来合并，你必须先拉取最新数据下来，手工解决冲突合并后，才能继续推送新的提交。这么做是因为，第二个开发者提交到服务器上的remote/branch与服务器上现有的branch__没有父子关系，服务器端的git不知如何合并它们__，因此拒绝开发者的提交。
++ **集成管理员工作流**：这种情形通常都会有个代表着官方发布的项目仓库（blessed repository），开发者们由此仓库克隆出一个自己的公
+共仓库（developer public），然后将自己的提交推送上去，请求官方仓库的维护者拉取更新合并到主项目。维护者在自己的本地也有个克隆仓库（integration manager），他可以将你的公共仓库作为远程仓库添加进来，经过测试无误后合并到主干分支，然后再推送到官
+方仓库。在 GitHub 网站上使用得最多的就是这种工作流。
++ **司令官与副官工作流**：这其实是上一种工作流的变体。一般__超大型的项目__才会用到这样的工作方式，像是拥有数百协作开发者的 Linux 内核项目就是如此。各个集成管理员分别负责集成项目中的特定部分，所以称为副官（lieutenant）。而所有这些集成管理员头上还有一位负责统筹的总集成管理员，称为司令官（dictator）。司令官维护的仓库用于提供所有协作者拉取最新集成的项目代码。

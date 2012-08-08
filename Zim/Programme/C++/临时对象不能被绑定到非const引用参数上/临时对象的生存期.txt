@@ -1,0 +1,58 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-28T17:08:05+08:00
+
+====== 临时对象的生存期 ======
+Created Friday 28 October 2011
+
+http://tech.e800.com.cn/articles/2009/1010/1255136951349_1.html
+
+* 今天看了c++发明人的the c++ programming language(special edition)关于临时对象的说明，虽然是一小节，但感觉c++的书籍，论内容还是这本最权威，里面很多东西都直接确定的表达了出来，权威、确定而令人信服。
+
+临时对象的生存时限在这本书中只花了不长的篇章，但说的很清楚：
+__临时对象的生存时限限制在其出现的“完整”的表达式中，“完整”的表达式结束了，临时对象也就销毁了。例外是把临时对象被引用或者初始化给具名对象，临时对象的生存周期会加长到引用或者具名对象的生存周期。__
+
+底下的简短程序测试了临时对象的生存时限，vs2005很好的说明了临时对象在其“完整”表达式结束后销毁。
+*/
+
+#include
+#include
+using namespace std;
+
+/* 打印 字符串 */
+void print(const string& str)
+{
+cout << str.c_str() << endl;
+}
+
+/* 打印 字符串2 */
+void display(string str)
+{
+cout << "xxxxxxxx" << endl;
+cout << str.c_str() << endl;
+cout << "xxxxxxxx" << endl;
+}
+
+int main()
+{
+string str1 = "xiaocui";
+string str2 = ",nihao";
+const char* s = NULL;
+
+if ( s = (str1 + str2).c_str() ) //此处s1+s2产生一个临时string对象，它的生存周期是临时对象所出现的“完整”的表达式的生存周期
+{
+   cout << s << endl; //上面的临时对象已经在其“完整”的表达式结束后析构了,那么s指向的那块内存已经不存在了，此处引用s是未定义的，危险的
+}
+
+string ss = str1 + str2; //str1+str2同样产生临时对象，但其用来初始化具名对象，所以临时对象的生存周期延长到具名对象的周期
+cout << ss.c_str() << endl; //正确输出，说明临时对象仍然存在，并没有销毁，存放字符串的存储正常存在
+
+print(str1 + str2); //把str1+str2产生的临时对象传递给cosnt 引用，临时对象的生命周期延长到const引用的生命周期，所以正常打印
+display(str1 + str2); //函数传递具有初始化语义，所以str1+str2产生的临时对象初始化str,生命周期延长，正常打印
+
+return 0;
+}
+
+如果不深究，下面这句话可作为总体印象区别：
+* __临时对象只在当前行有效__
+* __局部对象到函数结束都有效__

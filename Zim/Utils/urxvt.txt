@@ -1,0 +1,121 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-30T18:17:47+08:00
+
+====== urxvt ======
+Created Wednesday 30 March 2011
+
+!!$HOME/.Xdefaults
+!!Emacs set
+!!Emacs.UseXIM:false
+!!Emacs.UseXIM:true
+Emacs.inputMethon:ibus
+
+XTerm*inputMethod:ibus
+!font and locale
+xterm*utf8: 1
+xterm*locale: true
+xterm*utf8Title: true
+xterm*renderFont: true
+xterm*preeditType: Root
+xterm*xftAntialias: true
+xterm*background: 0
+xterm*foreground: #ffffff
+!下面是是刚才推荐的编程用英文字体
+!xterm*faceName:Inconsolata:antialias=True:pixelsize=14
+xterm*faceName:Consolas:antialias=True:pixelsize=18
+!中文字体支持，选的是文泉驿
+xterm*faceNameDoublesize: WenQuanYi Zen Hei:pixelsize=14
+
+!! RXVT setting
+
+URxvt*loginShell:true
+URxvt*termName:screen-256color
+
+!Native Transparency
+URxvt*transparent:true
+URxvt*shading:10
+
+URxvt*background:Black
+URxvt*foreground:White
+URxvt.preeditType:Root
+
+!!调整此处设置输入法
+URxvt.inputMethod:ibus
+
+!!颜色设置
+URxvt.colorBD:Gray95
+URxvt.colorUL:Green
+URxvt.color1:Red2
+URxvt.color4:RoyalBlue
+URxvt.color5:Magenta2
+URxvt.color8:Gray50
+URxvt.color10:Green2
+URxvt.color12:DodgerBlue
+URxvt.color14:Cyan2
+URxvt.color15:Gray95
+
+!Clickable and yankable URLs
+!下面的几个扩展都需要从源里安装，它们以urxvt-开头
+URxvt.perl-ext-common: default,matcher__,fullscreen__,__keyboard-select__,__url-select__,\
+__clipboard__,__vtwheel__,-option-popup,-selection-popup,-realine,keyboard-select
+
+URxvt.matcher.pattern.1:  \\b(mailto:)[\\w\-\@;\/?:&=%\$_.+!*\x27(),~#]+ [\\w\-\@;\/?:&=%\$_+!*\x27()~]
+URxvt.matcher.launcher.1:  mutt $0
+
+URxvt.matcher.pattern.2:  \\bhttps?:\/\/[\\w-.]*\/[\\w./?&@#-]*.(jpg|JPG|jpeg|JPEG|png|PNG|icon|gif|GIF|bmp|BMP)
+URxvt.matcher.launcher.2:  feh $0
+
+!keyboard-select
+URxvt.keysym.M-Escape: perl:keyboard-select:activate
+URxvt.keysym.M-s: perl:keyboard-select:search
+
+!url-select
+URxvt.keysym.M-u: perl:url-select:select_next
+URxvt.underlineURLs: true
+URxvt.urlLauncher:  firefox
+URxvt.matcher.button:  1
+
+!clipboard
+URxvt.keysym.M-c:   perl:clipboard:copy
+URxvt.keysym.M-v:   perl:clipboard:paste
+URxvt.keysym.M-C-v: perl:clipboard:paste_escaped
+
+!!滚动条设置
+URxvt.scrollBar:True
+URxvt.scrollBar_right:True
+URxvt.scrollBar_floating:False
+URxvt.scrollstyle:plain
+
+!!滚屏设置
+URxvt.mouseWheelScrollPage:True
+URxvt.scrollTtyOutput: False
+URxvt.scrollWithBuffer: True
+URxvt.scrollTtyKeypress: True
+
+!!光标闪烁
+URxvt.cursorBlink:True
+URxvt.saveLines:3000
+
+!!边框
+URxvt.borderLess:    False
+Rxvt.menu:/etc/X11/rxvt.menu
+
+!!fullscreen:需安装 urxvt-fullscreen插件
+URxvt.keysym.F11: perl:fullscreen:switch
+
+!!字体设置
+Xft.dpi:96
+urxvt.imLocale:zh_CN.utf8
+
+Rxvt.font:xft:monaco:size=11:antialias=true,xft:MicroSoft YaHei-12
+Rxvt.boldFont:xft:monaco:size=11:antialias=true,Bold,xft:Microsoft YaHei-12:Bold,xft
+
+!!URxvt.font:xft:Monaco:size=12:antialias=false,xft:DejaVu Sans Mono-12:antialias=false:charwidth=13:charheight=13
+!!URxvt.boldFont:xft:Monaco:pixelsize=12:antialias=false:Bold,xft:Liberation Mono:pixelsize=12:Bold:charwidth=13:charheight=13
+
+!URxvt.font:xft:monaco:size=11:antialias=true
+!URxvt.boldFont:xft:monaco:size=11:antialias=true
+
+URxvt.urgentOnBell: True
+URxvt.saveLines:65535

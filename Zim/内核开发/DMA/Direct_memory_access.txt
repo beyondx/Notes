@@ -1,0 +1,117 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-25T22:03:55+08:00
+
+====== Direct memory access ======
+Created Saturday 25 February 2012
+
+http://en.wikipedia.org/wiki/Direct_memory_access
+
+Direct memory access (DMA) is a feature of modern computers that __allows certain hardware subsystems within the computer to access system memory independently of the central processing unit (CPU).__
+
+Without DMA, when the CPU is using__ programmed input/output __, it is typically__ fully occupied __for the entire duration of the read or write operation, and is thus unavailable to perform other work. With DMA, the CPU initiates the transfer, does other operations while the transfer is in progress, and receives an interrupt from the DMA controller when the operation is done. This feature is useful any time the CPU **cannot keep up** with the rate of data transfer(CPU速度比内存慢的情况), or where the CPU needs to perform useful work while waiting for a relatively slow I/O data transfer. Many hardware systems use DMA, including** disk drive controllers, graphics cards, network cards and sound cards. **DMA is also used for **intra-chip data transfer** in multi-core processors. Computers that have DMA channels can transfer data to and from devices with much less CPU overhead than computers without a DMA channel. Similarly, a processing element inside a multi-core processor can transfer data to and from its local memory without occupying its processor time, allowing computation and data transfer to proceed in parallel.
+
+DMA can also be used for "**memory to memory**" copying or moving of data within memory. DMA can offload expensive memory operations, such as large copies or **scatter-gather** operations, from the CPU to a dedicated DMA engine. Intel includes such engines on high-end servers, called I/O Acceleration Technology (I/OAT).
+
+===== Contents =====
+
+    1 Principle
+    2 Modes of Operation
+        2.1 Burst Mode
+        2.2 Cycle Stealing Mode
+        2.3 Transparent Mode
+    3 Cache coherency
+    4 Examples
+        4.1 ISA
+        4.2 PCI
+        4.3 I/OAT
+        4.4 AHB
+        4.5 Cell
+    5 See also
+    6 Notes
+    7 References
+
+===== Principle =====
+
+A DMA controller can generate addresses and** initiate memory read or write cycles**. It contains several registers that can be written and read by the CPU. These include a __memory address register, a byte count register, and one or more control registers.__ The control registers specify the__ I/O port__ to use, the __direction__ of the transfer (reading from the I/O device or writing to the I/O device), the __transfer unit __(byte at a time or word at a time), and __the number of bytes to transfer in one burst.__ [1]
+
+To carry out an input, output or memory-to-memory operation, the** host processor** initializes the DMA controller with a __count__ of the number of words to transfer, and the __memory address__ to use. The CPU then sends commands to a peripheral device to** initiate** transfer of data. The DMA controller then provides addresses and read/write control lines to the system memory. Each time a word of data is ready to be transferred between the peripheral device and memory, the DMA controller increments its internal address register until the full block of data is transferred.
+
+DMA transfers can either occur __one word at a time__, allowing the CPU to access memory on alternate bus cycles - this is called __cycle stealing__ since the DMA controller and CPU __contend for memory access__.
+
+**DMA传输数据时可以一次传送一个字，这样下个总线周期还可以被CPU使用(对于32位的系统，数据总线是32位。因此可以传送两个字)。DMA和CPU共同竞争内存的总线周期。**
+
+In __burst mode __DMA, **the CPU can be put on hold** while the DMA transfer occurs and a full block of possibly hundreds or thousands of words can be moved.[2] Where memory cycles are much faster than processor cycles, __an interleaved DMA cycle__ is possible, where the DMA controller uses memory while the CPU cannot.
+**burst mode下，DMA独自占用整个总线周期，CPU处于保持模式。**
+
+__In a bus mastering system(总线主控系统), both the CPU and peripherals can be granted control of the memory bus. __Where a peripheral can become __bus master__, it can directly write to system memory without involvement of the CPU, providing memory address and control signals as required. Some measure must be provided to put the **processor into a hold condition** so that bus contention does not occur. 
+
+**总线主控系统的CPU和外围设备都可以获得总线的控制权，外围设备可以直接向内存中写入数据，但这时CPU一定有处于保持状态。**
+
+=====  Modes of Operation =====
+
+* === Burst Mode（Block Transfer Mode） ===
+
+An entire block of data is transferred in** one contiguous sequence**. Once the DMA controller is granted access to the system bus by the CPU, it transfers__ all bytes__ of data in the data block **before releasing** control of the system buses back to the CPU. This mode is useful for** loading program or data files into memory,** but renders the CPU inactive for relatively long periods of time. The mode is also called__ Block Transfer Mode__.
+
+==== • Cycle Stealing Mode ====
+The Cycle Stealing Mode is a viable alternative for systems, in which the **CPU should not be disabled** for the length of time needed for burst transfer modes. In the cycle stealing mode, the DMA controller obtains access to the system bus the same way as in burst mode, using __BR (Bus Request) and BG (Bus Grant) signals__, which are the two signals controlling the interface between the CPU and the DMA controller. However, in cycle stealing mode, after__ one byte__ of data transfer the control of the system bus is deasserted to the CPU via BG. It is then continually __requested again__ via BR, transferring one byte of data per request, until the entire block of data has been transferred. 
+
+By continually obtaining and releasing the control of the system bus, the DMA controller essentially interleaves instruction and data transfers. The CPU processes an instruction, then the DMA controller transfers one data value, and so on. On the one hand, the data block is not transferred as quickly in cycle stealing mode as in burst mode, but on the other hand the__ CPU is not idled for as long as in burst mode__. Cycle stealing mode is useful for controllers that **monitor data** in real time.
+
+==== • Transparent Mode ====
+The Transparent Mode __takes the most time__ to transfer a block of data, yet it is also __the most efficient mode__ in terms of overall system performance. The DMA controller only transfers data when the CPU is performing operations that** do not use the system buses**. It is the primary advantage of the transparent mode that the CPU never stops executing its programs and the DMA transfer is free in terms of time. The disadvantage of the transparent mode is that the hardware needs to determine when the CPU is not using the system buses, which can be complex and relatively expensive.
+
+===== Cache coherency =====
+
+{{./1.png}}
+Cache incoherence due to DMA
+
+DMA can lead to __cache coherency problems__. Imagine a CPU equipped with a cache and an external memory that can be accessed directly by devices using DMA. When the CPU accesses location X in the memory, the current value will be stored in the** cache**. Subsequent operations on X will __update the cached copy __of X, but not the external memory version of X, assuming a__ write-back cache__. If the cache is not flushed to the memory **before** the next time a device tries to access X, the device will receive a** stale **value of X.
+
+Similarly, if the cached copy of X is not invalidated when a device writes a new value to the memory, then the CPU will operate on a stale value of X.
+
+This issue can be addressed in one of two ways in system design: __Cache-coherent systems__ implement a method **  in hardware**    whereby     **external writes are signaled to the cache controller which then performs a **__cache invalidation__** for DMA writes or **__cache flush__** for DMA reads. **Non-coherent systems leave this to **software**, where the OS must then ensure that the__ cache lines __are flushed before an outgoing DMA transfer is started and invalidated before a memory range affected by an incoming DMA transfer is accessed. The OS must make sure that the memory range is not accessed by any running threads in the meantime. The latter approach introduces some overhead to the DMA operation, as most hardware requires a loop to invalidate each cache line individually.
+
+Hybrids also exist, where __the secondary L2 cache is coherent while the L1 cache (typically on-CPU) is managed by software.__
+
+===== Examples =====
+* 
+==== ISA ====
+
+In the original IBM PC, there was only one** Intel 8237 DMA controller **capable of providing four DMA channels (numbered 0-3). These DMA channels performed 8-bit transfers and could only address the first megabyte of RAM. With the IBM PC/AT, a second 8237 DMA controller was added (channels 5-7; channel 4 is unusable), and the page register was rewired to address the full 16 MB memory address space of the 80286 CPU. This second controller performed 16-bit transfers.
+
+Due to their lagging performance (2.5 Mbit/s[3]), these devices have been largely obsolete since the advent of the 80386 processor and its capacity for __32-bit__ transfers. They are still supported to the extent they are required to support built-in legacy PC hardware on modern machines. The only pieces of legacy hardware that use ISA DMA and are still fairly common are the built-in **Floppy disk controllers **of many PC mainboards and those **IEEE 1284 parallel ports** that support the fast ECP mode.
+
+Each DMA channel has **a 16-bit address register and a 16-bit count register** associated with it. To initiate a data transfer the device driver sets up the DMA channel's** address **and **count** registers together with the** direction** of the data transfer, read or write. It then instructs the DMA hardware to begin the transfer. When the transfer is complete, the device **interrupts** the CPU.
+
+__Scatter-gather DMA__ allows the transfer of data to and from multiple memory areas in a single DMA transaction. It is equivalent to the chaining together of multiple simple DMA requests. The motivation is to off-load multiple input/output interrupt and data copy tasks from the CPU.
+
+__DRQ __stands for DMA request; __DACK__ for DMA acknowledge. These symbols, seen on hardware schematics of computer systems with DMA functionality, represent **electronic signaling lines** between the CPU and DMA controller. __Each DMA channel has one Request and one Acknowledge line__. A device that uses DMA must be configured to use both lines of the assigned DMA channel.
+
+Standard ISA DMA assignments:
+
+* DRAM Refresh (obsolete),
+* User hardware,
+* **Floppy disk controller,**
+* Hard disk (obsoleted by __PIO modes__, and replaced by UDMA modes),
+* Cascade from XT DMA controller,
+* Hard Disk (**PS/2** only), user hardware for all others,
+
+
+===== • PCI =====
+A PCI architecture has **no central DMA controller**, unlike ISA. Instead, __any PCI component can request control of the bus __("become the bus master") and request to read from and write to system memory. More precisely, a PCI component requests bus ownership from the **PCI bus controller **(usually the __southbridge__ in a modern PC design), which will arbitrate if several devices request bus ownership simultaneously, since there can **only be one bus master at one time.** When the component is granted ownership, it will issue normal__ read and write commands on the PCI bus, which will be claimed by the bus controller and forwarded to the memory controller using a scheme which is specific to every chipset.__
+
+As an example, on a modern AMD Socket AM2-based PC, the southbridge will __forward the transactions to the northbridge__ (which is integrated on the CPU die) using HyperTransport, which will in turn convert them to **DDR2 operations** and send them out on the __DDR2 memory bus__. As can be seen, there are quite a number of steps involved in a PCI DMA transfer; however, that poses little problem, since the PCI device or PCI bus itself are an order of __magnitude slower __than rest of components (see list of device bandwidths).
+
+A modern x86 CPU may use more than 4 GB of memory, utilizing __PAE__, **a 36-bit addressing mode**, or the native 64-bit mode of x86-64 CPUs. In such a case, a device using DMA with a 32-bit address bus is unable to address memory above the 4 GB line. The new __Double Address Cycle (DAC) __mechanism, if implemented on both the PCI bus and the device itself,[4] enables 64-bit DMA addressing. Otherwise, the operating system would need to work around the problem by either using costly **double buffers** (Windows nomenclature) also known as __bounce buffers__ (Linux), or it could use an IOMMU to provide address translation services if one is present.
+
+===== • I/OAT =====
+As an example of DMA engine incorporated in a general-purpose CPU, newer Intel Xeon chipsets include a DMA engine technology called __I/O Acceleration Technology (I/OAT)__, meant to** improve network performance** on high-throughput network interfaces, in particular gigabit Ethernet and faster.[5] However, various benchmarks with this approach by Intel's Linux kernel developer Andrew Grover indicate no more than 10% improvement in CPU utilization with receiving workloads, and no improvement when transmitting data.[6]
+
+===== • AHB =====
+In **systems-on-a-chip and embedded systems**, typical system bus infrastructure is a complex on-chip bus such as __AMBA High-performance Bus__. AMBA defines two kinds of **AHB components: master and slave.** A slave interface is similar to __programmed I/O__ through which the software (running on embedded CPU, e.g. ARM) can write/read I/O registers or (less commonly) local memory blocks inside the device. A master interface can be used by the device to perform DMA transactions to/from system memory without heavily loading the CPU.
+
+Therefore high bandwidth devices such as **network controllers** that need to transfer huge amounts of data to/from system memory will have __two interface__ adapters to the AHB: a master and a slave interface. This is because on-chip buses like AHB do not support tri-stating the bus or alternating the direction of any line on the bus. Like PCI, **no central DMA controller is required** since the DMA is __bus-mastering__, but an arbiter is required in case of multiple masters present on the system.
+
+Internally, a __multichannel DMA engine__ is usually present in the device to perform multiple concurrent scatter-gather operations as programmed by the software.

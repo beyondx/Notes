@@ -1,0 +1,116 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-26T16:00:42+08:00
+
+====== Using Named Pipes (FIFOs) with Bash ======
+Created Sunday 26 February 2012
+
+http://www.linuxjournal.com/content/using-named-pipes-fifos-bash
+
+Mar 27, 2009  By Mitch Frazier  in  HOW-TOs
+
+It's hard to write a bash script of __much import__ without using a pipe or two. Named pipes, on the other hand, are much rarer.
+
+Like un-named/anonymous pipes, named pipes provide __a form of IPC__ (Inter-Process Communication). With anonymous pipes, there's one reader and one writer, but that's not required with named pipes—__any number of__ readers and writers may use the pipe.
+
+Named pipes are __visible in the filesystem __and can be read and written just as other files are:
+
+$ ls -la /tmp/testpipe
+prw-r--r-- 1 mitch users 0 2009-03-25 12:06 /tmp/testpipe|
+
+Why might you want to use a named pipe in a shell script? One situation might be when you've got **a backup script **that runs via __cron__, and after it's finished, you want to shut down your system. If you do the shutdown from the backup script, **cron never sees the backup script finish**, so it never sends out the e-mail containing the output from the backup job. You could **do the shutdown via another cron job after the backup is "supposed" to finish**, but then you run the risk of shutting down __too early __every now and then, or you have to make the __delay much larger__ than it needs to be most of the time.
+
+Using a named pipe, you can start the backup and the shutdown cron jobs__ at the same time__ and have the shutdown__ just wait __till the backup writes to the named pipe. When the shutdown job** reads something **from the pipe, it then pauses for a few minutes so the cron e-mail can go out, and then it shuts down the system.
+这其实就是__利用PIPE的读写阻塞特性达到同步两个进程的目的__。
+
+Of course, the previous example probably could be done fairly reliably by simply creating a regular file to signal when the backup has completed. A more complex example might be if you have a backup that **wakes up every hour** or so and reads a named pipe __to see if it should run__. You then could    **write something** to the pipe each time you've made a lot of changes to the files you want to back up. You might even write the names of the files that you want backed up to the pipe so the backup doesn't have to check everything.
+
+Named pipes are created via mkfifo __or__ mknod:
+
+$ mkfifo /tmp/testpipe
+$ mknod /tmp/testpipe p
+
+The following shell script reads from a pipe. It first creates the pipe if it doesn't exist, then it reads in a loop till it sees "quit":
+
+#!/bin/bash
+
+pipe=/tmp/testpipe
+
+trap "rm -f $pipe" EXIT   #有问题，trap捕获EXIT后执行的命令中最后__应该有exit__。否则，脚本就不会停止。另外EXIT信号是当脚本终止时发送，不管是何种原因如INT，TERM。
+
+if [[ ! -p $pipe ]]; then
+    mkfifo $pipe
+fi
+
+while true
+do
+    if **read line <$pipe**; then
+        if [[ "$line" == 'quit' ]]; then
+            break
+        fi
+        echo $line
+    fi
+done
+
+echo "Reader exiting"
+
+The following shell script writes to the pipe created by the read script. First, it checks to make sure the pipe exists, then it writes to the pipe. If an argument is given to the script, it writes it to the pipe; otherwise, it writes "Hello from PID".
+
+#!/bin/bash
+
+pipe=/tmp/testpipe
+
+if [[ ! -p $pipe ]]; then
+    echo "Reader not running"
+    exit 1
+fi
+
+
+if [[ "$1" ]]; then
+    echo "$1" >$pipe
+else
+    echo "Hello from $$" >$pipe
+fi
+
+Running the scripts produces:
+
+$ sh rpipe.sh &
+[3] 23842
+$ sh wpipe.sh
+Hello from 23846
+$ sh wpipe.sh
+Hello from 23847
+$ sh wpipe.sh
+Hello from 23848
+$ sh wpipe.sh quit
+Reader exiting
+
+Note: initially I had the read command in the read script directly in the while loop of the read script, but the read command would usually return a non-zero status after two or three reads causing the loop to terminate.
+
+while read line <$pipe
+do
+    if [[ "$line" == 'quit' ]]; then
+        break
+    fi
+    echo $line
+done
+
+
+注意： 
+1.   <$pipe放在while的里或外面是有区别的，前者每次loop都重新打开$pipe文件，后者在整个loop中只打开文件一次。
+2. __bash对pipe是行缓冲__。
+
+-----------------------------
+You should __explicitly exit from the trap command__, otherwise the script will continue running past it. You should also catch a few other signals.
+
+So: trap "rm -f $pipe" EXIT
+Becomes: trap "rm -f $pipe; exit" INT TERM EXIT
+
+Excellent article. Thank you!
+----------
+Not really necessary in this case
+
+__The EXIT trap gets executed when the shell exits regardless of why it exits so trapping INT and TERM aren't really necessary in this case.__
+
+However, your point about "exit" is good: trapping a signal removes the default action that occurs when a signal occurs, so if the default action is to exit the program and you want that to happen in addition to executing your code, you need to include an exit statement in your code.
+

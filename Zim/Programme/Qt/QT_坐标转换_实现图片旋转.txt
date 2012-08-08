@@ -1,0 +1,132 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-15T17:22:43+08:00
+
+====== QT 坐标转换 实现图片旋转 ======
+Created Tuesday 15 November 2011
+http://blog.sina.com.cn/s/blog_66e717d70100ilir.html
+
+===== 一、利用QPixmap显示图片。 =====
+
+1.将以前的工程文件夹进行复制备份，我们这里将工程文件夹改名为painter05。（以前已经说过，经常备份工程目录，是个很好的习惯）
+
+2.在工程文件夹的debug文件夹中新建文件夹，我这里命名为images，用来存放要用的图片。我这里放了一张linux.jpg的图片。如下图所示。
+{{~/sync/notes/zim/Programme/Qt/漫谈QWidget及其派生类(三)/1.jpg}}
+3.在Qt Creator中打开工程。（即打开工程文件夹中的.pro文件），如图。
+{{~/sync/notes/zim/Programme/Qt/漫谈QWidget及其派生类(三)/2.jpg}}
+{{~/sync/notes/zim/Programme/Qt/漫谈QWidget及其派生类(三)/3.jpg}}
+
+4.将dialog.cpp文件中的paintEvent（）函数更改如下。
+
+void Dialog::paintEvent(QPaintEvent *)
+{
+    QPainter painter(this);
+    QPixmap pix;
+    pix.load(“images/linux.jpg”);
+    painter.drawPixmap(0,0,100,100,pix);
+}
+
+这里新建QPixmap类对象，并为其添加图片，然后在以（0，0）点开始的宽和高都为100的矩形中显示该图片。你可以改变矩形的大小，看一下效果啊。最终程序运行效果如下。
+{{~/sync/notes/zim/Programme/Qt/漫谈QWidget及其派生类(三)/4.jpg}}
+
+（说明：下面的操作都会和坐标有关，这里请先进行操作，我们在下一节将会讲解坐标系统。）
+
+===== 二、利用更改坐标原点实现平移。 =====
+
+Qpainter类中的__translate()函数实现坐标原点__的改变，改变原点后，此点将会成为__新的原点（0，0）__；
+
+例如：
+
+void Dialog::paintEvent(QPaintEvent *)
+{
+    QPainter painter(this);
+    QPixmap pix;
+    pix.load(“images/linux.jpg”);
+    painter.drawPixmap(0,0,100,100,pix);
+
+    painter.translate(100,100); //将（100，100）设为坐标原点
+    painter.drawPixmap(0,0,100,100,pix);
+}
+
+这里将（100，100）设置为了新的坐标原点，所以下面在（0，0）点贴图，就相当于在以前的（100，100）点贴图。效果如下。
+{{~/sync/notes/zim/Programme/Qt/漫谈QWidget及其派生类(三)/5.jpg}}
+
+
+==== 三、实现图片的缩放。 ====
+
+我们可以使用QPixmap类中的scaled()函数来实现图片的放大和缩小。
+
+例如：
+
+void Dialog::paintEvent(QPaintEvent *)
+{
+    QPainter painter(this);
+    QPixmap pix;
+    pix.load(“images/linux.jpg”);
+    painter.drawPixmap(0,0,100,100,pix);
+
+    qreal width = pix.width(); //获得以前图片的宽和高
+    qreal height = pix.height();
+
+    pix = pix.scaled(width*2,height*2,Qt::KeepAspectRatio);
+    //将图片的宽和高都扩大两倍，并且在给定的矩形内保持宽高的比值
+    painter.drawPixmap(100,100,pix);  //没有指定矩形，只是指定了绘制的起点。
+}
+
+其中参数Qt::KeepAspectRatio，是图片缩放的方式。我们可以查看其帮助。将鼠标指针放到该代码上，当出现F1提示时，按下F1键，这时就可以查看其帮助了。当然我们也可以直接在帮助里查找该代码。
+{{~/sync/notes/zim/Programme/Qt/漫谈QWidget及其派生类(三)/6.jpg}}
+
+这是个枚举变量，这里有三个值，只看其图片就可大致明 白，Qt::IgnoreAspectRatio是不保持图片的长宽比，Qt::KeepAspectRatio是在给定的矩形中保持**长宽比**，最后一个也 是保持长宽比，但可能**超出**给定的矩形。这里给定的矩形是由我们显示图片时给定的参数决定的，例如 painter.drawPixmap(0,0,100,100,pix);就是在以（0，0）点为起始点的宽和高都是100的矩形中。
+
+程序运行效果如下。
+{{~/sync/notes/zim/Programme/Qt/漫谈QWidget及其派生类(三)/7.jpg}}
+
+===== 四、实现图片的旋转。 =====
+
+旋转使用的是QPainter类的rotate()函数，它默认是以__原点为中心__进行旋转的。我们要改变旋转的中心，可以使用前面讲到的translate()函数完成。
+
+例如：
+
+void Dialog::paintEvent(QPaintEvent *)
+{
+    QPainter painter(this);
+    QPixmap pix;
+    pix.load(“images/linux.jpg”);
+    painter.translate(50,50); //让图片的中心作为旋转的中心
+    painter.rotate(90); //顺时针旋转90度
+    painter.translate(-50,-50); //使原点复原
+    painter.drawPixmap(0,0,100,100,pix);
+}
+
+这里必须__先改变旋转中心，然后再旋转，然后再将原点复原__，才能达到想要的效果。
+
+运行程序，效果如下。
+{{~/sync/notes/zim/Programme/Qt/漫谈QWidget及其派生类(三)/8.jpg}}
+
+===== 五、实现图片的扭曲。 =====
+
+实现图片的扭曲，是使用的QPainter类的shear(qreal sh，qreal sv)函数完成的。它有两个参数，前面的参数实现横行变形，后面的参数实现纵向变形。当它们的值为0时，表示不扭曲。
+
+例如：
+
+void Dialog::paintEvent(QPaintEvent *)
+{
+    QPainter painter(this);
+    QPixmap pix;
+    pix.load(“images/linux.jpg”);
+    painter.drawPixmap(0,0,100,100,pix);
+    painter.shear(0.5,0); //横向扭曲
+    painter.drawPixmap(100,0,100,100,pix);
+}
+
+效果如下：
+{{~/sync/notes/zim/Programme/Qt/漫谈QWidget及其派生类(三)/9.jpg}}
+其他扭曲效果：
+
+painter.shear(0,0.5); //纵向扭曲                           
+{{~/sync/notes/zim/Programme/Qt/漫谈QWidget及其派生类(三)/10.jpg}}
+painter.shear(0.5,0.5); //横纵扭曲
+{{~/sync/notes/zim/Programme/Qt/漫谈QWidget及其派生类(三)/11.jpg}}
+             
+
+图片形状的变化，其实就是利用坐标系的变化来实现的。我们在下一节中将会讲解坐标系统。这一节中的几个函数，我们可以在其帮助文件中查看其详细解释。

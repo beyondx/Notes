@@ -1,0 +1,369 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T19:38:28+08:00
+
+====== Grub ======
+Created Sunday 27 March 2011
+
+Author：geekard (geekard@gmail.com)
+Update:  2010.7.31
+Version : 1.2
+
+**1.查看系统安装的相关软件包**
+geekard@geekard-laptop:~$ dpkg -l grub* 
+Desired=Unknown/Install/Remove/Purge/Hold 
+| Status=Not/Inst/Cfg-files/Unpacked/Failed-cfg/Half-inst/trig-aWait/Trig-pend 
+|/ Err?=(none)/Reinst-required (Status,Err: uppercase=bad) 
+||/ Name                              Version                           Description 
++++-=================================-=================================-================================================================================== 
+un  grub                              <none>                            (no description available) 
+ii  grub-common                       1.98-1ubuntu6                     GRand Unified Bootloader, version 2 (common files) 
+un  grub-coreboot                     <none>                            (no description available) 
+un  grub-doc                          <none>                            (no description available) 
+un  grub-efi                          <none>                            (no description available) 
+un  grub-efi-amd64                    <none>                            (no description available) 
+un  grub-efi-ia32                     <none>                            (no description available) 
+un  grub-emu                          <none>                            (no description available) 
+un  grub-ieee1275                     <none>                            (no description available) 
+un  grub-legacy                       <none>                            (no description available) 
+un  grub-legacy-doc                   <none>                            (no description available) 
+un  grub-linuxbios                    <none>                            (no description available) 
+ii  grub-pc                           1.98-1ubuntu6                     GRand Unified Bootloader, version 2 (PC/BIOS version) 
+un  grub2                             <none>                            (no description available) 
+**2、查看安装的软件包信息**
+geekard@geekard-laptop:~$ dpkg -s grub-common 
+Package: grub-common 
+Status: install ok installed 
+Priority: optional 
+Section: admin 
+Installed-Size: 4220 
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> 
+Architecture: i386 
+Source: grub2 
+Version: 1.98-1ubuntu6 
+Replaces: grub-coreboot (<< 1.97+20091114-1), grub-efi (<< 1.96+20080831-1), grub-ieee1275 (<< 1.96+20080831-1), grub-linuxbios (<< 1.96+20080831-1), grub-pc (<< 1.97+20091114-1) 
+Depends: base-files (>= 4.0.1~), dpkg (>= 1.15.4) | install-info | dpkg (<= 1.14.25), lsb-base (>= 3.0-6), libc6 (>= 2.8), libdevmapper1.02.1 (>= 2:1.02.20), libfreetype6 (>= 2.2.1), zlib1g (>= 1:1.1.4), gettext-base 
+Recommends: os-prober (>= 1.33) 
+Suggests: multiboot-doc, grub-emu 
+Conflicts: grub-doc (<< 0.97-29ubuntu60), grub-legacy-doc (<< 0.97-29ubuntu60), mdadm (<< 2.6.7-2) 
+Conffiles: 
+ /etc/pm/sleep.d/10_grub-common bc63b0c6613e95979446d17a88875d6a 
+ /etc/grub.d/00_header db2fbce0c4b11001e4fbdb23aee57647 
+ /etc/grub.d/30_os-prober 235cb43f280c29557f0f24a1e8163457 
+ /etc/grub.d/40_custom babe7de352fe18de5a238569cf4b8a11 
+ /etc/grub.d/10_linux 937e21c78def99a9cf22d2c95280ef88 
+ /etc/grub.d/README be58f42dfe74feb6eeb98c6a843c743f 
+ /etc/init.d/grub-common f5078cf9df66751dec9ae8f7baf4a0c2 
+Description: GRand Unified Bootloader, version 2 (common files) 
+ This package contains common files shared by the distinct flavours of GRUB. 
+Homepage: http://www.gnu.org/software/grub/grub-2.en.html 
+Original-Maintainer: GRUB Maintainers <pkg-grub-devel@lists.alioth.debian.org> 
+
+geekard@geekard-laptop:~$ dpkg -s grub-pc 
+Package: grub-pc 
+Status: install ok installed 
+Priority: optional 
+Section: admin 
+Installed-Size: 2228 
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> 
+Architecture: i386 
+Source: grub2 
+Version: 1.98-1ubuntu6 
+Replaces: grub, grub-common (<< 1.97~beta1-1ubuntu4), grub-coreboot, grub-efi-amd64, grub-efi-ia32, grub-ieee1275, grub-legacy, grub2 (<< 1.98-1ubuntu6) 
+Depends: libc6 (>= 2.8), libdevmapper1.02.1 (>= 2:1.02.20), debconf (>= 0.5) | debconf-2.0, grub-common (= 1.98-1ubuntu6), ucf 
+Suggests: desktop-base (>= 4.0.6) 
+Conflicts: desktop-base (= 4.0.5), grub (<< 0.97-54), grub-coreboot, grub-efi-amd64, grub-efi-ia32, grub-ieee1275, grub-legacy 
+Conffiles: 
+ /etc/grub.d/05_debian_theme cceb548bef9d5c2123c40c5e643c2cdd 
+Description: GRand Unified Bootloader, version 2 (PC/BIOS version) 
+ GRUB is a portable, powerful bootloader.  This version of GRUB is based on a 
+ cleaner design than its predecessors, and provides the following new features: 
+ . 
+  - Scripting in grub.cfg using BASH-like syntax. 
+  - Support for modern partition maps such as GPT. 
+  - Modular generation of grub.cfg via update-grub.  Packages providing GRUB 
+    add-ons can plug in their own script rules and trigger updates by invoking 
+    update-grub2. 
+  - VESA-based graphical mode with background image support and complete 24-bit 
+    color set. 
+  - Support for extended charsets.  Users can write UTF-8 text to their menu 
+    entries. 
+ . 
+ This package contains a version of GRUB that has been built for use with 
+ traditional PC/BIOS architecture. 
+Homepage: http://www.gnu.org/software/grub/grub-2.en.html 
+Original-Maintainer: GRUB Maintainers <pkg-grub-devel@lists.alioth.debian.org
+**3.查看安装的文件**
+geekard@geekard-laptop:~$ dpkg -L grub-common 
+/. 
+/usr 
+/usr/sbin 
+/usr/sbin/grub-mkdevicemap 
+/usr/sbin/grub-probe 
+/usr/sbin/grub-mkconfig 
+/usr/lib 
+/usr/lib/grub 
+/usr/lib/grub/grub-mkconfig_lib 
+/usr/lib/grub/update-grub_lib 
+/usr/share 
+/usr/share/grub 
+/usr/share/grub/unicode.pf2 
+/usr/share/grub/ascii.pf2 
+/usr/share/grub/ascii.h 
+/usr/share/man 
+/usr/share/man/man1 
+/usr/share/man/man1/grub-mkisofs.1.gz 
+/usr/share/man/man1/grub-mkfont.1.gz 
+/usr/share/man/man1/grub-mkrelpath.1.gz 
+/usr/share/man/man1/grub-bin2h.1.gz 
+/usr/share/man/man1/grub-script-check.1.gz 
+/usr/share/man/man1/grub-editenv.1.gz 
+/usr/share/man/man1/grub-mkrescue.1.gz 
+/usr/share/man/man1/grub-mkelfimage.1.gz 
+/usr/share/man/man1/grub-mkpasswd-pbkdf2.1.gz 
+/usr/share/man/man8 
+/usr/share/man/man8/grub-probe.8.gz 
+/usr/share/man/man8/grub-mkconfig.8.gz 
+/usr/share/man/man8/grub-mkdevicemap.8.gz 
+/usr/share/info 
+/usr/share/info/grub.info.gz 
+/usr/share/doc 
+/usr/share/doc/grub-common 
+/usr/share/doc/grub-common/README 
+/usr/share/doc/grub-common/TODO 
+/usr/share/doc/grub-common/AUTHORS 
+/usr/share/doc/grub-common/THANKS 
+/usr/share/doc/grub-common/copyright 
+/usr/share/doc/grub-common/examples 
+/usr/share/doc/grub-common/examples/grub.cfg 
+/usr/share/doc/grub-common/NEWS.Debian.gz 
+/usr/share/doc/grub-common/changelog.gz 
+/usr/share/doc/grub-common/NEWS.gz 
+/usr/share/doc/grub-common/changelog.Debian.gz 
+/usr/share/bug 
+/usr/share/bug/grub-common 
+/usr/share/bug/grub-common/presubj 
+/usr/bin 
+/usr/bin/grub-mkelfimage 
+/usr/bin/grub-mkisofs 
+/usr/bin/grub-mkfont 
+/usr/bin/grub-mkrelpath 
+/usr/bin/grub-bin2h 
+/usr/bin/grub-script-check 
+/usr/bin/grub-editenv 
+/usr/bin/grub-mkpasswd-pbkdf2 
+/usr/bin/grub-mkrescue 
+/etc 
+/etc/pm 
+/etc/pm/sleep.d 
+/etc/pm/sleep.d/10_grub-common 
+/etc/grub.d 
+/etc/grub.d/00_header 
+/etc/grub.d/30_os-prober 
+/etc/grub.d/40_custom 
+/etc/grub.d/10_linux 
+/etc/grub.d/README 
+/etc/init.d 
+/etc/init.d/grub-common 
+
+geekard@geekard-laptop:~$ dpkg -L grub-pc 
+/. 
+/usr 
+/usr/lib 
+/usr/lib/grub 
+/usr/lib/grub/i386-pc 
+/usr/lib/grub/i386-pc/boot.img 
+/usr/lib/grub/i386-pc/cdboot.img 
+/usr/lib/grub/i386-pc/diskboot.img 
+/usr/lib/grub/i386-pc/kernel.img 
+/usr/lib/grub/i386-pc/lnxboot.img 
+/usr/lib/grub/i386-pc/pxeboot.img 
+......
+/usr/lib/grub/i386-pc/grub_script.tab.h 
+/usr/lib/grub-legacy 
+/usr/lib/grub-legacy/update-grub 
+/usr/share 
+/usr/share/doc 
+/usr/share/doc/grub-pc 
+/usr/share/doc/grub-pc/copyright 
+/usr/share/doc/grub-pc/examples 
+/usr/share/man 
+/usr/share/man/man1 
+/usr/share/man/man1/grub-mkimage.1.gz 
+/usr/share/man/man8 
+/usr/share/man/man8/update-grub2.8.gz 
+/usr/share/man/man8/grub-install.8.gz 
+/usr/share/man/man8/grub-set-default.8.gz 
+/usr/share/man/man8/grub-setup.8.gz 
+/usr/share/man/man8/grub-reboot.8.gz 
+/usr/share/man/man8/update-grub.8.gz 
+/usr/share/lintian 
+/usr/share/lintian/overrides 
+/usr/share/lintian/overrides/grub-pc 
+/usr/share/bug 
+/usr/share/bug/grub-pc 
+/usr/share/bug/grub-pc/presubj 
+/usr/share/bug/grub-pc/script 
+/usr/share/grub 
+/usr/share/grub/default 
+/usr/share/grub/default/grub.md5sum 
+/usr/share/grub/default/grub 
+/usr/bin 
+/usr/bin/grub-mkimage 
+/usr/sbin 
+/usr/sbin/grub-setup 
+/usr/sbin/update-grub2 
+/usr/sbin/update-grub 
+/usr/sbin/grub-install 
+/usr/sbin/grub-set-default 
+/usr/sbin/grub-reboot 
+/usr/sbin/upgrade-from-grub-legacy 
+/etc 
+/etc/grub.d 
+/etc/grub.d/05_debian_theme 
+/usr/share/doc/grub-pc/README 
+/usr/share/doc/grub-pc/TODO 
+/usr/share/doc/grub-pc/AUTHORS 
+/usr/share/doc/grub-pc/THANKS 
+/usr/share/doc/grub-pc/examples/grub.cfg 
+/usr/share/doc/grub-pc/NEWS.Debian.gz 
+/usr/share/doc/grub-pc/changelog.gz 
+/usr/share/doc/grub-pc/NEWS.gz 
+/usr/share/doc/grub-pc/changelog.Debian.gz 
+**4、/boot/grub目录中的文件**
+
+*.mod  为驱动模块
+command.lst  grub命令
+fs.lst   grub支持的文件系统
+handler.lst   grub命令运行环境:sh
+moddep.lst   模块间的依赖关系
+grub.conf     grub配置文件
+
+     此目录中的文件相当于stage2(引导扇区记录着该目录的位置)，若开机时GRUB不能读取该目录，则会提示：grub rescue >
+     这时只能重新安装GRUB。若能读取该目录但配置文件丢失时，会显示GRUB SHELL 可以手动指定相关文件位置。
+
+**5、grub.conf 解析**
+     grub.conf 是由/usr/sbin/grub-mkconfig using templates  from /etc/grub.d and settings from /etc/default/grub 生成的。当然也可以手动编辑。
+# 
+# DO NOT EDIT THIS FILE 
+# 
+# It is automatically generated by /usr/sbin/grub-mkconfig using templates 
+# from /etc/grub.d and settings from /etc/default/grub 
+#
+      其中/etc/grub.d 目录中存放的是一些编号的脚本文件，用以产生grub.conf的内容，you can add an entry to boot another OS as 01_otheros, 11_otheros, etc, depending on the position you want it to occupy in the menu; and then adjust the default setting via /etc/default/grub.而 /etc/default/grub控制grub的设置。If you change /etc/default/grub, run 'update-grub' afterwards to update           /boot/grub/grub.cfg. 也可以用 /usr/sbin/grub-mkconfig 。
+     /etc/grub.d/目录中的文件有：
+     00_header        10_linux       30_os-prober    05_debian_theme  20_memtest86+  40_custom 
+其中00_header    30_os-prober    05_debian_theme  是安装系统时自动生成的设置脚本可有可无。
+10_linux记录了安装的系统，用户可以在40_custom 中添加自己要指定的系统具体格式可以参考：
+/usr/shard/doc/grub-common/example/grub.conf   的示例:
+# 
+# Sample GRUB configuration file 
+# 
+
+# Boot automatically after 30 secs. 
+set timeout=30 
+
+# By default, boot the first entry. 
+set default=0 
+
+# Fallback to the second entry. 
+set fallback=1 
+
+# For booting GNU/Linux 
+menuentry "GNU/Linux" { 
+	set root=(hd0,1) 
+	linux /vmlinuz root=/dev/sda1 
+	initrd /initrd.img 
+} 
+
+# For booting Microsoft Windows 
+menuentry "Microsoft Windows" { 
+	set root=(hd0,1) 
+	chainloader +1 
+} 
+
+# For booting Memtest86+ 
+menuentry "Memtest86+" { 
+	set root=(hd0,1) 
+	linux16 /memtest86+.bin 
+} 
+
+# Change the colors. 
+menuentry "Change the colors" { 
+	set menu_color_normal=light-green/brown 
+	set menu_color_highlight=red/blue 
+}
+注意：linux 命令行参数中的root=/dev/[sh]d[a-z][0-9]的形式是不变的，=/间不能有空格，因为这个参数这是传给kernel的参数，此时的设备文件其实是由initrd提供的。根目录是内存中由内核产生的rootfs.
+**6、GRUB的安装**
+第一步：In order to install GRUB as your boot loader, you need to first install  the GRUB system and utilities under your UNIX-like operating system You can do this either from the source tarball, or as a package for your OS. 
+常用的软件包为：grub-pc及grub-common
+第二步：After you have done that, you need to install the boot loader on a 
+drive (floppy or hard disk). There are two ways of doing that - either using the utility `grub-install' (*note Invoking grub-install::) on a UNIX-like OS, or by running GRUB itself from a floppy. These are quite similar, however the utility might probe a wrong BIOS drive, so you should be   careful. 
+警告：most operating systems don't tell GRUB how to map BIOS drives to OS devices correctly--GRUB merely "guesses" the mapping. This will succeed in most cases, but not always. Therefore, GRUB provides you with a map file called the "device map", which you must fix if it is wrong.  If the output is wrong, it is unlikely that your computer will be able to boot with no problem. 
+    device.map位于/boot/grub/,内容为BIOS drives 与 OS devices的对应关系：
+如：(hd0)	/dev/sda
+geekard@geekard-laptop:~$ grub-install --help 
+Usage: grub-install [OPTION] install_device 
+Install GRUB on your drive. 
+
+  -h, --help              print this message and exit 
+  -v, --version           print the version information and exit 
+  --modules=MODULES       pre-load specified modules MODULES 
+  --root-directory=DIR    install GRUB images under the directory DIR instead of the root directory 
+grub 在DIR目录下建立boot/grub/*目录和文件(这些文件来自安装GRUB套件时产生的文件 /usr/lib/grub/i386-pc)，但不会生成grub.cfg 文件，可用grub-mkconfig 命令生成这个文件，也可以手动编辑。默认的root-directory为根目录。在用rescue mode 没有chroot安装grub时常用这个选项。
+  --grub-setup=FILE       use FILE as grub-setup 
+  --grub-mkimage=FILE     use FILE as grub-mkimage 
+  --grub-probe=FILE       use FILE as grub-probe 
+  --no-floppy             do not probe any floppy drive 
+  --recheck            Recheck the device map, even if `/boot/grub/device.map' already exists.
+  --force                 install even if problems are detected 
+  --disk-module=MODULE    disk module to use 
+
+    INSTALL_DEVICE can be a GRUB device name or a system device filename. 
+    system device filename : /dev/sda 或/dev/sda*  等
+    GRUB device name  : '(hd0,1)'等
+
+
+     grub-install copies GRUB images into /boot/grub (or /grub on NetBSD and  OpenBSD), and uses grub-setup to install grub into the boot sector. If the --root-directory option is used, then grub-install will copy images into the operating system installation rooted at that directory. 
+**7、当建立单独的/boot分区时，手动安装和配置grub的方法：**
+# grub-install  /dev/sda    默然安装到根目录中，并根据需要建立/boot/grub目录结构。
+配置方式：
+menuentry "GNU/Linux" { 
+	set root=(hd0,1)    指定含有 vmlinuz、initrd.img 的设备或分区，可以与grub的目录不在一个分区。
+	linux /vmlinuz root=/dev/sda1 
+	initrd /initrd.img }
+因为/dev/sda1 被挂载到/boot目录中故上述的 /vmlinuz 和/initrd.img 的/等价于/boot目录.
+**8、GRUB的讨论**
+#grub-install –root-directory=DIR   install_device
+--root-directory 用于指定grub文件安装目录，而install_device用于指定安装的设备，通常为MBR或分区.
+      安装grub时的DIR和install_device可以不在同一个分区，但grub安装完成后，这种对应关系是确定的。也就是说stage1,stage1.5都写入到install_device上了，其中stage1.5中记录了stage2即—root-directory的位置信息，在stage1.5的文件中有这样一个参数：(hd*,*)/DIR/记录了这种对应关系。当DIR被移走或目录名修改如将DIR/boot改为DIR/boot2时，将会出现不能引导并显示grub rescue >,这是因为GRUB不能读取以前安装时定义的DIR/boot/grub中的文件信息(相当于stage2)。但DIR/boot/grub/grub.cfg丢失时，由于可以读去DIR/boot/grub中的文件故会出现grub shell提示符，这时可以手动配置。
+     另外vmlinuz和initrd可位于任何位置，不一定位于DIR/boot中，这体现了GRUB的灵活性，即不管vmlinuz和initrd位于哪儿都可以引导。
+     在grub.cfg文件中root用于指定vmlinuz和initrd所在的分区，这和grub的安装目录无关。
+**9、GRUB文件和设备的命名**
+First of all, GRUB requires that the device name be enclosed with `(' and `)'.
+   (hd0,2)  Here, `hd' means it is a hard disk drive. The first integer `0' indicates the drive number, that is, the first hard disk, while the second integer, `2', indicates the partition number (or the PC slice number in the BSD terminology).The partition numbers are counted from _one_, not from zero (as was the case in previous versions of GRUB). 
+    (hd0,5)  This specifies the first "extended partition" of the first hard disk drive. Note that the partition numbers for extended partitions are counted from `5', regardless of the actual number of primary partitions on your hard disk.     
+    Of course, to actually access the disks or partitions with GRUB, you need to use the device specification in a command, like `root (fd0)' or `unhide (hd0,3)'. To help you find out which number specifies a partition you want, the GRUB command-line (*note Command-line 
+interface::) options have argument completion. This means that, for example, you only need to type 
+root (     followed by a <TAB>, and GRUB will display the list of drives, partitions, or file names. So it should be quite easy to determine the  name of your target partition, even with minimal    knowledge of the syntax. 
+   Note that GRUB does _not_ distinguish IDE from SCSI - it simply counts the drive numbers from zero, regardless of their type(因此都为hd*而非sd*). Normally, any IDE drive number is less than any SCSI drive number, although that is not true if you change the boot sequence by swapping IDE and SCSI drives in your BIOS. 
+
+ Now the question is, how to specify a file? Again, consider an example: 
+     (hd0,1)/vmlinuz   This specifies the file named `vmlinuz', found on the first partition of the first hard disk drive. Note that the argument completion works with file names, too. 
+      If you omit the device name in an absolute file name, GRUB uses GRUB's "root device" 
+implicitly. So if you set the root device to, say, `(hd1,1)' by the command `root' (*note root::), then `/boot/kernel' is the same as `(hd1,1)/boot/kernel'. 也就是说在用绝对路径指定文件时若路径最前面没有device，则GRUB就默认由root device 指定的device，如root (hd0,2).但像root=/dev/sda1,由于绝对路径和=号之间没有空格，故没有这种关系。实际上linux命令行上的root参数一直是root=/dev/[sh]d[a-z][0-9]的格式，并不用在/dev前加空格和指定设备分区，因为这是传给kernel的参数，此时的设备文件其实是由initrd提供的。根目录是内存中由内核产生的rootfs.
+**10、常用GRUB命令**
+geekard@geekard-laptop:~$ grub- 
+grub-mkdevicemap   生成device.map文件
+grub-probe                获取给定路径或设备的信息如fs|fs_uuid|drive|device|partmap|abstraction       
+
+grub-setup                   将grub写入boot sector
+grub-install                  安装grub到指定设备和目录，调用grub-setup   
+  
+grub-script-check        检查/etc/grub.d目录中脚本的正确性
+grub-mkconfig            根据/etc/grub.d和/etc/defaults/grub中的文件生成配置文件
+
+grub-set-default          设置default的 menuentry
+grub-reboot                 设置下次启动时的menuentry
+  
+grub-mkrescue            生成rescue盘

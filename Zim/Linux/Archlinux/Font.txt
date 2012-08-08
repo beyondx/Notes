@@ -1,0 +1,56 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T19:03:01+08:00
+
+====== main chinese fonts ======
+Created Sunday 27 March 2011
+http://hivelogic.com/articles/top-10-programming-fonts 
+
+Chinese, Japanese, Korean, Vietnamese
+(Mainly) Chinese
+
+   ** ttf-arphic-ukai **- Kaiti (brush stroke) Unicode font (enabling anti-aliasing is suggested)
+    **ttf-arphic-uming **- Mingti (printed) Unicode font
+    **ttf-fireflysung** - New Sung font
+   **wqy-zenhei **- Hei Ti Style (sans-serif) Chinese Outline font embedded with bitmapped Song Ti (also supporting Japanese (partial) and   	Korean characters).
+ **  wqy-bitmapfont** - Bitmapped Song Ti (serif) Chinese font
+    **ttf-hannom-usong **- Song Ti quality TrueType fonts for Unicode Han and Nom (Chinese and Vietnamese) characters (AUR) 
+    **ttf-dejavu  **-Font family based on BItstream Vera Fonts
+    **ttf-fireflysung** --firefly embedded bitmap font
+    **ttf-freefont** --A set of free high quality TrueType fonts
+    **ttf-inconsolata-g**  --monospace font for pretty code listings and for the terminal
+    **ttf-ms-fonts**
+    ttf-vista-fonts  — Consolas  a best coding fonts
+    monaco-linux-font  -- 苹果提供的字体和inconsolata、consolas一样比较适合编程
+
+**ttf-mac-fonts  — apple fonts:**
+ttf-mac-fonts /usr/
+ttf-mac-fonts /usr/share/
+ttf-mac-fonts /usr/share/fonts/
+ttf-mac-fonts /usr/share/fonts/TTF/
+ttf-mac-fonts /usr/share/fonts/TTF/AppleGaramond-Bold.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/AppleGaramond-BoldItalic.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/AppleGaramond-Italic.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/AppleGaramond-Light.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/AppleGaramond-LightItalic.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/AppleGaramond.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/HardGothicNormal.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/Lucida Console.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/Lucida Grande Bold.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/Lucida Grande.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/Lucida MAC.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/Lucida Sans Unicode.ttf
+ttf-mac-fonts /usr/share/fonts/Type1/
+ttf-mac-fonts /usr/share/fonts/Type1/Lucida G.pfb
+ttf-mac-fonts /usr/share/fonts/Type1/Lucida Gr Regular.pfb
+ttf-mac-fonts /usr/share/fonts/Type1/Lucida MAC Bold.pfb
+ttf-mac-fonts /usr/share/fonts/Type1/Lucida MAC.pfb
+ttf-mac-fonts /usr/share/fonts/Type1/MACGrande.pfb
+ttf-mac-fonts /usr/share/licenses/
+ttf-mac-fonts /usr/share/licenses/ttf-mac-fonts/
+ttf-mac-fonts /usr/share/licenses/ttf-mac-fonts/SafariWindows.pdf
+
+
+
+
+

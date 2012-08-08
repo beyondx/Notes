@@ -1,0 +1,8 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-10T15:52:20+08:00
+
+====== icicles ======
+Created Tuesday 10 January 2012
+
+Repo:  git clone git://github.com/emacsmirror/icicles.git

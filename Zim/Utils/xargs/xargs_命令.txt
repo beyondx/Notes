@@ -1,0 +1,78 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-23T15:41:16+08:00
+
+====== xargs 命令 ======
+Created Wednesday 23 November 2011
+http://www.chinaunix.net/jh/24/409543.html
+
+=== 用途 ===
+
+构造参数列表并运行命令。
+
+=== 语法 ===
+
+xargs [  -p ] [  -t ] [  -e__[__ EOFString __]__ ] [  -E EOFString ] [  -i__[__ ReplaceString __]__ ] [  -I ReplaceString ] [  -l[ Number ] ] [  -L Number ] [  -nNumber  [  -x ] ] [  -sSize ] [ Command [ Initial-Argument ... ] ]
+
+  注： __不要__在小写的标志和参数之间放置空格。
+
+==== 描述 ====
+
+生成的命令行长度（size, 由 -s 控制）是 Command 和每个作为字符串对待的 Argument(包括用于每个字符串的空字节结束符号)大小（以字节计算）的总和。
+
+xargs 命令可以限制命令行的长度。当__构造__的命令行运行时，组合的 Argument 和环境列表不能超过 ARG_MAX 字节。在这一约束里，如果不指定 -n 或 -s 标志，缺省命令行长度至少是 LINE_MAX 指定的值。
+
+=== 标志 ===
+
+      -e[EOFString]废弃的标志。请使用 -E 标志。 
+      将 EOFString 参数用作逻辑 EOF 字符串。如果不指定 -e 或 -E 标志，则采用下划线（_）为逻辑 EOF 字符串。如果不指定 
+      EOFString 参数，逻辑 EOF 字符串能力被禁用且下划线被照字面含义使用。xargs 命令读取标准输入__直到__达到 EOF 或指定的字符串。
+
+      -E EOFString指定逻辑 EOF 字符串以替换缺省的下划线（_）。 xargs 命令读取标准输入直到达到 EOF 或指定的字符串。
+
+      -i[ReplaceString]废弃的标志。请使用 -I（大写 i）标志。 
+      如果没有指定 ReplaceString 参数，使用字符串 "__{}__"。
+      注：-I（大写 i）和 -i 标志是互相排斥的；最后指定的标志生效。
+
+      -I ReplaceString（大写 i）。
+	用从标准输入读取的字符串替换__Initial-Arguments__中的每一个ReplaceString, ReplaceString是指定的__标记字符串.__ReplaceStrings 不能在超过 5 个自变量中使用。在每个标准输入行开始的空字符被忽略。每个 Argument 能包含一个或多个 ReplaceStrings，但不能大于 255 字节。-I 标志同样打开 -x 标志。 
+
+        注：-I（大写 i）和 -i 标志是互相排斥的；最后指定的标志生效。
+
+      -l[Number]（小写的 L）。废弃的标志。请使用 -L 标志。 
+        如果没有指定 Number 参数，使用缺省值 1。-l 标志同样打开 -x 标志。
+        注： __-L、-l（小写的 L）和 -n 标志是互相排斥的__；最后指定的标志生效。
+
+      -L Number 指定从标准输入读取的非空行的数目, 
+       如果保留少于指定的 Number，Command 参数的最后调用可以有少数几个参数行。一行以第一个换行字符结束，除非行的最后一个字符是一个空格或制表符。后续的空格表示 延续至下一个非空行。 
+
+      -n Number  指定一次添加到command后的从标准输入读取的参数的个数.
+        如果被积累的命令行长度超过了由 -s Size 标志指定的字节, 则最后实际添加的参数少于 Number（但是非零） 
+
+          注： -L、-I（小写的 L）和 -n 标志是互相排斥的；最后指定的标志生效。
+
+      -p __ 询问是否运行__构造好 参数列表的Command 。它显示构造的命令行，后跟一个 ?...（问号和省略号）提示。输入肯定的、特定于语言环境的响应以运行  Command 参数。任何其它响应都会引起 xargs 命令跳过那个特定的参数调用。每个调用都将询问您。 -p 标志同样打开 -t 标志。
+
+      -s Size 设置构造的 Command 行的__最大字符数__。Size 参数必须是正整数。如果满足以下条件，则使用很少的自变量： 
+
+        自变量的总数超出 -n 标志指定的自变量数。 总行数超出 -L 或 -I（小写 L）标志指定的行数。  累加至在 Size 参数指定的字节数之前达到 EOF。
+
+      -t启用__跟踪方式__并在运行之前将构造的 Command 行回送到标准错误。
+
+      -x如果有任何 Command 行大于 -s Size 标志指定的字节数，__停止运行__ xargs 命令。如果指定 -I（大写 i）或 -l（小写 
+
+      L）标志，则打开 -x 标志。如果没有指定 -i、-I（大写 i）、-l（小写 L）、-L 或 -n 标志，则 Command 行的总长度必须在 
+
+      -s Size 标志指定的限制内。
+
+=== 出口状态 ===
+
+该命令返回下列出口值：
+
+0 if it succeeds
+123 if any invocation of the command exited with status 1-125
+124 if the command exited with status 255
+125 if the command is killed by a signal
+126 if the command cannot be run
+127 if the command is not found
+1 if some other error occurred.

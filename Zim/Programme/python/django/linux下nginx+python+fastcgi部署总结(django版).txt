@@ -1,0 +1,156 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-22T22:41:18+08:00
+
+====== linux下nginx+python+fastcgi部署总结(django版) ======
+Created Saturday 22 October 2011
+
+http://www.vimer.cn/2011/07/linux%E4%B8%8Bnginxpythonfastcgi%E9%83%A8%E7%BD%B2%E6%80%BB%E7%BB%93django%E7%89%88.html/comment-page-1
+
+最近因为项目上的需要开始大量使用nginx，因此也想趁机将以前常用的django+apache的架构换成**django+nginx+fastcgi**，此文是整个搭建的步骤，主要留作备忘，也希望对大家有所帮助。
+
+注意：虽然本文成功的搭建了django运行fastcgi的实例，但是在实际运行中发现了很多问题，比如程序执行异常，进程在每次请求之后退出之类的。可能是我机器的问题，也可能是程序本身bug，大家如果用来搭建外网环境，请务必多多测试。
+
+===== 一. 编译nginx =====
+在网上买了一本《实战nginx-取代Apache的高性能服务器》，写的比较浅，主要是些配置方面的东西，不过却正是目前我所需要的。由于需要支持__https和rewrite__，所以除了nginx的源码之外，又下载了 openssl-0.9.8r.tar.gz 和 pcre-8.12.tar.gz，把他们和nginx-1.0.4.tar.gz放到同一个目录。
+
+为了方便编译，笔者写了一个脚本，代码如下:
+
+#=============================================================================
+#脚本所在绝对目录
+abs_path(){
+    local path=$1
+    local basename=$( basename $path )
+    local dirname=$(  dirname  $path )
+    cd $dirname
+    if [ -h $basename ]; then
+        path=$( readlink $basename )
+        abs_path $path
+    else
+        pwd
+    fi
+}
+ 
+#=============================================================================
+#依赖的目录
+src_base_dir=$( abs_path $0 )
+src_openssl_dir=$src_base_dir'/openssl-0.9.8r'
+src_pcre_dir=$src_base_dir'/pcre-8.12'
+src_nginx_dir=$src_base_dir'/nginx-1.0.4'
+ 
+#=============================================================================
+#目标的目录
+dest_base_dir=$src_base_dir'/release'
+dest_nginx_dir=$dest_base_dir'/nginx'
+ 
+#=============================================================================
+#把所有的tar.gz解压
+find . -name "*.tar.gz" | xargs -IX tar zxvf X
+ 
+#=============================================================================
+#编译nginx
+cd $src_nginx_dir
+chmod u+x ./configure
+./configure --with-http_stub_status_module --with-http_ssl_module --with-openssl=$src_openssl_dir --with-pcre=$src_pcre_dir --prefix=$dest_nginx_dir
+make && make install
+
+编译完成后，我们就需要来配置nginx了
+
+===== 二.配置nginx =====
+在server配置项下增加
+
+location / {
+    #fastcgi_pass 127.0.0.1:9001;
+    fastcgi_pass   unix:django.sock;
+ 
+    fastcgi_param PATH_INFO $fastcgi_script_name;
+    fastcgi_param REQUEST_METHOD $request_method;
+    fastcgi_param QUERY_STRING $query_string;
+    fastcgi_param CONTENT_TYPE $content_type;
+    fastcgi_param CONTENT_LENGTH $content_length;
+    fastcgi_pass_header Authorization;
+    fastcgi_intercept_errors off;
+    fastcgi_param SERVER_PROTOCOL $server_protocol;
+    fastcgi_param SERVER_PORT $server_port;
+    fastcgi_param SERVER_NAME $server_name;
+}
+ 
+location** /admin_media/** {
+    alias /usr/local/lib/python2.7/site-packages/django/contrib/admin/media/;
+    break;
+}
+ 
+location **/site_media/** {
+    alias /home/dantezhu/htdocs/ngx_django/media/;
+    break;
+}
+
+这里的3个location配置分别解决了，与python进程通信、django后台管理端样式存放、网站样式存放的问题。对照着apache的配置来看，就很容易明白了
+
+
+WSGIPythonEggs /tmp
+<VirtualHost *>
+    ServerName fuload.qq.com
+   ** WSGIScriptAlias / /home/dantezhu/htdocs/fuload/conf/setting.wsgi**
+    <Directory />
+        Options FollowSymLinks
+        AllowOverride
+        Order allow,deny 
+        Allow from all 
+    </Directory>
+    <Directory "/home/dantezhu/htdocs/fuload/mysite">
+        Order Deny,Allow 
+        Deny from all 
+    </Directory>
+    **Alias /admin_media "/usr/local/lib/python2.7/site-packages/django/contrib/admin/media"**
+    <Directory "/usr/local/lib/python2.7/site-packages/django/contrib/admin/media">
+        Order allow,deny 
+        Options Indexes
+        Allow from all 
+        IndexOptions FancyIndexing
+    </Directory>
+ 
+    #AliasMatch /site_media/(.*\.(css|gif|png|jpg|jpeg)) /home/dantezhu/htdocs/fuload/media/$1 
+  **  Alias /site_media /home/dantezhu/htdocs/fuload/media/**
+    <Directory "/home/dantezhu/htdocs/fuload/media/">
+        Order allow,deny 
+        Options Indexes
+        Allow from all 
+        IndexOptions FancyIndexing
+    </Directory>
+</VirtualHost>
+
+===== 三.安装fastcgi依赖 =====
+
+需要到 http://trac.saddi.com/flup%E4%B8%8B%E8%BD%BD%E5%AE%89%E8%A3%85%EF%BC%8C%E4%B9%8B%E5%90%8Efastcgi%E6%89%8D%E8%83%BD%E5%A4%9F%E6%AD%A3%E5%B8%B8%E5%90%AF%E5%8A%A8。
+
+===== 四.启动django =====
+创建django project的过程我们就不说了，只列出启动/停止的命令:
+启动:
+
+#python manage.py runfcgi daemonize=true pidfile=`pwd`/django.pid host=127.0.0.1 port=9001 maxrequests=1 &
+python manage.py __runfcgi__ daemonize=true pidfile=`pwd`/django.pid socket=/home/dantezhu/nginx/sbin/django.sock maxrequests=1 &
+
+停止:
+
+kill -9 `cat django.pid`
+
+===== 五.启动nginx =====
+启动:
+
+
+./nginx -p /home/dantezhu/nginx/
+
+停止:
+
+kill -QUIT `cat ../logs/nginx.pid`
+
+重新载入配置:
+
+
+./nginx -t -c `pwd`/../conf/nginx.conf
+kill -HUP `cat ../logs/nginx.pid`
+
+成功显示了django的后台界面:
+
+OK，到此为止，大功告成！

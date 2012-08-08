@@ -1,0 +1,275 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-12T18:30:45+08:00
+
+====== 多物理机器中的TAP虚拟网卡在linux briadge中通过TUP远程通信 ======
+Created Thursday 12 July 2012
+http://blog.csdn.net/quqi99/article/details/7634192
+多物理机器中的TAP虚拟网卡在linux briadge中通过TUP远程通信 ( by quqi99 )
+
+
+作者：张华  发表于：2012-05-06
+版权声明：可以任意转载，转载时请务必以超链接形式标明文章原始出处和作者信息及本版权声明
+( http://blog.csdn.net/quqi99 )
+
+
+1， 先说单台物理机上如何建一个bridge
+
+    1）bridge必须桥接一个物理网卡或者一个vlan的网卡（ ip link add link eth0 name eth0.1000 type vlan id 1000 ）
+
+    2）gw200与br200必须是一样的MAC地址及IP（因为网桥就是二层的交换机嘛，交换机是根据MAC与port的映射来转发帧的）
+
+    3）eth0.1000会在帧上打vlan标签，然后再交eth0（因为eth0也可以传输其他vlan的数据，所有它就相当于一个trunk，但这个trunk只限于一台物理机，下面将要讲如何通过vtun扩展到多物理机）
+
+ip link add link eth0 name eth0.1000 type vlan id 1000
+ip link set eth0.1000 up
+
+ip tuntap add gw200 mode tap
+ip link set gw200 address 00:21:CC:6D:44:43
+ip link set gw200 up
+
+brctl addbr br200
+brctl setfd br200 0
+brctl stp br200 off
+ip link set br200 address 00:21:CC:6D:44:43
+ip link set br200 up
+
+brctl addif br200 eth0.1000
+
+brctl addif br200 gw200
+ip addr add 3.3.3.1/24 dev br200
+ip addr add 3.3.3.1/24 dev gw200
+
+ip tuntap add tap4cce2519-02 mode tap
+ip link set tap4cce2519-02 address fa:16:3e:48:31:dc
+ ip link set tap4cce2519-02 up
+ brctl addif br200 tap4cce2519-021
+
+
+2) 测试，一是通过libvirt的方法来测：
+
+virsh dumpxml instance-00000001:
+...
+    <interface type="ethernet">
+      <mac address="fa:16:3e:48:31:dc"/>
+      <script path=""/>
+      <target dev="tap4cce2519-02"/>
+    </interface>
+...
+
+virsh define instance-00000001.xml
+virsh start instance-00000001
+
+如果是bridge，可用：
+<interface type='bridge'>
+      <mac address='54:52:00:28:56:fa'/>
+      <source bridge='br0'/>
+</interface>
+
+如果是用qemu的话，就只有tap接口，若是多台物理机，可能用它测就是问题，这时候可用上面libvirt的网桥。
+qemu-kvm -net nic,macaddr=fa:16:3e:48:31:dc -net tap,ifname=tap4cce2519-02 disk1.img vnc :1
+
+用vncviewer localhost:5901登录即可看到图形化界面
+
+
+3) 虚机启后配置IP及网关即可测试
+sudo ifconfig eth0 3.3.3.4 broadcast 3.3.3.255 netmask 255.255.255.0
+
+route add default gw 3.3.3.1
+
+
+
+但是上面的桥接只是在一台物理机，如果是多台物理机之间的tap虚拟网卡要通信呢？那需要用到vtun，两个物理机之前必须各用一个物理网卡做遂道（采用socket传输）
+
+其原理见： VTun工作原理详解http://blog.csdn.net/wangxing1018/article/details/4169179
+
+具体做法见： Connecting Two Remote Local Networks With Transparent Bridging Techniquehttp://kovyrin.net/2006/04/05/connecting-two-remote-local-networks-with-transparent-bridging/
+
+
+
+
+2012年６月５日晚记，因扰了我一个星期的问题（两台物理机上的ＴＡＰ虚拟网卡上的虚机通过两台物理机上的网桥ping不通）终于今晚解决了。原因就是我在测试的时候，一直用的是qemu的命令测的：
+
+qemu-system-x86_64  -boot c -hda /bak/kvmimages/linux-0.2.img -net nic,macaddr=fa:16:3e:48:31:dc -net tap,ifname=tap0,script=no -m 128 -vnc :1 -monitor stdio
+vncviewer localhost:5901
+
+这种测法，因为用的是-net tap方式，又分布在不同物理机，它应该是像如上用ＴＵＮ连接，所以我一直失败。
+
+后来改用libvirt的方式测试，ＯＫ，成功，原因就是libvirt的virsh start 命令应该是自动加了TUN连接，　这种做法具体如下：
+
+
+第一台机器：
+
+1) 　建立桥接的脚本, 第一台机器有两个网卡（eth0连外网），对eth1进行桥接成10.0.1.0/24网段，同时在桥上设置多ＩＰ的172.16.99.0/24网段。这时候不需要创建给虚机的tap.
+#!/bin/sh 
+# 
+# script to bring up the tun device in QEMU in bridged mode 
+# first parameter is name of tap device (e.g. tap0)
+# some constants specific to the local host - change to suit your host
+#
+TAP=tap0
+BRIDGE=br0
+IFACE=eth1
+IP=10.0.1.1
+GATEWAY=10.0.1.1
+BROADCAST=10.0.1.255
+#
+# First take $IFACE down, then bring it up with IP 0.0.0.0 
+#
+ifdown $IFACE
+ifconfig $IFACE 0.0.0.0 promisc up
+#
+# Bring up the tap device (name specified as first argument, by QEMU)
+#
+#tunctl -t $TAP -u `id -un`
+#ip link set $TAP address fa:16:3e:48:31:dc
+#ifconfig $TAP up
+#
+# create the bridge between eth0 and the tap device
+#
+brctl addbr $BRIDGE
+brctl addif $BRIDGE $IFACE
+#brctl addif $BRIDGE $TAP
+# 
+# only a single bridge so loops are not possible, turn off spanning tree protocol
+#
+brctl stp $BRIDGE off
+# 
+# Bring up the bridge with IP and add the default route 
+#
+ifconfig $BRIDGE $IP netmask 255.255.255.0 broadcast $BROADCAST
+route add default gw $GATEWAY
+
+ifconfig br0:0 172.16.99.108 netmask 255.255.255.0 broadcast 172.16.99.255
+
+
+
+另外一台机器，就上面三行粗体行不同，分别为：
+
+IFACE=eth0
+IP=10.0.1.2
+ifconfig br0:0 172.16.99.109 netmask 255.255.255.0 broadcast 172.16.99.255
+
+
+2) 创建一个libvirt的虚机配置，重点是记得给tap设置ＭＡＣ地址：<mac address='52:54:00:00:01:89'/>
+
+      vi /etc/libvirt/qemu/node1.xml
+
+<domain type='qemu'>
+  <name>node1</name>
+  <uuid>f5b8c05b-9c7a-3211-49b9-2bd635f7e2aa</uuid>
+  <memory>393216</memory>
+  <currentMemory>393216</currentMemory>
+  <vcpu>1</vcpu>
+  <os>
+    <type arch='i686' machine='pc-1.0'>hvm</type>
+    <boot dev='hd'/>
+  </os>
+  <features>
+    <acpi/>
+  </features>
+  <clock offset='utc'/>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>destroy</on_crash>
+  <devices>
+    <emulator>/usr/bin/qemu-system-i386</emulator>
+    <disk type='block' device='disk'>
+      <driver name='qemu' type='raw'/>
+      <source dev='/bak/kvmimages/linux-0.2.img'/>
+      <target dev='hda' bus='ide'/>
+      <address type='drive' controller='0' bus='0' unit='0'/>
+    </disk>
+    <controller type='ide' index='0'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>
+    </controller>
+    <interface type='bridge'>
+      <mac address='52:54:00:00:01:89'/>
+      <source bridge='br0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
+    </interface>
+    <input type='tablet' bus='usb'/>
+    <input type='mouse' bus='ps2'/>
+    <graphics type='vnc' port='-1' autoport='yes' listen='127.0.0.1'>
+      <listen type='address' address='127.0.0.1'/>
+    </graphics>
+    <video>
+      <model type='cirrus' vram='9216' heads='1'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
+    </video>
+    <memballoon model='virtio'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0'/>
+    </memballoon>
+  </devices>
+</domain>
+
+
+对于第二台机器上，上面打黑线的物别注意，像uuid与mac搞成不一样的就行了。
+
+
+3) 执行下列命令启动虚机。
+
+  
+
+virsh define /etc/libvirt/qemu/node1.xml 
+virsh dumpxml node1
+virsh list
+virsh dominfo node1
+virsh start node1
+ virsh shutdown node1
+ virsh reboot node1
+
+4) 通过vncviewer localhost命令登录虚机，设置ＩＰ和默认网关
+   ifconfig eth0 10.0.1.3 netmask 255.255.255.0 broadcast 10.0.1.255
+   route add default gw 10.0.1.1
+
+第二台机器上的虚机设置：
+ifconfig eth0 10.0.1.4 netmask 255.255.255.0 broadcast 10.0.1.255
+route add default gw 10.0.1.1
+
+
+5) 测试
+   这时候，你会发现在虚机上
+   ping -c 1 10.0.1.1
+   ping -c 1 10.0.1.2
+   ping -c 1 10.0.1.3
+   ping -c 1.10.0.1.4
+   ping -c 1 172.16.99.108
+   ping -c 1 172.16.99.109
+   ping -c 1 192.16.99.108  （这个是第一台机器上接外网的第一个网卡的ＩＰ）
+　　上面测试，将第二台机器上的防火墙关了( iptables -F )，同时如果还想让虚机能访问外网的话，还应该：
+　　１）在两台机器上都打开ＩＰ转发，echo "1"> /proc/sys/net/ipv4/ip_forward
+　　２）对外网出口设置ＮＡＴ映射规则
+iptables-t nat -A POSTROUTING -o eth0 -j MASQUERADE
+iptables-save > ipt.save  &&cat ipt.save |iptables-restore
+
+
+
+　　接下来将继续试验最上面的vlan的情况，一样的问题：
+　　建vlan的脚本如下，　在第二台物理机上记得改一下ＩP，其他都与上同，测出来的结果是虚机内能互通，虚机能访问自已所在的物理机，但没能访问远程物理机（这点与上面那个测试不一样）。
+
+ip link add link eth1 name eth1.1000 type vlan id 1000
+ip link set eth1.1000 up
+
+#ip tuntap add gw200 mode tap
+#ip link set gw200 address c8:3a:35:d7:86:da
+#ip link set gw200 up
+
+brctl addbr br0
+brctl setfd br0 0
+brctl stp br0 off
+ip link set br0 address c8:3a:35:d7:86:da
+ip link set br0 up
+
+brctl addif br0 eth1.1000
+
+#brctl addif br0 gw200
+ip addr add 10.0.1.1/24 dev br0
+#ip addr add 10.0.1.1/24 dev gw200
+
+#ip tuntap add tap0 mode tap
+#ip link set tap0 address fa:16:3e:48:31:11
+#ip link set tap0 up
+#brctl addif br0 tap0
+   
+

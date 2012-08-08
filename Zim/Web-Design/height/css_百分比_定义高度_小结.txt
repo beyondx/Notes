@@ -1,0 +1,55 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-15T22:01:30+08:00
+
+====== css 百分比 定义高度 小结 ======
+Created Sunday 15 May 2011
+
+http://blog.csdn.net/nailwl/archive/2010/07/16/5740057.aspx
+css 百分比 定义高度 小结 
+
+在符合标准的 XHTML 模式下，将 DIV 的高度简单的设置为 100% 往往并不能达到想要的效果，
+
+原因是“百分比”是个相对于父节点的值，
+
+如果你没有设置他们的父节点的高度，那么设置 DIV 的高度为100%就没有了意义。
+
+另外一个问题是你或许期望的并不是100%，而是在页面高度不够一屏时按照100%显示，
+
+当你的页面超过视窗的大小时，DIV 要能够撑开，这样的话min-height才是你真正想要的。
+
+下面的代码可以让页面不足一屏时按照100%显示，当超过一屏时，又能够撑开：
+
+CSS:
+
+html, body { 
+
+    height: 100%; 
+
+} 
+
+#container {
+
+    /* this is the div you want to fill the window */ 
+
+    min-height: 100%; 
+
+}
+
+由于 Internet Explorer (IE) 6 及其以下的版本并不支持 min-height 属性，
+
+因此，我们需要添加针对 IE 的代码。
+
+CSS:
+
+* html #container { 
+
+    height:100% 
+
+}
+
+在 IE 下，当 DIV 的内容超过 DIV 本身的高度时， 
+
+DIV 会自动撑开，因此这样的代码可以很好的解决上面的问题。
+
+

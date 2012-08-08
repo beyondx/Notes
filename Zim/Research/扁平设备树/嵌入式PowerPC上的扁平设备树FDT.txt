@@ -1,0 +1,238 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-30T09:38:01+08:00
+
+====== 嵌入式PowerPC上的扁平设备树FDT ======
+Created Wednesday 30 November 2011
+
+http://blog.chinaunix.net/space.php?uid=12077574&do=blog&id=145089
+
+摘要：设备树的引入减少了内核为支持新硬件而需要的改变，提高代码重用，加速了**Linux支持包**的开发，使得__单个内核镜像能支持多个系统__。作为U-Boot 和Linux内核之间的__动态接口__，本文阐述了设备树的数据存储格式以及源码描述语法，进而分析了U-Boot对扁平设备树的支持设置，Linux内核对设备树的解析流程。
+　　
+
+===== 1 引言 =====
+　　 IBM、Sun等厂家的服务器最初都采用了Firmware（一种嵌入到硬件设备中的程序，用于提供软件和硬件之间的接口），用于初始化系统配置，提供操作系统软件和硬件之间的接口，启动和运行系统。后来为了标准化和兼容性，IBM、Sun等联合推出了固件接口__IEEE 1275__标准，让他们的服务器如IBM PowerPC pSeries，Apple PowerPC，Sun SPARC等均采用__Open Firmware__，在运行时构建系统硬件的设备树信息传递给内核，进行系统的启动运行[1]。这样做的好处有，减少内核对系统硬件的严重依赖，利于加速支持包的开发，降低硬件带来的变化需求和成本，降低对内核设计和编译的要求。
+　　
+　　随着Linux/ppc64内核的发展，内核代码从原来的arch/ppc32和arch/ppc64逐渐迁移到统一的arch/powerpc目录，并在内核代码引入**Open Firmware API**以使用标准固件接口[2]。Linux内核在运行时，需要知道硬件的一些相关信息。对于使用**ARCH=powerpc**参数编译的内核镜像，这个信息需要基于Open Firmware规范，以设备树的形式存在[3]。__这样内核在启动时读取扫描Open Firmware提供的设备树，从而获得平台的硬件设备信息，搜索匹配的设备驱动程序并将该驱动程序绑定到设备。__
+　　
+　　在嵌入式PowerPC中，一般使用U-Boot之类的系统引导代码，而不采用Open Firmware。早期的U-Boot使用include/asm-ppc/u-boot.h中的__静态数据结构struct bd_t__将板子基本信息传递给内核，其余的由内核处理。这样的接口不够灵活，硬件发生变化就需要重新定制编译烧写引导代码和内核，而且也不再适应于现在的内核。(因为是静态数据结构，所以其大小、格式和内容必须**在uboot和kernel中保持一致**，则限制了硬件的灵活性和内核的适应性)。为了适应内核的发展及嵌入式PowerPC平台的千变万化，吸收标准Open Firmware的优点，__U-Boot引入了扁平设备树FDT这样的动态接口__，使用一个单独的__FDT blob__（二进制大对象，是一个可以存储二进制文件的容器）存储传递给内核的参数[3]。一些确定信息，例如cache大小、中断路由等直接由设备树提供，而其他的信息，例如eTSEC的MAC地址、频率、PCI总线数目等__由U-Boot在运行时修改__**，然后嵌入到FDT blob中**。U-Boot使用扁平设备树取代了bd_t，而且也不再保证对bd_t的后向兼容。　
+
+===== 2 设备树的存储格式（dtb） =====
+　　简单的说，设备树是一种描述硬件配置的树形数据结构，有且仅有一个根节点[4]。它包含了有关CPU、物理内存、总线、串口、PHY以及其他外围设备信息等。该树继承了Open Firmware IEEE 1275设备树的定义。__操作系统能够在启动时对此结构进行语法分析，以此配置内核，加载相应的驱动。__
+　　 U-Boot需要将扁平设备树在内存地址传给内核。该树主要由三大部分组成：头（Header）、结构块（Structure block）、字符串块（Strings block）。在内存中分配图如下：
+
+{{./FDTmemery.jpg}}　　　　　
+
+=== 2.1 头（header） ===
+　　 头主要**描述设备树的基本信息**，如设备树魔数标志、设备树块大小、结构块的偏移地址等，其具体结构boot_param_header如下。这个结构中的值都是以**大端模式**表示，并且偏移地址是相对于设备树头的起始地址计算的。
+　　struct boot_param_header {
+　　 u32 magic; /* magic word OF_DT_HEADER */  #__OF:open firmware DT: device tree__
+　　 u32 totalsize; /* total size of DT block */
+　　 u32 off_dt_struct; /* offset to __structure__ */
+　　 u32 off_dt_strings; /* offset to __strings__ */
+　　 u32 off_mem_rsvmap; /* offset to memory reserve map */
+　　 u32 version; /* format version */
+　　 u32 last_comp_version; /* last compatible version */
+　　
+　　 /* version 2 fields below */
+　　 u32 boot_cpuid_phys; /* Which physical CPU id we're booting on */
+　　 /* version 3 fields below */
+　　 u32 size_dt_strings; /* size of the strings block */
+　　
+　　 /* version 17 fields below */
+　　 u32 size_dt_struct; /* size of the DT structure block */
+　　};
+
+=== 2.2 结构块（structure block） ===
+　　扁平设备树结构块是线性化的树形结构，和字符串块一起组成了设备树的主体，以**节点形式**保存目标板的设备信息。在结构块中，节点起始标志为32位常值宏 OF_DT_BEGIN_NODE，节点结束标志为宏OF_DT_END_NODE；子节点定义在节点结束标志前。一个节点的基本结构如下所示：
+　　 1. 节点起始标志OF_DT_BEGIN_NODE（即0x0000_0001）;
+　　 2.__ 节点路径__或者节点单元名（version < 3以及节点路径表示，version > 16时以节点单元名表示）；
+　　 3. 填充字节保证四字节对齐；
+　　 4. __节点属性__。每个属性以常值宏OF_DT_PROP 开始，后面依次为属性值的字节长度、属性名在在字符串块中的__偏移值__、属性值及字节对齐填充段；
+　　 5. 如果存在子节点，则定义子节点。
+　　 6. 节点结束标志OF_DT_END_NODE（即0x0000_0002）。
+归纳起来，一个节点可以概括为以OF_DT_BEGIN_NODE开始，节点路径、属性列表、子节点列表以及OF_DT_END_NODE结束的序列，每一个子节点自身也是类似的结构。
+
+=== 2.3 字符串块（Strings block） ===
+　　为了节省空间，对于那些属性名，尤其是很多属性名是重复冗余出现的，提取出来单独存放到字符串块。这个块中包含了很多有结束标志的属性名字符串。在设备树的结构块中存储了这些字符串的偏移地址，因为可以很容易的查找到属性名字符串。字符串块的引入节省嵌入式系统较为紧张的存储空间。
+
+===== 3 设备树源码DTS表示  DTS: device tree source =====
+　　__设备树源码文件（.dts）__以可读可编辑的文本形式描述系统硬件配置设备树，支持C/C++方式的注释，该结构有一个唯一的根节点“/”，每个节点都有自己的名字并可以包含多个子节点。设备树的数据格式遵循了Open Firmware IEEE standard 1275。本文只简述设备树的数据布局及语法，Linux板级支持包开发者应该详细参考IEEE 1275标准[5]及其他文献[2] [4]。
+　　 
+      为了说明，首先给出基于PowerPC MPC8349E处理器的最小系统的设备树源码示例。可以看到，这个设备树中有很多节点，每个节点都指定了**节点单元名称**。每一个属性后面都给出相应的值。以双引号引出的内容为ASCII字符串，以尖括号给出的是__32位的16进制值__。这个树结构是启动Linux内核所需节点和属性简化后的集合，包括了根节点的基本模式信息、CPU和物理内存布局，它还包括__通过/chosen节点传递给内核的命令行参数信息（该节点由uboot添加）__。
+　　
+　　/ {
+　　 	model = "MPC8349EMITX";
+　　 	compatible = "MPC8349EMITX", "MPC834xMITX", "MPC83xxMITX";
+		   #下面两个参数__决定了子设备的reg格式__
+　　 	#address-cells = <1>; /* 32bit address */   #表示地址的cell个数
+　　 	#size-cells = <1>; /* 4GB size */                  #表示大小(首地址后面的连续地址个数)的cell个数
+　　
+　　 cpus {
+　　 #address-cells = <1>;
+　　 #size-cells = <0>;    
+　　
+　　 PowerPC,8349@__0__ {  #0标示该设备在__父设备树中的地址__
+　　 device_type = "cpu";
+　　 reg = <0>;  
+　　 d-cache-line-size = <20>; /* 32 Bytes */
+　　 i-cache-line-size = <20>;
+　　 d-cache-size = <8000>; /* L1 dcache, 32K */
+　　 i-cache-size = <8000>;
+　　 timebase-frequency = <0>; /* From bootloader */
+　　 bus-frequency = <0>;
+　　 clock-frequency = <0>;
+　　 };
+　　 };
+　　
+　　 memory {
+　　 device_type = "memory";
+　　 reg = <00000000 10000000>; /* 256MB */    __<#base-addr  #size> 前者为地址后者为大小，地址和大小的cell数目由父节点的address-cells和size-cell决定。同时这里的地址是设备在父设备总线上的地址__
+
+　　 };
+　　
+　　 chosen { /* add by starby */   __#由uboot添加__
+　　 name = "chosen";
+　　 bootargs = "root=/dev/ram rw console=ttyS0,115200";
+　　 linux,stdout-path = "/soc8349@e0000000/serial@4500";
+　　 };
+　　};
+　　
+
+=== 3.1 根节点 指定目标板平台的名称属性 ===
+　　 设备树的起始点称之为根节点"/"。属性model指明了**目标板平台或模块的名称**，属性compatible值指明和目标板为同一系列的__兼容的开发板名称__。对于大多数32位平台，属性#address-cells和#size-cells的值一般为1。
+
+=== 3.2 CPU节点 ===
+　　 /cpus节点是根节点的子节点，对于系统中的**每一个CPU，都有相应的节点**。/cpus节点没有必须指明的属性，但指明#address-cells = <1>和 #size-cells = <0>是个好习惯，这同时指明了每个CPU节点的__reg属性格式(只用一个cell来表示cpu编号，不使用大小)__，方便为物理CPU编号。
+　　 此节点应包含板上每个CPU的属性。CPU名称一般写作PowerPC,，例如Freescale会使用PowerPC,8349来描述本文的MPC8349E处理器。CPU节点的__单元名应该是cpu@0的格式(0是该节点的reg的第一个参数即地址)__，此节点一般要指定device_type（固定为"cpu"），一级数据/指令缓存的表项大小，一级数据/指令缓存的大小，核心、总线时钟频率等。在上面的示例中通过系统引导代码动态填写时钟频率相关项。
+
+=== 3.3 系统内存节点 ===
+　　 此节点用于描述目标板上物理内存范围，一般称作/memory节点，可以有一个或多个。当有多个节点时，需要后跟单元地址予以区分；__只有一个单元地址时，可以不写单元地址，默认为0__。
+　　 此节点包含板上物理内存的属性，一般要指定device_type（固定为"memory"）和reg属性。其中reg的属性值以<起始地址 空间大小>的形式给出，如上示例中目标板内存起始地址为0，大小为256M字节。　
+
+=== 3.4 /chosen节点（可以在uboot中加入#define CONFIG_CMD_FDT宏，这样在uboot命令行界面中就可以使用fdt命令了） ===
+　　 这个节点有一点特殊。通常，这里由Open Firmware存放__可变的环境信息__，例如参数，默认输入输出设备。 这个节点中一般指定bootargs及linux,stdout-path属性值。bootargs属性设置为传递给**内核命令行的参数字符串**。linux,stdout-path常常为**标准终端设备的节点路径名**，内核会以此作为默认终端。
+　  U-Boot在1.3.0版本后添加了对扁平设备树FDT的支持，U-Boot加载Linux内核、Ramdisk文件系统（如果使用的话）和设备树二进制镜像到物理内存之后，__在启动执行Linux内核之前，它会修改设备树二进制文件__。它会填充必要的信息到设备树中，例如MAC地址、PCI总线数目等。 U-Boot也会填写设备树文件中的“/chosen”节点，包含了诸如串口、根设备（Ramdisk、硬盘或NFS启动）等相关信息。
+　　 U-Boot源码common/cmd_bootm.c的如下代码，显示了在执行内核代码前将调用ft_setup函数填写设备树。
+　　#if defined(**CONFIG_OF_FLAT_TREE**)  __#OF: open firmware__
+　　 /* 
+　　 * Create the /chosen node and modify the blob with board specific
+　　 * values as needed.
+　　 */
+　　 ft_setup(of_flat_tree, kbd, initrd_start, initrd_end);
+　　 /* ft_dump_blob(of_flat_tree); */
+　　#endif
+　　
+
+=== 3.5 片上系统SOC节点 ===
+　　 此节点用来描述片上系统SOC，如果处理器是SOC，则此节点必须存在。顶级SOC节点包含的信息对此SOC上的所有设备可见。节点名应该包含此__SOC的单元地址（如下面的e0000000 ），即此SOC内存映射寄存器的基址__。SOC节点名以/soc的形式命名，例如MPC8349的SOC节点是"soc8349"。
+　　 在属性中应该指定device_type（固定为"soc"）、ranges、bus-frequency等属性。ranges属性值以的形式指定。SOC节点还包含目标板使用的每个SOC设备子节点，应该在设备树中尽可能详细地描述此SOC上的外围设备。如下给出带有看门狗设备的SOC节点DTS示例。
+　　 soc8349@__e0000000 __{
+　　 #address-cells = <1>;
+　　 #size-cells = <1>;
+　　 device_type = "soc";
+　　 compatible = "simple-bus";
+　　__ ranges = <0 e0000000 100000>; /* 1MB size */__
+　　 reg = ;
+　　 bus-frequency = <0>; /* From bootloader */
+　　
+　　 wdt@200 {
+　　 device_type = "watchdog";
+　　 compatible = "mpc83xx_wdt";
+　　 reg = <200 100>; /* __Offset__: 0x200 */
+　　 };
+
+=== 3.6 其他设备节点 ===
+　　分级节点用来描述系统上的总线和设备，类似物理总线拓扑，能很方便的描述设备间的关系。对于系统上的每个总线和设备，在设备树中都有其节点。对于这些设备属性的描述和定义请详细参考IEEE 1275及Linux内核文档booting-without-of.txt。
+
+　　设备树的中断系统稍显复杂，设备节点利用interrupt-parent和interrupts属性描述__到中断控制器的中断连接__。其中 interrupt-parent属性值为中断控制器节点的指针，#interrupts属性值描述**可触发的中断信号**，其值格式与中断控制器的 interrupt-cells属性值有关。一般#interrupt-cells属性值为2，interrupts属性就对应为一对描述**硬件中断号和中断触发方式**的十六进制值。其具体内容见参考文献[x]（Open Firmware Recommended Practice: Interrupt Mapping Version 0.9". The document is available at: .）
+　　
+
+===== 4 设备树编译 =====
+　　由于内核只识别二进制格式的扁平设备树，因此需要一个特殊的__设备树编译器"dtc"__，将__设备树源码文件（.dts）编译二进制文件（.dtb）__。dtc编译器会对输入文件进行语法和语义检查，并根据Linux内核的要求检查各节点及属性，将设备树源码文件（.dts）编译二进制文件（.dtb），以保证内核能正常启动。最新的dtc编译器Git仓库位于www.gdl.com，可以通过如下命令获得源码
+　　 $git clone http://www.gdl.com/projects/dtc.git
+　　 dtc编译器的使用方法如下所示[6]：
+　　 dtc [-I ] [-O ] [-o output_filename] [-V output_version] input_filename
+　 -I　 input_format可以使用以下三个参数：
+　　 dtb: 表示输入文件为dtb文件；
+　　 dts: 表示输入文件为dts文件；
+　　 __fs__: 表示输入文件为与/proc/device-tree文件的格式相同。
+ 　-O  output_format可以使用以下三个参数：
+　　 dtb: 表示输出文件为dtb文件；
+　　 dts: 表示输出文件为dts文件；
+　　 asm: 表示输出文件为汇编语言文件；
+
+　　如果output_format为“dtb”是，ouput_version用来规定生成的**dtb文件的版本号**，目前dtb文件可用的版本号为 1，2，3，16或17，output_format的缺省值为17。-S指定的是生成的dtb文件的大小，需要__适当地扩大__以供u-boot 创建/chose节点时使用。input_filename和output_filename分别为输入和输出文件名。从dtc编译器的使用方法中发现，dtc编译器不仅可以实现dts文件到dtb文件的转换，也可以实现dtb文件到dts文件的转换。
+　　
+　　 Linux源码的**arch/powerpc/boot/dts/**目录下存放了很多dts文件，可以作为__参考文件__。另外dtc编译器在内核源码2.6.25版本之后已经被包含进去。在2.6.26版本之后，生成blob的简单规则已经加入makefile，如下命令：
+
+**　　 $ make ARCH=powerpc canyonlands.dtb**
+　　
+　　 也可以根据自己的硬件修改好dts文件后，用下面类似命令生成dtb文件。
+　　** $ dtc -f -I dts -O dtb -R 8 -S 0x3000 test.dts > mpc836x_mds.dtb**
+　　 $ mkimage -A ppc -O Linux -T flat_dt -C none -a 0x300000 -e 0 -d mpc836x_mds.dtb mpc836x_mds.dtu
+　　
+　　 注：最新的U-Boot使用dtb镜像文件。而freescale的U-Boot需要如上使用mkimage为dtb添加镜像信息。
+　　
+
+===== 5 U-Boot相关设置 =====
+　　 为使U-Boot支持设备树，需要**在板子配置头文件**中设置一系列宏变量。如本文在MPC8349E处理器目标板中移植的U-Boot配置如下：
+　　/* pass open firmware flat tree */
+　　#define CONFIG_OF_LIBFDT 1
+　　#undef CONFIG_OF_FLAT_TREE
+　　#define CONFIG_OF_BOARD_SETUP 1
+　　#define CONFIG_OF_HAS_BD_T 1
+　　#define CONFIG_OF_HAS_UBOOT_ENV 1
+　　
+　　启动引导代码U-Boot在完成自己的工作之后，会加载Linux内核，并将扁平设备树的地址传递给内核，其代码形式如下：
+　　**#if defined(CONFIG_OF_FLAT_TREE) || defined(CONFIG_OF_LIBFDT)**
+　　 if (of_flat_tree) { /* device tree; boot new style */
+　　 /*
+　　 * Linux Kernel Parameters (passing device tree):
+　　 * r3: pointer to the fdt, followed by the board info data
+　　 * r4: physical pointer to the kernel itself
+　　 * r5: NULL
+　　 * r6: NULL
+　　 * r7: NULL
+　　 */
+　　 (***kernel**) ((bd_t *)of_flat_tree, (ulong)kernel, 0, 0, 0);
+　　 /* does not return */
+　　 }
+　　#endif
+　　
+　　 arch/powerpc内核的入口有且只有一个，入口点为内核镜像的起始。此入口支持两种调用方式，一种是支持Open Firmware启动，另一种对于没有OF的引导代码，需要使用扁平设备树块，如上示例代码。寄存器r3保存指向**设备树**的物理地址指针，寄存器r4保存为**内核**在物理内存中的地址，r5为NULL。其中的隐含意思为：假设开启了mmu，那么这个mmu的映射关系是1:1的映射，即虚拟地址和物理地址是相同的。
+       
+	另外可以__启用UBOOT_CMD_FDT命令选项__，这样在在uboot命令行环境下，就可以使用fdt相关的命令来查看、设置与修改传给uboot的设备树dtb文件。
+
+
+===== 6 Linux内核对设备的解析。 =====
+　　
+　　扁平设备树描述了目标板平台中的设备树信息。每个设备都有一个节点来描述其信息，每个节点又可以有子节点及其相应的属性。内核源码中 include/linux/__of.h__及drivers/of/base.c等文件中提供了一些Open Firmware API，通过这些API，内核及设备驱动可以查找到相应的设备节点，读取其属性值，利用这些信息正确地初始化和驱动硬件。　
+　　
+　　分析Linux内核的源码，可以看到其对扁平设备树的解析流程[7] 待详细分析]如下：
+　　（1）首先在内核入口处将从u-boot传递过来的镜像基地址和dtb文件映像基地址保存通用寄存器r30和r31。
+　　（2）通过调用machine_init()、early_init_devtree()函数来获取内核前期初始化所需的bootargs，cmd_line等系统引导参数。
+　　（3）根据bootargs，cmd_line等系统引导参数进入start_kernel()函数，进行内核的第二阶段初始化。
+　　（4）调用start_kernel()、setup_arch()、unflatten_device_tree()函数来解析dtb文件，构建一个由device_node结构连接而成的单项链表，并使用全局变量allnodes 指针来保存这个链表的头指针。
+　　（5）内核调用OF 提供的API函数获取allnodes链表信息来初始化内核其他子系统、设备等。
+
+　　
+
+===== 7 内核折中 =====
+　　
+　　 引入了设备树FDT blob，相应的会占用一定的存储空间，同时引入了FDT API代码，相比之下内核代码有所增加，但是__一个内核镜像可以支持多个硬件平台__，不同的平台间只需修改设备树FDT blob即可。
+　　
+
+==== 8 结束语 ====
+　　
+　　本文介绍了设备树的起源及其优点，进而阐述了设备树的数据存储格式以及源码描述语法，给出了设备树的编译方法，最后引出了移植过程中的U-Boot相关设置说明及内核的解析过程分析。设备树为嵌入式系统向Linux内核传递参数的动态接口，希望本文对嵌入式PowerPC Linux开发者具有一定的参考价值，加快嵌入式PowerPC Linux开发中的设备树DTS移植过程。
+　　
+　　参考文献
+　　
+　　[1] Matt Tyrlik. Booting Linux on Embedded PowerPCTM Systems [R]. Embedded Linux Developers Conference, 2007
+　　[2] Benjamin Herrenschmidt, Becky Bruce, et al. Booting the Linux/ppc kernel without Open Firmware [Z]. bootint-without-of.txt from the Linux kernel source tree , 2006
+　　[3] DENX. Flattened Device Tree Blob [EB/OL]. http://www.denx.de/wiki/view/DULG/LinuxFDTBlob, 2009
+　　[4] Grant Likely, Josh Boyer. A Symphony of Flavours: Using the device tree to describe embedded hardware [R]. Ottawa, Canada: Linux Symposium, 2008
+　　[5] SUN. The Open Firmware Home Page [EB/OL]. http://playground.sun.com/1275/home.html, 2005
+　　[6] David Gibson, Benjamin Herrenschmidt, OzLabs. Device trees everywhere [R]. 2006
+　　[7] 邱文华，邱珍珍. 基于扁平设备树的Linux内核启动方式[J]. 现代计算机，2009年第3期，115-118. 2009.3

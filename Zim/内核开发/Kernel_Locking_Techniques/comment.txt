@@ -1,0 +1,267 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-29T10:21:26+08:00
+
+====== comment ======
+Created Monday 29 August 2011
+kernel locking techniques
+jinu joy's picture
+Submitted by jinu joy (not verified) on Tue, 07/24/2007 - 02:04.
+
+hi
+The above information was excellent and i would like to know from you a small information. Can the kernel be completely locked down for a small period of time.i.e none of the kernel threads should run as my thread is running. i would like opinions in this matter
+I believe kernel_lock would
+Anonymous's picture
+Submitted by Anonymous (not verified) on Mon, 11/16/2009 - 23:18.
+
+I believe kernel_lock would help... If you are in a user space and need kernel for a time being you can make syscall which when called with some parameter calls kernel_lock and returns and when called with some other parameter calls kernel_unlock...
+Very good question. I need
+Anonymous's picture
+Submitted by Anonymous (not verified) on Mon, 12/08/2008 - 11:58.
+
+Very good question. I need to do this but can't find out how. Has this question been answered somewhere ? A small period would meen 5..90usecs.
+some doubt about sempahore
+Anonymous's picture
+Submitted by Anonymous (not verified) on Tue, 11/14/2006 - 11:35.
+
+Thank you for you article,I do learn a lot from that.
+But a have a question about semphore.
+in you article you mention that up() operation:"if the new value is greater than or equal to zero, one or more tasks on the wait queue will be woken up"
+i think it's less than or equal to instead of greater than.
+sorry but you are wrong
+nishant's picture
+Submitted by nishant (not verified) on Sat, 11/17/2007 - 13:52.
+
+sorry but you are wrong greater than and equal to is written since, as soon as semaphore count increases it means some objects of resource are free to be allocated to some processes.this makes a process pop out of wait queue and become active.
+Take the Spinlocks warning seriously!
+Padam J Singh's picture
+Submitted by Padam J Singh (not verified) on Sat, 09/10/2005 - 01:27.
+
+"never call any function that touches user memory, kmalloc() with the GFP_KERNEL flag, any semaphore functions or any of the schedule functions while holding a spinlock."
+
+I struggled with a kernel panic for a few days when I was calling the function "copy_to_user" while holding a lock. Call the function a few times a second, and it would work, anything higher than that would simply panic.
+
+Just make sure every function called while holding does not sleep. If it has to, use a semaphore.
+Re: Kernel Korner: Kernel Locking Techniques
+Anonymous's picture
+Submitted by Anonymous on Fri, 01/09/2004 - 03:00.
+
+spin lock works on the beauty that it disables the interupt before entering critical section and enble after exititng.So as it cannot disable interrupt of another process , spinlock is not a solution for SMP system.
+Of course it is !
+Tom J.P. Sun's picture
+Submitted by Tom J.P. Sun (not verified) on Tue, 12/12/2006 - 04:16.
+
+spin_lock() won't disable interrupt, it is used to protect between user contexts.
+while spin_lock_irq() will disable interrupt, of course it can be used to protect between user context and interrupt context.
+Note: the spin_lock_irq() only disable interrupt on _local_ CPU, what can be guaranteed when they use in SMP ?
+The answer is the low level assembly code inside, it takes advantage of "BUS locking scheme" to guarantee other CPU won't intervene the access, thus SMP() safe !!
+Re: Kernel Korner: Kernel Locking Techniques
+Anonymous's picture
+Submitted by Anonymous on Tue, 10/05/2004 - 02:00.
+
+atomic_t v;
+
+atomic_set(&v, 5); /* v = 5 (atomically) */
+atomic_add(3, &v); /* v = v + 3 (atomically) */
+atomic_dec(&v); /* v = v - 1 (atomically) */
+printf("This will print 7: %d ", atomic_read(&v));
+
+How does Robert get this example to work in kernel-space? (Did he mean 'printk' instead of 'printf'?)
+atomic_t v; atomic_set(&v,
+tushar@mwti.net's picture
+Submitted by tushar@mwti.net (not verified) on Tue, 07/12/2005 - 01:49.
+
+atomic_t v;
+
+atomic_set(&v, 5); /* v = 5 (atomically) */
+atomic_add(3, &v); /* v = v + 3 (atomically) */
+atomic_dec(&v); /* v = v - 1 (atomically) */
+printf("This will print 7: %d ", atomic_read(&v));
+
+As per my knowledge, atomic operations are atomic only for single function like
+atomic_add(3,&v);
+but not when executed in sequence. i.e.
+atomic_add(3,&v); and
+{
+atomic_add(1,&v);
+atomic_add1(2,&v);
+}
+are not same.
+Re: Kernel Korner: Kernel Locking Techniques
+Anonymous's picture
+Submitted by Anonymous on Tue, 03/25/2003 - 03:00.
+
+Good Article. I have few questions and I appreciate
+
+if you could give me the answers.
+
+1. Can printks exist between spinlock and spinunlock?
+
+2. I understand that it is not possible to have
+
+copy_from_user and copy_to_user calls between
+
+spinlock and spinunlock. Can these functions be
+
+called between semaphore lock and unlock functions
+
+(up and down)?
+
+3. Can down_trylock function be called between spinlock
+
+and spinunlock.
+
+Thanks in advance
+
+Ravi Kumar
+
+Rendezvous On Chip Ltd
+
+Hyderabad
+Re: Kernel Korner: Kernel Locking Techniques
+Anonymous's picture
+Submitted by Anonymous on Thu, 07/17/2003 - 02:00.
+
+See
+http://kernelnewbies.org/documents/kdoc/kernel-locking/sleeping-things.html
+
+Anything can be called inside a semaphore
+Re: Kernel Korner: Kernel Locking Techniques
+Anonymous's picture
+Submitted by Anonymous on Wed, 03/26/2003 - 03:00.
+
+    yes, printk just copies the data into a kernel ring buffer, no connection to userspace
+    yes, the purpose of semaphores is to allow sleep instead of busy waiting for a lock, so they are safe in code that might sleep
+    I don't know what down_trylock does, maybe someone else can answer 
+
+--SJLC
+Re: Kernel Korner: Kernel Locking Techniques
+Anonymous's picture
+Submitted by Anonymous on Thu, 03/27/2003 - 03:00.
+
+Thank you very much.
+
+Ravi Kumar
+Re: Kernel Korner: Kernel Locking Techniques
+Anonymous's picture
+Submitted by Anonymous on Wed, 12/25/2002 - 03:00.
+
+If a process attempts to acquire a spinlock and it is unavailable, the process will keep trying (spinning) until it can acquire the lock.
+
+Does this involve task switching? If so, what is the difference
+
+of spinlock and semphere except spinlock wasting more CPU
+
+time?
+Re: Kernel Korner: Kernel Locking Techniques
+Anonymous's picture
+Submitted by Anonymous on Fri, 01/09/2004 - 03:00.
+
+yes you point out rightly.
+Actuallly there is no context switch takes place , that is why it is faster than semaphore. As it does not put the process in the wait state so no swithcing takes place.
+Re: Kernel Korner: Kernel Locking Techniques
+Anonymous's picture
+Submitted by Anonymous on Thu, 02/20/2003 - 03:00.
+
+Does this involve task switching? If so, what is the difference
+
+of spinlock and semphere except spinlock wasting more CPU
+
+time?
+
+---------------------------------------------
+
+No. It just spins until it gets the lock.
+
+If the critical region is short enough that the time spent on
+
+spinning around is shorter than that taken to execute the
+
+semaphore up/down codes, the spinlock wins.
+
+If not, you may choose the semaphore.
+Re: Kernel Korner: Kernel Locking Techniques
+Anonymous's picture
+Submitted by Anonymous on Sat, 08/17/2002 - 02:00.
+
+I am pussled........
+
+If spin_locks are not supposed to be hold where processing of data takes long time, i.e. around copy_to_user() which might block. How can I safely move data from the interrupt handler to the user?
+
+Schenario :
+
+Hardware that gives an interrupt when there is data to read.
+
+Interrupt handler intercepts the interrupt and reads the data from the hardware and places it in a "interrupt buffer". The interrupt buffer is not allocated dynamically, but rather
+
+statistically to ensure that it is newer swaped out.
+
+An application reads the data throught the device driver read method. It should not read from the interrupt buffer
+
+directly because the interrupt handler might be adding to the buffer.
+
+First invalid solution that comes to mind: Place a spin lock
+
+around the interrupt buffer so that we guarantee that either the interupt handler or the device driver read method
+
+are accessing the buffer at any given time. This is forbidden since a spin lock should newer be around data processing that migh block, e.g. copy _to_user().
+
+Second invalid solution that comes to mind: Place a spin lock around the interrupt buffer and a semaphore around a user application buffer which is dynamically allocated and a lot bigger than the interrupt buffer. Then we have the problem of interlocking, i.e. in order to move data from the interupt buffer to the application buffer we have to aquire both semphore and spinlock which is now basically preotecting the application buffer which again might be swapped out, i.e. we have the possibility of blocking while holding a spin_lock.
+
+I have a hard time seeing how you can break this "deadlock" in schenario two because you always end up needing to move the data from interrupt context to application context.
+
+KDD
+Re: Kernel Korner: Kernel Locking Techniques
+Anonymous's picture
+Submitted by Anonymous on Sat, 08/17/2002 - 02:00.
+
+Hardware that gives an interrupt when there is data to read. Interrupt handler intercepts the interrupt and reads the data from the hardware and places it in a "interrupt buffer". The interrupt buffer is not allocated dynamically, but rather
+statistically to ensure that it is newer swaped out. An application reads the data throught the device driver read method. It should not read from the interrupt buffer directly because the interrupt handler might be adding to the buffer.
+
+In the read() method:
+Grab spin_lock_irq
+Copy from interrupt buffer to local buffer
+spin_unlock_irq
+copy_to_user from local buffer
+
+In the interrupt handler:
+Grab spin_lock
+place data in buffer
+spin_unlock
+
+You can also avoid having an interrupt buffer and a different storage buffer - for various reasons. First, why? It is not efficient. Second, all kernel memory is unpagable so you never have to worry... just have a dynamic buffer and have a way for the syscall to read it. Have your spinlock protect the buffer and everyone is happy.
+
+An even better solution might be a double buffer...
+
+Robert Love
+questions
+hcey's picture
+Submitted by hcey on Tue, 03/24/2009 - 10:29.
+
+Why spin_lock/spin_unlock need to be used in the interrupt handler? Is the read syscall able to preempt the isr?
+I believe the spinlock
+Anonymous's picture
+Submitted by Anonymous (not verified) on Tue, 12/08/2009 - 21:06.
+
+I believe the spinlock pretects the interrupt buffer from
+the same/other ISR executing on other CPUS.
+Re: Kernel Korner: Kernel Locking Techniques
+Anonymous's picture
+Submitted by Anonymous on Thu, 11/14/2002 - 03:00.
+
+Thank you very much for your writing. ^_^
+Re: Kernel Korner: Kernel Locking Techniques
+Anonymous's picture
+Submitted by Anonymous on Thu, 08/01/2002 - 02:00.
+
+Excellent article! Very informative and well-written. Robert Love obviously has hands-on experience of the subject and knows how to share it in a very readable article.
+
+I hope to read more articles from him.
+Re: Kernel Korner: Kernel Locking Techniques
+Anonymous's picture
+Submitted by Anonymous on Sat, 08/10/2002 - 02:00.
+
+Indeed! This was one of the better articles/papers on locking and races I have read for any OS. It makes sense and is very applicable.
+
+I hope to see (many) more articles, too.
+

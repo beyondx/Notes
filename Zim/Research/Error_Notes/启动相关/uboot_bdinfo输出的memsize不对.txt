@@ -1,0 +1,10 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-03T15:12:28+08:00
+
+====== uboot bdinfo输出的memsize不对 ======
+Created Friday 03 August 2012
+
+这是由于comm/cmd_bdinfo.c中的print_lnum("memsize", bd->bi_memsize)使用的是64位的printf。需要将printf_lnum改为print_num()即可。
+
+这个错误并不致命，修改与否都可以。

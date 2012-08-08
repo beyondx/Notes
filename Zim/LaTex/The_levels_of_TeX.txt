@@ -1,0 +1,43 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-09-07T20:37:10+08:00
+
+====== The levels of TeX ======
+Created Wednesday 07 September 2011
+http://www.tug.org/levels.html
+LaTeX vs. MiKTeX: The levels of TeX
+
+A friend asked us once, “Should I use LaTeX or MiKTeX?” In various guises, this is a common question, seemingly innocent, but actually betraying a fundamental confusion about the levels of operation in the TeX world. As a further confusion, the word “TeX” can be used to refer to any of a myriad of items at any level. Starting at the top:
+
+   
+
+=====  Distributions =====
+: MiKTeX, TeX Live, … These are the large collections of TeX-related software to be downloaded and installed. When someone says “I need TeX on my system”, they're usually looking for a distribution.
+    
+
+===== Front ends =====
+: Emacs, TeXworks, TeXShop, TeXnicCenter, WinEdt, … These editors are what you use to create a document file. Some (e.g., TeXShop) are devoted to TeX specifically, others (e.g., Emacs) can be used to edit any sort of file. TeX documents are independent of any particular editor; the actual TeX typesetting program itself does not include any sort of editor whatsoever.
+    
+
+===== Engines =====
+: TeX, pdfTeX, XeTeX, LuaTeX, … These are the actual executable binaries which implement the different __TeX dialects.__ The LaTeX format is implemented with both the pdfTeX (pdflatex) and XeTeX (xelatex) engines, for example. When someone says “TeX can't find my fonts”, they usually mean an engine.
+    
+
+===== Formats =====
+: LaTeX, plain TeX, pdfLaTeX, … These are the__ TeX-based languages__ in which you actually write documents. When someone says “TeX is giving me this mysterious error”, they usually mean a format.
+    
+
+===== Packages =====
+: geometry, lm, … These are add-ons to the basic TeX system, developed independently, providing additional typesetting features, fonts, documentation, etc. The CTAN web sites provide access to the vast majority of packages in the TeX world. 
+
+===== Output formats =====
+
+TeX source files can be typeset into several different output formats, depending on the engine. Notably, the pdfTeX engine (despite its name) can output both DVI and PDF files.
+
+At a high level, the output format that gets used depends on the program you invoke. If you run latex (which implements the LaTeX format), you will get DVI; if you run pdflatex (which also implements the LaTeX format), you will get PDF.
+
+To get HTML, XML, etc., output, the tex4ht program is commonly used. This utility uses TeX to do its job, but the TeX engines themselves do not implement HTML output.
+
+===== ConTeXt =====
+
+ConTeXt is a special case, straddling levels. It contains a format at the level of__ plain TeX and LaTeX__, but unlike the other formats, it is invoked via a separate utility (e.g., texmfstart) which then indirectly runs a TeX engine. This makes it possible to support a wide array of advanced features, such as integrated graphics and XML input, since the startup utility can control the flow of processing. 

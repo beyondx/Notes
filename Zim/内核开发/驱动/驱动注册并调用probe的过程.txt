@@ -1,0 +1,140 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-30T22:10:29+08:00
+
+====== 驱动注册并调用probe的过程 ======
+Created Saturday 30 June 2012
+http://www.cnblogs.com/hoys/archive/2011/04/01/2002299.html
+
+近看到linux的设备驱动模型，关于Kobject、Kset等还不是很清淅。看到了struct device_driver这个结构时，想到一个问题：它的初始化函数到底在哪里调用呢？以前搞PCI驱动时用pci驱动注册函数就可以调用它，搞s3c2410驱动时只要在mach-smdk2410.c中的**struct platform_device** *smdk2410_devices {}中加入设备也会调用。但从来就没有想过具体的驱动注册并调用probe的过程。
+
+于是打开SourceInsight追踪了一下：从driver_register看起：
+
+int **driver_register**(struct device_driver * drv)
+{
+        klist_init(&drv->klist_devices, klist_devices_get, klist_devices_put);
+        init_completion(&drv->unloaded);
+        return **bus_add_driver**(drv);
+}
+
+klist_init与init_completion没去管它，可能是2.6的这个设备模型要做的一些工作。直觉告诉我要去bus_add_driver。bus_add_driver中都是些Kobject 与 klist 、attr等。还是与设备模型有关的。但是其中有一句：
+
+driver_attach(drv); 
+
+单听名字就很像：
+
+void **driver_attach**(struct device_driver * drv)
+{
+        __bus_for_each_dev__(drv->bus, NULL, drv, __driver_attach);
+}
+
+这个熟悉，__遍历总线上的设备__**并设用__driver_attach**。在__driver_attach中又主要是这样：
+
+**driver_probe_device**(drv, __dev__);
+
+跑到driver_probe_device中去看看, 有一段很重要：
+
+if (drv->bus->match && **!drv->bus->match**(dev, drv))
+                goto Done;
+
+明显，是调用__驱动所在总线上的match函数__。如果返回1，则可以继续，否则就Done了。继承执行的话：
+
+        if (drv->probe) {
+                ret = __drv->probe__(**dev**);
+                if (ret) {
+                        dev->driver = NULL;
+                        goto ProbeFailed;
+                }
+
+只要probe存在则调用之。至此就完成了probe的调用。这个过程链的关键还是在drv->bus->match ，因为其余的地方出错的话就是注册失败，而只要注册不失败且match返回1，那么就铁定会调用驱动程序的probe了。你可以注册一个总线类型和总线,并在match中总是返回 1, 会发现只要struct device_driver中的bus类型正确时,probe函数总是被调用.
+
+PCI设备有自己的总线模型，估计在它的match中就有一个判断的条件。
+
+static int __pci_bus_match__(**struct device** *dev, **struct device_driver** *drv)
+{
+        struct pci_dev *pci_dev = to_pci_dev(dev);
+        struct pci_driver *pci_drv = to_pci_driver(drv);
+        const struct pci_device_id *found_id;
+
+        found_id = pci_match_device(pci_drv, pci_dev);
+        if (found_id)
+                return 1;
+
+        return 0;
+}
+
+再往下跟踪就知道主要是根据我们熟悉的id_table来的。
+
+-------------------------------另解-----------------------------------------------------------------------------------------------
+从driver_register看起，此处我的这里是：
+
+int driver_register(struct device_driver * drv)
+{
+if ((drv->bus->probe && drv->probe) ||
+     (drv->bus->remove && drv->remove) ||
+     (drv->bus->shutdown && drv->shutdown)) {
+   printk(**KERN_WARNING** "Driver '%s' needs updating - please use bus_type methods\n", drv->name);
+}
+klist_init(&drv->klist_devices, NULL, NULL);
+return **bus_add_driver**(drv);
+} 
+
+klist_init不相关，不用管他，具体再去看bus_add_driver：
+int bus_add_driver(struct device_driver *drv)
+{
+//1.先kobject_set_name(&drv->kobj, "%s", drv->name);
+//2.再kobject_register(&drv->kobj)
+//3.然后调用了：**driver_attach**(drv)
+}
+int driver_attach(struct device_driver * drv)
+{
+return **bus_for_each_dev**(__drv->bus__, NULL, drv, __driver_attach);
+}
+真正起作用的是__driver_attach：
+
+static int __driver_attach(**struct device** * dev, void * data)
+{
+...
+if (!**dev->driver**)   //为那些**没有关联驱动**的设备关联驱动。
+   driver_probe_device(drv, dev);
+...
+}
+
+
+int __driver_probe_device__(struct device_driver * drv, struct device * dev)
+{
+...
+//1.先是判断bus是否match：
+if (drv->bus->match && !drv->bus->match(dev, drv))
+   goto done;
+//2.再具体执行probe：
+ret = **really_probe**(dev, drv);
+...
+}
+
+really_probe才是我们要找的函数：
+
+static int really_probe(struct device *dev, struct device_driver *drv)
+{
+...
+//1.先是调用的驱动所属总线的probe函数：
+if (dev->bus->probe) {
+   ret = __dev->bus->probe__(dev);
+   if (ret)
+    goto probe_failed;
+
+} else if (drv->probe) {
+//2.再调用你的驱动中的probe函数：
+   ret = __drv->probe__(dev);
+   if (ret)
+    goto probe_failed;
+}
+...
+
+}
+
+其中，drv->probe(dev)，才是真正调用你的驱动实现的具体的probe函数。
+也就是对应此文标题所问的，probe函数此时被调用。
+声明：以下主要内容参考自：
+关于struct device_driver结构中的probe探测函数的调用
+http://blog.chinaunix.net/u2/71164/showart.php?id=1361188

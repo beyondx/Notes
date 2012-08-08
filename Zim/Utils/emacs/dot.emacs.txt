@@ -1,0 +1,1935 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-08T16:47:13+08:00
+
+====== dot.emacs ======
+Created Friday 08 April 2011
+
+(defun fullscreen ()
+  (interactive)
+  (x-send-client-message nil 0 nil "_NET_WM_STATE" 32
+    '(2 "_NET_WM_STATE_FULLSCREEN" 0)))
+
+(global-set-key [f11] 'fullscreen)
+
+;; for auto-complete
+(add-to-list 'load-path "~/.emacs.d")
+(require 'auto-complete-config)
+(add-to-list 'ac-dictionary-directories "~/.emacs.d/ac-dict")
+(ac-config-default)
+
+;;for color-theme
+(add-to-list 'load-path "~/.emacs.d/color-theme-6.6.0")
+(require 'color-theme)
+(color-theme-initialize)
+(color-theme-oswald)
+
+== =========新的========================= ==
+(defun fullscreen ()
+  (interactive)
+  (x-send-client-message nil 0 nil "_NET_WM_STATE" 32
+    '(2 "_NET_WM_STATE_FULLSCREEN" 0)))
+
+(global-set-key [f11] 'fullscreen)
+
+;; for auto-complete
+(add-to-list 'load-path "~/.emacs.d")
+(require 'auto-complete-config)
+(add-to-list 'ac-dictionary-directories "~/.emacs.d/ac-dict")
+(ac-config-default)
+
+;;for color-theme
+(add-to-list 'load-path "~/.emacs.d/color-theme-6.6.0")
+(require 'color-theme)
+(color-theme-initialize)
+(color-theme-oswald)
+(custom-set-variables
+  ;; custom-set-variables was added by Custom.
+  ;; If you edit it by hand, you could mess it up, so be careful.
+  ;; Your init file should contain only one such instance.
+  ;; If there is more than one, they won't work right.
+ '(current-language-environment "Chinese-GBK")
+ '(default-input-method "chinese-py-punct")
+ '(display-time-mode t)
+ '(show-paren-mode t)
+ '(size-indication-mode t)
+ '(tool-bar-mode nil))
+(custom-set-faces
+  ;; custom-set-faces was added by Custom.
+  ;; If you edit it by hand, you could mess it up, so be careful.
+  ;; Your init file should contain only one such instance.
+  ;; If there is more than one, they won't work right.
+ )
+
+
+详尽注释的 .emacs
+;;;_#1 为了文件便于管理，可以考虑把 .emacs 分成多个文件。我把文件分成这样几个文件：
+;;    my-custom.el  ----  主要是一些 customize 变量的定义
+;;    elisp.el      ----  常用 elisp 的配置
+;;    my-utils.el   ----  我自己写的和网上看到的一些常用函数
+;;    program.el    ----  编程用的 elisp 配置
+;;    program-ab.el ----  一些 abbrev 定义
+;;    muse-init.el  ----  使用 Muse 的配置
+;;    emms-init.el  ----  使用 emms 的配置
+;;    .emacs        ----  定义按键，便于修改和查找
+
+;;;_#2 .emacs
+;; 设置 custom-file 可以让用 M-x customize 这样定义的变量和 Face 写入到
+;; 这个文件中
+(setq custom-file "~/.emacs.d/my-custom.el")
+
+;; 导入配置的文件
+(load "~/.emacs.d/my-custom.el")
+(load "~/.emacs.d/elisps.el")
+(load "~/.emacs.d/my-utils.el")
+(load "~/.emacs.d/program.el")
+(load "~/.emacs.d/program-ab.el")
+
+;; 交换这两个按键。因为大多数情况下，回车后是要缩进的。
+(global-set-key "\C-m" 'newline-and-indent)
+(global-set-key "\C-j" 'newline)
+
+;; 设置 hippie-expand 的行为，一般我用 hippie-expand 比较多。如果
+;; hippie-expan 给出的结果不好，就改用 dabbrev-expand。所以改成使用相同
+;; 的 Alt。
+(setq hippie-expand-try-functions-list
+      '(try-expand-line
+        try-expand-dabbrev
+        try-expand-line-all-buffers
+        try-expand-list
+        try-expand-list-all-buffers
+        try-expand-dabbrev-visible
+        try-expand-dabbrev-all-buffers
+        try-expand-dabbrev-from-kill
+        try-complete-file-name
+        try-complete-file-name-partially
+        try-complete-lisp-symbol
+        try-complete-lisp-symbol-partially
+        try-expand-whole-kill))
+(global-set-key (kbd "M-;") 'hippie-expand)
+(global-set-key (kbd "M-/") 'dabbrev-expand)
+
+;; goto-line 默认绑定了两个按键 M-g g 和 M-g M-g，我选了这个按键来绑定
+;; 我写的一个命令：可以按百分率跳转到某一行
+(global-set-key (kbd "M-g g") 'ywb-goto-line)
+
+;; 一般来说，C-c 加字母是 emacs 保留给用户自定义按键。所以我的按键大多
+;; 数是用这个前缀。具体怎么用就看自己喜好了。
+
+;; 定义按键前缀，这样可以绑定“C-c c c”和“C-z n”这样的按键
+;; C-z 是可以好好利用的一个按键。
+(define-prefix-command 'ctl-cc-map)
+(global-set-key (kbd "C-c c") 'ctl-cc-map)
+(define-prefix-command 'ctl-z-map)
+(global-set-key (kbd "C-z") 'ctl-z-map)
+
+(global-set-key (kbd "C-c $") 'toggle-truncate-lines)
+
+;; ffap 是一个非常好用的命令。
+(global-set-key (kbd "C-c j") 'ffap)
+
+;; 王垠主页上给出的一个命令，类似于 vim 的 f，可以跳到指定的字母。
+(global-set-key (kbd "C-c a") 'wy-go-to-char)
+
+;; 我经常用 *scratch*，临时放些文本、写一些函数之类。所以专门写了一个命令
+(global-set-key (kbd "C-c b") 'ywb-create/switch-scratch)
+
+;; 水木 ann77 的一个命令，类似于 vim 的 C-a。我稍做修改，可以支持传递参数
+(global-set-key (kbd "C-c d") 'wcy-rotate-text)
+
+;; 补全文件名。由于 hippie-expand 主要用于补全单词，补全文件名是很困难
+;; 的，所以单独写了一个命令用于补全文件名。
+(global-set-key (kbd "C-c f") 'ywb-hippie-expand-filename)
+
+;; 交换两个窗口内的 buffer
+(global-set-key (kbd "C-c l") 'his-transpose-windows)
+
+;; 水木 ilovecpp 给出一个命令，用于切换 mode，很好用。
+(global-set-key (kbd "C-c m") 'switch-major-mode)
+
+;; 刷新文件。
+(global-set-key (kbd "C-c u") 'revert-buffer)
+
+;; 这个在分辨率较小的显示器上还是挺好用的，作用是使当前 frame 内只显示
+;; 两个窗口，垂直分割，比率可以设定，一般用 3:7 比较好
+(global-set-key (kbd "C-c w") 'ywb-favorite-window-config)
+
+;; 插入 template
+(global-set-key (kbd "C-c t") 'template-expand-template)
+
+;; 这两个命令特别好用，可以根据文件的后缀或者 mode 判断调用的 compile
+;; 命令。当目录下有 makefile 自动使用 make 命令。
+(global-set-key (kbd "C-c r") 'smart-run)
+(global-set-key (kbd "C-c s") 'smart-compile)
+
+;; 这个命令配合 comment-dwim 基本上能满足所有的注释命令
+(global-set-key (kbd "C-c g") 'comment-or-uncomment-region)
+
+;; hide-show 是代码折叠常用的一个 elisp。有自己的一套按键，但是太难按了
+(global-set-key (kbd "C-c h") 'hs-hide-all)
+(global-set-key (kbd "<f5>") 'hs-toggle-hiding)
+
+
+;; imenu 是一个代码跳转的很好用的命令。这个命令在调用 imenu 同时，显示所有补全
+(global-set-key (kbd "C-c i") 'his-imenu)
+
+;; 使用外部的浏览器打开光标下的网址
+(global-set-key (kbd "C-c o") 'browse-url-at-point)
+
+;; 我写的一个 elisp，树形显示 imenu
+(global-set-key (kbd "C-c v") 'my-tr-imenu)
+
+;; 一个插入 elisp 里变量的命令
+(global-set-key (kbd "C-c x") 'ywb-insert-variable)
+
+;; Windmove 是在窗口之间移动的很好用的命令。默认是用 Shift+上下左右键移动。
+(when (featurep 'windmove)
+  (global-set-key (kbd "C-c n") 'windmove-down)
+  (global-set-key (kbd "C-c p") 'windmove-up)
+  (global-set-key (kbd "C-c ,") 'windmove-left)
+  (global-set-key (kbd "C-c .") 'windmove-right)
+  (windmove-default-keybindings))
+
+;; 我写的一个输入法。这个命令是用于创建五笔的新词
+(global-set-key (kbd "C-c cc") 'eim-wbx-create-word)
+
+;; view-mode 是用于浏览文件的一个很好用的 mode。可以加一些 vim normal
+;; mode 下的移动按键，移动非常方便。
+(global-set-key (kbd "C-c cv") 'view-mode)
+
+;; org-mode 用于管理表格很方便。默认的这 org-table-convert-region 和
+;; org-table-export 不太好用。我修改了一下。
+(global-set-key (kbd "C-c co") 'ywb-org-table-convert-region)
+(global-set-key (kbd "C-c ct") 'ywb-org-table-export-here)
+
+;; 这是 speedbar 中推荐用的一个按键。我不太常用 speedbar。frame 之间切
+;; 换非常麻烦。
+(global-set-key (kbd "<f4>") 'speedbar-get-focus)
+
+;; bookmark 是一个不错的插件，可以放一些常用的目录和文件
+(global-set-key (kbd "<f12>") 'list-bookmarks)
+
+;; w3m 用于浏览本地的 html，特别是文档，还是不错的。
+(global-set-key (kbd "<f11>") 'w3m)
+
+(global-set-key (kbd "<f8>") 'calendar)
+
+;; 最常用的注释命令。
+(global-set-key (kbd "C-'") 'comment-dwim)
+
+;; 如果 C-SPC 不能用，这个还是一个很好的选择。不过 w3m 下不能用。
+(global-set-key (kbd "S-SPC") 'set-mark-command)
+
+;; 王垠主页上的一个命令。很好用。类似 vim 的相同命令。
+(global-set-key "%" 'his-match-paren)
+
+;; 我写的一个缩进命令。可以不用选中一个区域，根据括号的匹配来确定缩进的区域。
+(global-set-key (kbd "C-M-=") 'ywb-indent-accoding-to-paren)
+
+;; 类似于 shell-command，在一个新的进程中运行命令。
+(global-set-key (kbd "M-#") 'ywb-shell-command-background)
+
+;; 选中一个 sexp（balanced-parenthesis expressions）。通常用于选择一个
+;; elisp 的单词。
+(global-set-key (kbd "M-2") 'ywb-marker-sexp)
+
+;; 我写了一个 hi-lock+。先用 highlight-regexp，再用 hi-lock-next 移动到
+;; 下一个匹配。比较类似 vim 的 n 和 N。
+(global-set-key (kbd "C-z h") 'highlight-regexp)
+(global-set-key (kbd "C-z n") 'hi-lock-next)
+(global-set-key (kbd "C-z p") 'hi-lock-previous)
+
+;; 这个命令默认绑定在 C-M-t，但是我把 Fterm 绑定在这个键上了。
+;; transpose-line 而言，这个还是比较常用的。比如 cperl-mode 中交换两个
+;; 相邻变量位置，muse-mode 中交换链接的 url 和名字（我经常记反了）。
+(global-set-key (kbd "C-x C-t") 'transpose-sexps)
+
+;; 在 emacs-wiki 上找到这个命令，可以用超级用户的身分修改文件。
+(global-set-key (kbd "C-x C-r") 'find-file-root)
+
+;; dired-mode 下一些自定义的命令
+;; ywb-dired-compress-dir 用于压缩文件夹和解压缩文件
+;; ywb-dired-w3m-visit 用 w3m 打开当前的文件
+;; ywb-dired-jump-to-file 类似于 ibuffer 的 j 命令，快速跳到一个文件
+;; ywb-dired-count-dir-size 计算当前文件夹的大小
+;; ywb-dired-copy-fullname-as-kill 类似于 w，但是得到的是文件的命名
+;; ywb-dired-quickview 类似于 TC 的相同按键的命令，可以用同一个 buffer
+;;   打开文件。用于快速浏览目录下文件内容，但是不会开多个 buffer
+(add-hook 'dired-mode-hook (lambda ()
+(define-key dired-mode-map "z" 'ywb-dired-compress-dir)
+(define-key dired-mode-map "E" 'ywb-dired-w3m-visit)
+(define-key dired-mode-map "j" 'ywb-dired-jump-to-file)
+(define-key dired-mode-map " " 'ywb-dired-count-dir-size)
+(define-key dired-mode-map "W" 'ywb-dired-copy-fullname-as-kill)
+(define-key dired-mode-map "\C-q" 'ywb-dired-quickview)))
+
+;; ann77 的一个 elisp，用于跳转到前一个大幅度跳转的位置。类似于 vim 的
+;; C-o 和 C-i。
+;; 注意这里没有直接用(require 'recent-jump)，而是使用了 require 的其它
+;; 参数，这样可以保证在没有 recent-jump 这个 elisp，emacs 启动时也不会
+;; 出错。而加入 (when (featurep 'recent-jump) ...) 这个判断，这样，当你
+;; 把 recent-jump 加入到 load-path 中，就可以使用这个 elisp 了。
+(require 'recent-jump nil t)
+(when (featurep 'recent-jump)
+  (global-set-key (kbd "M-o") 'recent-jump-jump-backward)
+  (global-set-key (kbd "M-i") 'recent-jump-jump-forward))
+
+
+;; ann77 的一个函数，可以打开多个 shell。我做了一些修改，一是可以保留
+;; shell 中使用的命令到文件，二是可以在 Ibuffer 或者其它 buffer 中删除
+;; shell 的 buffer退出时不删除当前的 buffer
+(setenv "HISTFILE" "~/.emacs.d/.history")
+(defun wcy-shell-mode-auto-rename-buffer (text)
+  (if (eq major-mode 'shell-mode)
+      (rename-buffer  (concat "*shell: " default-directory "*") t)))
+(add-hook 'comint-output-filter-functions 'wcy-shell-mode-auto-rename-buffer)
+(defun wcy-shell-mode-hook-func  ()
+   (set-process-sentinel (get-buffer-process (current-buffer))
+                            #'wcy-shell-mode-kill-buffer-on-exit))
+(defun wcy-shell-mode-kill-buffer-on-exit (process state)
+  (shell-write-history-on-exit process state)
+  (kill-buffer (process-buffer process)))
+(defun ywb-shell-mode-hook nil
+  (wcy-shell-mode-hook-func)
+  ;; 打开 ansi-color。
+  (ansi-color-for-comint-mode-on)
+  ;; 启用 abbrev
+  (abbrev-mode t))
+(add-hook 'shell-mode-hook 'ywb-shell-mode-hook)
+
+;; 下面是启动过程中最耗时的，而且是可用可不用的。desktop 特别费时。
+;; 把 ywb-load-slow-part 改成 t，就不会导入了。方便测试配置用。
+(defvar ywb-load-slow-part nil)
+(unless ywb-load-slow-part
+  (add-to-list 'load-path "~/.emacs.d/site-lisp/eim")
+  (autoload 'eim-use-package "eim" "Another emacs input method")
+
+  ;; 我写的输入法
+  (register-input-method
+   "eim-wb" "euc-cn" 'eim-use-package
+   "五笔" "汉字五笔输入法" "~/.emacs.d/site-lisp/eim/wb.txt")
+  (setq default-input-method "eim-wb")
+  (register-input-method
+   "eim-py" "euc-cn" 'eim-use-package
+   "拼音" "汉字拼音输入法" "~/.emacs.d/site-lisp/eim/py.txt")
+  (require 'eim-extra nil t)
+  (when (featurep 'eim-extra)
+    (global-set-key "\\" 'eim-insert-ascii))
+
+  (require 'emms nil t)
+  (when (featurep 'emms)
+    (load "~/.emacs.d/emms-init.el"))
+
+  (require 'muse nil t)
+  (when (featurep 'muse)
+    (load "~/.emacs.d/muse-init.el"))
+
+  (when (featurep 'desktop)
+    (desktop-save-mode 1)
+    (condition-case nil
+        (desktop-read)
+      (error nil)))
+  (appt-activate t)
+  (setq ywb-load-slow-part t))
+
+;;; .emacs end here
+
+;;;_#3 elisps.el
+
+;;;_ , dired
+;; dired-x 是 dired-mode 的一个扩展。提供了许多很有用的命令和特性。
+;; 1. 隐藏配置文件和其它类型的文件。通过设置 dired-omit-extensions 和
+;;    dired-omit-files
+;; 2. 把文件和特定的 shell 程序关联。通过设置
+;;    dired-guess-shell-alist-default， 在文件上使用 "!" 会调用相应的命令
+;; 另外 dired-mode 下还有不常用但是比较有用的命令。比如
+;; dired-compare-directories 可以用于比较文件夹。
+(require 'dired-x nil t)
+(when (featurep 'dired-x)
+  (add-hook 'dired-load-hook
+            (function (lambda ()
+                        (load "dired-x")
+                        ;; Set global variables here.  For example:
+                        ;; (setq dired-guess-shell-gnutar "gtar")
+                        )))
+  (add-hook 'dired-mode-hook
+            (function (lambda ()
+                        ;; Set buffer-local variables here.  For example:
+                        (setq dired-omit-files-p t)
+                        )))
+
+  (setq dired-omit-extensions
+        '(
+          ".svn/" "CVS/" ".o" "~" ".bin" ".bak" ".obj" ".map" ".ico"
+          ".pif" ".lnk" ".a" ".ln" ".blg" ".bbl" ".dll" ".drv" ".vxd"
+          ".386" ".elc" ".lof" ".glo" ".idx" ".lot" ".fmt" ".tfm"
+          ".class" ".lib" ".mem" ".x86f" ".sparcf" ".fasl"
+          ".ufsl" ".fsl" ".dxl" ".pfsl" ".dfsl" ".lo" ".la" ".gmo"
+          ".mo" ".toc" ".aux" ".cp" ".fn" ".ky" ".pg" ".tp" ".vr"
+          ".cps" ".fns" ".kys" ".pgs" ".tps" ".vrs" ".pyc" ".pyo"
+          ".idx" ".lof" ".lot" ".glo" ".blg" ".bbl" ".cps" ".fn"
+          ".fns" ".ky" ".kys" ".pg" ".pgs" ".tp" ".tps" ".vr" ".vrs"
+          ".pdb" ".ilk"))
+
+  (setq dired-omit-files "^\\.?#\\|^\\.$\\|^\\.\\.$\\|^\\.\\|^~")
+  (add-to-list 'dired-guess-shell-alist-default '("\\.dvi$" "dvipdfmx"))
+  (add-to-list 'dired-guess-shell-alist-default '("\\.pl$" "perltidy"))
+  )
+
+;; dired-mode 下不折行显示
+(defun my-dired-long-lines ()
+  (setq truncate-lines t))
+(add-hook 'dired-after-readin-hook 'my-dired-long-lines)
+
+;; wdired 提供修改文件名的一种非常方便方法。它把 dired-mode 当作一般的
+;; 文本处理，这样无论是修改一个文件，还是批量修改文件都不是一般的爽。
+(require 'wdired nil t)
+(when (featurep 'wdired)
+  (autoload 'wdired-change-to-wdired-mode "wdired")
+  (define-key dired-mode-map "r" 'wdired-change-to-wdired-mode))
+
+;; 递归的复制和删除目录。
+(setq dired-recursive-copies 'top)
+(setq dired-recursive-deletes 'top)
+;; 复制和移动时把当前 emacs 中另一个窗口中的目录为对象。这通常是我们希望的方式。
+(setq dired-dwim-target t)
+
+;; 这个命令可以在 windows 下用 X 调用系统的文件关联程序打开文件。
+;; This allows "X" in dired to open the file using the explorer
+;; settings. From TBABIN(at)nortelnetworks.com ToDo: adapt
+;; mswindows-shell-execute() for XEmacs or use tinyurl shell exec
+(when (and (string-match "GNU" (emacs-version))
+           (string= window-system "w32"))
+  (defun dired-custom-execute-file (&optional arg)
+    (interactive "P")
+    (mapcar #'(lambda (file)
+                (w32-shell-execute "open" (convert-standard-filename file)))
+            (dired-get-marked-files nil arg)))
+  (defun dired-custom-dired-mode-hook ()
+    (define-key dired-mode-map "X" 'dired-custom-execute-file))
+  (add-hook 'dired-mode-hook 'dired-custom-dired-mode-hook))
+
+;;;_ , ido
+;; ido 提供非常强大的文件和 buffer 补全的命令。
+(require 'ido nil t)
+(when (featurep 'ido)
+  (ido-mode 1)
+  (setq ido-save-directory-list-file "~/.emacs.d/_ido_last"))
+
+;;;_ , ibuffer
+;; ibuffer 对 buffer 的管理功能类似 dired 对文件的管理。非常好用。
+(require 'ibuffer nil t)
+(require 'ibuf-ext nil t)
+(when (featurep 'ibuffer)
+  (global-set-key (kbd "C-x C-b") 'ibuffer)
+  ;; 我写的一个命令，可以修改光标下 buffer 的名字。
+  (define-key ibuffer-mode-map "r" 'ywb-ibuffer-rename-buffer)
+  ;; 使用 C-x C-f 时，自动修改 default-directory 为光标下文件的目录
+  (define-key ibuffer-mode-map (kbd "C-x C-f") 'ywb-ibuffer-find-file)
+  (define-key ibuffer-mode-map " " 'scroll-up)
+  ;; 使用 buffer 分组。一个 buffer 只能分到一个组中，因此一个 buffer 优
+  ;; 先分到排在前面的组内
+  (add-hook 'ibuffer-mode-hook
+            (lambda ()
+              (setq ibuffer-filter-groups
+                    '(
+                      ("*buffer*" (name . "\\*.*\\*"))
+                      ("TAGS" (name . "^TAGS\\(<[0-9]+>\\)?$"))
+                      ("dired" (mode . dired-mode))
+                      ("perl" (mode . cperl-mode))
+                      ("elisp" (or (mode . emacs-lisp-mode)
+                                   (mode . lisp-interaction-mode)))
+                      ))))
+  ;; filter 功能。不太常用。在 *Ibuffer* 中用 /-r 可以将按下面的设置
+  ;; buffer 过滤掉。
+  (setq ibuffer-saved-filters
+      '(("t" ((or (mode . latex-mode)
+                 (mode . plain-tex-mode))))
+        ("c" ((or (mode . c-mode)
+                 (mode . c++-mode))))
+        ("p" ((mode . cperl-mode)))
+        ("e" ((or (mode . emacs-lisp-mode)
+                  (mode . lisp-interaction-mode))))
+        ("d" ((mode . dired-mode)))
+        ("s" ((mode . shell-mode)))
+        ("i" ((mode . image-mode)))
+        ("h" ((mode . html-mode)))
+        ("gnus" ((or (mode . message-mode)
+                     (mode . mail-mode)
+                     (mode . gnus-group-mode)
+                     (mode . gnus-summary-mode)
+                     (mode . gnus-article-mode))))
+        ("pr" ((or (mode . emacs-lisp-mode)
+                   (mode . cperl-mode)
+                   (mode . c-mode)
+                   (mode . c++-mode)
+                   (mode . php-mode)
+                   (mode . java-mode)
+                   (mode . idl-mode)
+                   (mode . lisp-interaction-mode))))
+        ("m" ((mode . muse-mode)))
+        ("w" ((or (mode . emacs-wiki-mode)
+                  (mode . muse-mode))))
+        ("*" ((name . "*")))
+        ))
+  )
+
+;;;_ , gnuserv
+;; gnuserv 可以用当前的 emacs 打开文件，无需打开多个 emacs。是 Windows
+;; 下的必备工具
+(require 'gnuserv nil t)
+(when (featurep 'gnuserv)
+  (gnuserv-start)
+  (setq gnuserv-frame (selected-frame))
+  (setenv "GNUSERV_SHOW_EMACS" "1"))
+
+;;;_ , winner
+;; winner 可以恢复前一个窗口的布局。比较有用。
+(require 'winner nil t)
+(when (featurep 'winner)
+  (winner-mode 1))
+
+;;;_ , session
+;; session 是用来保存一些全局变量用的。
+(require 'session nil t)
+(when (featurep 'session)
+  (setq session-save-file "~/.emacs.d/_session")
+  (setq session-save-file-coding-system 'chinese-gbk)
+  ;; org-mark-ring 是一个循环结构。如果不除掉，使用 org-mode 后就关不了
+  ;; emacs 了。
+  (add-to-list 'session-globals-exclude 'org-mark-ring)
+  (add-hook 'after-init-hook 'session-initialize))
+
+;;;_ , view-mode
+;; 为 view-mode 加入 vim 的按键。
+(setq view-mode-hook
+      (lambda ()
+        (define-key view-mode-map "h" 'backward-char)
+        (define-key view-mode-map "l" 'forward-char)
+        (define-key view-mode-map "j" 'next-line)
+        (define-key view-mode-map "k" 'previous-line)))
+
+;;;_ , time-stamp
+;; 自动在文件头加入 time-stamp。格式参考 time-stamp 函数的说明。
+(add-hook 'before-save-hook 'time-stamp)
+(setq time-stamp-active t)
+(setq time-stamp-warn-inactive t)
+(add-hook 'write-file-hooks 'time-stamp)
+;; 有段时间，我的 emacs 突然不能用 "%U %:y-%02m-%02d %02H:%02M:%02S"
+;; 格式了，用下面的设置没有问题。没有找到错误原因。
+;; (setq time-stamp-format '(time-stamp-yyyy-mm-dd time-stamp-hh:mm:ss user-full-name))
+(setq time-stamp-format "%U %:y-%02m-%02d %02H:%02M:%02S")
+
+;;;_ , template
+;; 自动根据文件格式插入模板。模板定义在 ~/.templates/ 目录下。
+(require 'template nil t)
+(when (featurep 'template)
+  (template-initialize))
+
+;;;_ , 其它
+;; 导入上次打开的 buffer，也保存一些全局变量。
+(require 'desktop nil t)
+
+;; 打开压缩文件
+(require 'jka-compr nil t)
+
+;; 可以使用 M-y 浏览 kill-ring 的内容
+(require 'browse-kill-ring nil t)
+(when (featurep 'browse-kill-ring)
+  (browse-kill-ring-default-keybindings))
+
+;; 一个窗口移动的 elisp
+(require 'windmove nil t)
+
+(require 'recent-jump nil t)
+
+;; 自动导入我写的 hi-lock+ 插件。autoload 的用处在于它不是启动时导入这
+;; 个 elisp，而是在你调用这个命令时才导入。这样可以加快启动速度。你也可
+;; 以类似的加入一些要自动导入的命令。
+(dolist (cm '(hi-lock-previous
+              hi-lock-next
+              toggle-tabs-font-lock
+              toggle-trailing-whitespace-font-lock
+              toggle-whitespace-font-lock))
+  (autoload cm "hi-lock+" "Hi-lock assist command" t))
+
+;; org-mode 是一个很强大的 elisp，不过可能是因为它能处理的东西太杂，所
+;; 以不被人常用。我只用它来管理表格。
+(add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
+(add-hook 'org-mode-hook
+          (lambda ()
+            ;; org-table-sort-lines 在 windows 下用似乎有问题
+            (define-key org-mode-map (kbd "C-c ^") 'ywb-org-table-sort-lines)))
+;; 这个是在输出成 html 时，忽略一些数学公式的标记
+(setq org-export-with-sub-superscripts nil)
+
+;; 处理生物序列文件的 mode
+(add-to-list 'auto-mode-alist '("\\.fa\\|\\.gb" . dna-mode))
+(autoload 'dna-mode "dna-mode" "Major mode for dna sequence file")
+(add-hook 'dna-mode-hook
+          (lambda ()
+            (define-key dna-mode-map "\C-ch" 'hide-sublevels)
+            (outline-minor-mode)))
+
+;; 显示行数的 elisp
+(autoload 'wb-line-number-toggle "wb-line-number" nil t)
+
+;; 我写的测试打字速度的 elisp
+(autoload 'type-test "type-test" "typing test" t)
+
+;; occur 非常的好用。因为 occor 只搜索出匹配行，所以不希望折行
+(add-hook 'occur-mode-hook (lambda () (setq truncate-lines t)))
+
+;; 我写的一个拼图小游戏。
+(autoload 'eight-puzzle "eight-puzzle" "A game write by me" t)
+
+;; 一个显示光标下字母的 ascii 值的 elisp，不太常用。忘了的话，就用 M-x ascii-table-show
+(autoload 'ascii-on "ascii" "Turn on ASCII code display." t)
+
+;; crazycool 写的一个转换一个区域内文字成 BBS 带颜色的文本
+(autoload 'ansit-ansify-this "ansit"  "Ansi the region." t)
+
+;; 修改之后 ffap 可以识别 windows 的路径
+(setq ffap-string-at-point-mode-alist
+      '((file "--:\\\\$+<>@-Z_a-z~*?" "<@" "@>;.,!:")
+        (url "--:=&?$+@-Z_a-z~#,%;*" "^A-Za-z0-9" ":;.,!?")
+        (nocolon "--9$+<>@-Z_a-z~" "<@" "@>;.,!?")
+        (machine "-a-zA-Z0-9." "" ".")
+        (math-mode ",-:$+<>@-Z_a-z~`" "<" "@>;.,!?`:")))
+
+;; 把俄罗斯方块的速度调快一些
+(setq tetris-update-speed-function
+      (lambda (shapes rows)
+        (/ 10.0 (+ 80.0 rows))))
+
+;;;_ , w3m
+;; w3m 的设定。
+(require 'w3m-load nil t)
+(add-hook 'w3m-mode-hook
+          (lambda ()
+            (defun ywb-w3m-goto-url (url)
+              (if (and url (stringp url))
+                  (w3m-goto-url url)))
+            ;; 修改成用 global-map 中的命令。w3m 的这个绑定太不好用了
+            (local-unset-key "\C-xb")
+            ;; 使用像 info 一样的绑定
+            (define-key w3m-mode-map "n" (lambda nil (interactive) (ywb-w3m-goto-url w3m-next-url)))
+            (define-key w3m-mode-map "p" (lambda nil (interactive) (ywb-w3m-goto-url w3m-previous-url)))
+            (define-key w3m-mode-map "t" (lambda nil (interactive) (ywb-w3m-goto-url w3m-contents-url)))
+            ))
+
+;; 增加一些规则，用于识别 next, previous, contents url。
+(add-hook 'w3m-load-hook
+          (lambda ()
+            (add-to-list 'w3m-relationship-estimate-rules
+                         `(w3m-relationship-simple-estimate
+                           ""
+                           ,(concat "<a href=" w3m-html-string-regexp
+                                    ">.\\{,25\\}\\(?:next\\|后\\|下\\)")
+                           ,(concat "<a href=" w3m-html-string-regexp
+                                    ">.\\{,25\\}\\(?:prev\\|前\\|上\\)")
+                           nil
+                           ,(concat "<a href=" w3m-html-string-regexp
+                                    ">.\\{,25\\}\\(?:index\\|目录\\)")
+                           ))))
+
+;;;_ , AutoHotKeys
+;; AutoHotKeys 是 windows 下一个很有特色的软件。注意
+;; ahk-syntax-directory 要和你的目录一致。
+(require 'ahk-mode nil t)
+(when (featurep 'ahk-mode)
+  (defun ahk-run ()
+    (interactive)
+    (w32-shell-execute "open" (convert-standard-filename buffer-file-name)))
+  (add-hook 'ahk-mode-hook (lambda ()
+                             (define-key ahk-mode-map (kbd "C-c r") 'ahk-run)))
+  (setq ahk-syntax-directory
+        (concat ywb-emacs-lisp-path "goodies/Syntax")))
+
+;;; elisps.el end here
+
+;;;_#4 my-custom.el
+
+;; 语法高亮
+(global-font-lock-mode t)
+;; fill 相关。
+(auto-fill-mode 1)
+(setq default-justification 'full)
+(setq adaptive-fill-mode nil)
+(setq fill-column 70)
+(add-hook 'text-mode-hook 'auto-fill-mode)
+;; 不用滚动条
+(set-scroll-bar-mode nil)
+;; 关闭开机画面
+(setq inhibit-startup-message t)
+;; 关闭按钮栏
+(tool-bar-mode -1)
+;; 没有提示音，也不闪屏。
+(setq ring-bell-function 'ignore)
+;; 使用折行
+(setq truncate-partial-width-windows nil)
+;; 在 mode-line 中显示列号
+(setq column-number-mode t)
+;; 使用 C-k 删除整行
+(setq-default kill-whole-line t)
+;; 设置 kill-ring 的大小
+(setq kill-ring-max 50)
+;; 不用 TAB 来缩进，只用空格。
+(setq-default indent-tabs-mode nil)
+(setq default-tab-width 4)
+(setq tab-stop-list nil)
+;; 在 mode-line 中显示日期
+(display-time-mode t)
+(setq display-time-format "%m月%d日")
+;; 设置 sentence-end 可以识别中文。
+(setq sentence-end "\\([。！？]\\|……\\|[.?!][]\"')}]*\\($\\|[ \t]\\)\\)[ \t\n]*")
+;; 不要在 fill 时在句号后加空格
+(setq sentence-end-double-space nil)
+;; 在屏幕边缘 3 行时就滚动
+(setq scroll-margin 3
+      scroll-conservatively 10000)
+;; 默认的主模式
+(setq default-major-mode 'text-mode)
+;; 显示括号匹配, 而不是匹配后短暂的跳到另一个括号
+(show-paren-mode t)
+(setq show-paren-style 'parentheses)
+;; 光标靠近鼠标时鼠标跳开
+(mouse-avoidance-mode 'animate)
+;; 可以显示图片
+(auto-image-file-mode t)
+;; 高亮显示选中区域
+(transient-mark-mode t)
+;; 备份目录
+(setq backup-directory-alist '(("." . "~/.emacs.d/backup")))
+(setq backup-by-copying t)
+;; 备份的版本控制
+(setq version-control t)
+(setq kept-new-versions 3)
+(setq delete-old-versions t)
+(setq kept-old-versions 2)
+(setq dired-kept-versions 1)
+;; 默认目录
+(setq default-directory "~/")
+;; 个人的信息。在 template 中或者其它 elisp 中可能会用到
+(setq user-full-name "Ye Wenbin")
+(setq user-mail-address "wenbinye@163.com")
+;; WoMan 不打开新的 frame
+(setq woman-use-own-frame nil)
+;; diary，todo，calendar 的设置。我不常用。
+(setq diary-file "~/.emacs.d/diary")
+(setq todo-file-do "~/.emacs.d/todo-do")
+(setq todo-file-done "~/.emacs.d/todone-done")
+(setq todo-file-top "~/.emacs.d/todone-top")
+(add-hook 'initial-calendar-window-hook (lambda () (toggle-truncate-lines 1)))
+;; 不要问 yes-or-no，只问 y-or-n
+(defalias 'yes-or-no-p 'y-or-n-p)
+;; 防止不小心按到菜单中的 print 时，emacs 死掉
+(fset 'print-buffer 'ignore)
+(setq lpr-command "")
+(setq printer-name "")
+;; 设置 emacs 的标题
+(setq frame-title-format "emacs@%b %f")
+;; 设置一些其它文件中用到的变量
+(defvar ywb-emacs-lisp-path
+  (expand-file-name (concat data-directory "../site-lisp/")))
+;; 这个在 windows 下不用设置。在我的 Ubuntu 下，不会自动导入
+(defvar ywb-load-path "~/.emacs.d/site-lisp/")
+(add-to-list 'load-path ywb-load-path)
+(let ((default-directory ywb-load-path))
+  (load "subdirs.el"))
+
+;; 加入自己的 Info 目录
+(dolist (path '("/media/hdb1/Programs/Emacs/home/info/perlinfo"
+                "/media/hdb1/Programs/Emacs/home/info"
+                "~/info" "~/info/perlinfo"))
+  (add-to-list 'Info-default-directory-list path))
+
+;; 加入的这些目录，可以在 shell 中用 tab 补全命令。
+(add-to-list 'exec-path "~/bin")
+
+;; 设置 C Source 目录。如果没有 emacs 的代码或者不想用 c-h f 时继续看
+;; C 代码就不用设置了。
+(setq find-function-C-source-directory (concat data-directory "../src"))
+
+;; 不要 C-x C-c 就退出。确定了才退出。
+(setq kill-emacs-query-functions
+      (lambda ()
+        (y-or-n-p "Do you really want to quit? ")))
+
+;; 设置 abbrev 的文件。
+(setq abbrev-file-name "~/.emacs.d/.abbrev_defs")
+
+;; 这个一般情况下是不用设置的。但是我在 windows 下没有设置环境变量
+;; HOME，因为会和 cygwin 冲突。我是在 Application Data(emacs 默认的
+;; HOME 文件夹) 中加入一个 .emacs 文件，里面写上：
+;;    (setenv "HOME" "d:/emacs/home")
+;;    (load "~/.emacs")
+;; 就能用了。但是这样带来一个问题是，不能编辑 Application Data 目录下的文件。
+;; 加上下面这一行就能用了。
+(setq abbreviated-home-dir nil)
+
+;; 这个是对 Linux 用的。设置之后才能从 emacs 拷贝到别的程序中
+(when (eq window-system 'x)
+  (setq x-select-enable-clipboard t))
+
+;; appt-message-warning-time 是设置 appt 提醒的提前时间。
+;; ediff-split-window-function 设置 ediff 使用垂直分割窗口
+;; muse 的设置如果放到 muse-init.el 文件中，仍然会在 customize 时保存到这里。
+;; 所以不用管它了。
+(custom-set-variables
+  ;; custom-set-variables was added by Custom.
+  ;; If you edit it by hand, you could mess it up, so be careful.
+  ;; Your init file should contain only one such instance.
+  ;; If there is more than one, they won't work right.
+'(appt-display-diary nil)
+'(appt-display-duration 5)
+'(appt-message-warning-time 0)
+'(diff-switches "-utbB")
+'(ediff-split-window-function (quote split-window-horizontally))
+'(grep-command "grep -nH \"\"")
+'(muse-colors-autogen-headings (quote outline))
+'(muse-colors-inline-image-method (quote muse-colors-use-publishing-directory))
+'(muse-colors-inline-images nil)
+'(muse-file-extension "muse")
+'(muse-file-regexp "[/?]\\|\\.\\(html?\\|pdf\\|mp3\\|el\\|zip\\|org\\|txt\\|tar\\)\\(\\.\\(gz\\|bz2\\)\\)?\\'")
+'(muse-html-charset-default "utf-8")
+'(muse-html-encoding-default (quote utf-8))
+'(muse-html-markup-functions (quote ((anchor . muse-html-markup-anchor) (table . muse-html-markup-table) (footnote . muse-html-markup-footnote))))
+'(muse-html-meta-content-encoding (quote utf-8))
+'(muse-html-style-sheet "<link rel=\"stylesheet\" type=\"text/css\" charset=\"utf-8\" media=\"all\" href=\"../css/core.css\" />")
+'(muse-latex-header "~/.emacs.d/templates/header.tex")
+'(muse-publish-desc-transforms (quote (muse-wiki-publish-pretty-title muse-wiki-publish-pretty-interwiki muse-publish-escape-specials-in-string)))
+'(muse-wiki-publish-small-title-words (quote ("the" "and" "at" "on" "of" "for" "in" "an" "a" "page" "anime")))
+'(org-file-apps (quote (("txt" . emacs) ("tex" . emacs) ("ltx" . emacs) ("org" . emacs) ("el" . emacs) ("gb" . emacs))))
+)
+
+(custom-set-faces
+  ;; custom-set-faces was added by Custom.
+  ;; If you edit it by hand, you could mess it up, so be careful.
+  ;; Your init file should contain only one such instance.
+  ;; If there is more than one, they won't work right.
+'(emms-playlist-selected-face ((t (:background "cornflower blue" :foreground "black" :weight bold))))
+'(emms-playlist-track-face ((t (:foreground "red"))))
+'(muse-link ((t (:foreground "blue" :underline "blue" :weight bold))))
+'(muse-link-face ((t (:foreground "blue" :underline "blue" :weight bold)))))
+
+;; 启动一些禁用的命令
+(put 'scroll-left 'disabled nil)
+(put 'upcase-region 'disabled nil)
+(put 'downcase-region 'disabled nil)
+
+;;; my-custom.el end here
+
+;;;_#5 program.el
+;; 让 etags 在当前目录和上级目录中搜索 TAGS 文件
+(setq tags-table-list '("." ".." "../.."))
+
+;;;_ , hideshow
+;; 在需要的 mode 中使用 hideshow
+(require 'hideshow nil t)
+(when (featurep 'hideshow)
+  (dolist (hook '(c++-mode-hook c-mode-hook emacs-lisp-mode-hook
+                                cperl-mode-hook))
+    (add-hook hook 'hs-minor-mode)))
+
+;; 使用我的 my-tree-imenu 显示 imenu。需要设置图片的目录
+(setq my-tr-mode-image-directory "/media/hdb1/Programs/Emacs/etc/images/tree/")
+(autoload 'my-tr-imenu "my-tree-imenu" "Tree imenu" t)
+
+;;;_ , smart-compile
+;; smart compile 是一个非常好用的 elisp。它的设置也相当简单。只要对相应的后缀
+;; 定义 compile 和 run 的命令就行了。格式也列在下面。
+;; smart-executable-alist 是用来在调用 smart-run 时是否需要 compile。所以
+;; 脚本一般都要加入到这个列表中。除非你只用 smart-compile 运行。
+(require 'smart-compile nil t)
+;;   %F  absolute pathname            ( /usr/local/bin/netscape.bin )
+;;   %f  file name without directory  ( netscape.bin )
+;;   %n  file name without extention  ( netscape )
+;;   %e  extention of file name       ( bin )
+(when (featurep 'smart-compile)
+(setq smart-compile-alist
+      '(("\\.c$"          . "g++ -o %n %f")
+        ("\\.[Cc]+[Pp]*$" . "g++ -o %n %f")
+        ("\\.java$"       . "javac %f")
+        ("\\.f90$"        . "f90 %f -o %n")
+        ("\\.[Ff]$"       . "f77 %f -o %n")
+        ("\\.mp$"         . "runmpost.pl %f -o ps")
+        ("\\.php$"        . "php %f")
+        ("\\.tex$"        . "latex %f")
+        ("\\.l$"          . "lex -o %n.yy.c %f")
+        ("\\.y$"          . "yacc -o %n.tab.c %f")
+        ("\\.py$"         . "python %f")
+        ("\\.sql$"        . "mysql < %f")
+        ("\\.ahk$"        . "start d:\\Programs\\AutoHotkey\\AutoHotkey %f")
+        ("\\.sh$"         . "./%f")
+        (emacs-lisp-mode  . (emacs-lisp-byte-compile))))
+(setq smart-run-alist
+      '(("\\.c$"          . "./%n")
+        ("\\.[Cc]+[Pp]*$" . "./%n")
+        ("\\.java$"       . "java %n")
+        ("\\.php$"        . "php %f")
+        ("\\.m$"          . "%f")
+        ("\\.scm"         . "%f")
+        ("\\.tex$"        . "dvisvga %n.dvi")
+        ("\\.py$"         . "python %f")
+        ("\\.pl$"         . "perl \"%f\"")
+        ("\\.pm$"         . "perl \"%f\"")
+        ("\\.bat$"        . "%f")
+        ("\\.mp$"         . "mpost %f")
+        ("\\.ahk$"        . "start d:\\Programs\\AutoHotkey\\AutoHotkey %f")
+        ("\\.sh$"         . "./%f")))
+(setq smart-executable-alist
+      '("%n.class"
+        "%n.exe"
+        "%n"
+        "%n.mp"
+        "%n.m"
+        "%n.php"
+        "%n.scm"
+        "%n.dvi"
+        "%n.py"
+        "%n.pl"
+        "%n.ahk"
+        "%n.pm"
+        "%n.bat"
+        "%n.sh")))
+
+;;;_ , 通用的设置。
+;; emacs21 好像没有 number-sequence 函数，那就用其它代替好了。比如
+;; (require 'cl) 后用 loop 命令，或者这样
+;; (when (not (fboundp 'number-sequence))
+;;   (defun number-sequence (from &optional to inc)
+;;     (if (and to (<= from to))
+;;         (cons from
+;;               (number-sequence (+ from (or inc 1)) to inc)))))
+;; 注意上面的定义虽然比 subr.el 中简洁，但是会出错。只有没有 number-sequence
+;; 这个函数时才用。
+(defun my-mode-common-hook ()
+  (setq tab-width 4)
+  (set (make-local-variable 'tab-stop-list) (number-sequence tab-width 80 tab-width))
+  (abbrev-mode t)
+  (setq c-basic-offset tab-width))
+
+;;;_ , C & C++
+(autoload 'cc-mode "cc-mode" "c & c++ mode" t)
+(defun my-c-mode-common-hook ()
+  (c-set-style "k&r")
+  (setq c-basic-offset tab-width)
+  (my-mode-common-hook)
+  (c-toggle-auto-hungry-state t)
+  (c-toggle-hungry-state t)
+  (c-toggle-auto-state t)
+  (setq local-abbrev-table c-mode-abbrev-table))
+
+(add-hook 'c-mode-common-hook 'my-c-mode-common-hook)
+(add-hook 'c++-mode-hook 'my-c-mode-common-hook)
+;; 设置 ffap 在 c-mode 中搜索的目录。windows 下可能要设置
+;; (setq ffap-c-path
+;;       (append ffap-c-path
+;;               '("e:/Programs/MSYS/mingw/include/"
+;;                 "e:/Programs/MSYS/mingw/include/c++/3.4.0/")))
+
+;;;_ , Perl
+(autoload 'cperl-mode "cperl-mode" "cperl mode" t)
+;; emacs 有 perl-mode 和 cperl-mode，cperl-mode 功能更丰富一些。
+(defalias 'perl-mode 'cperl-mode)
+;; 我写的一个配合 emacs 用的 perl 交互程序
+(autoload 'run-perl "inf-perl" "perl shell" t)
+;; pod-mod 比 cperl-mode 显示 pod 更好看一些。
+(autoload 'pod-mode "pod-mode" "A major mode to edit pod" t)
+(add-hook 'cperl-mode-hook 'my-mode-common-hook)
+
+;; windows 下使用这个可以在用 cpan 这样的交互程序。ppm 最好不要在 emacs 内使用。
+;; (add-hook 'shell-mode-hook (lambda () (insert "set PERLIO=:unix")
+;;                              (call-interactively 'comint-send-input)))
+(add-hook 'cperl-mode-hook
+          (lambda()
+            (cperl-set-style "CPerl")
+            ;; 修改多行括号内的缩进
+            (setq cperl-indent-parens-as-block t)
+            ;; 不把空白用下划线显示
+            (setq cperl-invalid-face nil)
+            ;; 输入 ; 和 } 自动回车
+            (setq cperl-auto-newline t)
+            (setq cperl-continued-statement-offset 4)
+            (setq cperl-indent-level 4)
+            ;; windows 下的 pod 高亮有时候有问题，刷新一下就好了。试试这个命令
+            (define-key cperl-mode-map (kbd "C-c C-l") 'font-lock-fontify-buffer)
+            ;; fill 在写 perl 代码时不常用，所以修改成这个命令，更常用一些。
+            (define-key cperl-mode-map (kbd "C-c C-f") 'cperl-perldoc)))
+
+;; 打开 perltidy 生成的文件使用 cperl-mode
+(add-to-list 'auto-mode-alist '("\\.tdy$" . perl-mode))
+;; 可以在这里设置环境变量
+(setenv "PERL5LIB" "/home/ywb/proj/perl/lib/perl/5.8.7:/home/ywb/proj/perl/share/perl/5.8.7")
+
+;; 设置这个之后可以对 LWP::UserAgent 这样的模块名上使用 ffap 命令。
+;; File:: 模块会识别为 url 不知道怎样解决。
+(setq ffap-perl-inc-dirs
+      (split-string (shell-command-to-string
+                     "perl -e \"print join(q/ /, @INC);\"")))
+(defun my-cperl-ffap-locate (name &optional arg)
+  "Return cperl module for ffap"
+  (let* ((file (if arg name (ffap-string-at-point)))
+         (r (replace-regexp-in-string ":" "/"  (file-name-sans-extension file)))
+         (e (replace-regexp-in-string "//" "/" r))
+         (x (ffap-locate-file e '(".pm" ".pl" ".xs") ffap-perl-inc-dirs)))
+    x))
+(add-to-list 'ffap-alist '(cperl-mode . my-cperl-ffap-locate))
+;; 这个命令是为了方便在其它 mode 下打开库文件
+;;;###autoload
+(defun ywb-cperl-find-file (file)
+  (interactive "s")
+  (setq file  (my-cperl-ffap-locate file t))
+  (if (and file
+           (stringp file)
+           (file-exists-p file))
+      (find-file file)
+    (message "No such file: %s" file)))
+;; windows 下的 cperl-perldoc 是不能用的。我写了一个 ywb-cperl-perldoc
+;; 替代。一般是用 shell-command 调用 perldoc 来查找。使用 C-u 前缀可以
+;; 调用 w3m 打开模块的文档。用 w3m 看 perldoc -f func 还没有实现。需要
+;; 的话可以把前面的 cperl-mode-map 中 C-c C-f 绑定到这个命令。
+(setq ywb-cperl-html-dir
+      (append
+       (mapcar (lambda (path)
+                 (concat "/media/hdb1/Programs/Perl/html/" path))
+               '("lib/" "site/lib/" "lib/Pod/"))
+       '("/home/ywb/downloads/perldoc-html/")))
+(defun ywb-cperl-perldoc (file)
+  (interactive (list (let ((word (current-word))
+                           (case-fold-search nil))
+                       (if (stringp word)
+                           (or (string-match "[A-Z]" word)
+                               (setq word (concat "-f " word)))
+                         (setq word ""))
+                       (replace-regexp-in-string "^\\s-*" ""
+                                                 (read-from-minibuffer (concat "perldoc ") word)))))
+  (if (null current-prefix-arg)
+      (shell-command (concat "perldoc " file))
+    (require 'w3m)
+    (setq file (replace-regexp-in-string "::" "/" file))
+    (setq file (ffap-locate-file file '(".html") ywb-cperl-html-dir))
+    (when (and file (file-exists-p file))
+      (w3m-goto-url (if (string-match "^[a-zA-Z]:" file)
+                        (ywb-convert-to-cygwin-path file)
+                      (concat "file://" file))))))
+
+;;;_ , 其它
+;; 为 lisp-interactive-mode 加入 ffap。
+(add-to-list 'ffap-alist '(lisp-interaction-mode . ffap-el-mode))
+
+;; R
+(autoload 'R "ess-site" "run R" t)
+(autoload 'R-mode "ess-site" "run R" t)
+
+;; windows 批处理文件的 mode
+(add-to-list 'auto-mode-alist '("\\.bat$" . bat-mode))
+(autoload 'bat-mode "bat-mode" "Bat mode for Windows batch file" t)
+
+;; 不喜欢 scheme-mode 的 switch 方式。修改了一下。
+(setq scheme-program-name "mzscheme")
+(setq scheme-mode-hook
+      (lambda ()
+        (defun switch-to-scheme (eob-p)
+          "Switch to the scheme process buffer.
+With argument, position cursor at end of buffer."
+          (interactive "P")
+          (if (or (and scheme-buffer (get-buffer scheme-buffer))
+                  (scheme-interactively-start-process))
+              (pop-to-buffer scheme-buffer t)
+            (error "No current process buffer.  See variable `scheme-buffer'"))
+          (when eob-p
+            (push-mark)
+            (goto-char (point-max))))
+        (my-mode-common-hook)))
+
+(add-hook 'html-mode-hook (lambda ()
+(define-key html-mode-map (kbd "<C-return>") 'ywb-html-insert-newline)
+))
+
+;; css-mode
+(autoload 'css-mode "css-mode" "Mode for editing CSS files" t)
+(add-hook 'css-mode-common-hook 'my-mode-common-hook)
+(add-to-list 'auto-mode-alist '("\\.css$" . css-mode))
+
+;; python-mode
+(autoload 'python-mode "python" "Python editing mode." t)
+(add-hook 'python-mode-common-hook 'my-mode-common-hook)
+
+;; emacs-lisp-mode :
+(add-hook 'emacs-lisp-mode-hook 'my-mode-common-hook)
+
+;; sgml-mode :
+(add-hook 'sgml-mode-hook 'my-mode-common-hook)
+
+;; javascript-mode
+(autoload 'javascript-mode "javascript-mode" "JavaScript mode" t)
+
+;;{{{ php-mode : add php support
+;; (require 'php-mode)
+(autoload 'php-mode "php-mode" "php mode" t)
+(add-hook 'php-mode-common-hook 'my-mode-common-hook)
+
+(add-hook 'texinfo-mode-hook (lambda () (require 'sb-texinfo)))
+
+;; metapost 的设置。前面在 smart-compile 里用了一个 runmpost 命令。这是
+;; 我自己写的。ywb-install-kbd-macro 是我自己定义的命令。可以保存
+;; macro 到 desktop 文件中。这样下次用的时候，用这个命令就能安装的
+;; last-kbd-macro 用 C-x e 执行。
+(setq meta-common-mode-hook
+      (lambda ()
+        (abbrev-mode 1)
+        (define-key meta-mode-map ";"
+          (lambda nil (interactive) (insert ";")
+            (reindent-then-newline-and-indent)))
+        (ywb-install-kbd-macro "sync-id"))
+      )
+;; 设置 MPINPUTS 环境变量。为 metapost 加入自己的库。
+(setenv "MPINPUTS" "e:/Programs/emacs/home/proj/mpost/;")
+
+;; sql-mode 没有 sql-send-line 命令。所以自己写了一个。
+(defun ywb-sql-send-line ()
+  (interactive)
+  (sql-send-region (line-beginning-position) (line-end-position)))
+(add-hook 'sql-mode-hook
+          (lambda ()
+            (define-key sql-mode-map (kbd "C-c C-j") 'ywb-sql-send-line)))
+
+;;; program.el end here
+
+;;;_#6 program-ab.el
+
+(require 'cl nil t)
+
+;; 这个命令是读入一个字符串，如果没有输入则不插入内容。可以试试下面的
+;; skeleton-html-mode-form 就知道效果了
+(defun ywb-skeleton-read-maybe (frt prompt &optional initial-input recursive)
+  (let ((input (skeleton-read prompt initial-input recursive)))
+    (if (not (string= input ""))
+        (format frt input))))
+
+;;;_ , c
+(define-skeleton skeleton-c-mode-main-func
+  "create int main(int argc, char * argv[]) automatic" nil
+  "int main (int argc, char * argv[]) \n{\n"
+  > _  "\n" > "return 0;"
+  "\n}")
+(define-skeleton skeleton-c-mode-comment-box
+  "create a comment box" nil
+  "/**********************************************\n"
+  > " * " _ "\n"
+  > " **********************************************/"
+  )
+(define-skeleton skeleton-perl-mode-new-func
+  "generate class new subroutin automatic"
+  nil
+  "sub new {\n"
+  > "my $_class = shift;\n"
+  > "my $class = ref $_class || $_class;\n"
+  > "my $self = {};\n";
+  > "bless $self, $class;\n"
+  > _ "\n"
+  > "return $self;\n}\n")
+
+;;;_ , perl
+(define-skeleton skeleton-perl-mode-open
+  "" nil
+  > "open(" (ywb-skeleton-read-maybe "%s" "file handle: " "FH") ", "
+  `(let ((file (skeleton-read "file: ")))
+     (concat (case (aref file 0)
+               (?$ (concat file ") || die \"Can't open file " file))
+               (?> (concat "\"" file "\") || die \"Can't create file " (substring file 1)))
+               (otherwise (concat "\"" file "\") || die \"Can't open file " file)))))
+  ": $!\";\n"
+  > _)
+
+(define-skeleton skeleton-perl-mode-dump
+  "" nil
+  "print Dumper(" _ "), \"\\n\";")
+
+(define-skeleton skeleton-perl-mode-tk
+  "" nil
+  "use Tk;\n"
+  > "my $mw = MainWindow->new;\n"
+  > _ "\n"
+  > "MainLoop;")
+
+(define-skeleton skeleton-perl-mode-dbi
+  "" nil
+  "use DBIx::Simple;\n"
+  > "my @cp = ('dbi:mysql:" _ "', 'root');\n"
+  > "my ($db, $sql, $result);\n"
+  > "$db = DBIx::Simple->connect(@cp)\n"
+  > "|| die DBIx::Simple->error;")
+
+;;;_ , html
+(define-skeleton skeleton-html-mode-form
+  "" nil
+  > "<form" (ywb-skeleton-read-maybe " action=\"%s\"" "action: ")
+  (ywb-skeleton-read-maybe " method=\"%s\"" "method: ")
+  ">\n"
+  > _ "\n"
+  > "</form>")
+
+(define-skeleton skeleton-html-mode-input
+  "" nil
+  > "<input" (ywb-skeleton-read-maybe " type=\"%s\"" "type: ")
+  (ywb-skeleton-read-maybe " name=\"%s\"" "name: ")
+  (ywb-skeleton-read-maybe " value=\"%s\"" "value: ")
+  ">"
+  )
+
+(define-abbrev-table 'c-mode-abbrev-table '(
+    ("main" "" skeleton-c-mode-main-func 1)
+    ("ccbox" "" skeleton-c-mode-comment-box 1)
+    ))
+
+(define-abbrev-table 'c++-mode-abbrev-table '(
+    ("main" "" skeleton-c-mode-main-func 1)
+    ("ccbox" "" skeleton-c-mode-comment-box 1)
+    ))
+
+(define-abbrev-table 'cperl-mode-abbrev-table '(
+    ("subnew" "" skeleton-perl-mode-new-func 1)
+    ("openf" "" skeleton-perl-mode-open 1)
+    ("dump" "" skeleton-perl-mode-dump 1)
+    ("usedbi" "" skeleton-perl-mode-dbi 1)
+    ("usetk" "" skeleton-perl-mode-tk 1)
+    ))
+
+(define-abbrev-table 'html-mode-abbrev-table  '(
+   ("formx" "" skeleton-html-mode-form 1)
+   ("inputx" "" skeleton-html-mode-input 1)
+))
+
+;;;_ , metapost
+;; 这个我认为对于写 metapost 还是非常好用的。可以自动的加入新的图片序号
+(define-skeleton skeleton-metapost-mode-beginfig
+  "" nil
+  "beginfig(" (skeleton-read "fig id: "
+                              (if (save-excursion
+                                    (re-search-backward "beginfig(\\([0-9]+\\))" nil t))
+                                  (number-to-string
+                                   (1+ (string-to-number (match-string 1))))
+                                "1")) ")\n"
+  > _ "\n"
+  "endfig;\n")
+(define-abbrev-table 'meta-mode-abbrev-table '(
+    ("begx" "" skeleton-metapost-mode-beginfig)
+    ))
+
+(define-skeleton skeleton-scheme-mode-define
+  "" nil
+  "(define " _ ")")
+(define-skeleton skeleton-scheme-mode-lambda
+  "" nil
+  "(lambda (" (skeleton-read "Param: ") ") " _ ")")
+(define-abbrev-table 'scheme-mode-abbrev-table '(
+("dfx" "" skeleton-scheme-mode-define)
+("ldx" "" skeleton-scheme-mode-lambda)
+))
+
+;; msf-abbrev 还是非常的强大的，但是 c 和 c++ 的函数太多了。每次打开一
+;; 个 c 和 cpp 的文件都非常的慢。自己懒得选，所以干脆不用了。
+;; (when (featurep 'msf-abbrev)
+;;   (dolist (hook '(c++-mode-hook c-mode-hook emacs-lisp-mode-hook
+;;                                 cperl-mode-hook))
+;;     (add-hook hook 'msf-abbrev-mode)))
+
+;;; program-ab.el end here
+
+;;;_#7 my-utils.el
+;; 这个文件非常大，挑选一些有用的命令。
+
+;;;_ , ywb-favorite-window-config 调整窗口大小
+;;;###autoload
+(defun ywb-favorite-window-config (&optional percent)
+  "Split window to proper portion"
+  (interactive "P")
+  (or percent (setq percent 50))
+  (setq percent (/ percent 100.0))
+  (let (buf)
+    (if (> (length (window-list)) 1)
+        (setq buf (window-buffer (next-window))))
+    (delete-other-windows)
+    (let ((maxwidth (window-width)))
+      (split-window-horizontally (round (* maxwidth percent))))
+    (if buf (save-selected-window
+              (pop-to-buffer buf))))
+  (call-interactively 'his-transpose-windows))
+
+;;;_ , 处理 cygwin 的文件目录。使用 w3m 时要用。
+(defun ywb-convert-to-cygwin-path (path)
+  (concat "file:///cygdrive/" (substring path 0 1) (substring path 2)))
+(defun ywb-convert-cygwin-path (path)
+  (setq path (substring path 17))
+  (concat (substring path 0 1) ":" (substring path 1)))
+
+;;;_ , dired 下的一些命令。
+;;;###autoload
+(defun ywb-dired-w3m-visit ()
+  (interactive)
+  (let ((file (dired-get-filename nil t)))
+    (w3m-goto-url
+     (if (string-match "^[a-zA-Z]:" file)
+         (ywb-convert-cygwin-path file)
+       (concat "file://" file)))))
+;; 这个命令在 windows 下还比较常用。我比较喜欢 TC 的类似命令。这样在一
+;; 些文件选择对话框时可以直接粘贴文件的路径。按前面的设置，直接按 W 得
+;; 到文件全名。在 Windows 下按 C-1 W 得到 Windows 的文件路径，C-2 W
+;; 得到 Cygwin 的路径，C-3 W 得到 Windows 目录的路径。
+;;;###autoload
+(defun ywb-dired-copy-fullname-as-kill (&optional arg)
+  "In dired mode, use key W to get the full name of the file"
+  (interactive "P")
+  (let (file)
+    (setq file (dired-get-filename nil t))
+    (or (not arg)
+        (cond ((= arg 1)
+               (setq file (convert-standard-filename file)))
+              ((= arg 2)
+               (setq file (ywb-convert-to-cygwin-path file)))
+              ((= arg 3)
+               (setq file (convert-standard-filename (file-name-directory file))))))
+    (if (eq last-command 'kill-region)
+        (kill-append file nil)
+      (kill-new file))
+    (message "%s" file)))
+;; 类似 TC 的一个命令，可以使用同一个 buffer 浏览多个文件，每次打开新文
+;; 件就把前一个 buffer 关了。
+(defvar ywb-dired-quickview-buffer nil)
+(defun ywb-dired-quickview ()
+  (interactive)
+  (if (buffer-live-p ywb-dired-quickview-buffer)
+      (kill-buffer ywb-dired-quickview-buffer))
+  (setq ywb-dired-quickview-buffer
+        (find-file-noselect (dired-get-file-for-visit)))
+  (display-buffer ywb-dired-quickview-buffer))
+
+;; 用 tar 压缩 mark 的文件或者目录。在压缩文件上用这个命令则解压缩文件。
+(defun ywb-dired-compress-dir ()
+  (interactive)
+  (let ((files (dired-get-marked-files t)))
+    (if (and (null (cdr files))
+             (string-match "\\.\\(tgz\\|tar\\.gz\\)" (car files)))
+        (shell-command (concat "tar -xvf " (car files)))
+      (let ((cfile (concat (file-name-nondirectory
+                            (if (null (cdr files))
+                                (car files)
+                              (directory-file-name default-directory))) ".tgz")))
+        (setq cfile
+              (read-from-minibuffer "Compress file name: " cfile))
+        (shell-command (concat "tar -zcvf " cfile " " (mapconcat 'identity files " ")))))
+    (revert-buffer)))
+
+;; 跳到匹配的括号处
+;;;###autoload
+(defun his-match-paren (arg)
+  "Go to the matching paren if on a paren; otherwise insert %."
+  (interactive "p")
+  (let ((prev-char (char-to-string (preceding-char)))
+        (next-char (char-to-string (following-char))))
+    (cond ((string-match "[[{(<]" next-char) (forward-sexp 1))
+          ((string-match "[\]})>]" prev-char) (backward-sexp 1))
+          (t (self-insert-command (or arg 1))))))
+
+;;;###autoload
+(defun wy-go-to-char (n char)
+  "Move forward to Nth occurence of CHAR.
+Typing `wy-go-to-char-key' again will move forwad to the next Nth
+occurence of CHAR."
+  (interactive "p\ncGo to char:")
+  (search-forward (string char) nil nil n)
+  (while (char-equal (read-char)
+                     char)
+    (search-forward (string char) nil nil n))
+  (setq unread-command-events (list last-input-event)))
+
+;; transpose(interchange) two windows
+;;;###autoload
+(defun his-transpose-windows (arg)
+  "Transpose the buffers shown in two windows."
+  (interactive "p")
+  (let ((selector (if (>= arg 0) 'next-window 'previous-window)))
+    (while (/= arg 0)
+      (let ((this-win (window-buffer))
+            (next-win (window-buffer (funcall selector))))
+        (set-window-buffer (selected-window) next-win)
+        (set-window-buffer (funcall selector) this-win)
+        (select-window (funcall selector)))
+      (setq arg (if (plusp arg) (1- arg) (1+ arg))))))
+
+;; 切换 major mode。可以记住上次的选择。
+(defvar switch-major-mode-last-mode nil)
+(make-variable-buffer-local 'switch-major-mode-last-mode)
+
+(defun major-mode-heuristic (symbol)
+  (and (fboundp symbol)
+       (string-match ".*-mode$" (symbol-name symbol))))
+
+(defun switch-major-mode (mode)
+  (interactive
+   (let ((fn switch-major-mode-last-mode)
+         val)
+     (setq val
+           (completing-read
+            (if fn
+                (format "Switch major mode to (default %s): " fn)
+              "Switch major mode to: ")
+            obarray 'major-mode-heuristic t nil nil (symbol-name fn)))
+     (list (intern val))))
+  (let ((last-mode major-mode))
+    (funcall mode)
+    (setq switch-major-mode-last-mode last-mode)))
+;; 按括号缩进一个区域
+(defun ywb-indent-accoding-to-paren ()
+  "Indent the region between paren"
+  (interactive)
+  (let ((prev-char (char-to-string (preceding-char)))
+        (next-char (char-to-string (following-char)))
+        (pos (point)))
+    (save-excursion
+      (cond ((string-match "[[{(<]" next-char)
+             (indent-region pos (progn (forward-sexp 1) (point)) nil))
+            ((string-match "[\]})>]" prev-char)
+             (indent-region (progn (backward-sexp 1) (point)) pos nil))))))
+
+;; 这个是类似 vim 的 dict 功能。把文件中的一些词加入到一些隐藏的
+;; buffer 中。这样用 hippie-expand 或者 dabbrev-expand 时可以检测到。使
+;; 用 ywb-add-dict-word 可以加入一个词到当前 mode 中。
+;;;###autoload
+(defun ywb-add-dict-word (word)
+  (interactive (list (let (w)
+                       (read-from-minibuffer
+                        (format "add word%s: "
+                                (if (setq w (current-word))
+                                    (concat "(default: " w ")")
+                                  ""))))))
+  (or (not (string= word "")) (setq word (current-word)))
+  (let ((mode (symbol-name major-mode)))
+    (save-excursion
+      (set-buffer (get-buffer-create (concat " " mode)))
+      (goto-char (point-min))
+      (if (not (re-search-forward word nil t))
+          (progn
+            (setq major-mode (intern mode))
+            (goto-char (point-min))
+            (insert word "\n")
+            (with-current-buffer (find-file-noselect ywb-dict-file)
+              (beginning-of-buffer)
+              (if (re-search-forward (concat "\\* " mode) nil t)
+                  (progn
+                    (forward-line 1)
+                    (insert word "\n"))
+                (goto-char (point-max))
+                (insert "* " mode "\n"
+                        word "\n"))
+              (save-buffer)
+              (kill-buffer (current-buffer)))
+            (message "add %s to %s" word mode))
+        (message "%s is in the dictionary!" word)))))
+(defun ywb-read-dict-file ()
+  "Read dictionary file"
+  (interactive)
+  (save-excursion
+    (let ((buffer (find-file-noselect ywb-dict-file))
+          (done nil)
+          mode beg end)
+      (set-buffer buffer)
+      (beginning-of-buffer)
+      (re-search-forward "^\\*\\s-*\\(.*-mode\\)" nil t)
+      (setq mode (buffer-substring (match-beginning 1)
+                                   (match-end 1)))
+      (setq beg (1+ (match-end 0)))
+      (while (progn
+               (if (re-search-forward "^\\*\\s-*\\(.*-mode\\)" nil t)
+                   (setq end (match-beginning 0))
+                 (setq end (point-max))
+                 (setq done t))
+               ;; (message "mode: %s, beg: %d, end: %d" mode beg end)
+               (with-current-buffer  (get-buffer-create (format " %s-dict" mode))
+                 (erase-buffer)
+                 (setq major-mode (intern mode))
+                 (insert-buffer-substring buffer beg end))
+               (setq mode (buffer-substring (match-beginning 1)
+                                            (match-end 1)))
+               (setq beg (1+ (match-end 0)))
+               (not done)))
+      (kill-buffer buffer))))
+(defvar ywb-dict-file "~/.emacs.d/.dict")
+(condition-case nil
+    (ywb-read-dict-file)
+  (error nil))
+
+;;;###autoload
+(defun ywb-org-table-convert-region (beg end wspace)
+  (interactive "r\nP")
+  (require 'org)
+  (when (= beg (point-min))
+    (save-excursion
+      (goto-char beg)
+      (insert "\n")
+      (setq beg (1+ beg))))
+  (org-mode)
+  (org-table-convert-region beg end wspace))
+
+;;;###autoload
+(defun ywb-org-table-export-here (beg end)
+  (interactive "r")
+  (require 'org)
+  (let ((buf (generate-new-buffer "*temp*"))
+        (table (delete-and-extract-region beg end)))
+    (with-current-buffer buf
+      (insert table)
+      (goto-char (point-min))
+      (while (re-search-forward "^[ \t]*|[ \t]*" nil t)
+        (replace-match "" t t)
+        (end-of-line 1))
+      (goto-char (point-min))
+      (while (re-search-forward "[ \t]*|[ \t]*$" nil t)
+        (replace-match "" t t)
+        (goto-char (min (1+ (point)) (point-max))))
+      (goto-char (point-min))
+      (while (re-search-forward "^-[-+]*$" nil t)
+        (replace-match "")
+        (if (looking-at "\n")
+            (delete-char 1)))
+      (goto-char (point-min))
+      (while (re-search-forward "[ \t]*|[ \t]*" nil t)
+        (replace-match "\t" t t))
+      (setq table (buffer-string))
+      (kill-buffer buf))
+    (insert table)))
+
+;;;###autoload
+(defun ywb-shell-command-background (command &optional output-buffer)
+  (interactive (list (read-from-minibuffer "Shell Command: " nil
+                                           nil nil 'shell-command-history)
+                     current-prefix-arg))
+  (let ((buffer (or output-buffer
+                    (get-buffer-create "*Shell Command Output*")))
+        (directory default-directory))
+    (with-current-buffer buffer
+      (setq default-directory directory)
+      (erase-buffer)
+      (start-process-shell-command "shell" buffer command))
+    (pop-to-buffer buffer t)))
+;;;###autoload
+(defun ywb-count-word-region ()
+  (interactive)
+  (let ((beg (point-min)) (end (point-max))
+        (word 0) (other 0))
+    (if mark-active
+        (setq beg (region-beginning)
+              end (region-end)))
+    (save-excursion
+      (goto-char beg)
+      (while (< (point) end)
+        (cond ((not (equal (car (syntax-after (point))) 2)) ; not a word
+               (forward-char))
+              ((< (char-after) 128)     ; is a english word
+               (progn
+                 (setq word (1+ word))
+                 (forward-word)))
+              (t
+               (setq other (1+ other))
+               (forward-char)))))
+    (message "enlish word: %d\nother char: %d"
+             word other)))
+
+;; crazycool 的一个函数，显示 ascii 表
+;;;###autoload
+(defun ascii-table-show ()
+  "Print the ascii table"
+  (interactive)
+  (with-current-buffer (switch-to-buffer "*ASCII table*")
+    (setq buffer-read-only nil)
+    (erase-buffer)
+    (let ((i   0)
+          (tmp 0))
+      (insert (propertize
+               "                                [ASCII table]\n\n"
+               'face font-lock-comment-face))
+      (while (< i 32)
+        (dolist (tmp (list i (+ 32 i) (+ 64 i) (+ 96 i)))
+          (insert (concat
+                   (propertize (format "%3d " tmp)
+                               'face font-lock-function-name-face)
+                   (propertize (format "[%2x]" tmp)
+                               'face font-lock-constant-face)
+                   "    "
+                   (propertize (format "%3s" (single-key-description tmp))
+                               'face font-lock-string-face)
+                   (unless (= tmp (+ 96 i))
+                     (propertize " | " 'face font-lock-variable-name-face)))))
+        (newline)
+        (setq i (+ i 1)))
+      (beginning-of-buffer))
+    (toggle-read-only 1)))
+
+;; 使用 perltidy 格式化 perl 代码。选中一块区域则对这个区域格式化，否则
+;; 对整个 buffer。使用 C-u 前缀则格式化的文本在一个 *perltidy* 的
+;; buffer 中，否则删除对应的区域，插入格式化后的代码
+;;;###autoload
+(defun ywb-perltidy (arg)
+  (interactive "P")
+  (let ((buffer (generate-new-buffer "*perltidy*"))
+        (point (point))
+        start end)
+    (if (and mark-active transient-mark-mode)
+        (setq start (region-beginning)
+              end (region-end))
+      (setq start (point-min)
+            end (point-max)))
+    (shell-command-on-region start end "perltidy" buffer)
+    (if arg
+        (with-current-buffer buffer
+          (perl-mode)
+          (display-buffer buffer))
+      (delete-region start end)
+      (insert-buffer buffer)
+      (kill-buffer buffer)
+      (goto-char point))))
+
+;; 这个还不是太好用。不能在 enter 后直接跳到第一个匹配的文件。
+;;;###autoload
+(defun ywb-dired-jump-to-file (name)
+  (interactive (list
+                (let ((table (apply 'append
+                                    (mapcar (lambda (dir)
+                                              (directory-files (car dir)))
+                                            dired-subdir-alist))))
+                  (when (null table)
+                    (error "No files"))
+                  (completing-read "Jump to file: "
+                                   table nil t))))
+  (let* ((len (length name))
+         cmd)
+    (setq name (regexp-quote name))
+    (goto-char (point-min))
+    (forward-line 2)                  ; skip two lines in dired buffer
+    (if (re-search-forward (concat "\\<" name "\\>") nil t)
+        (goto-char (match-beginning 0)))
+    (when (save-excursion
+            (goto-char (match-end 0))
+            (re-search-forward (concat "\\<" name "\\>") nil t))
+      (while (progn
+               (setq cmd (read-char "(n)ext or (p)rev: "))
+               (case cmd
+                 (?n (progn
+                       (goto-char (+ (point) len))
+                       (if (re-search-forward (concat "\\<" name "\\>") nil t)
+                           (goto-char (match-beginning 0))
+                         (goto-char (- (point) len))
+                         nil)))
+                 (?p (re-search-backward (concat "\\<" name "\\>") nil t))
+                 (t nil)))))))
+;; 更新和自动插入序号的命令。插入序号的命令不太好用。只能识别前一行的数字。
+;;;###autoload
+(defun ywb-insert-item ()
+  (interactive)
+  (let (curr next)
+    (beginning-of-line)
+    (cond ((looking-at "\\(\\s-*\\)\\([0-9]+\\)\\.\\s-*")
+           (setq curr (string-to-number (buffer-substring (match-beginning 2)
+                                                          (match-end 2))))
+           (setq next (number-to-string (1+ curr)))
+           (end-of-line)
+           (insert "\n" (buffer-substring (match-beginning 1)
+                                          (match-end 1))
+                   next ". ")
+           (ywb-sync-item))
+          ((looking-at "\\s-*[-+]\\s-*")
+           (progn
+             (end-of-line)
+             (insert "\n" (buffer-substring (match-beginning 0)
+                                            (match-end 0)))))
+          (t
+           (progn
+             (end-of-line)
+             (newline-and-indent))))))
+;;;###autoload
+(defun ywb-sync-item ()
+  (interactive)
+  (save-excursion
+    (beginning-of-line)
+    (if (looking-at "\\(\\s-*\\)\\([0-9]+\\)\\.\\s-*")
+        (let ((curr (string-to-number (buffer-substring (match-beginning 2)
+                                                        (match-end 2))))
+              (blank1 (buffer-substring (match-beginning 1)
+                                        (match-end 1)))
+              (blank2 (buffer-substring (match-end 2)
+                                        (match-end 0))))
+          (while (progn
+                   (beginning-of-line 2)
+                   (looking-at "\\s-*[0-9]+\\.\\s-*"))
+            (setq curr (1+ curr))
+            (delete-region (match-beginning 0) (match-end 0))
+            (insert blank1 (number-to-string curr) blank2))))))
+;; 为 w3m 写的一个切换代理的命令
+(defvar ywb-http-proxy "http://202.115.130.58:8080")
+;;;###autoload
+(defun ywb-toggle-proxy (force)
+  "Toggle proxy. With prefix, set proxy on."
+  (interactive "P")
+  (if (or force
+          (not (getenv "http_proxy")))
+      (progn
+        (setenv "http_proxy" ywb-http-proxy)
+        (message "proxy set to %s" (getenv "http_proxy")))
+    (setenv "http_proxy" nil)
+    (message "proxy off")))
+;;;###autoload
+(defun ywb-html-insert-newline ()
+  (interactive)
+  (insert "<br />")
+  (newline-and-indent))
+;;;###autoload
+(defun ywb-marker-sexp ()
+  (interactive)
+  (goto-char (car (bounds-of-thing-at-point 'sexp)))
+  (call-interactively 'set-mark-command)
+  (forward-sexp))
+;;;###autoload
+(defun ywb-create/switch-scratch ()
+  (interactive)
+  (let ((buf (get-buffer "*scratch*")))
+    (switch-to-buffer (get-buffer-create "*scratch*"))
+    (when (null buf)
+      (lisp-interaction-mode))))
+;;;###autoload
+(defun ywb-insert-variable (var)
+  (interactive (list (completing-read "Insert variable: " obarray
+                                      'boundp t)))
+  (let ((value (symbol-value (intern var))))
+    (or (stringp value) (setq value (symbol-name value)))
+    (insert value)))
+;; 这个要调用我写的 dirsize 程序
+;;;###autoload
+(defun ywb-dired-count-dir-size ()
+  (interactive)
+  (let ((dir (dired-get-filename nil t)))
+    (when (file-directory-p dir)
+      (with-current-buffer (get-buffer-create "*Shell Command Output*")
+        (erase-buffer)
+        (start-process-shell-command "dirsize" (current-buffer) "/home/ywb/bin/dirsize " dir)
+        (display-buffer (current-buffer))))))
+;;;###autoload
+(defun ywb-goto-line (percent)
+  (interactive (list (or current-prefix-arg
+                         (string-to-number
+                          (read-from-minibuffer "Goto percent: ")))))
+  (let* ((total (count-lines (point-min) (point-max)))
+         (num (round (* (/ total 100.0) percent))))
+    (goto-line num)))
+;; 得到一个 tab 分开的表格的某几列
+;;;###autoload
+(defun ywb-get-column (start end)
+  (interactive "r")
+  (let ((cols (mapcar 'string-to-number
+                      (split-string (read-from-minibuffer "cols(seperate by space): "))))
+        line)
+    (with-output-to-temp-buffer "*column*"
+      (save-excursion
+        (goto-char start)
+        (while (< (point) end)
+          (setq line (split-string (buffer-substring-no-properties (line-beginning-position)
+                                                                   (line-end-position))
+                                   "\t"))
+          (princ (mapconcat 'identity (mapcar (lambda (c)
+                                                (nth (1- c) line))
+                                              cols) "\t"))
+          (princ "\n")
+          (forward-line 1))))))
+;;;###autoload
+(defun ywb-ibuffer-rename-buffer ()
+  (interactive)
+  (call-interactively 'ibuffer-update)
+  (let* ((buf (ibuffer-current-buffer))
+         (name (generate-new-buffer-name
+                (read-from-minibuffer "Rename buffer(to new name): "
+                                      (buffer-name buf)))))
+    (with-current-buffer buf
+      (rename-buffer name)))
+  (call-interactively 'ibuffer-update))
+;;;###autoload
+(defun ywb-ibuffer-find-file ()
+  (interactive)
+  (let ((default-directory (let ((buf (ibuffer-current-buffer)))
+      (if (buffer-live-p buf)
+  (with-current-buffer buf
+    default-directory)
+default-directory))))
+    (call-interactively 'ido-find-file)))
+;;;###autoload
+(defun ywb-hippie-expand-filename ()
+  (interactive)
+  (let ((hippie-expand-try-functions-list
+         '(try-complete-file-name try-complete-file-name-partially)))
+    (call-interactively 'hippie-expand)))
+
+(defvar ywb-kbd-macro
+  `(("gnus-delete-letter-noconfirm" . [66 backspace 121 14]))
+  "my kbd macros")
+(add-to-list 'desktop-globals-to-save 'ywb-kbd-macro)
+;;;###autoload
+(defun ywb-install-kbd-macro (macro)
+  (interactive (list (completing-read "Install kbd macro(name): "
+                                      (mapcar 'car ywb-kbd-macro))))
+  (setq last-kbd-macro (cdr (assoc macro ywb-kbd-macro))))
+;;;###autoload
+(defun ywb-save-last-kbd-macro (macro)
+  (interactive "sName for last macro: ")
+  (add-to-list 'ywb-kbd-macro (cons macro (copy-sequence last-kbd-macro))))
+;;;###autoload
+(defun ywb-sort-lines-1 (reverse beg end predicate)
+  (save-excursion
+    (save-restriction
+      (narrow-to-region beg end)
+      (goto-char (point-min))
+      (sort-subr reverse 'forward-line 'end-of-line nil nil
+                 predicate))))
+;;;###autoload
+(defun ywb-org-table-sort-lines (reverse beg end numericp)
+  (interactive "P\nr\nsSorting method: [n]=numeric [a]=alpha: ")
+  (setq numericp (string-match "[nN]" numericp))
+  (org-table-align)
+  (save-excursion
+    (setq beg (progn (goto-char beg) (line-beginning-position))
+          end (progn (goto-char end) (line-end-position))))
+  (let ((col (org-table-current-column))
+        (cmp (if numericp
+                 (lambda (a b) (< (string-to-number a)
+                                  (string-to-number b)))
+               'string<)))
+    (ywb-sort-lines-1 reverse beg end
+                      (lambda (pos1 pos2)
+                        (let ((dat1 (split-string (buffer-substring-no-properties
+                                                   (car pos1) (cdr pos1))
+                                                  "\\s-*|\\s-*"))
+                              (dat2 (split-string (buffer-substring-no-properties
+                                                   (car pos2) (cdr pos2))
+                                                  "\\s-*|\\s-*")))
+                          (funcall cmp (nth col dat1) (nth col dat2)))))
+    (dotimes (i col) (org-table-next-field))))
+;; 在一个矩形区域内进行替换。没有找到 emacs 的命令
+;;;###autoload
+(defun ywb-replace-in-rectangle (beg end)
+  (interactive "r\n")
+  (let ((replace (query-replace-read-args "Replace string" nil)))
+    (apply-on-rectangle (lambda (s e)
+                          (setq s (progn (move-to-column s) (point))
+                                e (progn (move-to-column e) (point)))
+                          (replace-string (car replace) (cadr replace) nil s e))
+                        beg end)))
+;;;###autoload
+(defun ywb-html-preview-region (beg end)
+  (interactive "r")
+  (let ((file (make-temp-file "region-" nil ".html")))
+    (write-region beg end file)
+    (browse-url file)))
+(defvar wcy-rotate-text-definations
+  '(("[0-9]+" . (lambda (arg)
+                  (format "%d" (+ arg (string-to-number (match-string 0))))))
+    ("zero" "one" "two" "three" "four" "five" "six" "seven" "eight" "nine"))
+  "
+a list of ROT text defination. each element is a defination.
+element can be a list of string.
+element can be a cons. (REGEXP . func)
+if REGEXP matched, func is called with no args, return value is the next value.
+")
+
+(defun wcy-rotate-text-aux (arg)
+  (catch 'break
+    (mapc
+     #'(lambda (def)
+         (let ((regexp (if (functionp (cdr def))
+                           (car def)
+                         (mapconcat 'regexp-quote def "\\|")))
+               (func (if (functionp (cdr def))
+                         (cdr def)
+                       #'(lambda (arg)
+                           (let* ((len (length def))
+                                  (rest (member (match-string 0) def))
+                                  (pos (- len (length rest))))
+                             (format "%s" (nth (mod (+ pos arg) len) def)))))))
+           (if (re-search-forward regexp (line-end-position) t nil)
+               (throw 'break (funcall func arg)))))
+     wcy-rotate-text-definations)
+    nil))
+
+(defun wcy-rotate-text(arg)
+  (interactive "p")
+  (save-excursion
+    (let ((x (wcy-rotate-text-aux arg)))
+      (if x (replace-match x)))))
+;; 更新序号用。在写 metapost 文件时应该挺有用的。修改一大堆的数字还是很
+;; 讨厌的。
+;;;###autoload
+(defun ywb-sync-id (arg)
+  (interactive "p")
+  (let ((end (line-end-position))
+        col id)
+    (save-excursion
+      (when (re-search-forward "[0-9]+" (line-end-position) t)
+        (setq col (- (current-column) (- (match-end 0)
+                                         (match-beginning 0))))
+        (forward-line -1)
+        (move-to-column col)
+        (when (and (= (current-column) col)
+                   (looking-at "[0-9]+"))
+          (setq id (string-to-number (match-string 0)))
+          (while (and (progn (forward-line 1)
+                             (move-to-column col)
+                             (not (eobp)))
+                      (looking-at "[0-9]+"))
+            (delete-region (match-beginning 0) (match-end 0))
+            (insert (number-to-string (setq id (1+ id))))))))))
+(defun his-imenu()
+  "Call imenu, showing completions."
+  (interactive)
+  (setq unread-command-events (list 9))
+  (imenu (imenu-choose-buffer-index)))
+
+;;;_ , sudo find file
+(defvar find-file-root-prefix
+  (if (featurep 'xemacs)
+      "/[sudo/root@localhost]"
+    "/sudo:root@localhost:" )
+  "*The filename prefix used to open a file with `find-file-root'.")
+
+
+(defvar find-file-root-history nil
+  "History list for files found using `find-file-root'.")
+
+(defvar find-file-root-hook nil
+  "Normal hook for functions to run after finding a \"root\" file.")
+
+(defun find-file-root ()
+  "*Open a file as the root user.
+   Prepends `find-file-root-prefix' to the selected file name so that it
+   maybe accessed via the corresponding tramp method."
+  (interactive)
+  (require 'tramp)
+  (let* ( ;; We bind the variable `file-name-history' locally so we can
+         ;; use a separate history list for "root" files.
+         (file-name-history find-file-root-history)
+         (name (or buffer-file-name default-directory))
+         (tramp (and (tramp-tramp-file-p name)
+                     (tramp-dissect-file-name name)))
+         path dir file)
+
+    ;; If called from a "root" file, we need to fix up the path.
+    (when tramp
+      (setq path (tramp-file-name-path tramp)
+            dir (file-name-directory path)))
+
+    (when (setq file (read-file-name "Find file (UID = 0): " dir path))
+      (find-file (concat find-file-root-prefix file))
+      ;; If this all succeeded save our new history list.
+      (setq find-file-root-history file-name-history)
+      ;; allow some user customization
+      (run-hooks 'find-file-root-hook))))
+
+;;; my-utils.el end here

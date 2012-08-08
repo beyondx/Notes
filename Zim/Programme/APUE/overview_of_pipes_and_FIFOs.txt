@@ -1,0 +1,64 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-26T12:59:15+08:00
+
+====== overview of pipes and FIFOs ======
+Created Sunday 26 February 2012
+
+http://linux.die.net/man/7/pipe
+
+===== Description =====
+__Pipes__ and __FIFOs__ (also known as named pipes) provide **a unidirectional interprocess communication channel.** A pipe has a read end and a write end. Data written to the write end of a pipe can be read from the read end of the pipe.
+
+A pipe is created using __pipe(2)__, which creates a new pipe and returns** two file descriptors**, one referring to the read end of the pipe, the other referring to the write end. Pipes can be used to create a communication channel __between related processes__; see pipe(2) for an example.
+
+A FIFO (short for First In First Out) __has a name within the file system__ (created using __mkfifo(3)__), and is opened using __open(2)__. Any process may open a FIFO, assuming the **file permissions** allow it. The read end is opened using the __O_RDONLY__ flag; the write end is opened using the __O_WRONLY__ flag. See fifo(7) for further details. Note: although FIFOs have a pathname in the file system, I/O on FIFOs does not involve operations on the underlying device (if there is one).
+
+===== I/O on Pipes and FIFOs =====
+The only difference between pipes and FIFOs is the manner in which they are created and opened. Once these tasks have been accomplished, I/O on pipes and FIFOs has __exactly the same semantics__.
+
+If a process attempts to read from an empty pipe, then __read(2) will block__ until **data is available（但不一定是read所要求的字节数）**.  If a process attempts to write to a full pipe (see below), then __write(2) blocks__ until sufficient data has been read from the pipe to allow the write to complete.
+上述行为的前提是，管道的两端都没有关闭。
+
+Nonblocking I/O is possible by using the __fcntl(2) F_SETFL__ operation to enable the __O_NONBLOCK__ open file status flag.
+
+The communication channel provided by a pipe is__ a byte stream __: there is** no concept of message boundaries**.
+管道中传递的是**字节流**，而非有边界的消息。
+
+If__ all file descriptors__ referring to the write end of a pipe have been closed, then an attempt to read(2) from the pipe will see__ end-of-file__ (read(2) will return 0). If all file descriptors referring to the read end of a pipe have been closed, then a write(2) will cause a __SIGPIPE __signal to be generated for the calling process. If the calling process is ignoring this signal, then write(2) fails with the __error EPIPE__. 
+
+An application that uses pipe(2) and fork(2) should use suitable close(2) calls __to close unnecessary duplicate file descriptors;__ this ensures that end-of-file and SIGPIPE/EPIPE are delivered when appropriate.
+
+父进程和子进程__关闭各自不必要的文件描述符__是很必要的，假如子进程不关闭管道的写端fd[1]，则子进程的read就不会返回EOF。同理，父进程如果不关闭管道的读端fd[0]， 父进程的的write就不会收到EPIPE信号。这个规则同样适合于网络套接字，父进程应该关闭子进程使用的socketfd。
+
+It is not possible to apply lseek(2) to a pipe.
+
+===== Pipe Capacity(决定write是否阻塞) =====
+A pipe has a limited capacity. If the pipe is full, then a write(2) will block or fail, depending on whether the **O_NONBLOCK** flag is set (see below). Different implementations have different limits for the pipe capacity. Applications should not rely on a particular capacity: **an application should be designed so that a reading process consumes data as soon as it is available, so that a writing process does not remain blocked. **
+
+当read process 消费数据较慢时，在管道没有写满的情况下，由于write不会被阻塞，因此**read 进程**__可能一次读到多个write的数据__**(PIPE中的数据是基于字节流的)**。
+
+In Linux versions before 2.6.11, the capacity of a pipe was the same as the system page size (e.g., 4096 bytes on i386). Since Linux 2.6.11, the pipe capacity is __65536 bytes__.
+
+===== Pipe_buf(决定write的内容是否是原子的，一般远小于管道容量) =====
+POSIX.1-2001 says that __write(2)s of less than PIPE_BUF bytes must be atomic__: the output data is written to the pipe as a contiguous sequence. Writes of more than PIPE_BUF bytes may be nonatomic: the kernel may interleave the data with data written by other processes. POSIX.1-2001 requires PIPE_BUF to be at least __512 bytes__. (On Linux, PIPE_BUF is 4096 bytes.) The precise semantics depend on whether the file descriptor is nonblocking (O_NONBLOCK), whether there are multiple writers to the pipe, and on n, the number of bytes to be written:
+
+* O_NONBLOCK disabled, n <= PIPE_BUF
+     All n bytes are** written atomically**; write(2) **may block **if there is not room for n bytes to be written immediately 
+* O_NONBLOCK enabled, n <= PIPE_BUF
+     If there is room to write n bytes to the pipe, then write(2) succeeds immediately, writing all n bytes; otherwise write(2) fails, with errno set to__ EAGAIN__. 
+* O_NONBLOCK disabled, n > PIPE_BUF
+     The write is **nonatomic**: the data given to write(2) may be interleaved with write(2)s by other process; the** write(2) blocks** until n bytes have been written. 
+* O_NONBLOCK enabled, n > PIPE_BUF
+     If the pipe is full, then write(2) fails, with errno set to__ EAGAIN__. Otherwise, from 1 to n bytes may be written (i.e., a "partial write" may occur; the caller should check the return value from write(2) to see **how many bytes** were actually written), and these bytes may be interleaved with writes by other processes.
+
+write的内容是原子的意思是：__write的字符串不会与其它进程write的内容交错__。
+
+
+===== Open File Status Flags =====
+The only open file__ status flags __that can be meaningfully applied to a pipe or FIFO are **O_NONBLOCK and O_ASYNC**.
+
+Setting the O_ASYNC flag for the read end of a pipe causes a signal (SIGIO by default) to be generated when new input becomes available on the pipe (see fcntl(2) for details). On Linux, O_ASYNC is supported for pipes and FIFOs only since kernel 2.6.
+
+===== Portability notes =====
+On some systems (but not Linux), pipes are __bidirectional__: data can be transmitted in both directions between the pipe ends. According to POSIX.1-2001, pipes only need to be unidirectional. Portable applications should avoid reliance on bidirectional pipe semantics. 

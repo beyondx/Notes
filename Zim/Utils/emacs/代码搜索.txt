@@ -1,0 +1,12 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-16T20:21:41+08:00
+
+====== 代码搜索 ======
+Created Saturday 16 April 2011
+
+Cscope is very good as "find symbol" usage tool. It is very fast.
+Etags will show you your class hierarchy and will help you to find method definition/declaration.
+So these two tools are must have and they are independent.
+Cedet. It is kind of replacement of these two tools above with additional features. So your choice either cscope/etags or cedet.
+

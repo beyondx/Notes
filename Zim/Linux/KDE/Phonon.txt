@@ -1,0 +1,43 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-17T10:56:40+08:00
+
+====== Phonon ======
+Created Thursday 17 November 2011
+http://en.wikipedia.org/wiki/Phonon_%28KDE%29
+
+Phonon is the multimedia API provided by Qt and is the **standard abstraction** for handling multimedia streams within the KDE Software Compilation 4.
+
+Phonon was originally created to allow KDE 4 to be** independent of any single multimedia framework** such as **GStreamer **or **xine** and to provide a stable API for KDE 4's lifetime. It was done for various reasons: to create a simple KDE/Qt style multimedia API, to better support native multimedia frameworks on Windows and Mac OS X, and to fix problems of frameworks becoming unmaintained or having API or ABI instability. Subsequently it has been moved to __Qt__ and can therefore be used independent of KDE.
+
+For example, a file can be played in four lines of C++ code,[1] compared to 30 lines in the old audio framework (aRts)[2]
+	
+	//Phonon::MediaObject* media = new Phonon::MediaObject(this);//
+	//createPath(media, new Phonon::AudioOutput(Phonon::MusicCategory, this));//
+	//media->setCurrentSource(QUrl("/tmp/example.wav"));//
+	//media->play();//
+
+Phonon is not designed to have every conceivable multimedia feature, but rather as a simple way to perform **common functions** of media players. Developers that require more control over a backend than Phonon can provide are recommended to use the **native API** or the GStreamer API on systems for which it is available.[2]
+
+=== Contents ===
+
+
+    1 History
+    2 Features
+    3 References
+    4 External links
+
+=== History ===
+
+The idea behind Phonon started at aKademy 2004 in Ludwigsburg, where a new multimedia API had to be chosen to replace aRts. No consensus was reached but a few developers got together and decided to try to develop a new framework with multiple backends. The earliest version was called KDEMM (KDE MultiMedia) and was only supported by JuK and Amarok. Matthias Kretz continued to work single handed on the project as part of his university thesis, The project changed name once more but in February 2006 the name Phonon was finally chosen. The first official release was part of KDE 4.0 in January 2008, the same year Phonon was adopted by Qt and released as part of Qt 4.4. Even though support for Phonon in Qt will continue for the 4.x series, Qt has already** replaced **Phonon with QtMultimedia and QtMobility.[3][4][5]
+
+===== Features =====
+
+==== Phonon Work ====
+
+* Phonon interfaces with various backends with what developers call "engines"; each engine works with one specific backend. Each backend will let Phonon control **basic functions** like play, pause, and seek. Phonon will also support higher level functions such as how tracks fade into each other.[6]
+* Phonon can** switch **multimedia frameworks **on the fly**. The user can switch between frameworks even while listening to music, with only a slight pause during the switch. This change will also be system wide, affecting all applications that use Phonon, so changing frameworks will be much easier.
+* Using Solid, Phonon gives users greater control over accessories like headsets, speakers, and microphones. An example was given that one could have a VoIP conversation only be played through one's headset, but have all other sounds come out through speakers.[6]
+* Supported backends on most Unix-like systems are VLC, GStreamer, xine (deprecated) and MPlayer.[7]
+* Supported backends under Windows include DirectShow, VLC and MPlayer.
+* The backend supported under Mac OS X is QuickTime.

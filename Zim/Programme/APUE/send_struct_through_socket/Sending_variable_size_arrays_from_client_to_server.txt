@@ -1,0 +1,49 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-05T15:14:03+08:00
+
+====== Sending variable size arrays from client to server ======
+Created 星期日 05 六月 2011
+I'm in a peculiar situation, maybe somebody could offer some advice.
+
+I'm using ENet as my main mode of client/server communications at the moment, and have been able to successfully send basic structs back and forth for quite some time.
+
+I am now in the position, however, in which I need to send variable-sized arrays back and forth between these two machines. I'd like to store this information in a struct, as sending and receiving structs has been pretty easy so far. Sending structs with variable-sized arrays in them appears to be a lot different, though.
+
+Do I need to use some kind of object serialization or is there a simpler way to do this that I haven't discovered yet?
+
+The basic idea of the struct I need to send is as follows:
+
+typedef struct _StructName
+{
+    int arr_size;
+    int arr[];
+} StructName;
+
+
+
+Thanks in advance for any help or suggestions. 
+-----------------
+Structs are fixed-size, and you want to send a variable sized object, so no, you can't do it that way.
+
+The typical solution is simply this:
+
+Sender: send number of elements, then each element in turn.
+Receiver: read number of elements, then read that many elements in turn.
+
+I'm assuming you already have a method for determining which object type you're about to receive. 
+----------------------
+Yes, you need to serialize your array somehow. A prefix length followed by the data is common. (You don't need to go full stateless object network serialization, though, just serializing this particular type would be fine)
+-------------------------
+Rather than being terribly specific at this hour, I thought I'd give a handful of random advice --
+
+Firstly, be aware of struct padding and packing; become familiar with your compiler's "packing" directive. Using Microsoft's compiler, I believe it's goes something like #pragma pack(push) #pragma pack(1) <struct definitions> <pragma pack(pop). Eventually you'll have to implement proper serialization for versioning and portability, but until then you can at least avoid sending padding bytes. Also, order your data from the largest datatype down in your structs (and be aware that is the order the variables are initialized in if you have constructors with parameter lists. Keep in mind that such "unnatural" alignment makes the structs less performant to access, so it's probably worth having a packed version for network transmission, and an unpacked version to perform calculations against.
+
+When you do get to serialization, you can send data very efficiently -- say, packing a value of 1-50 in 6 bits, or a Boolean value in just 1. Or maybe by compressing the message payload. It takes some work to extract, but in general you're going to expect to get about 10 full network updates over the WWW per second, and the clients have what is effectively forever to decode messages.
+
+The Decorator pattern is very useful in building up packets or file IO, look into it.
+
+Message size is somewhat of a trade-off against latency -- that is, the longer you spend waiting for enough data to fill a message to the brim, its that much longer the receiver has to wait for fresh data. It may be worth implementing some kind of timer that will cut off the current message if its been waiting around too long.
+
+Most systems use two primary streams, on UDP-based for fast-paced game data, and a second TCP-based for data which is not time-sensitive, such as chat text, score updates, etc. 
+

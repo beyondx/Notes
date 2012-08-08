@@ -1,0 +1,152 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-17T00:43:21+08:00
+
+====== mysql ======
+Created Monday 17 October 2011
+
+MySQL Tutorial: Install, Create DB and Table, Insert and Select Records
+
+This MySQL jumpstart guide will get you running quickly on the basics. This explains how to install MySQL, create a sample database, create a table, insert records into the table, and select records from the table.
+
+===== 1. Install and Configure MySQL =====
+
+Go to the MySQL download page, and select your appropriate platform to download the latest version of MySQL community server.
+
+* If you are installing on RedHat based distro (for example: CentOS), follow this article: Install MySQL on Linux using rpm
+* You can also use yum groupinstall to install the MySQL Database group.
+* If you want to install MySQL along with the other components of the LAMP stack (Apache, and PHP), follow this article: How to install or upgrade LAMP
+
+===== 2. Create MySQL Database =====
+
+Once MySQL is installed, connect to it using MySQL root user and create the database as shown below.
+
+**# mysql -u root -p**
+**Enter password:**
+**mysql>**
+
+After connecting as MySQL root user, execute the following command from the “mysql> ” prompt to create a database.
+
+The following command will create the database called “thegeekstuff”.
+
+**mysql> create database thegeekstuff**
+
+Use “show databases” command to verify that the database was created successfully.
+
+**mysql> show databases;**
+**+--------------------+**
+**| Database           |**
+**+--------------------+**
+**| information_schema |**
+**| mysql              |**
+**| thegeekstuff       |**
+**+--------------------+**
+**3 rows in set (0.00 sec)**
+
+
+===== 3. Create MySQL Table =====
+
+**Connect **to the newly created database using “use” command before you can perform any operation in the database.
+
+To connect to the database, do the following.
+
+**mysql> use thegeekstuff;**
+**Database changed**
+
+The following example creates a employee table.
+
+**create table employee (**
+**id INT AUTO_INCREMENT PRIMARY KEY,**
+**name varchar(20),**
+**dept varchar(10),**
+**salary int(10)**
+**)**__;__
+
+When you copy-paste the above create table command in the “mysql> ” prompt, it will display the continuation prompt “->” starting from the 2nd line, which indicates that the command is still not over. The end of a SQL command is identified by a **semi-colon**.
+
+**mysql> create table employee (**
+**    -> id INT AUTO_INCREMENT PRIMARY KEY,**
+**    -> name varchar(20),**
+**    -> dept varchar(10),**
+**    -> salary int(10)**
+**    -> );**
+**Query OK, 0 rows affected (0.00 sec)**
+
+You can also use any one of the following data types.
+
+* dcode** SMALLINT**
+* mcode **MEDIUMIN**
+* project_start **DATE**
+* loggedon** TIME**
+
+Do the following to view all the tables available in the database.
+
+**mysql> show tables;**
+**+------------------------+**
+**| Tables_in_the geekstuff |**
+**+------------------------+**
+**| employee               |**
+**+------------------------+**
+**1 row in set (0.00 sec)**
+
+To view the table //description,// do the following.
+
+**mysql> desc employee;**
+**+--------+-------------+------+-----+---------+----------------+**
+**| Field  | Type        | Null | Key | Default | Extra          |**
+**+--------+-------------+------+-----+---------+----------------+**
+**| id     | int(11)     | NO   | PRI | NULL    | auto_increment |**
+**| name   | varchar(20) | YES  |     | NULL    |                |**
+**| dept   | varchar(10) | YES  |     | NULL    |                |**
+**| salary | int(10)     | YES  |     | NULL    |                |**
+**+--------+-------------+------+-----+---------+----------------+**
+**4 rows in set (0.01 sec)**
+
+===== 4. Insert Records into a Table =====
+
+Use the following sample insert commands to insert some records to the employee table. While inserting values to //all //the columns in the table, you don’t need to specify the column name. Just specify the values in the same sequence as the column names.
+
+**insert into employee values(100,'Thomas','Sales',5000);**
+**insert into employee values(200,'Jason','Technology',5500);**
+**insert into employee values(300,'Mayla','Technology',7000);**
+**insert into employee values(400,'Nisha','Marketing',9500);**
+**insert into employee values(500,'Randy','Technology',6000);**
+
+To insert values only to specific columns, you should specify the// column names //as shown below.
+
+**mysql> insert into employee(name,dept) values('Ritu', 'Accounting');**
+**Query OK, 1 row affected (0.01 sec)**
+
+Note: You can also upload data from a text file to MySQL database using **mysqlimport **command.
+
+===== 5. Query Records from a Table =====
+
+To view all the records from a table, use the following select statement.
+http://www.thegeekstuff.com/2011/10/mysql-tutorial-basics/?utm_source=feedburner&utm_medium=email&utm_campaign=Feed%3A+TheGeekStuff+%28The+Geek+Stuff%29
+**mysql> select * from employee;**
+**+-----+--------+------------+--------+**
+**| id  | name   | dept       | salary |**
+**+-----+--------+------------+--------+**
+**| 100 | Thomas | Sales      |   5000 |**
+**| 200 | Jason  | Technology |   5500 |**
+**| 300 | Mayla  | Technology |   7000 |**
+**| 400 | Nisha  | Marketing  |   9500 |**
+**| 500 | Randy  | Technology |   6000 |**
+**| 501 | Ritu   | Accounting |   NULL |**
+**+-----+--------+------------+--------+**
+**6 rows in set (0.00 sec)**
+
+To view only a specific columns from a table, specify the column names in the select command.
+
+**mysql>  select name, dept from employee;**
+
+The following select statement has a where condition which displays the employee records who belong to Technology department and getting a salary >= 7000.
+
+**mysql> select * from employee where dept = 'Technology' and salary >= 6000;**
+**+-----+--------+------------+--------+**
+**| id  | name   | dept       | salary |**
+**+-----+--------+------------+--------+**
+**| 300 | Mayla  | Technology |   7000 |**
+**| 500 | Randy  | Technology |   6000 |**
+**+-----+--------+------------+--------+**
+**2 rows in set (0.00 sec)**

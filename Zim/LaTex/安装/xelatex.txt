@@ -1,0 +1,261 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-21T15:24:59+08:00
+
+====== xelatex ======
+Created Sunday 21 August 2011
+
+在 Debian GNU/Linux 中安装 TeXLive  lj605 [at] bbs.ctex.org
+
+视频教程 http://v.youku.com/v_show/id_XMTc0NjIxNDk2.htm
+  Debian GNU/Linux 中 TeXLive 的中文支持 (见2楼)
+视频教程 http://v.youku.com/v_show/id_XMTc1MDc3MTI4.html
+
+
+===== 环境介绍 =====
+
+    系统: Debian GNU/Linux sid
+    版本: TeXLive 2009
+    字体: 文泉驿正黑
+
+==== 安装 TeXLive ====
+安装步骤:
+    准备. 安装 perl-tk.
+        $sudo aptitude install perl-tk
+    下载安装程序
+        $wget http://mirrors.xmu.edu.cn/CTAN/systems/texlive/tlnet/install-tl-unx.tar.gz
+    安装
+        $tar -zxvf install-tl-unx.tar.gz 
+    $cd install-tl*
+    $sudo ./install-tl --gui -location http://mirrors.xmu.edu.cn/CTAN/systems/texlive/tlnet/ 
+    安装 TeXworks.
+    $sudo aptitude install texworks  --without-recommends
+
+==== 测试 ====
+例子: helloword.tex,  使用 XeLaTeX 编译
+
+    \documentclass[UTF8,__nofonts__]{__ctexart__}
+    \setCJKmainfont{W\enQuanYi Zen Hei}
+    \begin{document}
+    Hello world! I am using \TeX.
+
+    大家好! 我在使用 \TeX.
+    \end{document}
+
+提示: 使用 \$fc-list :lang=zh-cn 查看系统安装的中文字体.
+注意：选项nofonts使ctexart使用系统字体
+
+例子: mathexample.tex,  使用 LaTeX 编译
+源文件:
+    \documentclass{article}
+    \begin{document}
+    Let $H$ be a Hilbert space, $C$ a closed bounded
+    conver subset of $H$, $T$ is nonexpansive self map
+    of $C$. Suppose that as $n\to\infty$, $a_{n,k}\to0$
+    for each $k$, and $\gamma_n=
+    \sum_{k=0}^\infty(a_{n,k+1}-a_{n,k})^+\to0$.
+    Then for each $x$ in $C$, $A_nx=\sum_{k=0}^\infty
+    a_{n,k}T^kx$ converges weakly to a fixed point of $T$.
+    $$\lim_{n\to\infty}x_n\  {\rm\exists}\iff
+    \limsup_{n\to\infty}x_n=\liminf_{n\to\infty}x_n.$$
+    \end{document}
+
+===== 管理宏包 =====
+
+    $sudo tlmgr --gui
+
+The Comprehensive TeX Archive Network (CTAN) 镜像
+
+    http://tug.ctan.org/tex-archive/
+    http://ftp.ctex.org/mirrors/CTAN/
+    http://mirrors.xmu.edu.cn/CTAN/
+    http://oss.ustc.edu.cn/CTAN/
+
+===== 常用网站: =====
+
+    TUG (the TeX user group)  http://www.tug.org
+    CTeX 论坛 http://bbs.ctex.org
+    华东师范大学数学系 LaTeX 科技排版网页http://www.math.ecnu.edu.cn/~latex/
+    LaTeX 编辑部http://zzg34b.w3.c361.com/index.html
+
+
+
+===== Debian GNU/Linux 中 TeXLive 的中文支持 =====
+
+===== 环境介绍 =====
+
+    系统: Debian GNU/Linux sid
+    版本: TeXLive 2009
+    演示文稿: beamer 宏包
+    字体: 文泉驿正黑
+    locale: LANG=zh\_CN.UTF-8
+
+===== 管理: =====
+
+    $sudo tlmgr --gui
+
+确保已经安装: collection-langcjk, collection-xetex, ctex, xecjk
+
+==== LaTeX 的中文支持 ====
+
+    CCT, 天元TeX
+    CJK
+    XeTeX XeLaTeX
+    ctex, xeCJK 宏包
+
+例子: helloword.tex, __使用 XeLaTeX 编译__.
+
+    \documentclass{article}
+    \usepackage{fontspec}
+    \XeTeXlinebreaklocale "zh" % 针对中文进行断行
+    \setmainfont{WenQuanYi Zen Hei}
+    \begin{document}
+    Hello world! I am using \TeX.
+
+    大家好! 我在使用 \TeX.
+    \end{document}
+
+提示: 使用
+
+    $fc-list :lang=zh-cn
+查看系统安装的中文字体.
+http://wiki.ubuntu.org.cn/免费中文字体
+
+例子: ctex.tex 使用 XeLaTeX 编译.
+
+    \documentclass[UTF8,nofonts]{ctexart}
+    \setCJKmainfont{WenQuanYi Zen Hei}
+    \begin{document}
+    Hello world! I am using \TeX.
+
+    大家好! 我在使用 \TeX.
+
+    \zihao{1} 一号字体: \TeX 是一种排版工具
+
+    \end{document}
+
+===== Adobe 字体 =====
+
+AdobeSongStd-Light.otf
+AdobeFangsongStd-Regular.otf
+AdobeHeitiStd-Regular.otf
+AdobeKaitiStd-Regular.otf
+
+下载: Adobe Reader 9.1 Font Packs - Chinese Simplified
+里面有宋体和黑体.
+
+    $sudo mkdir /usr/share/fonts/adobe 
+
+把otf字体文件复制到 /usr/share/fonts/adobe
+
+    $sudo cp Adobe*.otf /usr/share/fonts/adobe/
+    $sudo fc-cache -fsv 
+    $ fc-list | grep Adobe
+
+例子: adobefont.tex, 使用 XeLaTeX 编译.
+
+    \documentclass[UTF8,adobefonts]{ctexart}
+    \begin{document}
+    默认字体 default fonts \TeX 是一种排版工具 \\
+    {\bfseries 粗体 bold  \TeX 是一种排版工具}\\
+    {\songti 宋体  songti \TeX 是一种排版工具}\\
+    {\heiti 黑体  heiti \TeX 是一种排版工具}\\
+    {\kaishu 楷书  kaishu \TeX 是一种排版工具}\\
+    {\fangsong 仿宋  fangsong \TeX 是一种排版工具}\\
+    \end{document}
+
+安装 CJK 字体 uming ukai (明体是__港台__字体)
+
+    $wget ftp://cle.linux.org.tw/pub2/tex/cjk/fonts/nsungt1/nsungt1-1.4.2.tar.gz
+    $wget ftp://cle.linux.org.tw/pub2/tex/cjk/fonts/nkait1/nkait1-1.4.2.tar.gz
+    $tar -jxvf  nsungt1-1.4.2.tar.gz
+    $tar -jxvf nkait1-1.4.2.tar.gz
+    $./nsungt1-1.4.2/install.sh
+    $./nkait1-1.4.2/install.sh
+
+注意: 普通用户安装, 而不是使用 root 用户安装.
+
+例子: nsung.tex,  使用 pdflatex 编译
+
+    \documentclass[12pt,a4paper]{article}
+    \usepackage{CJKutf8}
+    \begin{document}
+    \begin{CJK}{UTF8}{nsung}
+    \section{New Sung 新宋字型 \LaTeX\ CJK 測試}
+    晉太元中，武陵人，捕魚為業，緣溪行，忘路之遠近；忽逢桃
+    花林，夾岸數百步，中無雜樹，芳草鮮美，落英繽紛，漁人甚
+    異之。復前行，欲窮其林。林盡水源，便得一山。山有小口，
+    彷彿若有光，便捨船，從口入。
+    . . . . . .碁嫺。凃凉双崐喆峯酶酞肽脲腚釟迌堃韮。
+    角觸過骨。許功蓋測試。这里是简体字。许功盖测试。
+    這裡是日文：こんにちは 世界。
+    \end{CJK}
+    \end{document}
+
+
+
+例子: nkai.tex,  使用 pdflatex 编译
+
+    \documentclass[12pt,a4paper]{article}
+    \usepackage{CJKutf8}
+    \begin{document}
+    \begin{CJK}{UTF8}{nkai}
+    \section{New Kai 新中楷字型 \LaTeX\ CJK測試}
+    晉太元中，武陵人，捕魚為業，緣溪行，忘路之遠近；忽逢桃
+    花林，夾岸數百步，中無雜樹，芳草鮮美，落英繽紛，漁人甚
+    異之。復前行，欲窮其林。林盡水源，便得一山。山有小口，
+    彷彿若有光，便捨船，從口入。
+    . . . . . .碁嫺。凃凉双崐喆峯酶酞肽脲腚釟迌堃韮。
+    角觸過骨。許功蓋測試。这里是简体字。许功盖测试。
+    這裡是日文：こんにちは 世界。
+    \end{CJK}
+    \end{document}
+
+
+1,其余的adobe字体下载看这里
+http://bbs.ctex.org/viewthread.php?tid=47618&extra=page%3D2
+
+2,除参考ctex.pdf xecjk.pdf
+外还可以参考xetexmain.pdf 的 Typesetting Chinese
+还有这里 http://bbs.ctex.org/viewthread.php?tid=54661&extra=page%3D1
+
+3, 以 \setCJKmainfont{WenQuanYi Zen Hei} 正黑为默认字体有点怪.
+
+如果不用adobe的字体, 只用__文鼎和文泉驿__的字体, 那么简体字只有__宋, 楷, 黑__可用. 可以设置为
+
+    \documentclass[UTF8,nofonts]{ctexart}
+    \setCJKmainfont{AR PL SungtiL GB}
+    \setCJKfamilyfont{song}{AR PL SungtiL GB}
+    \setCJKfamilyfont{kai}{AR PL KaitiM GB}
+    \setCJKfamilyfont{hei}{WenQuanYi Zen Hei}
+    \begin{document}
+    Hello world! I am using \TeX.
+
+    默认字体 default fonts \TeX 是一种排版工具
+
+    {\bfseries 粗体 bold  \TeX 是一种排版工具}
+
+    \CJKfamily{song}
+    宋体  songti \TeX 是一种排版工具
+
+    \CJKfamily{kai}
+    楷书  kaishu \TeX 是一种排版工具
+
+    \CJKfamily{hei}
+    黑体  heiti \TeX 是一种排版工具
+
+
+    \end{document}
+
+复制代码
+这时ctex宏包里的
+
+    \songti
+    \heiti
+    \kaishu
+
+都无法使用,
+只能用相应的 \CJKfamily{}来设置字体. 这属于ctex帮助文档 ctex.pdf  版本号:v0.99b里说的
+
+    上面的字体在不同的字体选项下有不同的设置,不一定都有定义。
+4,     3中字体名称在其它发行版中可能不同, 请 fc-list :lang=zh-cn 查看相应的名称.

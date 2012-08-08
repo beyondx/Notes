@@ -1,0 +1,727 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-14T16:15:11+08:00
+
+====== Boost Serialization 库 ======
+Created Tuesday 14 February 2012
+
+http://www.ibm.com/developerworks/cn/aix/library/au-boostserialization/
+
+Arpan Sen, 独立作家
+简介： Boost C++ 库让编写优秀的代码变得很容易，但出了问题时该怎么办？本文将介绍 Boost Serialization 库，了解如何在您的代码中采用__序列化技术__，让以后的调试变得更容易。
+
+发布日期： 2012 年 1 月 04 日
+级别： 中级
+原创语言： 英文
+访问情况 ： 516 次浏览
+评论： 0 (查看 | 添加评论 - 登录)
+平均分 0 星 共 0 个评分 平均分 (0个评分)
+为本文评分
+
+===== 简介 =====
+
+当您熬了几个通宵才编出的程序突然在客户站点上崩溃时，您可能会感到束手无策，因为__没有测试用例__可用来帮您再现灾难现场，因此也就无法进行调试。这是很多人都很熟悉的场景，但对于此问题，人们关心的更多的是__如何解决它__？   只是__转储堆栈追踪信息__显然并不是一个好办法。您需要**深入了解代码的数据结构**并检查它们的值。
+
+Boost Serialization 是一个解决方案。__可以将程序内容转出到归档文件（文本或 XML 文件）中，并从该归档文件中恢复数据，重新生成一个崩溃之前的代码快照__。这听起来还不错吧？让我们接着往下看。
+
+Serialization 源来自标准 Boost 安装包（参阅 参考资料）。与其他 Boost 库不同的是，Serialization 并__不是一个只包含头文件的库，因此需要lianjie它__。为此，请参阅安装包中的构建说明（参阅 参考资料）。如果您喜欢利用现成的安装，请参见 boostpro（仍请参阅 参考资料）。在本文中，我使用的是 1.46.1 版本的 Boost ，并使用 gcc-4.3.4 编译代码。
+
+===== 使用了 Boost Serialization 的 Hello World =====
+
+在执行更重要的任务之前，我们先来验证一下概念。在以下的 清单 1 中，您会看到一个字符串，它的**值被转储到一个归档文件中**。在以下的 清单 2 中，将此归档文件的内容恢复，以验证此字符串的值是否与原来相符。
+
+清单 1. 将字符串内容保存到文本归档文件中
+
+				
+#include <boost/archive/text_oarchive.hpp> 
+#include <iostream> 
+#include <fstream> 
+
+void save() 
+{ 
+  std::ofstream file("archive.txt"); 
+  __boost::archive::text_oarchive__ oa(file); 
+  std::string s = "Hello World!\n"; 
+  oa << s; 
+} 
+
+int main()
+{
+    save();
+}
+
+
+现在将内容加载回来。
+
+清单 2. 将字符串的内容加载到文本归档文件中
+
+				
+#include <boost/archive/text_iarchive.hpp> 
+#include <iostream> 
+#include <fstream> 
+
+void load() 
+{ 
+  std::ifstream file("archive.txt"); 
+  __boost::archive::text_iarchive__ ia(file); 
+  std::string s;
+  ia >> s; 
+  std::cout << s << std::endl; 
+}
+
+int main()
+{
+    load();
+}
+
+
+不出所料，清单 2 的输出内容是 “Hello World”。
+
+现在，我们仔细看一下代码。Boost 创建了一个**文本归档文件**（一个文本文件），它含有需要转储的内容。为了转储这些内容，您需要创建了一个 text_oarchive。为了恢复内容，您还创建了一个 text_iarchive，并分别在头文件 text_oarchive.hpp 和 text_iarchive.hpp 中声明它。转储和恢复内容很直观，使用 << 和 >> 运算符，其工作原理非常__类似于流 I/O__，除了要将内容转储到文件中，然后过一段时间以后再从该文件中恢复。
+
+不过，您可能想只用一个 & 运算符完成转储和恢复操作，而不是使用上述的两个不同运算符。下面的 清单 3 显示了相关的使用方法。
+
+清单 3. 使用 & 运算符执行 “转储 - 恢复” 操作
+
+				
+#include <boost/archive/text_iarchive.hpp> 
+#include <boost/archive/text_oarchive.hpp> 
+#include <iostream> 
+#include <fstream> 
+
+void save() 
+{ 
+  std::ofstream file("archive.txt"); 
+  boost::archive::text_oarchive oa(file); 
+  std::string s = "Hello World!\n"; 
+**  oa & s; **// has same effect as oa << s;
+} 
+
+void load() 
+{ 
+  std::ifstream file("archive.txt"); 
+  boost::archive::text_iarchive ia(file); 
+  std::string s;
+ ** ia & s;** 
+  std::cout << s << std::endl; 
+}
+
+
+我们来看一下转储的文本文件：
+
+22 serialization::archive 9 13 Hello World!
+
+
+请注意，在以后的 Boost 版本中，文本文件的内容和格式可能有所不同，因此应用程序代码最好不要依赖于内部归档文件内容。
+
+===== 创建一个 XML 归档文件 =====
+
+如果您想使用 __XML 归档文件__，而不是文本归档文件，则必须包含来自 Boost 源的头文件 xml_iarchive.hpp 和 xml_oarchive.hpp。这些头文件声明或定义了 XML 归档文件语义。但是，该 “转储 - 恢复” 操作与应用于文本归档文件的 “转储 - 恢复” 操作仍有些微不同之处：**需要将数据打包到一个名为 BOOST_SERIALIZATION_NVP 的宏中**。下面的 清单 4 提供了相关的代码。
+
+清单 4. 从 XML 归档文件执行 “转储 - 恢复” 操作
+
+				
+#include <boost/archive/xml_iarchive.hpp> 
+#include <boost/archive/xml_oarchive.hpp> 
+#include <iostream> 
+#include <fstream> 
+
+void save() 
+{ 
+  std::ofstream file("archive.xml"); 
+  boost::archive::xml_oarchive oa(file); 
+  std::string s = "Hello World!\n"; 
+  __oa & BOOST_SERIALIZATION_NVP(s);__ 
+} 
+
+void load() 
+{ 
+  std::ifstream file("archive.xml"); 
+  boost::archive::xml_iarchive ia(file); 
+  std::string s;
+  __ia & BOOST_SERIALIZATION_NVP(s); __
+  std::cout << s << std::endl; 
+}
+
+
+清单 5 显示了 XML 归档文件的内容。变量名可充当标记 (<s>Hello World!</s>)。
+
+清单 5. XML 归档文件的内容
+
+				
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<!DOCTYPE boost_serialization>
+<boost_serialization signature="serialization::archive" version="9">
+<s>Hello World!</s>
+</boost_serialization>
+
+
+===== 还有其他哪些内容可以序列化？ =====
+
+以下内容才是精华。无需额外编码，就可以将 C++ 编程语言中的很多元素序列化。__类、类指针、数组和 Standard Template Library (STL) 集合__都可以被序列化。下面的 清单 6 提供了一个包含数组的样例。
+
+清单 6. 对整数数组执行 “转储 - 恢复” 操作
+				
+#include <boost/archive/xml_oarchive.hpp> 
+#include <boost/archive/xml_iarchive.hpp> 
+#include <iostream> 
+#include <fstream> 
+#include <algorithm>
+#include <iterator>
+
+void save() 
+{ 
+  std::ofstream file("archive.xml"); 
+  boost::archive::xml_oarchive oa(file); 
+  int array1[] = {34, 78, 22, 1, 910};
+  oa & BOOST_SERIALIZATION_NVP(array1); 
+} 
+
+void load() 
+{ 
+  std::ifstream file("archive.xml"); 
+  boost::archive::xml_iarchive ia(file); 
+  int restored[5]; // Need to specify expected array size
+  ia >> BOOST_SERIALIZATION_NVP(restored);
+ __ std::ostream_iterator<int> oi(std::cout, " ");__
+  std::copy(a, a+5, oi);
+} 
+
+int main() 
+{ 
+  save(); 
+  load(); 
+}
+
+
+这很简单。转储过程与字符串类一样；但在恢复过程中，需要指定预期的数组大小。否则，程序会崩溃。清单 7 提供了 清单 6 中代码的已转储的 XML 归档文件。
+
+清单 7. 通过数组转储创建的 XML 归档文件
+
+				
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<!DOCTYPE boost_serialization>
+<boost_serialization signature="serialization::archive" version="9">
+<array1>
+	<count>5</count>
+	<item>34</item>
+	<item>78</item>
+	<item>22</item>
+	<item>1</item>
+	<item>910</item>
+</array1>
+</boost_serialization>
+
+
+是否可以仅通过指定指针 int* restored 完成此操作并为您恢复数组？答案是否定的。必须每次都指定大小。如果认真回答此问题的话，答案是对基本类型的指针进行序列化非常复杂。
+
+===== 序列化 STL 集合 =====
+
+要序列化 STL 列表和向量，则必须了解每个 STL 类型，应用程序代码必须包含来自 Serialization 源的具有类似名称的头文件。对于列表，需要包含 boost/serialization/list.hpp 等等。请注意，对于列表和向量，在将信息加载回来的过程中，不需要提供任何大小和范围信息，这也是相对于具有相同功能的应用程序容器，人们更喜欢使用 STL 容器的另一个原因。清单 8 显示了用于序列化 STL 集合的代码。
+
+清单 8. 序列化 STL 集合
+
+				
+#include <boost/archive/xml_oarchive.hpp> 
+#include <boost/archive/xml_iarchive.hpp> 
+#include <boost/serialization/list.hpp>
+#include <boost/serialization/vector.hpp>
+#include <iostream> 
+#include <fstream> 
+#include <algorithm>
+#include <iterator>
+
+void save() 
+{ 
+  std::ofstream file("archive.xml"); 
+  boost::archive::xml_oarchive oa(file); 
+  float array[] = {34.2, 78.1, 22.221, 1.0, -910.88};
+  std::list<float> L1(array, array+5);
+  std::vector<float> V1(array, array+5);
+  oa & BOOST_SERIALIZATION_NVP(L1); 
+  oa & BOOST_SERIALIZATION_NVP(V1); 
+}
+
+void load() 
+{ 
+  std::ifstream file("archive.xml"); 
+  boost::archive::xml_iarchive ia(file); 
+  std::list<float> L2;
+  ia >> BOOST_SERIALIZATION_NVP(L2); // No size/range needed
+
+  std::vector<float> V2;
+  ia >> BOOST_SERIALIZATION_NVP(V2); // No size/range needed
+
+  std::ostream_iterator<float> oi(std::cout, " ");
+  std::copy(L2.begin(), L2.end(), oi);
+  std::copy(V2.begin(), V2.end(), oi);
+}
+
+
+清单 9 显示了一个 XML 归档文件。
+
+清单 9. 使用 STL 容器的转储归档文件
+
+				
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<!DOCTYPE boost_serialization>
+<boost_serialization signature="serialization::archive" version="9">
+<L1>
+	<count>5</count>
+	<item_version>0</item_version>
+	<item>34.200001</item>
+	<item>78.099998</item>
+	<item>22.221001</item>
+	<item>1</item>
+	<item>-910.88</item>
+</L1>
+<V1>
+	<count>5</count>
+	<item_version>0</item_version>
+	<item>34.200001</item>
+	<item>78.099998</item>
+	<item>22.221001</item>
+	<item>1</item>
+	<item>-910.88</item>
+</V1>
+</boost_serialization>
+
+
+回页首
+
+===== 序列化自己的类型 =====
+
+是否想序列化自己的类型？毫无疑问您是愿意的！我们将采用一个表示日期的结构作为一个简单的示例：
+
+typedef struct date { 
+   unsigned int m_day;
+   unsigned int m_month;
+   unsigned int m_year;
+} date; 
+
+
+要对某个类进行序列化，则必须__在类定义中定义一个名为 serialize 的方法__。在转储和恢复类的过程中会调用该方法。以下是对 serialize 方法的声明：
+
+    template<class Archive>
+    void serialize(Archive& archive, const unsigned int version)
+    {
+        //… your custom code here
+    }
+
+
+在第二段代码片段中，serialize 是一个模板函数，第一个参数应该是对 Boost 归档文件的引用。那么，XML 归档文件的代码会是什么样呢？请看以下代码：
+
+    template<class Archive>
+    void serialize(Archive& archive, const unsigned int version)
+    {
+        archive & BOOST_SERIALIZATION_NVP(m_day);
+        archive & BOOST_SERIALIZATION_NVP(m_month);
+        archive & BOOST_SERIALIZATION_NVP(m_year);
+    }
+
+
+下面的 清单 10 提供了完整代码。
+
+清单 10. 日期类型的 “转储 - 恢复”
+
+				
+#include <boost/archive/xml_oarchive.hpp> 
+#include <boost/archive/xml_iarchive.hpp> 
+#include <iostream> 
+#include <fstream> 
+
+typedef struct date { 
+    unsigned int m_day;
+    unsigned int m_month;
+    unsigned int m_year;
+
+    date( int d,  int m,  int y) : m_day(d), m_month(m), m_year(y) 
+    {}
+    date() : m_day(1), m_month(1), m_year(2000) 
+    {}
+    friend std::ostream& operator << (std::ostream& out, date& d) 
+    {
+        out << "day:" << d.m_day 
+              << " month:" << d.m_month
+	<< " year:" << d.m_year;
+        return out;
+    }
+    template<class Archive>
+    void serialize(Archive& archive, const unsigned int version)
+    {
+        archive & BOOST_SERIALIZATION_NVP(m_day);
+        archive & BOOST_SERIALIZATION_NVP(m_month);
+        archive & BOOST_SERIALIZATION_NVP(m_year);
+    }
+} date;
+
+void save() 
+{ 
+  std::ofstream file("archive.xml"); 
+  boost::archive::xml_oarchive oa(file); 
+  date d(15, 8, 1947);
+  oa & BOOST_SERIALIZATION_NVP(d); 
+} 
+
+void load() 
+{ 
+  std::ifstream file("archive.xml"); 
+  boost::archive::xml_iarchive ia(file); 
+  date dr;
+  ia >> BOOST_SERIALIZATION_NVP(dr); 
+  std::cout << dr;
+}
+
+
+请注意，除了定义 serialize 方法之外，并没有为了处理用户定义类型而执行任何特殊操作。以上代码运行正常，但有一个很明显的问题：可能需要序列化来自第三方的类型，而它们的类声明可能是无法修改的。对于这种情况，您__可以使用 serialize 的非侵入性（non-intrusive）版本，以便可以在类范围之外定义该方法__。下面的 清单11 显示了 date 类的非侵入性 serialize 方法。请注意，如果 serialize 方法已在全局范围内定义，该代码仍然有效；但是，好的编程实践是在相关命名空间内定义该方法。
+
+清单 11. serialize 方法的非侵入性版本
+
+				
+namespace boost {
+namespace serialization {
+
+template<class Archive>
+void serialize(Archive& archive, date& d, const unsigned int version)
+{
+    archive & BOOST_SERIALIZATION___NVP__(d.m_day);
+    archive & BOOST_SERIALIZATION_NVP(d.m_month);
+    archive & BOOST_SERIALIZATION_NVP(d.m_year);
+}
+
+} // namespace serialization
+} // namespace boost
+
+
+清单 12 显示了 date 类型的 XML 归档文件。
+
+清单 12. 用户定义类型的 XML 归档文件
+
+				
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<!DOCTYPE boost_serialization>
+<boost_serialization signature="serialization::archive" version="9">
+<d class_id="0" tracking_level="0" version="0">
+	<d.m_day>15</d.m_day>
+	<d.m_month>8</d.m_month>
+	<d.m_year>1947</d.m_year>
+</d>
+</boost_serialization>
+
+===== 处理类层次结构 =====
+
+类通常是从其他类派生的，因此您需要找到一种能够__在序列化派生类的同时序列化基类的方法__。对于基类和派生类，都必须定义 serialize 方法。另外，还需要调整派生类的 serialize 定义，如 清单 13 所示。
+
+清单 13. 序列化基类
+
+				
+template<class Archive>
+void serialize(Archive& archive, const unsigned int version)
+{
+     // serialize base class information
+     archive & boost::serialization::base_object<Base Class>(*this);
+     // serialize derived class members
+     archive & derived-class-member1;
+     archive & derived-class-member2;
+     // … 
+}
+
+
+直接在派生类的 serialize 方法中调用基类的 serialize 方法是一个很糟糕的想法。尽管能够这么做，但是无法追踪类版本控制（稍后讲述），或者无法消除生成的归档文件中的冗余。避免这种错误的一种推荐编码方式是在所有类中将 serialize 方法设置为 private，并在所有将要序列化的类中使用 friend class boost::serialization::access 声明。
+
+===== 通过基类指针转储派生类 =====
+
+通过指针转储派生类是完全有可能的；但是，该类和派生类都应该有各自的已定义的 serialize 方法。还有，您需要在转储和恢复过程中调用以下方法。
+
+<archive name>.register_type<derived-type name>( )
+
+
+假设 date 类是从一个名为 base 的类派生出来的。清单 14 显示了应该在 save 和 load 方法中加入哪些代码。
+
+清单 14. 使用基类指针实现序列化
+
+				
+void save() 
+{ 
+  std::ofstream file("archive.xml"); 
+  boost::archive::xml_oarchive oa(file); 
+  oa.register_type<date>( );
+  base* b = new date(15, 8, 1947);
+  oa & BOOST_SERIALIZATION_NVP(b); 
+} 
+
+void load() 
+{ 
+  std::ifstream file("archive.xml"); 
+  boost::archive::xml_iarchive ia(file); 
+  ia.register_type<date>( );
+  base *dr;
+  ia >> BOOST_SERIALIZATION_NVP(dr); 
+  date* dr2 = dynamic_cast<date*> (dr); 
+  std::cout << dr2;
+}
+
+
+在这里，在转储和恢复过程中使用了 base 指针。但序列化的实际上是 date 对象。在转储和恢复之前，已经在这两个类中注册了 date 类型。
+
+===== 在执行 “转储 - 恢复” 操作过程中使用对象指针 =====
+
+可以使用对象指针进行转储和恢复。这样做很有意思。您期望什么样的 XML 归档文件的内容？当然，转储指针值不会有问题。您需要转储实际对象，然后将其还原。此外，指向同一个对象的多个指针又该如何呢？如果 XML 归档文件具有同一个已转储对象的多个副本，那么显然不太好。Boost Serialization 的一大优势是无论在何处（包括用于指针），所用的语法几乎都是一样的。以下的 清单15 是 清单 10 的修改版。
+
+清单 15. 使用指针执行 “转储 - 恢复” 操作
+
+				
+void save() 
+{ 
+  std::ofstream file("archive.xml"); 
+  boost::archive::xml_oarchive oa(file); 
+  date* d = new date(15, 8, 1947);
+  std::cout << d << std::endl;
+  oa & BOOST_SERIALIZATION_NVP(d); 
+  // … other code follows
+} 
+
+void load() 
+{ 
+  std::ifstream file("archive.xml"); 
+  boost::archive::xml_iarchive ia(file); 
+  date* dr;
+  ia >> BOOST_SERIALIZATION_NVP(dr); 
+  std::cout << dr << std::endl;
+  std::cout << *dr;
+}
+
+
+请注意，在此清单中，d 和 dr 的值是不同的，但内容相同。清单 16 显示了 清单 15 代码的 XML 归档文件。
+
+清单 16. 使用指针的 XML 归档文件
+
+				
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<!DOCTYPE boost_serialization>
+<boost_serialization signature="serialization::archive" version="9">
+<d class_id="0" tracking_level="1" version="0" object_id="_0">
+	<d.m_day>15</d.m_day>
+	<d.m_month>8</d.m_month>
+	<d.m_year>1947</d.m_year>
+</d>
+</boost_serialization>
+
+
+现在，请考虑以下情况：将两个指针转储到同一个对象并观察用于相同对象的归档文件是什么样子的。清单 17 对 清单 15 中的代码稍微进行了一些修改。
+
+清单 17. 使用指针执行 “转储 - 恢复” 操作
+
+				
+void save() 
+{ 
+  std::ofstream file("archive.xml"); 
+  boost::archive::xml_oarchive oa(file); 
+  date* d = new date(15, 8, 1947);
+  std::cout << d << std::endl;
+  oa & BOOST_SERIALIZATION_NVP(d); 
+  date* d2 = d;
+  oa & BOOST_SERIALIZATION_NVP(d2); 
+  // … other code follows
+} 
+
+void load() 
+{ 
+  std::ifstream file("archive.xml"); 
+  boost::archive::xml_iarchive ia(file); 
+  date* dr;
+  ia >> BOOST_SERIALIZATION_NVP(dr); 
+  std::cout << dr << std::endl;
+  std::cout << *dr;
+  date* dr2;
+  ia >> BOOST_SERIALIZATION_NVP(dr2); 
+  std::cout << dr2 << std::endl;
+  std::cout << *dr2;
+}
+
+
+下面的 清单 18 提供了 清单 17 中代码的 XML 归档文件。观察如何处理第二个指针；此外，只有一个对象被转储。
+
+清单 18. 包含作为指针的 d2 的 XML 归档文件
+
+				
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<!DOCTYPE boost_serialization>
+<boost_serialization signature="serialization::archive" version="9">
+<d class_id="0" tracking_level="1" version="0" object_id="_0">
+	<d.m_day>15</d.m_day>
+	<d.m_month>8</d.m_month>
+	<d.m_year>1947</d.m_year>
+</d>
+<d2 class_id_reference="0" object_id_reference="_0"></d2>
+</boost_serialization>
+
+
+对于引用的处理方法与用户应用程序代码中一样。尽管如此，请注意，在恢复过程中，创建了两个独特的对象。因此，归档文件应该保存两个具有相同值的对象。与使用指针时的情况不同，以下是归档文件的内容，其中的 d2 是清单 17 中的一个引用（参见下面的 清单 19）。
+
+清单 19.包含作为 d 的引用 d2 的 XML 归档文件
+
+				
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<!DOCTYPE boost_serialization>
+<boost_serialization signature="serialization::archive" version="9">
+<d class_id="0" tracking_level="0" version="0">
+	<d.m_day>15</d.m_day>
+	<d.m_month>8</d.m_month>
+	<d.m_year>1947</d.m_year>
+</d>
+<d2>
+	<d.m_day>15</d.m_day>
+	<d.m_month>8</d.m_month>
+	<d.m_year>1947</d.m_year>
+</d2>
+</boost_serialization>
+
+
+===== 将 serialize 拆分成 save 和 load =====
+
+有时候，您不想使用同样的 serialize 方法来转储和恢复对象。在这种情况下，您可以将 serialize 方法拆分成两个方法，即 save 和 load，它们具有类似的签名。这两个方法都是之前定义的 serialize 方法的一部分。此外，需要添加 BOOST_SERIALIZATION_SPLIT_MEMBER 宏作为类定义的一部分。清单 20 显示了这些方法是什么样子。
+
+清单 20. 将 serialize 方法拆分成 save 和 load 方法
+
+				
+template<class Archive>
+void save(Archive& archive, const unsigned int version) const
+{
+//… 
+} 
+
+template<class Archive>
+void load(Archive& archive, const unsigned int version)
+{
+//…
+} 
+
+BOOST_SERIALIZATION_SPLIT_MEMBER( ) // must be part of class
+
+
+注意 save 方法签名后的 const。如果没有 const 限定符，该代码将无法编译。对于 date 类，清单 21 显示了这些方法现在是什么样子。
+
+清单 21. date 类的 save 和 load 方法
+
+				
+template<class Archive>
+void save(Archive& archive, const unsigned int version) const
+{
+    archive << BOOST_SERIALIZATION_NVP(m_day);
+    archive << BOOST_SERIALIZATION_NVP(m_month);
+    archive << BOOST_SERIALIZATION_NVP(m_year)
+} 
+
+template<class Archive>
+void load(Archive& archive, const unsigned int version)
+{
+    archive >> BOOST_SERIALIZATION_NVP(m_day);
+    archive >> BOOST_SERIALIZATION_NVP(m_month);
+    archive >> BOOST_SERIALIZATION_NVP(m_year)
+} 
+
+BOOST_SERIALIZATION_SPLIT_MEMBER( ) // must be part of class
+
+
+===== 了解版本控制 =====
+
+serialize、save 和 load 的方法签名都使用无符号整数版本作为最后一个参数。这些数字有什么用？随着时间变化，类的内部变量名称可能发生变化，添加新的字段或移除已有字段，等等。这是软件开发过程中的自然进程，除了归档文件仍然保存着关于数据类型原有状态的信息。为了规避这个问题，需要使用版本号。
+
+我们举一个 date 类的例子。假设您在 date 类中引入一个名为 m_tag、类型为 string 的字段。该类以前的版本以版本 0 的形式在归档文件中转储，如 清单 12 所示。下面的 清单 22 显示了该类的 load 方法（您可能已经使用了serialize，但这里使用 load 提供了更清晰的实现）。
+
+清单 22. 使用版本控制处理更新的类字段
+
+				
+template<class Archive>
+void load(Archive& archive, const unsigned int version)
+{
+    archive >> BOOST_SERIALIZATION_NVP(m_day);
+    archive >> BOOST_SERIALIZATION_NVP(m_month);
+    archive >> BOOST_SERIALIZATION_NVP(m_year);
+    if (version > 0) 
+         archive >> BOOST_SERIALIZATION_NVP(m_tag);
+} 
+
+
+很明显，合理使用版本控制可以让该代码与早先版本软件中的旧归档文件一起使用。
+
+
+===== 使用共享指针 =====
+
+共享指针是一项经常使用且功能极其强大的编程技术。再次强调，Boost Serialization 一个主要优势在于能轻松__将共享指针序列化__，并保持目前所知的语法不变。唯一要注意的是，必须在应用程序代码中包含 boost/serialization/shared_ptr.hpp 头文件。从修改 清单 15 并使用 boost::shared_ptr 指针代替普通指针开始。代码如下面的 清单 23 所示。
+
+清单 23. 使用共享指针执行 “转储 - 恢复” 操作
+
+				
+void save() 
+{ 
+  std::ofstream file("archive.xml"); 
+  boost::archive::xml_oarchive oa(file); 
+  boost::shared_ptr<date> d (new date(15, 8, 1947));
+  oa & BOOST_SERIALIZATION_NVP(d); 
+  // … other code follows
+} 
+
+void load() 
+{ 
+  std::ifstream file("archive.xml"); 
+  boost::archive::xml_iarchive ia(file); 
+  boost::shared_ptr<date> dr;
+  ia >> BOOST_SERIALIZATION_NVP(dr); 
+  std::cout << *dr;
+}
+
+
+序列化搞定了一切？还没有。关于 Serialization 支持什么，不支持什么，还有一些使用限制。例如，如果指向栈对象的指针的转储早于实际对象，那么 Boost Serialization 就会崩溃。需要先转储对象，然后才能转储指向对象的指针（请注意，指针可以单独转储，不需要先转储对象）。参见 清单 24 中的示例：
+
+清单 24. 指向栈对象的指针需要在实际对象之后转储
+
+				
+void save() 
+{ 
+  std::ofstream file("archive.xml"); 
+  boost::archive::xml_oarchive oa(file); 
+  date d(15, 8, 1947);
+  std::cout << d << std::endl;
+  date* d2 = &d;
+  oa & BOOST_SERIALIZATION_NVP(d); 
+  oa & BOOST_SERIALIZATION_NVP(d2); 
+} 
+
+void load() 
+{ 
+  std::ifstream file("archive.xml"); 
+  boost::archive::xml_iarchive ia(file); 
+  date dr;
+  ia >> BOOST_SERIALIZATION_NVP(dr); 
+  std::cout << dr << std::endl;
+  date* dr2;
+  ia >> BOOST_SERIALIZATION_NVP(dr2); 
+  std::cout << dr2 << std::endl;
+}
+
+
+在此清单中，无法在 d 之前转储 d2。如果查看 XML 归档文件，就会很清楚这一点：d2 作为 d 的一个引用进行转储的（参见 清单 25）。
+
+清单 25. 在 XML 归档文件中，对象及其指针均被转储
+
+				
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<!DOCTYPE boost_serialization>
+<boost_serialization signature="serialization::archive" version="9">
+<d class_id="0" tracking_level="1" version="0" object_id="_0">
+	<d.m_day>15</d.m_day>
+	<d.m_month>8</d.m_month>
+	<d.m_year>1947</d.m_year>
+</d>
+<d2 class_id_reference="0" object_id_reference="_0"></d2>
+</boost_serialization>
+
+
+如果有多个指针指向同一个对象，Serialization 会使用 class_id_reference 将指针与原对象关联起来（每个对象都有一个唯一的类 ID）。原对象的每个后续指针都会将 object_id_reference 改成 _1、_2，以此类推。
+
+
+===== 结束语 =====
+
+本文到这就结束了。您已经了解了 Boost Serialization 究竟是什么；如何创建和使用文本与 XML 归档文件；以及还有如何转储和恢复普通的旧的数据类型（STL 集合、类、类指针、共享指针和数组）。本文还简单介绍了如何使用序列化和版本控制来处理类的层次结构。序列化是一个功能强大的工具。在代码中，可以通过对序列化进行善加利用使调试变得更轻松。

@@ -1,0 +1,41 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-23T10:11:03+08:00
+
+====== python自动发送服务器信息到邮箱 ======
+Created Sunday 23 October 2011
+
+#!/usr/bin/env python2.4
+# filename:email_sta.py
+#coding=utf-8
+ 
+import smtplib, mimetypes
+from email.MIMEText import MIMEText
+from email.MIMEMultipart import MIMEMultipart
+from email.MIMEImage import MIMEImage
+msg = MIMEMultipart()
+msg['From'] = "severs"
+msg['To'] = 'linuxsa'
+msg['Subject'] = 'servers_status'
+ 
+#添加邮件内容
+txt = MIMEText("company server information")
+msg.attach(txt)
+ 
+#添加二进制附件
+fileName = r'/App/alert/SH/server_msg.txt'
+ctype, encoding = mimetypes.guess_type(fileName)
+if ctype is None or encoding is not None:
+    ctype = 'application/octet-stream'
+maintype, subtype = ctype.split('/', 1)
+att1 = MIMEImage((lambda f: (f.read(), f.close()))(open(fileName, 'rb'))[0], _subtype = subtype)
+att1.add_header('Content-Disposition', 'attachment', filename = fileName)
+msg.attach(att1)
+ 
+#发送邮件
+smtp = smtplib.SMTP()
+smtp.connect('smtp.163.com:25')
+smtp.login('xxxx', '*****')
+smtp.sendmail('xxxx@163.com', 'yyyy@163.com', msg.as_string())
+smtp.quit()
+print 'Mail sent successfully'

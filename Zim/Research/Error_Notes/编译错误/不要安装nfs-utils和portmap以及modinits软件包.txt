@@ -1,0 +1,8 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-22T11:06:09+08:00
+
+====== 不要安装nfs-utils和portmap以及modinits软件包 ======
+Created Wednesday 22 February 2012
+
+由于busybox没有安装nfs工具包(目前还没解决)，所以在ltib的package list中不要选择上面的三个软件包。

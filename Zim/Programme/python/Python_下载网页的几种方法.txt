@@ -1,0 +1,128 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-05T15:00:06+08:00
+
+====== Python 下载网页的几种方法 ======
+Created 星期二 05 七月 2011
+http://blog.csdn.net/sding/article/details/5538065
+总结下，Python 下载网页的几种方法
+
+1
+
+ 
+
+ fd = urllib2.urlopen(url_link)
+
+ data = fd.read()
+
+ 这是最简洁的一种，当然也是Get的方法
+
+ 
+
+2
+
+通过GET的方法
+
+def GetHtmlSource(url):
+
+    try:
+   
+        htmSource = ''
+       
+        req = urllib2.Request(url)
+      
+        fd = urllib2.urlopen(req,"")
+       
+        while 1:
+            data = fd.read(1024)
+            if not len(data):
+                break
+           
+            htmSource += data
+
+
+        fd.close()
+ 
+        del fd
+        del req
+       
+        htmSource = htmSource.decode('cp936')
+
+        htmSource = formatStr(htmSource)
+        
+        return htmSource
+       
+    except socket.error, err:
+       
+        str_err =  "%s" % err
+        return ""
+
+ 
+
+3
+
+ 通过GET的方法
+
+def GetHtmlSource_Get(htmurl):
+
+    htmSource = ""
+   
+    try:
+       
+        urlx = httplib.urlsplit(htmurl)
+        conn = httplib.HTTPConnection(urlx.netloc)
+        conn.connect()
+        conn.putrequest("GET", htmurl, None)
+       
+        conn.putheader("Content-Length", 0)
+        conn.putheader("Connection", "close")
+        conn.endheaders()
+       
+        res = conn.getresponse()
+        htmSource = res.read()
+       
+    except Exception(), err:
+        trackback.print_exec()
+        conn.close()
+       
+       
+    return htmSource
+
+   
+
+通过POST的方法
+def GetHtmlSource_Post(getString):
+
+    htmSource = ""
+   
+    try:
+        url = httplib.urlsplit("http://app.sipo.gov.cn:8080")
+        conn = httplib.HTTPConnection(url.netloc)
+        conn.connect()
+        conn.putrequest("POST", "/sipo/zljs/hyjs-jieguo.jsp")
+        conn.putheader("Content-Length", len(getString))
+        conn.putheader("Content-Type", "application/x-www-form-urlencoded")
+        conn.putheader("Connection", " Keep-Alive")
+        conn.endheaders()
+
+        conn.send(getString)
+        f = conn.getresponse()
+        if not f:
+            raise socket.error, "timed out"
+       
+        htmSource = f.read()
+
+        f.close()
+
+        conn.close()
+        
+        return htmSource
+       
+    except Exception(), err:
+       
+        trackback.print_exec()
+        conn.close()
+       
+       
+    return htmSource
+

@@ -1,0 +1,71 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-31T17:11:05+08:00
+
+====== Qt学习之路(15)Qt标准对话框之QFileDialog ======
+Created Monday 31 October 2011
+
+原创作品，允许转载，转载时请务必以超链接形式标明文章 原始出处 、作者信息和本声明。否则将追究法律责任。http://devbean.blog.51cto.com/448512/213414
+
+《Qt学习之路》已经写到了第15篇，然而现在再写下去却有点困难，原因是当初并没有想到会连续的写下去，因此并没有很好的计划这些内容究竟该怎样去写。虽然前面说过，本教程主要线路参考《C++ Gui Programming with Qt 4, 2nd Edition》，然而最近的章节由于原文是一个比较完整的项目而有所改变，因此现在不知道该从何写起。
+ 
+我并不打算介绍很多组件的使用，因为Qt有很多组件，各种组件用法众多，根本不可能介绍完，只能把API放在手边，边用边查。所以，对于很多组件我只是简单的介绍一下，具体用法还请自行查找(确切地说，我知道的也并不多，很多时候还是要到API里面去找)。
+ 
+下面还是按照我们的进度，从Qt的__标准对话框__开始说起。所谓标准对话框，其实就是Qt内置的一些对话框，比如文件选择、颜色选择等等。今天首先介绍一下QFileDialog。
+ 
+QFileDialog是Qt中用于文件打开和保存的对话框，相当于Swing里面的JFileChooser。下面打开我们前面使用的工程。我们已经很有先见之明的写好了一个打开的action，还记得前面的代码吗？当时，我们只是弹出了一个消息对话框(这也是一种标准对话框哦~)用于告知这个信号槽已经联通，现在我们要写真正的打开代码了！
+ 
+修改MainWindow的open函数：
+ 
+void MainWindow::open()
+{
+        QString path = __QFileDialog::getOpenFileName__(this, tr("Open Image"), ".", tr("Image Files(*.jpg *.png)"));
+        if(path.length() == 0) {
+                QMessageBox::information(NULL, tr("Path"), tr("You didn't select any files."));
+        } else {
+                __QMessageBox::information__(NULL, tr("Path"), tr("You selected ") + path);
+        }
+}
+ 
+编译之前别忘记include QFileDialog哦！然后运行一下吧！点击打开按钮，就会弹出打开对话框，然后选择文件或者直接点击取消，会有相应的消息提示。
+ 
+QFileDialog提供了很多__静态函数__，用于获取用户选择的文件。这里我们使用的是getOpenFileName(), 也就是“获取打开文件名”，你也可以查看API找到更多的函数使用。不过，这个函数的参数蛮长的，而且类型都是QString，并不好记。考虑到这种情况，Qt提供了另外的写法：
+ 
+        QFileDialog *fileDialog = new QFileDialog(this);
+        fileDialog->setWindowTitle(tr("Open Image"));
+        fileDialog->setDirectory(".");
+        fileDialog->__setFilter__(tr("Image Files(*.jpg *.png)"));
+        if(fileDialog->exec() == __QDialog::Accepted__) {
+                QString path = fileDialog->selectedFiles()[0];
+                QMessageBox::information(NULL, tr("Path"), tr("You selected ") + path);
+        } else {
+                QMessageBox::information(NULL, tr("Path"), tr("You didn't select any files."));
+        }
+ 
+不过，这两种写法虽然功能差别不大，但是弹出的对话框却并不一样。getOpenFileName()函数在Windows和MacOS X平台上提供的是本地的对话框，而QFileDialog提供的始终是Qt自己绘制的对话框(还记得前面说过，Qt的组件和Swing类似，也是自己绘制的，而不都是调用系统资源API)。
+ 
+为了说明QFileDialog::getOpenFileName()函数的用法，还是先把函数签名放在这里：
+ 
+QString QFileDialog::getOpenFileName (
+          QWidget * parent = 0,
+          const QString & caption = QString(),
+          const QString & dir = QString(),
+          const QString & filter = QString(),
+          QString * selectedFilter = 0,
+          Options options = 0 )
+ 
+第一个参数parent，用于指定父组件。注意，很多Qt组件的构造函数都会有这么一个parent参数，并提供一个默认值0；
+ 
+第二个参数caption，是对话框的标题；
+ 
+第三个参数dir，是对话框显示时默认打开的目录，"." 代表程序运行目录，"/" 代表当前盘符的根目录(Windows，Linux下/就是根目录了)，也可以是平台相关的，比如"C:\\"等；
+ 
+第四个参数filter，是对话框的__后缀名过滤器__，比如我们使用"Image Files(*.jpg *.png)"就让它只能显示后缀名是jpg或者png的文件。如果需要使用多个过滤器，使__用";;"分割__，比如"JPEG Files(*.jpg);;PNG Files(*.png)"；
+ 
+第五个参数selectedFilter，是默认选择的过滤器；
+ 
+第六个参数options，是对话框的一些参数设定，比如只显示文件夹等等，它的取值是__enum QFileDialog::Option__，每个选项可以使用 | 运算组合起来。
+ 
+如果我要想选择多个文件怎么办呢？Qt提供了getOpenFileNames()函数，其返回值是一个QStringList。你可以把它理解成一个只能存放QString的List，也就是STL中的list<string>。
+ 
+好了，我们已经能够选择打开文件了。保存也是类似的，QFileDialog类也提供了保存对话框的函数**getSaveFileName**，具体使用还是请查阅API。

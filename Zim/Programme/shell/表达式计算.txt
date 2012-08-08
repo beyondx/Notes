@@ -1,0 +1,36 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-22T10:43:30+08:00
+
+====== 表达式计算 ======
+Created Thursday 22 December 2011
+
+
+[geekard@geekard ~]$ unset kk; echo __((kk++))__
+bash: syntax error near unexpected token `('
+[geekard@geekard ~]$ echo__ $((++kk))__; echo $kk
+1
+1
+[geekard@geekard ~]$ unset kk; echo __$((kk++))__; echo $kk
+0
+1
+[geekard@geekard ~]$ unset k;i=$((__k__+1));echo $i
+1
+[geekard@geekard ~]$ unset k;i=$((__$k__+1));echo $i
+1
+[geekard@geekard ~]$ unset i;i=$((__i__+1));echo $i
+1
+[geekard@geekard ~]$ unset i;i=$((__$i__+1));echo $i
+1
+[geekard@geekard ~]$ 
+
+
+
+[geekard@geekard ~]$ echo $((kk++))
+0
+[geekard@geekard ~]$ echo $kk
+1
+[geekard@geekard ~]$ unset kk
+[geekard@geekard ~]$ echo $((++kk))
+1
+[geekard@geekard ~]$ 

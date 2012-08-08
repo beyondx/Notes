@@ -1,0 +1,386 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T19:02:47+08:00
+
+====== gdb ======
+Created Sunday 27 March 2011
+
+文章内容：
+
+1.背景介绍
+2.程序中常见的bug分类
+3.程序调试器(如gdb)有什么用
+4.段错误(Segmental fault)介绍
+5.gdb调试入门
+ 
+一、背景介绍
+
+这篇文章主要介绍开源的程序调试器(gdb)的入门知识，目的是为unix/linux环境的编程新手能够快速学会使用gdb的重要命令，同时也是对我使用gdb的一个经验总结。
+本文假设你能使用简单的unix/linux命令并能用gcc(GNU C Compiler， GNU C 语言编译器)编译程序，当然有编程经验更好。：）
+为帮助你理解和操作，我将使用我遇到过的真实事例来演示使用gdb调试有缺陷(bug)的程序过程，你看过这篇笔记后能自己动手练一下最好。
+
+二、程序中常见的缺陷(bug)分类
+
+程序(编译型程序，perl、python，php等脚本程序除外)中常见的bug通常分为两类： 语法错误和逻辑错误，或者编译时错误和运行是错误。
+
+语法错误(编译时错误)是我们在编写源代码时没有按照相关的语言规范(如ANSI C标准)导致编译时出错，编译失败。这种错误的检查和调试一般是比较简单和直接的：因为编译器(如gcc)通常会
+明确告诉你错误的原因和大致的范围(注意不一定是准确的错误行)。例如下面的一个简单demo.c程序的第8行缺失了一个分号，gcc指示第10行前少了一个分号。这就是一个典型的语法错误。
+geekard@geekard:~/test$ cat -n demo.c 
+     1	#include<stdio.h>
+     2	
+     3	int
+     4	main(){
+     5		
+     6		int n；
+     7
+     8		printf("the n is:%c\n", n)
+     9		
+     10		return 0;
+     11	}
+geekard@geekard:~/test$ gcc demo.c -o demo
+demo.c: In function ‘main’:
+demo.c:10: error: expected ‘;’ before ‘return’
+
+添加了分号再编译一次，这下没有出现问题，运行程序的结果如下：
+geekard@geekard:~/test$ ./demo 
+the n is:6680564
+ 
+另外注意这个程序中的变量n，我定义其为整型变量但并没有对其初始化赋值，这就是一个逻辑错误：编译器不会指示这个错误，只有在实际运行或测试时才能发现。
+这个小程序只是一个故意的编造，但在实际编程中无论你多高明，经验多丰富，难免会在此处犯些小错误(想想吧：当你需要编写或维护一个成千上万行的代码，这种小概率事件就是确定事件了，：）)，而通常这些错误又是那么的浅显而易于消除，但是手工“除虫”（debug），往往是效率低下且让人厌烦的，本文将就"段错误"这个内存访问越界的错误谈谈如何使用gdb快速定位这些"段错误"的语句。
+
+三、程序调试器(如gdb)有什么用？(参考自gdb的在线帮助手册, 可用命令：man gdb， 或 info gdb查看)
+
+程序调试器(如gdb)的主要目的是让你能够查看正在执行的程序其内部特性(如执行流程、变量值、函数调用、堆栈等)，也可以程序崩溃时刻或以前都发生了什么。
+
+Gdb对程序的调试能力主要体现在以下四个方面(当然不止这些):
+    . 启动你的程序，可以带任何影响其功能(或称行为)的参数。
+    . 能够使你的程序在指定条件下在指定的地方(断点)停止运行。
+    . 当你的程序在断点处停止时，你可以查看已执行的结果(如变量的值，函数之间的调用情况，执行到那一行代码，下一步该执行哪行代码)
+    . 改变你的程序中，你可以实验这种改变所带来的影响(如bug消除了，或者情况变得更糟糕)
+
+使用gdb，你可以调试C，C++，以及Modula-2语言编写的程序。
+
+四、段错误(Segmental fault)介绍
+
+在用C/C++语言写程序的时侯，内存管理的绝大部分工作都是需要我们来做的。实际上，内存管理是一个比较繁琐的工作，所以向java和c#等语言采用了内存自动回收机制，避免了内存泄漏。
+如果程序试图往内存地址0处写东西时，内核就会向其发送段错误信号，如果程序没有捕获该信号，默认的操作时内核终止该程序的运行，例如我写的一个myls程序就遭遇了这种情况：
+luck@geekard:~/codes/12.21$ ./myls -ld .
+longlist 1, typelist 0, dirlist 1, filename .
+Segmentation fault
+luck@geekard:~/codes/12.21$ 
+
+常见的段错误原因如下：
+1）往受到系统保护的内存地址写数据
+有些内存是内核占用的或者是其他程序正在使用，为了保证系统正常工作，所以会受到系统的保护，而不能任意访问.
+2）内存越界(数组越界，变量类型不一致等)
+
+下面我以上面的myls程序出现的错误为例介绍用gdb进行调试的方法和过程。
+
+五、gdb调试入门
+
+  5.1 调试前的准备
+
+我们首先要启动linux内核提供核心转储(core dump)机制：当程序中出现内存操作错误时，会发生崩溃并产生核心文件（core文件）。使用GDB可以对产生的核心文件进行分析，找出程序是在什么时候崩溃的和在崩溃之前程序都做了些什么。
+ 
+首先，你的Segmentation Fault错误必须要能重现（废话…）。然后，依参照下面的步骤来操作：
+（1）无论你是用Makefile来编译，还是直接在命令行手工输入命令来编译，都应该加上 -g 选项。如：
+
+luck@geekard:~/codes/12.21$ ls
+myls-0.0.c  myls-1.0.c  myls-2.0.c
+luck@geekard:~/codes/12.21$ gcc -g -o myls myls-0.0.c 
+luck@geekard:~/codes/12.21$ ls
+myls  myls-0.0.c  myls-1.0.c  myls-2.0.c
+
+加了-g选项后，gcc就会在生成的可执行文件(这里用-o myls表示输出(output)的可执行文件名时myls)里添加一些调试符号(debugging symbols)，有了这些调试符号后就可以在稍后用gdb调试时列出执行的程序的C源代码了。
+-g选项增大了文件体积，一般只是在刚开发出的程序调试时使用，当确定无误编译出实际使用的可执行文件时就不需要-g选项了。
+
+（2）一般来说，在默认情况下，在程序崩溃时，core文件是不生成的（很多Linux发行版在默认时禁止生成核心文件）。所以，你必须修改这个默认选项，在命令行执行：
+
+ulimit -c unlimited     //unlimited 表示不限制生成的core文件的大小。
+
+（3）运行你的程序，不管用什么方法，使之重现Segmentation Fault错误。
+
+luck@geekard:~/codes/12.21$ ./myls -ld .
+longlist 1, typelist 0, dirlist 1, filename .
+Segmentation fault (core dumped)
+
+（4）这时，你会发现在你程序同一目录下，生成了一个文件名为 core的文件，即核心文件。
+
+luck@geekard:~/codes/12.21$ ls
+core  myls  myls-0.0.c  myls-1.0.c  myls-2.0.c
+luck@geekard:~/codes/12.21$ 
+
+（5）用GDB调试它,在命令行执行：
+
+luck@geekard:~/codes/12.21$ gdb ./myls   或者先启动gdb然后在gdb命令提示符中输入这两个文件：
+
+luck@geekard:~/codes/12.21$ gdb  //不带参数启动gdb调试程序
+GNU gdb (GDB) 7.2-ubuntu
+Copyright (C) 2010 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.  Type "show copying"
+and "show warranty" for details.
+This GDB was configured as "i686-linux-gnu".
+For bug reporting instructions, please see:
+<http://www.gnu.org/software/gdb/bugs/>.
+(gdb) file ./myls                    //输入file命令和你的可执行文件名和路径，这里为当前目录下的myls文件
+Reading symbols from /home/luck/codes/12.21/myls...done.
+(gdb) r -ld ./                       //带参数(这里为 -ld ./)运行r(run)程序，这和在bash命令行上执行：./myls -ld ./效果时一致的。
+Starting program: /home/luck/codes/12.21/myls -ld ./
+longlist 1, typelist 0, dirlist 1, filename ./            //myls程序的输出
+
+Program received signal SIGSEGV, Segmentation fault.       //出错后退出
+0x0016e78f in vfprintf () from /lib/libc.so.6
+(gdb) 
+从这里我们还发现进程是由于收到了SIGSEGV信号而结束的。通过进一步的查阅文档(man 7 signal)，我们知道SIGSEGV默认handler的动作是打印”段错误"的出错信息，并产生Core文件。
+查看一下我的当前目录，果然有core文件。
+
+luck@geekard:~/codes/12.21$ ls
+core  myls  myls-0.0.c  myls-1.0.c  myls-2.0.c
+
+下面我们就用刚才生成的分段错误产生的核心转储文件（core）再次调试程序。接着上一步的(gdb) 提示符，输入以下命令：
+
+(gdb) core core       //输入core命令和分段错误产生的核心转储文件，这里为当前目录下的core文件
+A program is being debugged already.  Kill it? (y or n) y   //按y，重新调试
+[New Thread 24884]
+warning: Can't read pathname for load map: Input/output error.
+Reading symbols from /lib/libc.so.6...(no debugging symbols found)...done.
+Loaded symbols for /lib/libc.so.6
+Reading symbols from /lib/ld-linux.so.2...(no debugging symbols found)...done.
+Loaded symbols for /lib/ld-linux.so.2
+
+Core was generated by `./myls -ld .'.              //core文件记录了发生错误的程序执行的命令行参数
+Program terminated with signal 11, Segmentation fault.
+#0  0x002bb78f in vfprintf () from /lib/libc.so.6  //core文件记录了发生错误时程序的退出状态
+(gdb) 
+
+从标号为0的行我们并不能看出程序到底在哪出错,所以下一步需要确定发生错误前程序中函数之间的调用关系
+(gdb) backtrace    //显示程序的堆栈信息
+#0  0x0014f78f in vfprintf () from /lib/libc.so.6
+#1  0x0016f4dc in vsprintf () from /lib/libc.so.6
+#2  0x00157b4b in sprintf () from /lib/libc.so.6
+#3  0x08048c56 in finalprt (file=0x8a9b02b "..", dirlist=1, typelist=0, 
+    longlist=1) at myls-0.0.c:261
+#4  0x080487c3 in detailList (file=0xbfab684d ".", dirlist=1, typelist=0, 
+    longlist=1) at myls-0.0.c:132
+#5  0x08048712 in main (argc=3, argv=0xbfab4804) at myls-0.0.c:89
+(gdb) 
+
+可以看出myls程序的函数调用关系为：
+main() ---> detailList() ---> finalprt 
+然后在标号为0-2的行进入了系统的C库函数，所以产生错误的可能在标号3、4、5指明的函数中。
+我们先看一下最后调用finalprt()函数时可能发生错误的代码行：
+
+(gdb) frame 3    //上面以#开头的行称为帧(frame)，这里指定查看第3帧
+#3  0x08048c56 in finalprt (file=0x8a9b02b "..", dirlist=1, typelist=0, 
+    longlist=1) at myls-0.0.c:261
+261					sprintf(str, "%c%d	%d,%d  %d  %d  %s", filetype, permission, uid, gid, size, mdate, file);
+
+可以看到在调用sprintf()函数时可能发生了分段错误(由非法引用内存引起)，而sprintf()的原型为： int sprintf(char *str, const char *format, ...);
+最有可能引起错误的地方是其第一个参数：char *str,一个指向字符串数组的指针，我们先把疑点放在这，接下来看一下函数之间相互调用时传递的参数值和函数的内部变量值：
+(gdb) backtrace  full  //full参数表示完全显示函数之间相互调用时传递的参数值和函数的内部变量值
+#0  0x0014f78f in vfprintf () from /lib/libc.so.6
+No symbol table info available.
+#1  0x0016f4dc in vsprintf () from /lib/libc.so.6
+No symbol table info available.
+#2  0x00157b4b in sprintf () from /lib/libc.so.6
+No symbol table info available.
+#3  0x08048c56 in finalprt (file=0x8a9b02b "..", dirlist=1, typelist=0, 
+    longlist=1) at myls-0.0.c:261
+        str = 0x4d11faec <Address 0x4d11faec out of bounds>
+        flag = 65
+#4  0x080487c3 in detailList (file=0xbfab684d ".", dirlist=1, typelist=0, 
+    longlist=1) at myls-0.0.c:132
+        ptr = 0x8048e44 "longlist %d, typelist %d, dirlist %d, filename %s\n"
+        dirp = 0x8a9b008
+        direntp = 0x8a9b020
+#5  0x08048712 in main (argc=3, argv=0xbfab4804) at myls-0.0.c:89
+        file = 0xbfab684d "."
+        ptr = 0x8048d30 "U\211\345WVS\350O"
+        i = 3
+        j = 3
+        longlist = 1
+        dirlist = 1
+        typelist = 0
+请注意序号3中的内部变量str的值 <Address 0x4d11faec out of bounds>，这表示发生了数组越界，难怪发生了段错误！
+现在我们找到原因了：finalprt()中的第261行调用函数sprintf()时向其传递的第一个参数str发生里越界存取，于是内核终止程序的运行。
+
+下面我们要验证这个判断：在261处设置一个断点，程序运行到断点后单步执行，观察是否会发生错误。
+
+(gdb) stop                    //停止当前调试
+(gdb) break 261              //在第261行设置一个断点
+Breakpoint 1 at 0x8048bf1: file myls-0.0.c, line 261.
+(gdb) run  -ld ./           //带参数运行程序(myls)
+The program being debugged has been started already.
+Start it from the beginning? (y or n) y   //当然yes
+
+Starting program: /home/luck/codes/12.21/myls -ld ./
+longlist 1, typelist 0, dirlist 1, filename ./
+
+Breakpoint 1, finalprt (file=0x804c02b "..", dirlist=1, typelist=0, longlist=1)   //可以看到程序在第261行停止
+    at myls-0.0.c:261
+261					sprintf(str, "%c%d	%d,%d  %d  %d  %s", filetype, permission, uid, gid, size, mdate, file);
+
+(gdb) where                                //显示目前函数之间的调用情况与breaktrace命令功能相似
+#0  finalprt (file=0x804c02b "..", dirlist=1, typelist=0, longlist=1)
+    at myls-0.0.c:261
+#1  0x080487c3 in detailList (file=0xbffff830 "./", dirlist=1, typelist=0, 
+    longlist=1) at myls-0.0.c:132
+#2  0x08048712 in main (argc=3, argv=0xbffff6e4) at myls-0.0.c:89
+(gdb) printf "%d\n",filetype             //打印处函数中的变量filetype的值
+100
+(gdb) list                                //列出断点处前后的相关代码
+256	//			if(filetype == 'd')
+257					sprintf(str, "%s\n", file);
+258				break;
+259			case 0101:
+260	//			if(filetype == 'd')
+261					sprintf(str, "%c%d	%d,%d  %d  %d  %s", filetype, permission, uid, gid, size, mdate, file);
+262				break;
+263			case 0110:
+264	//			if(filetype == 'd')
+265					sprintf(str, "%s%c", file, filetype);
+(gdb) n                      //然后单步执行代码,立即发生了错误
+
+Program received signal SIGSEGV, Segmentation fault.
+0x0016e78f in vfprintf () from /lib/libc.so.6
+
+可见在线调试验证了我们的假设，的确时261行的sprintf语句有问题,下面我们看一下261所在的函数finalprt()中变量str的类型
+(gdb) list finalprt 
+225		*mdate_s = fstat.st_mtime;
+226		return 0;
+227	}
+228	
+229	/*this function prints all the information*/
+230	static char *finalprt(char *file, int dirlist, int typelist, int longlist){
+231	
+232		char *str;
+233		int flag = 0000;
+234		
+(gdb) 
+注意第232行的变量定义:str被错误的定义个指向char的指针，而sprintf()的第一个参数要求为一字符型数组的首地址,所以sprintf()调用时会发生内存越界的错误。
+
+接着考虑下去，以前用windows系统下的ie的时侯，有时打开某些网页，会出现“运行时错误”，这个时侯如果恰好你的机器上又装有windows的编译器的话，他会弹出来一个对话框，问你是否进行调试，如果你选择是，编译器将被打开，并进入调试状态，开始调试。
+Linux下如何做到这些呢？
+我们可以在要调试的程序中定义一个分段错误信号(SIGSEGV)的处理函数(handler),在该函数中中调用gdb，这样当段错误发生时程序就会自动启动gdb进行调试，一个简单的示例代码如下:
+/**
+ *段错误时启动调试
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <string.h>
+
+void
+dump(int signo){
+
+        char buf[1024];
+        char cmd[1024];
+        FILE *fh;
+
+        snprintf(buf, sizeof(buf), "/proc/%d/cmdline", getpid());  //取得进程的命令行文件地址
+        if(!(fh = fopen(buf, "r")))    //打开该文件
+                exit(0);
+        if(!fgets(buf, sizeof(buf), fh)) //将其内容读到buf数组中
+                exit(0);
+        fclose(fh);
+        if(buf[strlen(buf) - 1] == '\n') //删除独到的字符串中最后的还行符并保证字符串以空字符结尾
+                buf[strlen(buf) - 1] = '\0';
+        snprintf(cmd, sizeof(cmd), "gdb %s %d", buf, getpid());  //合并命令行参数
+        system(cmd);               //执行cmd字符窜 代表的命令
+
+        exit(0);
+}
+
+void
+dummy_function (void){       //测试函数
+
+        unsigned char *ptr = 0x00;
+        *ptr = 0x00;        //向内存中0x00地址写数据，产生段错误
+}
+
+int
+main (void)
+{
+        signal(SIGSEGV, &dump);  //捕获信号SIGSEGV，当接收到内核发送的SIGSEGV信号时调用处理函数dump()
+        dummy_function ();
+
+        return 0;
+}
+编译运行效果如下:
+luck@geekard test $ gcc -g -rdynamic f.c
+xiaosuo@geekard test $ ./a.out
+GNU gdb 6.5
+Copyright (C) 2006 Free Software Foundation, Inc.
+GDB is free software, covered by the GNU General Public License, and you are
+welcome to change it and/or distribute copies of it under certain conditions.
+Type "show copying" to see the conditions.
+There is absolutely no warranty for GDB.  Type "show warranty" for details.
+This GDB was configured as "i686-pc-linux-gnu"...Using host libthread_db library "/lib/libthread_db.so.1".
+
+Attaching to program: /home/xiaosuo/test/a.out, process 9563
+Reading symbols from /lib/libc.so.6...done.
+Loaded symbols for /lib/libc.so.6
+Reading symbols from /lib/ld-linux.so.2...done.
+Loaded symbols for /lib/ld-linux.so.2
+0xffffe410 in __kernel_vsyscall ()
+(gdb) bt
+#0  0xffffe410 in __kernel_vsyscall ()
+#1  0xb7ee4b53 in waitpid () from /lib/libc.so.6
+#2  0xb7e925c9 in strtold_l () from /lib/libc.so.6
+#3  0x08048830 in dump (signo=11) at f.c:22         
+#4  <signal handler called>
+#5  0x0804884c in dummy_function () at f.c:31
+#6  0x08048886 in main () at f.c:38
+第3个frame指示，发生错误的行为，f.c中的22行，即为*ptr = 0x00;行。
+
+好了，以上就是这篇笔记的主要内容，下面总结一下gdb的主要命令：
+
+
+ulimit -c unlimited          // generate core file (size no limited)
+
+gcc -g -o outPutName sourceCodeName.c  // option: -g open debug model
+
+gdb outPutName core // begain debuging
+or: 	gdb 
+	file  outPutName
+	core  core
+	list  [function]|[row-number]   //view source codes
+	break [function]|[row-number]   //set breakpoints
+	clear [function]|[row-number]   //clear breakpoints
+	r     [paramiters]              //run programme with params until breakpoint
+	n				//next programe line (after stopping)(don't setp into any functions)
+	c    				//continue until breakpoint
+	s				//step: execute next programe line(after stopping):step into any functions
+	bt    [full][frame-number]      //print backtrace of all stack frames ,with 'full' also prints the values of local variables
+	where  [full][frame-numbber]    //functions as bt
+	frame  [frame-number]           //display the line of frame-number
+	print  var-name|$var-number|$|$$ //display var-name, or the var-number
+	printf "...",var1,var2         //functions liking printf
+	help [command]			//view online help documents
+	quit    			//exit gdb
+
+//when gdb command-line not fellowing params, gdb reruns the last command.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,184 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-04T14:32:14+08:00
+
+====== python学习笔记之module && package ======
+Created Wednesday 04 January 2012
+http://arganzheng.iteye.com/blog/986301
+
+===== module =====
+
+__import只能导入模块，不能导入模块中的对象__（类、函数、变量等）。如一个模块A（A.py）中有个函数getName，另一个模块不能通过import A.getName将getName导入到本模块，只能用import A。如果想只导入特定的类、函数、变量则用from A import getName即可。
+
+import一个module时，会执行该module的所有方法，并且将该module添加到importing module的命名空间中。A module's body executes immediately__ the first time__ the module is imported in a given run of a program...An import statement creates__ a new namespace__ containing all the attributes of the module. 如：
+    fibo.py
+
+    # Fibonacci numbers module
+
+    def fib(n):    # write Fibonacci series up to n
+        a, b = 0, 1
+        while b < n:
+            print b,
+            a, b = b, a+b
+
+    def fib2(n): # return Fibonacci series up to n
+        result = []
+        a, b = 0, 1
+        while b < n:
+            result.append(b)
+            a, b = b, a+b
+        return result
+
+    print "EOF"
+
+    In [1]: import fibo   #第一次导入fibo模块，模块中的所有代码被执行一次。
+    EOF
+
+    In [2]: **import fibo   #再次导入时，不再执行模块文件中的代码**
+
+    In [3]: fibo.
+    fibo.__builtins__      fibo.__doc__           fibo.__hash__          fibo.__package__       fibo.__setattr__       fibo.fib               
+    fibo.__class__         fibo.__file__          fibo.__init__          fibo.__reduce__        fibo.__sizeof__        fibo.fib2              
+    fibo.__delattr__       fibo.__format__        fibo.__name__          fibo.__reduce_ex__     fibo.__str__           fibo.py                
+    fibo.__dict__          fibo.__getattribute__  fibo.__new__           fibo.__repr__          fibo.__subclasshook__  fibo.pyc               
+
+    In [3]: fibo.____name____
+    Out[3]: 'fibo'
+
+    In [4]: fibo.fib(100)
+    1 1 2 3 5 8 13 21 34 55 89
+
+    In [5]: fibo.fib2(100)
+    Out[5]: [1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89]
+
+    In [6]: **from fibo import fib  #将fib导入到当前命名空间，**__模块名称并没有__**导入到当前命名空间。**
+
+    In [7]: fib(100)
+    1 1 2 3 5 8 13 21 34 55 89
+
+    In [8]: fib2(100)
+    ---------------------------------------------------------------------------
+    NameError                                 Traceback (most recent call last)
+
+    /home/forrest/study/python/<ipython console> in <module>()
+
+    NameError: name 'fib2' is not defined
+
+    In [9]: from fibo import *
+
+    In [10]: fib2(100)
+    Out[10]: [1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89]
+
+会将fibo添加在当前module的名字空间，并且__执行fibo.py定义的函数__（定义函数表示将函数名添加到module的命名空间）这样就可以通过fibo访问fibo中定义的方法。并且会执行module中的statement。上面只执行一次，说明python只加载了一次。
+
+     
+下面这段话道出了python module的本质，其实也是整个python语言的本质——绑定。
+1. 变量定义：赋值邦定，对一个x = y    ==>定义一个变量x，他的值是y，并且将这个变量邦定在其命名空间上（如果是全局变量，那么是该变量所在module）。如果是函数内部变量，运行时才会执行，并且是邦定在函数自身的命名空间上。
+2. 函数定义：def functionName: 定义一个函数对象，并将其绑定它自身的命名空间中。
+3. 类定义：class clsName: 定义一个类，并将该类对象邦定在其命名空间中。
+    
+
+Attributes of a module object are normally bound by statements __in the module body__. When a statement in the body binds a variable (a global variable), what gets bound is an attribute of the **module object**. The normal purpose of a module body is exactly that of creating the module's attributes: def statements create and bind functions, class statements create and bind classes, and assignment statements can bind attributes of any type. 
+
+You can also bind and unbind module attributes outside the body (i.e., in other modules), generally using attribute reference syntax M.name (where M is any expression whose value is the module, and identifier name is the attribute name). For clarity, however, it's usually best to limit yourself to binding module attributes in the module's own body. 
+     
+
+===== package =====
+
+包通常总是一个目录，目录下为首的一个文件便是 __init__.py。然后是一些模块文件和目录，假如子目录中也有 __init_.py 那么它就是这个包的__子包__了。差不多就像这样吧：
+
+Package1/ 
+    __init__.py
+    Module1.py
+    Module2.py
+    Package2/ 
+       __init__.py
+       Module1.py
+       Module2.py
+
+我们可以就这样导入一个包：
+
+import Package1
+
+或者调入一个子模块和子包：
+
+from Package1 import Module1
+from Package1 import **Package2  #from...import形式可以导入子包、模块、模块中的符号。**
+
+import Packag1.Module1
+import Packag1.Package2  #import形式，只能导入**子包或者模块**，而不能导入**模块中的函数**。
+
+可以深入好几层包结构：
+
+from Package1.Package2 import Module1
+import Package1.Package2.Module1
+
+_init_.py文件
+
+The _init.py files are required to make Python treat the directories as containing packages. In the simplest case, __init.py can just be an empty file, but it can also execute initialization code for the package or set the __all_ variable, described later.
+
+_init.py 控制着__包的导入行为__。假如 __init_.py 为空，那么仅仅导入包是什么都做不了的。注意__无论是导入包还是导入包中的module，路径中的各包的__init__.py都会被执行__。
+
+
+>>> import Package1  # __#创建了一个新的命名空间，在该空间中执行包的__init__.py文件。__
+>>> Package1.Module1   #__但是该空间中并没有导入Module1，或并没有这个符号。__
+
+Traceback (most recent call last):
+ File "<pyshell#1>", line 1, in ? 
+ Package1.Module1
+
+AttributeError: 'module' object has no attribute 'Module1'
+
+我们需要在 _init_.py 里把 Module1 预先导入：
+
+import Module1  #最会将Module1导入到__所在的包空间__。
+
+测试：
+
+>>> import Package1   
+>>> Package1.Module1  #包空间中含有Module1符号。
+<module 'Package1.Module1' from 
+'Module.pyc'>
+
+_init.py 中还有一个重要的变量，叫做** __all__**。我们有时会使出一招**"全部导入"**，也就是这样：
+
+from PackageName import *     #前面已说了：无路是from还是import都会执行路径中各包的__init__.py文件(还是在**各包空间**)。
+
+这时 import 就会把注册在包 _init.py 文件中 __all_ 列表中的**子模块和子包**导入到**当前作用域**中来。比如：
+
+__all__ = ['Module1', 'Module2', 'Package2']
+
+测试：
+
+>>> from Package1 import *   #__将Package1的__init__.py中定义的符号以及其中__all__列表中定义的符号导入到当前的命名空间中。如果__init__.py中也导入了符号(用import或from...import..语句)，这些符号也将导入到当前空间中。__
+>>> Module2
+<module 'Package1.Module2' from 'Module.pyc'>
+
+_init_.py其实就是一个普通的python文件，它会在__package被导入或包中的子包、模块等被导入__时执行。
+
+print ">>>in package1.__init__.py"
+
+def say_hello():
+    print "Hi, my name is Forrest!"
+
+测试：
+
+In [1]: import package1   #导入包时，建立一个命名空间，在其中__init__.py文件。
+**>>>in package1.__init__.py**
+
+In [2]:** package1.say_hello() **  #该包定义的函数。__可以在__init__.py文件中定义属于该包的符号__。
+Hi, my name is Forrest!
+
+__多级package——_init_.py依次被执行__
+
+In [1]: import package1.package2    **#路径中各个包的__init__.py都将会在各自的包空间执行，但是只有最后的package2空间被保留**。使用路径形式时，package1的__init__.py中__不必__导入package2符号或将其放到__all__中。
+
+<<<in package1.__init__.py>>>
+<<<in package1.package2.__init__.py>>>
+
+In [4]: **package1.package2**.foo_bar()
+foobar!
+
+将package/_init_.py改成如下：
+
+print "<<<in package1.__init__.py>>>"

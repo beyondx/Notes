@@ -1,0 +1,448 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-30T13:43:59+08:00
+
+====== 11. 第12章 二叉查找树 ======
+Created Saturday 30 July 2011
+
+推荐在看算法导论的这一章之前先看看严蔚敏老师在《数据结构》上的二叉查找树。
+
+整体来说二叉查找树不难，就是插入和删除节点时让人纠结，我就是在删除节点时各种纠结了。
+
+二叉树执行基本操作的时间与树的高度成正比。
+
+首先说下二叉查找树的性质：
+
+设x为二叉查找树中的一个结点。如果y是x的左子树中的一个结点，则key[y]<=key[x];如果y是x的右子树的一个结点，则key[y]>=key[x]。
+
+注意这个性质，和堆对比下，还是有区别的，并且这个性质表示二叉查找树的根节点的左子树中所有结点都小于根结点，所有右子树的结点都大于根结点。所以根据这个性质，可以用中序访问二叉查找数来实现从小大到排列。
+
+ 
+
+首先看看这个二叉查找树(P151图12-1(a))：
+{{./chazhaoshu1_thumb.png}}
+chazhaoshu1
+
+图1
+
+按中序遍历结果为：
+
+2->3->5->5->7->8
+
+接下来说说二叉查找树的几个操作：
+
+SEARCH:查找关键字等于key的结点
+
+MINIMUM:找出关键字最小的结点
+
+MAXIMUM:找出关键字最大的结点
+
+SUCCESSOR:找出结点x的后继y
+
+INSERT:在二叉查找树中插入结点z
+
+DELETE:在二叉查找树中删除结点z
+
+里面就INSERT和DELETE麻烦一些。
+
+首先逐步分析代码：
+
+①.BST的数据结构：
+
+
+	
+
+typedef struct Node{
+            int key;
+            Node *lchild, *rchild, *parent;
+            }Node, *BSTree;
+
+②.BST的中序遍历：
+
+根据BST的性质，对于一个根结点x，所以比x小的结点都在x的左子树中，所有比x大的结点都在x的右子树中，并且没一个结点都满足这个性质，所以可以利用中序遍历，按从小到大的顺序输出这个BST。
+
+代码如下：
+
+
+// 递归版本
+            Node * BSTreeSearch(BSTree T, int k)
+            {
+            if(T == NULL || k == T->key)
+            return T;
+            if(k < T->key)
+            return BSTreeSearch(T->lchild, k);
+            else
+            return BSTreeSearch(T->rchild, k);
+            }
+            // 非递归版本
+            BSNode * IterativeBSTreeSearch(BSTree T, int k)
+            {
+            while(T != NULL && k != T->key)
+            {
+            if(k < T->lchild->key);
+            x = T->lchild;
+            else
+            x = T->rchild;
+            }
+            return x;
+            }
+
+③.BST的最大值与最小值：
+
+依然是利用BST的左子树结点，根结点，右子树结点的大小关系，不解释。。。
+
+代码如下：
+
+Node * BSTreeMinimum(BSTree T)
+            {
+            while(T->lchild != NULL)
+            T = T->lchild;
+            return T;
+            }
+             
+            Node * BSTreeMaximum(BSTree T)
+            {
+            while(T->rchild != NULL)
+            T = T->rchild;
+            return T;
+            }
+
+下面开始有些麻烦了。
+
+④.BST的后继：
+
+这是其伪代码：
+
+
+TREE-SUCCESSOR(x)
+            1  if right[x] ≠ NIL
+            2      then return TREE-MINIMUM (right[x])
+            3  y ← p[x]
+            4  while y ≠ NIL and x = right[y]
+            5      do x ← y
+            6         y ← p[y]
+            7  return y
+
+根据其后继的特性，结点x的后继是具有大于key[x]中的关键字最小者的那个结点。
+
+第1~2行，x的右子树的结点都是大于key[x]的结点，所以如果x有右子树，则在右子树中寻找最小值
+
+第3~6行，如果没有右子树，则其后继y,是x的父亲结点的第一个右子树(考虑为什么呢？根据特性：结点x的后继是具有大于key[x]中的关键字最小者的那个结点。因为x没有右子树，所以这时，按中序遍历的x下一个结点即后继，应该是这样一个子树的根结点y，x的祖先是其左孩子，这样，y就大于其左子树所有结点，并且因为x是y的左子树中最大的结点了)。这个说着肯定是云里雾里，还是看图分析最好了，依然利用上面的图1：
+{{./chazhaoshu1_thumb1.png}}
+chazhaoshu1
+
+叶子结点5的后继是根结点5.
+
+具体代码如下：
+
+
+	
+
+Node *BSTreeSuccessor(Node *x)
+            {
+            if(x->rchild != NULL)
+            return BSTreeMinimum(x->rchild);
+            Node *y = x->parent;
+            while(y != NULL && x == y->rchild)
+            {
+            x = y;
+            y = y->parent;
+            }
+            return y;
+            }
+
+⑤.BST的插入：
+
+比如要把结点z插入二叉查找数T中，分以下几步：
+
+1.将key[z]从根结点x开始比较，并用y记录x的父亲结点，直到到达最后一层某一叶节点比较完,此时y指向某一叶节点,x是NULL。
+
+2.如果此时y是NULL，则证明是空树，于是根结点就是z
+
+3.否则如果key[z]小于key[y]，则让left[y] = z；当key[z]大于或等于key[y]，则让right[y] = z。
+
+插入就是那么简单。
+
+看看伪代码，就是按这个步骤来的：
+
+
+TREE-INSERT(T, z)
+            1  y ← NIL
+            2  x ← root[T]
+            3  while x ≠ NIL
+            4      do y ←  x
+            5         if key[z] < key[x]
+            6            then x ← left[x]
+            7            else x ← right[x]
+            8  p[z] ← y
+            9  if y = NIL
+            10     then root[T] ← z              // Tree T was empty
+            11     else if key[z] < key[y]
+            12             then left[y] ← z
+            13             else right[y] ← z
+
+具体的代码如下：
+
+
+
+void BSTreeInsert(BSTree &T, int k)
+            {
+            Node *y = NULL;
+            Node *x = T;
+            Node *z = new Node;
+            z->key = k;
+            z->lchild = z->parent = z->rchild = NULL;//////////
+             
+            while(x != NULL)
+            {
+            y = x;
+             
+            if(k < x->key)
+            x = x->lchild;
+            else
+            x = x->rchild;
+            }
+             
+            z->parent = y;
+            if(y == NULL)
+            {
+            T = z;
+            }
+            else
+            if(k < y->key)
+            y->lchild = z;
+            else
+            y->rchild = z;
+            }
+
+⑥.BST的删除：
+
+比如要把二叉查找数T中的z结点删除掉，这是要分三种情况：
+
+1.z没有左子树和右子树：
+
+汗，这个就是直接删除z，把z的父亲结点parent[z]指向z的子树设置为NULL。
+{{./chazhaoshu2_thumb.png}}
+chazhaoshu2
+
+如图，直接删除z，并让结点12的右子树为NULL。
+
+2.z只有左子树或者只有右子树：
+
+这个是让z的子树与其父亲结点相连，删除z即可。
+{{./chazhaoshu3_thumb.png}}
+chazhaoshu3
+
+如图，此时直接删除z，并让z的子树20的父亲结点变成z的父亲结点15。
+
+3.z既有左子树又有右子树：
+
+这是先用SUCCESSOR找到z的后继y，因为y一定没有左子树(考虑为什么？下面解释)，所以可以删除y，并让y的父亲结点成为y的右子树的父亲结点(类似第2中情况)，并用y的key代替z的key。
+{{./chazhaoshu5_thumb.png}}
+chazhaoshu5
+
+如图,y的右子树7成为10的子树，并且y取代了z的未知。
+
+这是我们来考虑一个关键问题，y为何一定没有左子树？(习题12.2-5)
+
+答：因为y是z的后继，所以y是z的右子树中最小的一个结点，如果y还有左子树，则y的左子树中的结点一定比y小！
+具体代码如下：
+
+	
+
+Node* BSTreeDelete(BSTree T, Node *z)
+            {
+            Node *x, *y;
+            // z是要删除的节点,而y是要替换z的节点
+            if(z->lchild == NULL || z->rchild == NULL)
+            y = z;   // 当要删除的z至多有一个子树，则y=z；
+            else
+            y = BSTreeSuccessor(z);  // y是z的后继
+            if(y->lchild != NULL)
+            x = y->lchild;
+            else
+            x = y->rchild;
+            if(x != NULL)
+            x->parent = y->parent;  //如果y至多只有一个子树，则使y的子树成为y的父亲节点的子树
+            if(y->parent == NULL)   // 如果y没有父亲节点，则表示y是根节点，词典其子树x为根节点
+            T = x;
+            else if(y == y->parent->lchild)
+            // 如果y是其父亲节点的左子树，则y的子树x成为其父亲节点的左子树，
+            // 否则成为右子树
+            y->parent->lchild = x;
+            else
+            y->parent->rchild = x;
+            if(y != z)
+            z->key = y->key;
+            return y;
+            }
+
+下面是整个二叉查找树的实现：
+
+
+
+/*
+            * Author: Tanky Woo
+            * Blog:   www.WuTianQi.com
+            * Description: 《算法导论》第12章 BST
+            */
+            #include <iostream>
+            #define NULL 0
+            using namespace std;
+             
+            // ①
+            typedef struct Node{
+            int key;
+            Node *lchild, *rchild, *parent;
+            }Node, *BSTree;
+             
+            // ②
+            Node * BSTreeSearch(BSTree T, int k)
+            {
+            if(T == NULL || k == T->key)
+            return T;
+            if(k < T->key)
+            return BSTreeSearch(T->lchild, k);
+            else
+            return BSTreeSearch(T->rchild, k);
+            }
+             
+            /*
+             
+            BSNode * IterativeBSTreeSearch(BSTree T, int k)
+            {
+            while(T != NULL && k != T->key)
+            {
+            if(k < T->lchild->key);
+            x = T->lchild;
+            else
+            x = T->rchild;
+            }
+            return x;
+            }
+            */
+             
+            // ③
+            Node * BSTreeMinimum(BSTree T)
+            {
+            while(T->lchild != NULL)
+            T = T->lchild;
+            return T;
+            }
+             
+            Node * BSTreeMaximum(BSTree T)
+            {
+            while(T->rchild != NULL)
+            T = T->rchild;
+            return T;
+            }
+             
+            // ④
+            Node *BSTreeSuccessor(Node *x)
+            {
+            if(x->rchild != NULL)
+            return BSTreeMinimum(x->rchild);
+            Node *y = x->parent;
+            while(y != NULL && x == y->rchild)
+            {
+            x = y;
+            y = y->parent;
+            }
+            return y;
+            }
+             
+            // ⑤
+            void BSTreeInsert(BSTree &T, int k)
+            {
+            Node *y = NULL;
+            Node *x = T;
+            Node *z = new Node;
+            z->key = k;
+            z->lchild = z->parent = z->rchild = NULL;
+             
+            while(x != NULL)
+            {
+            y = x;
+             
+            if(k < x->key)
+            x = x->lchild;
+            else
+            x = x->rchild;
+            }
+             
+            z->parent = y;
+            if(y == NULL)
+            {
+            T = z;
+            }
+            else
+            if(k < y->key)
+            y->lchild = z;
+            else
+            y->rchild = z;
+            }
+             
+            // ⑤
+            Node* BSTreeDelete(BSTree T, Node *z)
+            {
+            Node *x, *y;
+            // z是要删除的节点,而y是要替换z的节点
+            if(z->lchild == NULL || z->rchild == NULL)
+            y = z;   // 当要删除的z至多有一个子树，则y=z；
+            else
+            y = BSTreeSuccessor(z);  // y是z的后继
+            if(y->lchild != NULL)
+            x = y->lchild;
+            else
+            x = y->rchild;
+            if(x != NULL)
+            x->parent = y->parent;  //如果y至多只有一个子树，则使y的子树成为y的父亲节点的子树
+            if(y->parent == NULL)   // 如果y没有父亲节点，则表示y是根节点，词典其子树x为根节点
+            T = x;
+            else if(y == y->parent->lchild)
+            // 如果y是其父亲节点的左子树，则y的子树x成为其父亲节点的左子树，
+            // 否则成为右子树
+            y->parent->lchild = x;
+            else
+            y->parent->rchild = x;
+            if(y != z)
+            z->key = y->key;
+            return y;
+            }
+             
+             
+             
+            void InBSTree(BSTree T)
+            {
+            if(T != NULL)
+            {
+            InBSTree(T->lchild);
+            cout << T->key << " ";
+            InBSTree(T->rchild);
+            }
+            }
+             
+             
+             
+            int main()
+            {
+            int m;
+            BSTree T = NULL;
+            for(int i=0; i<6; ++i)
+            {
+            cin >> m;
+            BSTreeInsert(T, m);
+            cout << "二叉查找树中序查找：";
+            InBSTree(T);
+            cout << endl;
+            }
+            cout << "删除根节点后：";
+            BSTreeDelete(T, T);
+            InBSTree(T);
+            }
+
+结果如图：
+{{./chazhaoshu.png}}
+OK,BST分析完了，这一章一定要搞懂，否则下一章的Red-Black-Tree就会一抹黑了~~
+
+在我独立博客上的原文：http://www.wutianqi.com/?p

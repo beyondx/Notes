@@ -1,0 +1,97 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-27T18:31:44+08:00
+
+====== My Idea Of The Django Blogging App™ ======
+Created Thursday 27 October 2011
+
+http://www.muhuk.com/2010/04/my-idea-of-the-django-blogging-app%E2%84%A2/
+
+I am not going to talk about yet another Django-based blogging engine in this post. There are a number of blogging apps which try to be like turn-key solutions, like a WordPress blog. I have skimmed through the code of many such apps, but haven’t used one yet. Some of them are really high quality apps. What I have in mind is somewhat different though. I would like an app that would allow me to build a blog that satisfies my projects specific requirements.
+
+Let me reiterate the last sentence. Having a Django-based blog just because Django is fashinable is a little dumb in my opinion. If Django-based X blogging engine suits you better than anything else, use it. Why not? But my personal choice of blogging engine is WordPress1. The value of a Django blogging app, for me, is in adding a blog to a Django project. And different projects might have different requirements. So my idea of a Django blogging app is one that is highly configurable and highly extendable.
+
+On the other hand I don’t need the convenience of clicking a checkbox on a polished UI. I can write a function. Or I don’t necessarily need it to, say, provide a navigation menu. There are apps that do that. Even if there wasn’t it shouldn’t be the blog app’s job. So I am not looking for an instant-blog. I have a Django app in my mind, nothing more.
+What Should Be Left Out
+
+Basically any feature that can be provided by another reusable app should be left out. Why should we re-implement something that is already done… and reviewed by others… and tested. Of course this doesn’t necessarily mean providing no convenience functions.
+
+    No admin. Because we already have one.
+    No theming. For the love of Flying Spaghetti Monster, you don’t need any theming other than what django.template offers. Pre-built themes are for turn-key solutions.
+    No comments or contact forms. (See django.contrib.comments and django-contact-form)
+    No official markup format (or formats). This can be handled in the templates without difficulty. But, maybe, pluggable content filters is a good idea. I haven’t made up my mind on this one entirely. It won’t use any markup format by default, that is for sure.
+
+What Should Be Included
+
+Remember, every project has a different set of needed features for its blog. Some need catagories, some need tags and some others need both. But it would end up as a disaster if we implemented each one of those features into a single app. Instead I think it should consist of many small apps that work together. But I wouldn’t want to end up having huge spaghetti of apps that all depend on one another, like Pinax does. A minimal amount of core apps2 and then everything else should be optional. By optional I mean you don’t have to install packages you won’t need.
+
+I think the components (apps) should be activated via adding to INSTALLED_APPS and configured with settings. I can’t think of any parameter that needs to be changed dynamically, so why not use the established way of doing configuration in Django.
+
+Two must have features for such a blogging app are previews and scheduled publishing. It is possible that you sometimes write a post quickly and publish it immediately. But I suppose nobody will say they don’t care about these two features.
+
+Built-in feeds and sitemaps are also nice to have.
+
+Multiple instances of this blogging app running on the same project? À la admin. I can’t make my mind on this one. Sure it would be a nice feature. But it could complicate the code. Peehaps too much for a not so common case.
+
+What do you think about the general idea? Are there any other must-have features? Would you be willing to learn a new app when you are already comfortable with another blogging app?
+
+1: Even though it’s written in the abomination called PHP. But since there are plugins for everything I don’t have to touch the code.
+
+2: One sounds like a good number, if possible.
+Bookmark and Share
+
+No related posts.
+
+Tags: blogs, django, python, reusable
+
+This entry was posted on Wednesday, April 28th, 2010 at 12:36 and is filed under Programming. You can follow any responses to this entry through the RSS 2.0 feed. Both comments and pings are currently closed.
+7 Responses to “My Idea Of The Django Blogging App™”
+
+    Matthias Kestenholz says:
+    28.04.2010 at 13:48
+
+    Oh yeah, there are other must-have features for something which wants to call itself a blog:
+
+    Receiving and sending pings, trackbacks and pingbacks.
+
+    Without these, it’s just another news app with commenting functionality. That’s not what a blog is all about.
+    Atamert Ölçgen says:
+    28.04.2010 at 13:56
+
+    Good points Matthias, I agree 100%.
+    Fantomas42 says:
+    28.04.2010 at 19:28
+
+    I totally agree with you when you said : “Why should we re-implement something that is already done… and reviewed by others… and tested. ” And I understand very well why you have choose WordPress, it is really powerfull, but a little bit to ugly for me to maintain.
+
+    My conception of a weblog application is really close of your. So that why you should check the release of my weblog application, and give me some feed back.
+
+    http://github.com/Fantomas42/django-blog-zinnia
+
+    @Matthias Kestenholz Pingback and trackbacks are a part of a blogging system, but not the essential. And some pluggable applications does it very well, for example :
+
+    http://github.com/svetlyak40wt/django-pingback
+
+    Sorry for my french !
+    Atamert Ölçgen says:
+    28.04.2010 at 22:12
+
+    @Fantomas42, Your app looks good. But it’s all-or-nothing this way. I would like to be able to choose a subset of available features. I’ll take a closer look later, though.
+    Josh says:
+    28.04.2010 at 22:39
+
+    I agree with your ideas for the most part. I’m of the persuasion that a lot of external dependencies make things more complicated than they need to be. A few here and there are fine, I say.
+
+    I’m curious what your opinion of django-articles is (it’s my pet project). I’m all for making it more configurable. If you make suggestions, I’ll probably take them to heart and try to apply them to the codebase! I’m not suggesting that django-articles is the end-all be-all blog engine for Django, but it might well be close enough to what you’re after… :)
+    origiNell says:
+    29.04.2010 at 13:25
+
+    “There are a number of blogging apps which try to be like turn-key solutions, like a WordPress blog.”
+
+    That’s what bothered me too.. I wrote my own blogging engine which tries to be as modular as possible.. or at least I try to make everything optional via settings.. ;-) The only thing that’s really hardcoded is a simple comment spam protection (which I might remove in favor of disqus) and markdown as markup of choice..
+
+    http://github.com/originell/simpleblog/tree
+    Julien Phalip says:
+    03.05.2010 at 13:06
+
+    I couldn’t agree more! In that same spirit we’ve built a blog framework to make it super easy to create your own blog app and extend it to your needs: http://github.com/glamkit/glamkit-blogtools Take a look at it and see what you think ;) 

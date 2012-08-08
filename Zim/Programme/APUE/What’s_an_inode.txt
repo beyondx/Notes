@@ -1,0 +1,94 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-10T00:08:47+08:00
+
+====== What’s an inode ======
+Created 星期五 10 六月 2011
+http://www.linux-mag.com/id/8658/?utm_source=feedburner&utm_medium=feed&utm_campaign=Feed%3A+LinuxMagazine+%28Linux+Magazine%3A+Top+Stories%29
+In the electronic pages of Linux Magazine, file systems are commonly discussed. It’s a fact! In these discussions you might see the term “inode” used in reference to a file system. Fairly often people ask the question, “what is an inode?” so that they can understand the discussion (remember, there is no such thing as a bad question – at least for the most part).
+
+To many people who read these storage articles this might seem like an elementary question but for many people just starting in Linux this concept may not be understood. Plus it’s always good to review the concept but let’s keep any comments civil and constructive (especially if they are directed at the author). Let me also state that I’m not a file system expert so please correct any misstatements but also please give references so people reading the comments can explore the topic.
+
+File systems in general have two parts: (1) the metadata or the “data” about the data, and (2) the data itself. The first part, the metadata, may sound funny because it’s data about the data, but this is a very key component to file systems. It consists of information about the data. More precisely it includes information such as the name of the file, the date the file was modified, file owner, file permissions, etc. This type of information is key to a file system otherwise we just have a bunch of bits on the storage media that don’t mean much. Inodes store this metadata information and typically they also store information about where the data is located on the storage media.
+
+inode
+
+In general for *nix file systems, with each file or directory, there is an associated inode. As mentioned previously, this is where the metadata is stored and the inode is typically represented as an integer number. The origin of the term inode is not known with any certainty. From the wikipedia page about inodes, one of the original developers of Unix, Dennis Ritchie, said the following about the origin of the term inode:
+
+    In truth, I don’t know either. It was just a term that we started to use. “Index” is my best guess, because of the slightly unusual file system structure that stored the access information of files as a flat array on the disk, with all the hierarchical directory information living aside from this. Thus the i-number is an index in this array, the i-node is the selected element of the array. (The “i-” notation was used in the 1st edition manual; its hyphen was gradually dropped.) 
+
+How inodes are created and even if they are created, depends upon the specific file system. Several file systems create all of them when the file system is created resulting in a fixed number of inodes. For example, ext3 is a file system that does this. The result is that the file system has a fixed number of files that can be stored. Yes – it’s actually possible to have capacity on the storage and not be able to store any more data (it doesn’t happen often but it’s theoretically possible). If you need more inodes you have to remake the file system losing all data in the file system.
+
+One way around the trap of a fixed number of inodes is some file systems use something called extents and/or dynamic inode allocation. These file systems can basically grow the file system and/or increase the number of inodes.
+
+Inodes aren’t something mysterious that you should tiptop past but rather something that is part of Linux. For example, you can look at the inode for your files by simply using the “-i” option with “ls”. For example,
+
+laytonjb@laytonjb-laptop:~/Documents/FEATURES/STORAGE088$ ls -il
+total 1024
+8847368 -rw-r--r-- 1 laytonjb laytonjb 115020 2011-04-24 07:33 Figure_1.png
+8847366 -rw-r--r-- 1 laytonjb laytonjb  39200 2011-04-24 07:38 Figure_2.png
+8847361 -rw-r--r-- 1 laytonjb laytonjb  30691 2011-04-24 07:40 Figure_3.png
+8847367 -rw-r--r-- 1 laytonjb laytonjb  28835 2011-04-24 07:42 Figure_4.png
+8847363 -rw-r--r-- 1 laytonjb laytonjb 115103 2011-04-24 07:43 Figure_5.png
+8847362 -rw-r--r-- 1 laytonjb laytonjb 125513 2011-04-24 07:44 Figure_6.png
+8847365 -rw-r--r-- 1 laytonjb laytonjb  77831 2011-04-24 07:44 Figure_7.png
+7790593 -rw-r--r-- 1 laytonjb laytonjb  15632 2011-04-26 19:40 storage088.html
+8847364 -rw-r--r-- 1 laytonjb laytonjb    183 2011-04-24 07:33 text1.txt
+3089319 drwxr-xr-x 2 laytonjb laytonjb   4096 2011-04-24 07:54 TRIM_WORKS
+5554211 -rw-r--r-- 1 laytonjb laytonjb 449110 2011-04-24 07:52 trim_works.tar.gz
+
+
+The number on the far left is the inode number associated with the file. Also notice that there is a directory “TRIM_WORKS” that also has an inode associated with it. Each time a file or directory is created or deleted, an inode is created or deleted.
+
+Remember that in general, Linux is POSIX compliant which requires certain file attributes. In particular:
+
+
+    The size of the file in bytes
+    Device ID
+    User ID of the file
+    Group ID of the file
+    The file mode that determines the file type and how the owner, group, and others (world) can access the file
+    Additional system and user flags to further protect the file (note: this can be used limit the files use and modification)
+    Timestamps telling when the inode itself was last change (ctime, changing time), the file content was last modified (mtime or modification time), and when the file was last accessed (atime or access time)
+    A link counter that lists how many hard links point to the inode
+    Pointers to the disk blocks that store the file’s contents (more on that later)
+
+
+Any Linux file system that is POSIX compliant must have this data contained in the inode for each file or be able to produce this information as though it had inodes. For example, ReiserFS does not use traditional inodes. Instead metadata, directory entries, inode block lists (more on that later), and tails of files are in a single combined B+ tree keyed by a universal object ID. So ReiserFS has to provide POSIX information when queried if it is to be considered POSIX compliant.
+
+Inode Pointer Structure
+
+In the POSIX definition of a file system, there is an item in the inode called an inode pointer structure. Remember that the inode just stores the metadata information including some sort of list of the blocks where the data is stored on the storage media. The inode pointer structure is the data structure universally used in the inode to list the blocks (or data blocks) associated with the file.
+
+According to the wikipedia article, the structure used to have 11 or 13 pointers but most modern file systems use 15 pointers stored in the data structure. From wikipedia, for the case where there are 12 pointers in the data structure, the pointers are:
+
+
+    Twelve points that directly point to blocks containing the data for the file. These are called direct pointers.
+    One single indirect pointer. This pointer points to a block of pointers that point to blocks containing the data for the file.
+    One doubly indirect pointer. This pointer points to a block of pointers that point to other blocks of pointers that point to blocks containing the data for the file.
+    One triply indirect pointer. This pointer points to a block of pointers that point other blocks of pointers that point to other blocks of pointers that point to blocks containing the data for the file.
+
+
+To make things easier, Figure 1 below from wikipedia, shows these different types of pointers.
+
+
+
+{{./Ext2-inode.gif}}
+Ext2-inode.gif
+
+
+
+Figure 1: inode pointer structure (From wikipedia, Wikimedia Commons license)
+
+
+In the figure you can see the direct, indirect, and doubly indirect pointers. A triply indirect pointer is similar to the doubly indirect pointer with another level of pointers between the data blocks and the inode.
+
+Summary
+
+The concept of an inode is pretty fundamental to file systems within Linux and other *nix operating systems. Conceptually an inode is fairly easy to understand – it’s just the metadata about the data. This is, it contains information about the data itself that is very useful. For example it can contain the file and group owner of the file, the permissions on the file, and several time stamps. So when you execute commands in Linux, such as an “ls”, the metadata of all used inodes are scanned and the information is collected and presented to the user.
+
+Some file system such as ext3 create all the inodes when the file system is created. Thus it is possible to run out of storage because all of the inodes are used yet the storage still has unused capacity. To help get around this other file systems such as ext4 and xfs, create inodes as needed.
+
+Understanding the concept of an inode can be very useful for you to understand. Armed with the basic concepts of inodes you can examine various file systems and determine which one is right for you. You can also use the concept of an inode to understand why something as simple as “ls -l” takes so long. Hint – look at how many files you have and how many inodes ls much query to gather the information.
+
+Jeff Layton is an Enterprise Technologist for HPC at Dell. He can be found lounging around at a nearby Frys enjoying the coffee and waiting for sales (but never during working hours).

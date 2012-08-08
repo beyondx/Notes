@@ -1,0 +1,130 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-22T13:41:42+08:00
+
+====== emacs ======
+Created Sunday 22 May 2011
+
+;;for fullscreen
+(defun fullscreen ()
+  (interactive)
+  (x-send-client-message nil 0 nil "_NET_WM_STATE" 32
+			 '(2 "_NET_WM_STATE_FULLSCREEN" 0)))
+(global-set-key [f11] 'fullscreen)
+
+;;for auto-complete
+(add-to-list 'load-path "~/.emacs.d")
+(require 'auto-complete-config)
+(add-to-list 'ac-dictionary-directories "~/.emacs.d/ac-dict")
+(ac-config-default)
+
+;; set for yasnipper
+(require 'yasnippet-bundle) 
+
+;;for flymake syntax check
+;;(require 'flymake-mode)
+;;(setq flymake-log-level 0)
+
+;;set for gccsense and gcc-code-assist
+(require 'gccsense)
+(global-set-key (kbd "M-TAB") (quote ac-complete-gccsense))
+(gccsense-flymake-setup)
+
+;;for backward-word delete
+(define-key global-map (kbd "C-h") 'delete-backward-char)
+(define-key global-map (kbd "M-h") 'backward-kill-word)
+
+;;for color-theme
+(add-to-list 'load-path "~/.emacs.d/color-theme-6.6.0")
+(require 'color-theme)
+(color-theme-initialize)
+(color-theme-oswald)
+
+
+(custom-set-variables
+  ;; custom-set-variables was added by Custom.
+  ;; If you edit it by hand, you could mess it up, so be careful.
+  ;; Your init file should contain only one such instance.
+  ;; If there is more than one, they won't work right.
+ '(column-number-mode t)
+ '(default-input-method "chinese-py-punct")
+ '(display-time-mode t)
+ '(ecb-options-version "2.40")
+;; '(show-paren-mode t)
+ '(size-indication-mode t)
+ '(text-mode-hook (quote (turn-on-auto-fill text-mode-hook-identify)))
+ '(tool-bar-mode nil)
+ '(which-function-mode nil))
+(custom-set-faces
+  ;; custom-set-faces was added by Custom.
+  ;; If you edit it by hand, you could mess it up, so be careful.
+  ;; Your init file should contain only one such instance.
+  ;; If there is more than one, they won't work right.
+ )
+
+;; set mark to C-\ ,
+(global-set-key "\C-\\" 'set-mark-command)
+
+
+;;set for ido-mode
+(ido-mode t)
+(setq ido-enable-flex-matching t)
+(setq ido-create-new-buffer t)
+(setq ido-confirm-unique-completion nil)
+(setq ido-use-filename-at-point t)
+(setq ido-show-dot-for-dired t)
+
+;; set for default major-mode
+(setq-default default-major-mode 'text-mode)
+
+;; auto pair
+;; (setq-default skeleton-pair t)
+;; (global-set-key (kbd "(") 'skeleton-pair-insert-maybe)
+;; (global-set-key (kbd "{") 'skeleton-pair-insert-maybe)
+;; (global-set-key (kbd "`") 'skeleton-pair-insert-maybe)
+;; (global-set-key (kbd "[") 'skeleton-pair-insert-maybe)
+;; (global-set-key (kbd "<") 'skeleton-pair-insert-maybe)
+;; (global-set-key (kbd "\"") 'skeleton-pair-insert-maybe)
+
+
+
+;; Load CEDET.
+;; See cedet/common/cedet.info for configuration details.
+(load-file "~/.emacs.d/cedet-1.0/common/cedet.el")
+
+;; Enable EDE (Project Management) features
+(global-ede-mode 1)
+
+;; Enabling Semantic (code-parsing, smart completion) features
+;; Select one of the following:
+;; * This enables even more coding tools such as intellisense mode
+;;   decoration mode, and stickyfunc mode (plus regular code helpers)
+(semantic-load-enable-gaudy-code-helpers)
+
+;; if you want to enable support for gnu global
+(require 'semanticdb-global)
+(semanticdb-enable-gnu-global-databases 'c-mode)
+(semanticdb-enable-gnu-global-databases 'c++-mode)
+
+;;for ecb
+(add-to-list 'load-path "~/.emacs.d/ecb-2.40")
+(require 'ecb-autoloads)
+
+;;set for xcscope
+(require 'xcscope)
+
+;;set for gtags
+(autoload 'gtags-mode "gtags");;Start Emacs and execute gtags-mode function. 
+(setq c-mode-hook
+      '(lambda ()
+	 (gtags-mode 1)));get into gtags-mode whenever you get into c-mode
+
+;;set for auto-newline and hungry-state
+(add-hook 'c-mode-hook
+	  '(lambda ()
+	     (c-set-style "k&r")
+	     (c-toggle-auto-state)))
+
+
+
+

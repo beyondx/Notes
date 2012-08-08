@@ -1,0 +1,65 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-22T16:15:23+08:00
+
+====== Serving Django Admin Static Media Files with Apache WSGI on Ubuntu ======
+Created Saturday 22 October 2011
+
+http://blog.videntity.com/?p=507
+
+Here is a quick and simple configuration code recipe to serve the admin static files in a production environment using modWSGI and Apache 2.
+
+Modify your apache2 configuration file. By default that would be:
+
+/etc/apache2/sites-available/default
+
+Just add the line:
+
+**Alias /media/ /var/www/media/**
+
+..under your VirtualHost setting, like so:
+
+**<VirtualHost *:80>**
+
+**   ServerAdmin webmaster@localhost**
+
+**   Alias   /media/       /var/www/media/**
+
+**   DocumentRoot    /var/www**
+
+**   <Directory />**
+
+**      Options FollowSymLinks**
+
+**      AllowOverride None**
+
+**   </Directory>**
+
+**   <Directory   /var/www/>**
+
+**      Options Indexes FollowSymLinks MultiViews**
+
+**      AllowOverride None**
+
+**      Order allow,deny**
+
+**      allow from all**
+
+**   </Directory>**
+
+**WSGIScriptAlias /  /home/ubuntu/RESTCat/apache/django.wsgi**
+**.**
+**.**
+**</VirtualHost>**
+
+Note that the WSGIScriptAlias points to your **Django application configuration file**. I keep it along side my project in a folder called ‘apache’ in a file called ‘django.wsgi’.
+
+Now add a symbolic link to point apache to the admin static content like so:
+
+**sudo ln -s /usr/local/lib/python2.6/dist-packages/django/contrib/admin/media    /var/www/media**
+
+Now simply restart apache.
+
+**sudo apache2ctl restart**
+
+Your admin static files should now be served!

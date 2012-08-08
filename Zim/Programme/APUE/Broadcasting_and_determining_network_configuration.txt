@@ -1,0 +1,80 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-06T21:44:54+08:00
+
+====== Broadcasting and determining network configuration ======
+Created 星期一 06 六月 2011
+
+http://uw714doc.sco.com/en/SDK_netapi/sockC.bcast_det_netconf.html
+By using a datagram socket, it is possible to send broadcast packets on many networks connected to the system. The **network itself **must support broadcast; the system provides no simulation of broadcast in software. Broadcast messages can place a high load on a network since they force every host on the network to service them. Consequently, the ability to send broadcast packets has been limited to sockets that are __explicitly marked as allowing broadcasting__. Broadcast is typically used for one of two reasons: it is desired to__ find a resource __on a local network without prior knowledge of its address, or __important functions__ such as routing require that information be sent to all accessible neighbors.
+
+To send a broadcast message, a** datagram** socket should be created:
+
+   s = socket(AF_INET, SOCK_DGRAM, 0);
+
+The socket is marked as allowing broadcasting,
+
+   int	on = 1;
+   setsockopt(s, SOL_SOCKET, __SO_BROADCAST,__ &on, sizeof(on));
+
+and at least a port number should be bound to the socket:
+
+   sin.sin_len = sizeof(sin);  //注意这个是FreeBSD对struct sockaddr的定义
+   sin.sin_family = AF_INET;
+   sin.sin_addr.s_addr = htonl(INADDR_ANY);
+   sin.sin_port = htons(MYPORT);
+   bind(s, (struct sockaddr *) &sin, sizeof(sin));
+
+The destination address of the message to be broadcast__ depends on the network(s) __on which the message is to be broadcast. (因为不同网络，其广播地址是不一样的。一般不使用255.255.255.255这种广播地址，而应该使用面向子网的广播地址如：192.168.1.255)The Internet domain supports a shorthand notation for broadcast on the local network, the address INADDR_BROADCAST (defined in netinet/in.h). To determine the list of addresses for all reachable neighbors requires knowledge of the networks to which the host is connected. Since this information should be obtained in a host-independent fashion and may be impossible to derive, the UNIX system provides a method of retrieving this information from the system data structures. The SIOCGIFCONF ioctl call returns the interface configuration of a host as a single ifconf structure; this structure contains a ``data area'' that is made up of an array of ifreq structures, one for each address domain supported by each network interface to which the host is connected. These structures are defined in net/if.h as follows:
+
+   struct ifreq {
+   #define IFNAMSIZ    16
+       char ifr_name[IFNAMSIZ];       /* if name, for example, "en0" */
+       union {
+           struct sockaddr ifru_addr;
+           struct sockaddr ifru_dstaddr;
+           char ifru_oname[IFNAMSIZ]; /* other if name */
+           struct sockaddr ifru_broadaddr;
+           short ifru_flags;
+           int ifru_metric;
+           char ifru_data[1];         /* interface dependent data */
+           char ifru_enaddr[6];
+       } ifr_ifru;
+   
+
+#define ifr_addr ifr_ifru.ifru_addr /* address */ #define ifr_dstaddr ifr_ifru.ifru_dstaddr /* other end of p-to-p link */ #define ifr_oname ifr_ifru.ifru_oname /* other if name */ #define ifr_broadaddr ifr_ifru.ifru_broadaddr /* broadcast address */ #define ifr_flags ifr_ifru.ifru_flags /* flags */ #define ifr_metric ifr_ifru.ifru_metric /* metric */ #define ifr_data ifr_ifru.ifru_data /* for use by interface */ #define ifr_enaddr ifr_ifru.ifru_enaddr /* ethernet address */ };
+
+The call that obtains the interface configuration is:
+
+   struct ifconf ifc;
+   char buf[BUFSIZ];
+   
+
+ifc.ifc_len = sizeof(buf); ifc.ifc_buf = buf; if (ioctl(s, SIOCGIFCONF, (char *) &ifc) < 0) { ... }
+
+After this call buf will contain a list of ifreq structures, one for each network to which the host is connected. These structures will be ordered first by interface name and then by supported address families. ifc.ifc_len will have been modified to reflect the number of bytes used by the ifreq structures.
+
+For each structure there exists a set of ``interface flags'' that tell whether the network corresponding to that interface is up or down, point to point or broadcast, and so on. The SIOCGIFFLAGS ioctl retrieves these flags for an interface specified by an ifreq structure as follows:
+
+   struct ifreq *ifr;
+   
+
+ifr = ifc.ifc_req;
+
+for (n=ifc.ifc_len/sizeof(struct ifreq); --n >= 0; ifr++) { /* * We must be careful that we don't use an interface * devoted to an address domain other than those intended */ if (ifr->ifr_addr.sa_family != AF_INET) continue; if (ioctl(s, SIOCGIFFLAGS, (char *) ifr) < 0) { ... } /* * Skip boring cases */ if ((ifr->ifr_flags & IFF_UP) == 0 || (ifr->ifr_flags & IFF_LOOPBACK) || (ifr->ifr_flags & (IFF_BROADCAST | IFF_POINTOPOINT)) == 0) continue; }
+
+Once the flags have been obtained, the broadcast address must be obtained. With broadcast networks this is done via the SIOCGIFBRDADDR ioctl, while for point-to-point networks the address of the destination host is obtained with SIOCGIFDSTADDR.
+
+   struct sockaddr dst;
+   
+
+if (ifr->ifr_flags & IFF_POINTOPOINT) { if (ioctl(s, SIOCGIFDSTADDR, (char *) ifr) < 0) { ... } memcpy((char *) &dst, (char *) &ifr->ifr_dstaddr, sizeof(ifr->ifr_dstaddr)); } else if (ifr->ifr_flags & IFF_BROADCAST) { if (ioctl(s, SIOCGIFBRDADDR, (char *) ifr) < 0) { ... } memcpy((char *) &dst, (char *) &ifr->ifr_broadaddr, sizeof(ifr->ifr_broadaddr)); }
+
+After the appropriate ioctl(2) has obtained the broadcast or destination address (now in dst), the sendto call may be used:
+
+   sendto(s, buf, buflen, 0, (struct sockaddr *)&dst,
+   	sizeof(dst));
+
+In the above loop one sendto occurs for every interface to which the host is connected that supports the notion of broadcast or point-to-point addressing. If a process only wished to send broadcast messages on a given network, code similar to that outlined above would be used, but the loop would need to find the correct destination address.
+
+Received broadcast messages contain the sender's address and port, as datagram sockets are bound before a message is allowed to go out. 

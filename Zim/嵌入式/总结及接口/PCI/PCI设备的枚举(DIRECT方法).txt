@@ -1,0 +1,908 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-02T14:01:29+08:00
+
+====== PCI设备的枚举(DIRECT方法) ======
+Created Monday 02 July 2012
+
+http://blog.chinaunix.net/uid-20543183-id-1930826.html
+
+一:前言
+
+Pci,是Peripheral Component Interconnect的缩写,翻译成中文即为__外部设备互联__.与传统的总线相比.它的传输速率较高.能为用户提供动态查询pci deivce.和局部总线信息的方法,此外,它还能自动为总线提供仲裁.在近几年的发展过程中,被广泛应用于多种平台.pci协议比较复杂,关于它的详细说明,请查阅有关pci规范的资料,本文不会重复这些部份.对于驱动工程师来说,__Pci设备的枚举__是pci设备驱动编写最复杂的操作.分析和理解这部份,是进行深入分析pci设备驱动架构的基础.我们也顺便来研究一下,linux是怎么对这个庞然大物进行封装的.
+
+二:pci架构概貌
+{{./080821160442.jpg}}
+上图展现了pci驱动架构中,pci_bus.pci_dev之间的关系.
+
+如上图所示:所有的__根总线__都链接在pci_root_buses链表中. Pci_bus ->device链表链接着该总线下的所有设备.而pci_bus->children链表链接着它的下层总线.对于pci_dev来说,pci_dev->bus指向它所属的pci_bus. Pci_dev->bus_list链接在它所属bus的device链表上.此外,所有pci设备都链接在pci_device链表中.
+
+三:pci设备的配置空间
+
+每个pci设备都有最多256字节的连续配置空间.配置空间中包含了设备的厂商ID,设备ID,IRQ,设备存储区信息等.摘下LDD3中的一副说明图,如下:
+{{./080821160540.jpg}}
+
+要注意了,上图是以字节为单位的,而不是以位为单位.那怎么去读取每个设备的配置空间呢?我们在开篇的时候提到过,pci总线为用户提供了动态查询pci设备信息的方法.在x86上,保留了0xCF8~0xCFF的8个寄存器.实际上就是对应地址为0xCF8的32位寄存器和地址为0xCFC的32位寄存器.在0xCF8寄存中写入要访问设备对应的__总线号, 设备号、功能号和寄存器号__组成的一个32位数写入0xCF8.然后从0xCFC上就可以取出对应pci设备的信息.
+
+写入到0xCF8寄存器的格式如下:
+低八位(0~7):            (寄存器地址)&0xFC.低二位为零
+8~10:功能位.            有时候,一个pci设备对应多个功能.将每个功能单元分离出来,对应一个独立的pci device
+11~15位:设备号        对应该pci总线上的**设备序号**
+16~23位:总线号        根总线的总线号为0.每遍历到下层总线,总线号+1
+31:有效位                  如果该位为1.则说明写入的数据有效,否则无效
+
+例如:要读取n总线号m设备号f功能号对应设备的vendor id和Device id.过程如下:
+要写入到0xCF8中的数为: l = 0x80<<23 | n<<16 | m<<11 | f<<8 | 0x00
+即:__outl__(l,0xCF8)
+
+从0xCFC中读相关信息:
+L = __Inw__(0xCFC)  (从上图中看到,vendor id和device id总共占四个字节.因此用inw)
+所以:device id = L&0xFF
+         Vendor id = (L>>8)&0xFF
+ 
+四:总线枚举入口分析
+
+Pci的代码分为两个部份.一个部份是与__平台相关__的部份.存放在linux-2.6.25\arch\XXX\pci.在x86,对应为linux-2.6.25\arch\x86\pci\  另一个部份是__平台无关__的代码,存放在linux-2.6.25\driver\pci\下面.
+
+大致浏览一下这两个地方的init函数.发现可能枚举pci设备是由函数__pcibios_scan_root()__完成的.不过搜索源代码后,发现有两个地方会调用这个调数.一个是在linux-2.6.25\arch\x86\pci\numa.c 另一个是linux-2.6.25\arch\x86\pci\Legacy.c这两个地方都是封装在一个subsys_initcall()所引用的初始化函数呢? 到底哪一个文件才是我们要分析的呢?
+
+分析一下linux-2.6.25\arch\x86\pci\下的Makefile_32.内容如下:
+obj-y                             := i386.o init.o 
+obj-$(CONFIG_PCI_BIOS)                 += pcbios.o
+obj-$(CONFIG_PCI_MMCONFIG)     += mmconfig_32.o direct.o mmconfig-shared.o
+obj-$(CONFIG_PCI_DIRECT)  += direct.o 
+pci-y                             := fixup.o
+pci-$(CONFIG_ACPI)                  += acpi.o
+pci-y                             += legacy.o irq.o
+pci-$(CONFIG_X86_VISWS)              := visws.o fixup.o
+pci-$(CONFIG_X86_NUMAQ)            := numa.o irq.o
+obj-y                             += $(pci-y) common.o early.o
+
+从这个makefile中可以看出:legacy.c是**一定会**编译到了.而numa.c只有在编译选择了CONFIG_X86_NUMAQ的时候才起效.所以,我们可以毫不犹豫的将眼光放到了legacy.c中.
+
+该文件中的初始化函数如下:
+static int __init pci_legacy_init(void)
+{
+         if (!raw_pci_ops) {
+                   printk("PCI: System does not support PCI\n");
+                   return 0;
+         }
+ 
+         if (pcibios_scanned++)
+                   return 0;
+ 
+         printk("PCI: Probing PCI hardware\n");
+         pci_root_bus = __pcibios_scan_root__(0);
+         if (pci_root_bus)
+                   __pci_bus_add_devices__(pci_root_bus);
+ 
+         pcibios_fixup_peer_bridges();
+ 
+         return 0;
+}
+ subsys_initcall(pci_legacy_init);
+
+由subsys_initcall()引用的函数都会放在__init区域__,这里面的函数是kernel启动的时候会自动执行的函数.首先我们碰到的问题是raw_pci_ops是在什么地方被赋值的.搜索整个代码树,发现是在pci_access_init()中初始化的.如下:
+
+static __init int **pci_access_init**(void)
+{
+         int type __maybe_unused = 0;
+ 
+#ifdef CONFIG_PCI_DIRECT
+         type = __pci_direct_probe()__;
+#endif
+#ifdef CONFIG_PCI_MMCONFIG
+         __pci_mmcfg_init(type)__;
+#endif
+         if (**raw_pci_ops**)
+                   return 0;
+#ifdef CONFIG_PCI_BIOS
+         __pci_pcbios_init()__;
+#endif
+         /*
+		* don't check for raw_pci_ops here because we want pcbios as last
+		* fallback, yet it's needed to run first to set pcibios_last_bus
+		* in case legacy PCI probing is used. otherwise detecting peer busses
+		* fails.
+          */
+#ifdef CONFIG_PCI_DIRECT
+         __pci_direct_init(type)__;
+#endif
+         if (!raw_pci_ops)
+                   printk(KERN_ERR  "PCI: Fatal: No config space access function found\n");
+ 
+         return 0;
+}
+arch_initcall(pci_access_init);
+
+__由于arch_initcall()的优先级比subsys_initcall要高__.因此,会先运行完pci_access_init之后,才会执行pci_legacy_init.
+ 
+上面的代码看起来很复杂,没关系,去掉几个我们没有用到的编译代码就简单了. 在x86中,bios其实提供了pci设备的枚举功能.这也是CONFIG_PCI_BIOS的作用,如果对它进行了定义,那么就__用bios的pci枚举功能__.如果没有定义,说明不采用bios的功能,而是__内核自己直接去枚举__,这就是CONFIG_PCI_DIRECT的作用.为了一般性,我们分析CONFIG_PCI_DIRECT的过程.把其它不相关的代码略掉.剩余的就简单了.
+ 
+在pci规范中,定义了两种操作配置空间的方法,即type1 和type2.在新的设计中,type2的配置机制不会被采用,通常会使用type1.因此,在代码中
+pci_direct_probe()一般会返回1,即**使用type1**.
+
+pci_direct_init()的代码如下:
+
+void __init pci_direct_init(int type)
+{
+         if (type == 0)
+                   return;
+         printk(KERN_INFO "PCI: Using configuration type %d\n", type);
+         if (type == 1)
+                   raw_pci_ops = &__pci_direct_conf1__;
+         else
+                   raw_pci_ops = &pci_direct_conf2;
+}
+
+在这里看到,raw_pci_ops最终会指向pci_direct_conf1.顺便看下这个结构:
+
+struct pci_raw_ops pci_direct_conf1 = {
+         .read =       pci_conf1_read,
+         .write =      pci_conf1_write,
+};
+
+这个结构其实就是__pci设备配置空间操作的接口__.
+ 
+五: pci设备的枚举过程
+
+返回到pci_legacy_init()中:
+
+static int __init pci_legacy_init(void)
+{
+         ……
+         printk("PCI: Probing PCI hardware\n");
+         **pci_root_bus** = pcibios_scan_root(0);
+         if (pci_root_bus)
+                   pci_bus_add_devices(pci_root_bus);
+         ……
+}
+
+Pci设备的枚举过程是由pcibios_scan_root()完成的.在这里调用是以0为参数.说明是从__根总线__起开始枚举.pcibios_scan_root()代码如下:
+
+struct pci_bus * **__devinit** pcibios_scan_root(int busnum)
+{
+         struct pci_bus *bus = NULL;
+         struct pci_sysdata *sd;
+ 
+         dmi_check_system(pciprobe_dmi_table);
+         while ((bus = pci_find_next_bus(bus)) != NULL) {
+                   if (bus->number == busnum) {
+                            /* Already scanned */
+                            return bus;
+                   }
+         }
+ 
+         /* Allocate per-root-bus (not per bus) arch-specific data.
+		* TODO: leak; this memory is never freed.
+		* It's arguable whether it's worth the trouble to care.
+          */
+         sd = kzalloc(sizeof(*sd), GFP_KERNEL);
+         if (!sd) {
+                   printk(KERN_ERR "PCI: OOM, not probing PCI bus %02x\n", busnum);
+                   return NULL;
+         }
+ 
+         printk(KERN_DEBUG "PCI: Probing PCI hardware (bus %02x)\n", busnum);
+ 
+         return __pci_scan_bus_parented__(NULL, busnum, &pci_root_ops, sd);
+}
+ 
+先在pci_root_buses中判断是否存在这个根总线对应的总线号.如果存在,说明这条总线已经遍历过了,直接退出.Pci_root_ops这是定义的pci设备配置空间的操作.在没有选择CONFIG_PCI_MMCONFIG的情况下,它的操作都会转入我们在上面的分析的ram_pci_ops中.这个过程非常简单,可以自行分析.
+然后,流程转入pci_scan_bus_parented().代码如下:
+
+struct pci_bus * __devinit pci_scan_bus_parented(struct device *parent, int bus, struct pci_ops *ops, void *sysdata)
+{
+         struct pci_bus *b;
+ 
+         b = __pci_create_bus__(parent, bus, ops, sysdata);
+         if (b)
+                   __b->subordinate__ = pci_scan_child_bus(b);
+         return b;
+}
+
+在pci_create_bus()中,为对应总线号构建pci_bus,然后将其挂入到__pci_root_buses链表__.该函数代码比较简单,请自行分析.然后,调用然后pci_scan_child_bus**枚举该总线下的所有设备**.pci_bus->subordinate表示下流总线的__最大__总线号.pci_sacn_child_bus()代码如下:
+  
+unsigned int __devinit pci_scan_child_bus(struct pci_bus *bus)
+{
+         unsigned int devfn, pass, max = bus->secondary;
+         struct pci_dev *dev;
+ 
+         pr_debug("PCI: Scanning bus %04x:%02x\n", __pci_domain_nr__(bus), bus->number);
+ 
+         /* Go find them, Rover! */
+         __//按设备号和功能号扫描设备号对应的pci 设备__
+         for (devfn = 0; devfn < 0x100; devfn += 8)
+                   __pci_scan_slot__(bus, devfn);
+ 
+         /*
+		* After performing **arch-dependent fixup** of the bus, look behind
+		* all PCI-to-PCI bridges on this bus.
+          */
+         pr_debug("PCI: Fixups for bus %04x:%02x\n", pci_domain_nr(bus), bus->number);
+         **pcibios_fixup_bu**s(bus);
+         for (pass=0; pass < 2; pass++)
+                   list_for_each_entry(dev, &bus->devices, bus_list) {
+                            if (dev->hdr_type == PCI_HEADER_TYPE_BRIDGE ||
+                                dev->hdr_type == PCI_HEADER_TYPE_CARDBUS)
+                                     max = __pci_scan_bridge__(bus, dev, max, pass);
+                   }
+ 
+         /*
+		* We've scanned the bus and so we know all about what's on
+		* the other side of any bridges that may be on this bus plus
+		* any devices.
+          *
+		* Return how far we've got finding sub-buses.
+          */
+         pr_debug("PCI: Bus scan for %04x:%02x returning with max=%02x\n",
+                   pci_domain_nr(bus), bus->number, max);
+         return max;
+}
+
+这节的难点就是在这个地方了,从我们之前分析的pci设备配置空间的读写方式可得知.对特定总线.下面最多个32个设备号.每个设备号又对应8 个功能号.我们可以将设备号和功能号__放到一起,即占8~15位__.在这面的代码中.对每个设备号调用pci_scan_slot()去扫描它下面的8个功能号对应的设备.总而言之,把该总线下面的所有设备都要枚举完.
+ 
+pci_scan_slot()代码如下:
+nt pci_scan_slot(struct pci_bus *bus, int devfn)
+{
+         int func, nr = 0;
+         int scan_all_fns;
+ 
+         scan_all_fns = pcibios_scan_all_fns(bus, devfn);
+ 
+         for (func = 0; func < __8__; func++, devfn++) {
+                   struct pci_dev *dev;
+ 
+                   dev = __pci_scan_single_device__(bus, devfn);
+                   if (dev) {
+                            nr++;
+ 
+                            /*
+							* If this is a single function device,
+							* don't scan past the first function.
+                            */
+                            if (!dev->multifunction) {
+                                     if (func > 0) {
+                                               dev->multifunction = 1;
+                                     } else {
+                                              break;
+                                     }
+                            }
+                   } else {
+                            if (func == 0 && !scan_all_fns)
+                                     break;
+                   }
+         }
+         return nr;
+}
+
+对其它的每个设备都会调用pci_scan_single_device().如果是**单功能设备**(dev->multifunction == 0).则只要判断它的第一个功能号可以了,不需要判断之后功能号对应的设备.
+
+Pci_scan_single_device()代码如下:
+
+struct pci_dev *__ref pci_scan_single_device(struct pci_bus *bus, int devfn)
+{
+         struct pci_dev *dev;
+ 
+         dev = __pci_scan_device__(bus, devfn);
+         if (!dev)
+                   return NULL;
+ 
+         //将pci_dev加至pci_bus->devices
+         pci_device_add(dev, bus);
+ 
+         return dev;
+}
+
+对每个设备,都会调用pci_scan_device()执行扫描的过程,如果该设备存在,就会**将该设备加入到所属总线的devices链表**上.这是在pci_device_add()函数中完成的,这个函数比较简单.这里不做详细分析.我们把注意力集中到pci_scan_device(),这函数有点长,分段分析如下:
+ 
+static struct pci_dev * __devinit pci_scan_device(struct pci_bus *bus, int devfn)
+{
+         struct pci_dev *dev;
+         u32 l;
+         u8 hdr_type;
+         int delay = 1;
+ 
+         if (pci_bus_read_config_dword(bus, devfn, __PCI_VENDOR_ID__, &l))
+                   return NULL;
+ 
+         /* some broken boards return 0 or ~0 if **a slot is empty**: */
+         if (l == 0xffffffff || l == 0x00000000 ||  l == 0x0000ffff || l == 0xffff0000)
+                   return NULL;
+ 
+         /* Configuration request __Retry Status__ */
+         while (l == 0xffff0001) {
+                   msleep(delay);
+                   delay *= 2;
+                   if (pci_bus_read_config_dword(bus, devfn, PCI_VENDOR_ID, &l))
+                            return NULL;
+                   /* Card hasn't responded in 60 seconds?  Must be stuck. */
+                   if (delay > 60 * 1000) {
+                            printk(KERN_WARNING "Device %04x:%02x:%02x.%d not "
+                                               "responding\n", pci_domain_nr(bus),
+                                               bus->number, PCI_SLOT(devfn),
+                                               PCI_FUNC(devfn));
+                            return NULL;
+                   }
+         }
+
+从配置空间中读取该设备对应的**vendor id和device id**.如果读出来的值,有一个是空的,则说明该功能号对应的设备不存在,或者是配置非法.如果读出来的是0xffff0001.则需要重新读一次,如果重读次数过多,也会退出
+ 
+         if (pci_bus_read_config_byte(bus, devfn, __PCI_HEADER_TYPE__, &hdr_type))
+                   return NULL;
+ 
+         dev = **alloc_pci_dev**();
+         if (!dev)
+                   return NULL;
+ 
+         dev->__bus__ = bus;
+         dev->__sysdata__ = bus->sysdata;
+         dev->dev.__parent__ = bus->bridge;  //struct pci_dev里面封装了**通用设备结构struct device**。
+         dev->dev.__bus__ = **&pci_bus_type**;
+         dev->devfn = devfn;
+         dev->hdr_type = hdr_type & 0x7f;
+         dev->multifunction = !!(hdr_type & 0x80);
+         dev->vendor = l & 0xffff;
+         dev->device = (l >> 16) & 0xffff;
+         dev->cfg_size = **pci_cfg_space_size**(dev);
+         dev->error_state = pci_channel_io_normal;
+         set_pcie_port_type(dev);
+ 
+         /* Assume 32-bit PCI; let 64-bit PCI cards (which are far rarer)
+            set this higher, assuming the system even supports it.  */
+         dev->dma_mask = 0xffffffff;
+
+接着,将不同类型设备的共同头部配置读出来,然后赋值给pci_dev的相应成员.这里有个特别要值得注意的地方: dev->dev.bus = &pci_bus_type.即将pci_dev里面封装的device结构的bus设置为了pci_bus_type.这个是很核心的一个步骤.  我们先将它放到这里,之后的再来详细分析，特别的, HEADER_TYPE的最高位为0,表示该设备是一个单功能设备
+ 
+         if (__pci_setup_device__(dev) < 0) {
+                   kfree(dev);
+                   return NULL;
+         }
+ 
+         return dev;
+}
+
+最后,流程就会转入到pci_setup_deivce()对特定类型的设备配置都是读取操作了.代码如下:
+
+static int pci_setup_device(struct pci_dev * dev)
+{
+         u32 class;
+ 
+         sprintf(pci_name(dev), "%04x:%02x:%02x.%d", pci_domain_nr(dev->bus),
+                   dev->bus->number, PCI_SLOT(dev->devfn), PCI_FUNC(dev->devfn));
+ 
+         pci_read_config_dword(dev, __PCI_CLASS_REVISION__, &class);
+         __dev->revision__ = **class** & 0xff;
+         class >>= 8;                                      /* upper 3 bytes */
+         __dev->class__ = class;
+         class >>= 8;
+ 
+         pr_debug("PCI: Found %s [%04x/%04x] %06x %02x\n", pci_name(dev),
+                    dev->vendor, dev->device, class, dev->hdr_type);
+ 
+         /* "Unknown **power state**" */
+         dev->current_state = PCI_UNKNOWN;
+ 
+         /* Early fixups, before probing the BARs */
+         __pci_fixup_device__(pci_fixup_early, dev);
+         class = dev->class >> 8;
+ 
+         switch (dev->hdr_type) {                 /* header type */
+         case PCI_HEADER_TYPE___NORMAL__:                    /* standard header */
+                   if (class == PCI_CLASS_BRIDGE_PCI)
+                            goto bad;
+                   **pci_read_irq**(dev);
+                   **pci_read_bases**(dev, 6, PCI_ROM_ADDRESS);
+                   pci_read_config_word(dev, PCI___SUBSYSTEM___VENDOR_ID, &dev->subsystem_vendor);
+                   pci_read_config_word(dev, PCI_SUBSYSTEM_ID, &dev->subsystem_device);
+ 
+                   /*
+					* Do the ugly legacy mode stuff here rather than broken chip
+					* quirk code. Legacy mode ATA controllers have fixed
+					* addresses. These are not always echoed in BAR0-3, and
+					* BAR0-3 in a few cases contain junk!
+                    */
+                   if (class == PCI_CLASS_STORAGE_IDE) {
+                            u8 progif;
+                            pci_read_config_byte(dev, PCI_CLASS_PROG, &progif);
+                            if ((progif & 1) == 0) {
+                                     dev->resource[0].start = 0x1F0;
+                                     dev->resource[0].end = 0x1F7;
+                                     dev->resource[0].flags = LEGACY___IO_RESOURCE__;
+                                     dev->resource[1].start = 0x3F6;
+                                     dev->resource[1].end = 0x3F6;
+                                     dev->resource[1].flags = LEGACY_IO_RESOURCE;
+                            }
+                            if ((progif & 4) == 0) {
+                                     dev->resource[2].start = 0x170;
+                                     dev->resource[2].end = 0x177;
+                                     dev->resource[2].flags = LEGACY_IO_RESOURCE;
+                                     dev->resource[3].start = 0x376;
+                                     dev->resource[3].end = 0x376;
+                                     dev->resource[3].flags = LEGACY_IO_RESOURCE;
+                            }
+                   }
+                   break;
+ 
+         case PCI_HEADER_TYPE___BRIDGE__:                     /* bridge header */
+                   if (class != PCI_CLASS_BRIDGE_PCI)
+                            goto bad;
+                   /* The PCI-to-PCI bridge spec requires that subtractive
+                      decoding (i.e. transparent) bridge must have programming
+                      interface code of 0x01. */
+                   pci_read_irq(dev);
+                   dev->transparent = ((dev->class & 0xff) == 1);
+                   pci_read_bases(dev, 2, PCI_ROM_ADDRESS1);
+                   break;
+ 
+         case PCI_HEADER_TYPE___CARDBUS__:                 /* CardBus bridge header */
+                   if (class != PCI_CLASS_BRIDGE_CARDBUS)
+                            goto bad;
+                   pci_read_irq(dev);
+                   pci_read_bases(dev, 1, 0);
+                   pci_read_config_word(dev, PCI_CB_SUBSYSTEM_VENDOR_ID, &dev->subsystem_vendor);
+                   pci_read_config_word(dev, PCI_CB_SUBSYSTEM_ID, &dev->subsystem_device);
+                   break;
+ 
+         default:                                     /* unknown header */
+                   printk(KERN_ERR "PCI: device %s has unknown header type %02x, ignoring.\n",
+                            pci_name(dev), dev->hdr_type);
+                   return -1;
+ 
+         bad:
+                   printk(KERN_ERR "PCI: %s: class %x doesn't match header type %02x. Ignoring class.\n",
+                          pci_name(dev), class, dev->hdr_type);
+                   dev->class = PCI_CLASS_NOT_DEFINED;
+         }
+ 
+         /* We found a fine healthy device, go go go... */
+         return 0;
+}
+
+总共有三种类型的设备,分别为常规设备(PCI_HEADER_TYPE_NORMAL) ,**pci-pci桥设备**(PCI_HEADER_TYPE_BRIDGE),笔记本电脑上使用的__cardbus__(PCI_HEADER_TYPE_CARDBUS).这里的操作不外乎是**IRQ的确定,设备存储区间映射**等.先将这几个操作分析如下:
+
+**1: IRQ号的确定**
+该操作接口为pci_read_irq():
+static void __pci_read_irq__(struct pci_dev *dev)
+{
+         unsigned char irq;
+ 
+         pci_read_config_byte(dev, PCI_INTERRUPT___PIN__, &irq);
+         dev->pin = irq;
+         if (irq)
+                   pci_read_config_byte(dev, PCI_INTERRUPT___LINE__, &irq);
+         dev->irq = irq;
+}
+
+在PCI_INTERRUPT_PIN中存放的__是将INTA~INTD的哪一个引脚连接到了中断控制器__,如果该值为零.说明并末将引脚连接至中断控制器.自然也就不能产生中断信号.其实,在PCI_INTERRUPT_LINE存放的是该设备的中断线__连接在中断控制器的哪一个IRQ线上__.也就是对应__设备的IRQ__.
+
+注意这里的寄存器只读有意义,并不是更改寄存器的值就更改该设备的IRQ，也就是说写无意义，因为它们是在硬件设计时就已经确定的。
+ 
+**2:内部存储区间的确定**
+从之前的pci设备配置寄存器图中可以看到.有从0x10~0x27的6个base address寄存器.里面存放的就是内部存储器映射的__起始地址、长度及其类型__.
+
+首先将对应寄存器的值取出.如果最低位为1.则说明该区域是__I/O端口__,高29位是端口地址的高29位,低3位为零.否则是__存储映射区间__.前28位是存储区的高28位,低四位为零.然后,将该寄存器全部置1.再读,取得的是长度信息. 如果是I/O端口,屏弊其低三位,如果是存储区间,屏弊其低四位.最后取第1个位为1对应的大小,即为相应区间的长度.
+
+例如,取出来的值是0xC107.假设是I/O端口屏蔽掉低三位,为0xC100.第一个为1的值对应的值为0x0100.即0x100另上,ROM的操作也跟此类似.
+
+在上面的代码中,内部存储区间的确定是由pci_read_bases()完成的.这个函数代码比较长.涉及到的东西又不多,因此不做详细分析.结合上面的分析,应该很容易看懂代码了.
+ 
+从上面的代码可以看出，对于常规设备，__有6个存储区间和一个ROM__。Pci briage只有__2个存储区间和一个ROM__。Cardbus只有__一个存储区间没有ROM__。好了，再这里，每一类设备的信息都已经完全读取出来了，并存放在pci_dev的相关字段。此后在驱动中就可以直接找到pci_dev取得相应的信息，而不需要再次去枚举了.
+ 
+再这里，万里长征只是迈出了一小步。我们知道，pci总线可以通过pci bridge再连一层pci总线。这个问题显然是一个递归过程。我们接下来看pci桥的处理。返回到pci_scan_child_bus()中，我们将下面要分析的代码列出来：
+
+unsigned int __devinit pci_scan_child_bus(struct pci_bus *bus)
+{
+         ……
+         ……
+         for (devfn = 0; devfn < 0x100; devfn += 8)
+                   pci_scan_slot(bus, devfn);
+         pcibios_fixup_bus(bus);
+         for (pass=0; pass < 2; pass++)
+                   list_for_each_entry(dev, &bus->devices, bus_list) {
+                            if (dev->hdr_type == PCI_HEADER_TYPE_BRIDGE ||
+                                dev->hdr_type == PCI_HEADER_TYPE_CARDBUS)
+                                     max = pci_scan_bridge(bus, dev, max, pass);
+                   }
+         ……
+}
+
+Pcibios_fixup_bus()这个函数看名字是用来__修正总线__的。芯片厂商在发布产品后，又检测到上次发布的产品有问题。回厂升级是不可能的了。只能提供软件修改的手段，发布一些修正包。Linux将很多厂商的修改正集合在一起。这也就是pcibios_fixup_bus()要进行的操作。具体设备的修正功能，我们就不再研究了。这个函数里还有一个重要的操作。列出代码如下：
+
+void __devinit  pcibios_fixup_bus(struct pci_bus *b)
+{
+         struct pci_dev *dev;
+ 
+         pcibios_fixup_ghosts(b);
+         __pci_read_bridge_bases__(b);
+         list_for_each_entry(dev, &b->devices, bus_list)
+                   pcibios_fixup_device_resources(dev);
+}
+
+我们所讨论的重要的操作就是在pci_read_bridge_bases()中完成的。除了之上分析的配置字段外，其实pci桥还有一个很重要的配置项。即：__过滤窗口__。过滤窗口决定了**访问的方向**。例如：如果cpu一侧要经过pci bridge访问pci总线，则它的地址必须要落在这个pci桥的过滤窗口__内__才可以通过。另外，pci bridge下游的pci bus要访问cpu侧。则地址必须要落在过滤窗口__外__才可以。此外，pci  bridge还提供了一个命令寄存器来控制“memory access enable“和“I/O access enable”两个位来控制两个功能。如果全为0.则两个方向都会关闭。在pci初始化前，为了防止对cpu侧造成干扰, 这两个功能都关闭的，Pci bridge有三个这样的窗口，分别如下：
+
+1：起始地址在PCI_IO_BASE中，长度在PCI_IO_LIMIT中。如果是32位，还要通过PCI_IO_BASE_UPPER16和PCI_IO_LIMIT_UPPER16提供高16位。
+2：起始地址在PCI_MEMORY_BASE,长度在PCI_MEMORY_LIMIT中。这个是一个16位的窗口。
+3：起始地址在PCI_PREF_MEMORY_BASE，长度在PCI_PREF_MEMORY_LIMIT.默认是32位。如果是64，则需要PCI_PREF_BASE_UPPER32和PCI_PREF_LIMIT_UPPER32提供高32位.存储区间在这里看起来有点繁杂。以图的形式总结如下：
+ {{./080821160818.jpg}}
+ 
+结合上面说的，理解pci_read_bridge_bases()的代码就不难了。这里不再做详细分析。现在终于把应该读的配置读完了，可以进行__下层pci总线__的遍历了。列出这段代码：
+
+unsigned int __devinit pci_scan_child_bus(struct pci_bus *bus)
+{
+……
+         ……
+for (pass=0; pass < 2; pass++)
+                   list_for_each_entry(dev, &bus->devices, **bus_list**) {
+                            if (dev->hdr_type == PCI_HEADER_TYPE_BRIDGE ||
+                                dev->hdr_type == PCI_HEADER_TYPE_CARDBUS)
+                                     max = pci_scan_bridge(bus, dev, max, pass);
+                   }
+         ……
+         ……
+}
+
+上面的操作基本上就是遍历挂在pci_bus->devices上面的设备(是否还记得上面在分析的时候，__每枚举到一个设备都会加入到pci_bus->device__呢*^_^*)。如果是pci桥或者是cardbus。就会调用pci_scan_bridge()来遍历桥下面的设备.这里让人疑惑的是，为什么要遍历二次呢？
+
+这是因为，在x86上，系统启动的时候,__bios会枚举一次pci设备__。所以有些pci bridge是经过bios处理过的。而有些是bios可能没有枚举到的。这就需要分两次处理。一次来处理那里已经由bios处理过的pci bridge.一次是处理全新的pci bridge.  这样做是因为,每次枚举总线后，要为其分配一个__总线号__，而bios处理后的pci bridge的总线号全部都由bios分配好了，要为新的pci bridge分配总线号。而必须要处理完旧的pci bridge才会知道可用的总线号是多少。跟进pci_sacn_bridge()的代码，这段代码较长，分段分析如下：
+ 
+int __devinit pci_scan_bridge(struct pci_bus *bus, struct pci_dev *dev, int max, int pass)
+{
+         struct pci_bus *child;
+         int is_cardbus = (dev->hdr_type == PCI_HEADER_TYPE_CARDBUS);
+         u32 buses, i, j = 0;
+         u16 bctl;
+ 
+         pci_read_config_dword(dev, __PCI_PRIMARY_BUS__, &buses);
+ 
+         pr_debug("PCI: Scanning behind PCI bridge %s, config %06x, pass %d\n",
+                    pci_name(dev), buses & 0xffffff, pass);
+ 
+         /* Disable MasterAbortMode during probing to avoid reporting
+            of bus errors (in some architectures) */
+         pci_read_config_word(dev, P__CI_BRIDGE_CONTROL__, &bctl);
+         pci_write_config_word(dev, PCI_BRIDGE_CONTROL,
+                                  bctl & ~PCI_BRIDGE_CTL_MASTER_ABORT);
+         if ((buses & 0xffff00) && !pcibios_assign_all_busses() && !is_cardbus) {
+                   unsigned int cmax, busnr;
+                   /*
+					* __Bus already configured by firmware__, process it in the first
+					* pass and just note the configuration.
+                    */
+                   if (pass)
+                            goto out;
+                   //次总线号，也就是下游pci的总线号
+                   busnr = (buses >> 8) & 0xFF;
+ 
+                   /*
+					* If we already got to this bus through a different bridge,
+					* ignore it.  This can happen with the i450NX chipset.
+                    */
+                    //如果该总线号已经在我们的遍历树中了，说明这条总线已经是处理过的
+                   if (pci_find_bus(pci_domain_nr(bus), busnr)) {
+                            printk(KERN_INFO "PCI: Bus %04x:%02x already known\n",
+                                               pci_domain_nr(bus), busnr);
+                            goto out;
+                   }
+ 
+                   //构造一个pci_bus.并将其链入到父总线的children链表上
+                   child = __pci_add_new_bus__(bus, dev, busnr);
+                   if (!child)
+                            goto out;
+                   child->primary = buses & 0xFF;
+                   child->subordinate = (buses >> 16) & 0xFF;
+                   child->bridge_ctl = bctl;
+ 
+                   //递归遍历子总线.返回的是下层最大的总线号
+                   cmax = __pci_scan_child_bus__(child);
+                   if (cmax > max)
+                            max = cmax;
+                   if (child->subordinate > max)
+                            max = child->subordinate;
+         } else {
+                   /*
+					* We need to assign a number to this bus which we always
+					* do in the second pass.
+                    */
+                    //在第一次遍历的时候。是不会处理新的pci bus的
+                   if (!pass) {
+                            if (pcibios_assign_all_busses())
+                                     /* Temporarily disable forwarding of the
+                                        configuration cycles on all bridges in
+                                        this bus segment to avoid possible
+                                        conflicts in the second pass between two
+                                        bridges programmed with overlapping
+                                        bus ranges. */
+                                     pci_write_config_dword(dev, PCI_PRIMARY_BUS,
+                                                               buses & ~0xffffff);
+                            goto out;
+                   }
+ 
+                   /* Clear errors */
+                  //往状态寄存器全写1
+                   pci_write_config_word(dev, PCI_STATUS, 0xffff);
+ 
+                   /* Prevent assigning a bus number that already exists.
+					* This can happen when a bridge is hot-plugged */
+                    //要处理的总线编号是否已经存在了
+                   if (pci_find_bus(pci_domain_nr(bus), max+1))
+                            goto out;
+                   child = pci_add_new_bus(bus, dev, ++max);
+                   buses = (buses & 0xff000000)
+                         | ((unsigned int)(child->primary)     <<  0)
+                         | ((unsigned int)(child->secondary)   <<  8)
+                         | ((unsigned int)(child->subordinate) << 16);
+ 
+                   /*
+					* yenta.c forces a secondary latency timer of 176.
+					* Copy that behaviour here.
+                    */
+                   if (is_cardbus) {
+                            buses &= ~0xff000000;
+                            buses |= CARDBUS_LATENCY_TIMER << 24;
+                   }
+                           
+                  
+                  pci_write_config_dword(dev, PCI_PRIMARY_BUS, buses);
+ 
+                   if (!is_cardbus) {
+                            child->bridge_ctl = bctl;
+                           
+                            pci_fixup_parent_subordinate_busnr(child, max);
+                            /* Now we can scan all subordinate buses... */
+                            max = pci_scan_child_bus(child);
+                            pci_fixup_parent_subordinate_busnr(child, max);
+                   } else {
+                                     for (i=0; i<CARDBUS_RESERVE_BUSNR; i++) {
+                                     struct pci_bus *parent = bus;
+                                     if (pci_find_bus(pci_domain_nr(bus),
+                                                                 max+i+1))
+                                               break;
+                                     while (parent->parent) {
+                                               if ((!pcibios_assign_all_busses()) &&
+                                                   (parent->subordinate > max) &&
+                                                   (parent->subordinate <= max+i)) {
+                                                        j = 1;
+                                               }
+                                               parent = parent->parent;
+                                     }
+                                     if (j) {
+                                               i /= 2;
+                                               break;
+                                     }
+                            }
+                            max += i;
+                            pci_fixup_parent_subordinate_busnr(child, max);
+                   }
+                   child->subordinate = max;
+                   pci_write_config_byte(dev, PCI_SUBORDINATE_BUS, max);
+         }
+ 
+         sprintf(child->name, (is_cardbus ? "PCI CardBus #%02x" : "PCI Bus #%02x"), child->number);
+ 
+         /* Has only triggered on CardBus, fixup is in yenta_socket */
+         while (bus->parent) {
+                   if ((child->subordinate > bus->subordinate) ||
+                       (child->number > bus->subordinate) ||
+                       (child->number < bus->number) ||
+                       (child->subordinate < bus->number)) {
+                            pr_debug("PCI: Bus #%02x (-#%02x) is %s "
+                                     "hidden behind%s bridge #%02x (-#%02x)\n",
+                                     child->number, child->subordinate,
+                                     (bus->number > child->subordinate &&
+                                      bus->subordinate < child->number) ?
+                                               "wholly" : "partially",
+                                     bus->self->transparent ? " transparent" : "",
+                                     bus->number, bus->subordinate);
+                   }
+                   bus = bus->parent;
+         }
+ 
+out:
+         pci_write_config_word(dev, PCI_BRIDGE_CONTROL, bctl);
+ 
+         return max;
+}
+
+忽略有关cardbus总线相关的部份。PCI_PRIMARY_BUS寄存器中的值的含义为：从低位到高位分别为：__主总线号，次总线号，子层最大线号__。各占两位。如果从PCI_PRIMARY_BUS取出来的值，次总线号和子层最大线号有意义。说明该pci-bridge是被bios处理过的。 这里为什么没有判断主总线号的值呢？这是因为总主线号可能为零,如根总线。而次总线是每枚举到一个pci-bridge就会增1。
+
+如果该pci bridge是被bios处理过的，那直接构造一个pci_bus（pci_add_new_bus()）.再递归枚举这个pci_bus下的设备就可以了。相反，如果该pci-bridge没有被bios处理过，那就需要我们手动去处理了。这时，为它分配一个可能的总线号。然后将总线号写入PCI_PRIMARY_BUS寄存器。再构造一个pci_bus.递归枚举其下的设备。最后的一个while()循环是打印出一些DEBUG信息。不需要理会
+ 
+特别注意.在遍其次级总线下层pci时.此时还不知道下层最大总号是多少.所以将pci_bus->subordinate赋值为了0xFF.即其下的所有设备都可以透过这个pci-bridge(参考pci_alloc_child_bus()中的处理).然后等下层的子总线遍历完了之后,再来确定子总线的最大总线号,将其更新至pci_bus->subordinate.
+
+递归完成之后，pci总线上的所有信息都被找到了。所有pci_bus被存放在__pci_root_buses为根__的倒立树中.而总线上对应的pci 设备存放在__pci_bus->device链表__中.返回到我们开篇时的初始化函数pci_legacy_init().这个函数还剩下一部份.代码如下:
+
+static int __init pci_legacy_init(void)
+{
+         if (!raw_pci_ops) {
+                   printk("PCI: System does not support PCI\n");
+                   return 0;
+         }
+ 
+         if (pcibios_scanned++)
+                   return 0;
+ 
+         printk("PCI: Probing PCI hardware\n");
+         pci_root_bus = pcibios_scan_root(0);
+         if (pci_root_bus)
+                   **pci_bus_add_devices**(pci_root_bus);
+ 
+         pcibios_fixup_peer_bridges();
+ 
+         return 0;
+}
+
+如果__总线遍历成功__,就会转入pci_bus_add_devices().代码片段如下:
+void pci_bus_add_devices(struct pci_bus *bus)
+{
+         ……
+         ……
+pci_bus_add_device(dev)
+……
+……
+}
+
+该函数会遍历__总线上的device链表__.然后对每个设备调用pci_bus_add_device().代码如下:
+
+int pci_bus_add_device(struct pci_dev *dev)
+{
+         int retval;
+         retval = __device_add(&dev->dev)__;
+         if (retval)
+                   return retval;
+ 
+         down_write(&pci_bus_sem);
+         list_add_tail(__&dev->global_list, &pci_devices__);
+         up_write(&pci_bus_sem);
+ 
+         pci_proc_attach_device(dev);
+         pci_create_sysfs_dev_files(dev);
+         return 0;
+}
+
+从上面的代码可以看出.它先将设备添加,然后再将设备挂载到全局的pci_devices链表上.这样顺着pci_devices就可以找到所有的设备信息了.另外,对于pci_dev的初始化,我们之前曾强调过.初始化代码片段如下:
+
+static struct pci_dev * __devinit
+pci_scan_device(struct pci_bus *bus, int devfn)
+{
+         ……
+         ……
+         dev->dev.parent = bus->bridge;
+         __dev->dev.bus = &pci_bus_type__;
+         ……
+         ……
+}
+
+即该设备是属于pci_bus_type总线的.事实上,我们编写的pci驱动程序,也是基于pci_bus_type.这样,就可以在添加驱动的时候,就可以__匹配__想要的设备了.在这里,特别注意一下,经过这里的枚举,只是枚举完了第一条根总线.那其它的根总线是在什么地方被枚举的呢? 在下一节里,再来分析这个问题.
+ 
+六:小结
+在linux的pci架构中,大量运用了深度优先遍历算法.这是由pci总线结构所决定的.经过这一章的分析过后,我们应该对pci架构有了一定的了解.同时在这一章还留下了一个问题.到下一节再来进行分析.
+
+-----------------
+**pci总线枚举**是在initcalls被调用的时候进行的，do_initcalls分别调用很多init节中的的函数，调用顺序由类似__define_initcall("0",fn,1)宏定义的参数决定。当调用到__pcibios_init__的时候开始进行总线初始化
+
+pcibios_init-->pcibios_sort-->while (!list_empty(&pci_devices)) {      
+
+        ln = pci_devices.next;
+        dev = pci_dev_g(ln);
+        idx = found = 0;
+        while (pci_bios_find_device(dev->vendor, dev->device, idx, &bus, &devfn) == PCIBIOS_SUCCESSFUL) {
+        idx++;
+        list_for_each(ln, &pci_devices) {
+                 d = pci_dev_g(ln);//d为pci_dev
+
+                    ......            -->pci_bios_find_device:此为汇编代码
+
+struct pci_bus * __devinit __pcibios_scan_root__(int busnum)
+
+{
+
+struct pci_bus *bus = NULL;
+dmi_check_system(pciprobe_dmi_table);
+while ((bus = pci_find_next_bus(bus)) != NULL) {
+if (bus->number == busnum) {
+return bus;
+}
+}
+
+printk(KERN_DEBUG "PCI: Probing PCI hardware (bus %02x)\n", busnum);
+
+return pci_scan_bus_parented(NULL, busnum, &pci_root_ops, NULL);-->|pci_bus *b = pci_create_bus(parent, bus, ops, sysdata)
+
+}                                     |pci_scan_child_bus(b)-->见下面代码：
+
+unsigned int __devinit pci_scan_child_bus(struct pci_bus *bus)
+
+{
+
+unsigned int devfn, pass, max = bus->secondary;
+
+struct pci_dev *dev;
+
+pr_debug("PCI: Scanning bus %04x:%02x\n", pci_domain_nr(bus), bus->number);
+
+for (devfn = 0; devfn < 0x100; devfn += 8)
+
+pci_scan_slot(bus, devfn);
+
+pr_debug("PCI: Fixups for bus %04x:%02x\n", pci_domain_nr(bus), bus->number);
+
+pcibios_fixup_bus(bus);
+
+for (pass=0; pass < 2; pass++)
+
+list_for_each_entry(dev, &bus->devices, bus_list) {
+
+if (dev->hdr_type == PCI_HEADER_TYPE_BRIDGE ||
+
+dev->hdr_type == PCI_HEADER_TYPE_CARDBUS)
+
+max = pci_scan_bridge(bus, dev, max, pass);
+
+}
+
+pr_debug("PCI: Bus scan for %04x:%02x returning with max=%02x\n",
+
+pci_domain_nr(bus), bus->number, max);
+
+return max;
+
+}    
+
+以上最重要的函数就是：__pci_scan_slot__(bus, devfn)-->dev = pci_scan_single_device(bus, devfn)-->|dev = pci_scan_device(bus, devfn)这个函数就是我一直找的建立pci_dev的函数，终于找到了，这个函数主要就是读取设备的配置空间，检查槽是否被占用，若被占用则分配一个pci_dev结构将之初始化并挂入当前的bus
+
+pci_device_add(dev, bus)这个函数是将上面返回的pci_dev结构挂入当前bus的设备链表，在之后的时间将要把这个Bus的所有设备挂入pci_devices全局链表
+
+pci_scan_msi_device(dev)这个是一个支持选项，可以将中断写入一个特定空间，然后这个空间向cpu发中断
+
+pci_scan_bridge(bus, dev, max, pass)-->pci_scan_child_bus(child)这里是个递归的树建立过程
+
+以上就是建立pci树的过程这些都是在pci初始化代码中建立的，每发现一个可用的pci设备就建立一个pci_dev结构体，并且将之挂入pci_devices队列
+上面是从pcibios_scan_root开始的，但是到底是__谁调用的pcibios_scan_root呢__？继续分析：
+
+遍查代码后发现是__pci_legacy_init__调用的，但是再往前呢？很有意思，和读侦探小说一样，继续吧：注意在此函数中有if (pcibios_scanned++)return 0;这是判断是否已经遍历过一次了，若是则不做了，直接返回，若不是则进一步调用pcibios_scan_root，接下来分析是谁调用了pci_legacy_init，我估计马上就可以把一切联系起来了.当我遍查代码的时候发现没有一个函数显示调用它，原来他__是subsys_initcall调用的内存位置时.initcall4.init__它的级别是4，它是__在do_basic_setup中的do_initcalls中被调用__的，看它的定义也可以：subsys_initcall(pci_legacy_init)
+
+一切基本上结束了，它的级别是4，属于subsys范畴，接下来关于pci的就是调用级别5，6...了，他们是pcibios_init,
+
+下面跟踪一下：
+pcibios_init-->pcibios_sort-->...这不用了，最上面已经有了
+
+另外pci_scan_bus也可以开始pci枚举过程，它和pci_scan_root差不多，它是：
+
+static inline struct pci_bus *pci_scan_bus(int bus, struct pci_ops *ops, void *sysdata)
+
+{
+   struct pci_bus *root_bus;
+   root_bus = pci_scan_bus_parented(NULL, bus, ops, sysdata);
+   if (root_bus)
+       pci_bus_add_devices(root_bus);
+   return root_bus;
+}
+
+只是它一般是在枚举过后进行fixup时候调用的，比如pci_fixup_i450nx(struct pci_dev *d)中就会调用由此我认为在启动的时候并不是一次进行枚举，而是进行了很多次枚举，每次fixup的时候一般都要进行枚举再看看pci_access_init的跟踪：
+
+static __init int pci_access_init(void)
+
+{
+#ifdef CONFIG_PCI_MMCONFIG
+pci_mmcfg_init();
+#endif
+if (raw_pci_ops)
+return 0;
+#ifdef CONFIG_PCI_BIOS
+pci_pcbios_init();-->pci_find_bios-->check_pcibios这个函数是一个内联汇编代码
+#endif
+if (raw_pci_ops)
+return 0;
+#ifdef CONFIG_PCI_DIRECT
+pci_direct_init();
+#endif
+return 0;
+
+}
+
+arch_initcall(pci_access_init);
+
+总结一下：在start_kernel的最后一步启用函数rest_init，它内部启动内核进程init，然后调用__do_initcalls__. 开始进行二期初始化，比如设备初始化，我这个分析中主要讨论了pci初始化，在进行设备初始化配置的时候(比如中断号的分配)可能用到bios服务，从设备的配置空间读取中断号，这就要在pci枚举之前首先找到bios为pci服务的地址，这个在__pci_access_init__中指定，然后就开始了总线枚举，完事以后pci_devices全局链表就被填充了，然后就开始pcibios_init了，这就是一切过程。这里仅仅把设备初始化了，但是还是得需要驱动才能使设备开始工作。
+
+这就和前些天我研究的统一的设备模型联系起来了。终于把pci枚举的来龙去脉弄明白了，这个问题是从我看usb驱动源代码的时候引出的，当时我发现usb的主机控制器是个pci设备，于是就一路跟下来了，其间读了irq的代码，明白了中断号的分配，中断的处理过程。在这个分析的过程里学习了几段代码，就是在start_kernel里的处理初始参数的问题，一共有两个，一个是特权参数的解析，一个是非特权参数的解析，初始化参数和initcalls都在内核映像的_init_begin和_init_end之间，这种安排我今天才明白，感觉最近分析代码以后对Linux越来越清晰了，当遇到困难的时候，阅读代码是最好的方法。

@@ -1,0 +1,126 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-22T21:53:02+08:00
+
+====== fetchmail mutt msmtp ======
+Created Sunday 22 May 2011
+http://blogold.chinaunix.net/u1/37261/showart_481232.html
+fetchmail、msmtp、mutt 整合使用
+今天看了一下自己以前写的东西，发现对于这三样东西的描述过于分散，不好。所以现在把这三样东西放在一起，写个快速上手可操作的东西。其实也没什么，就是把要做的配置全放在一起，这样看着不累人。否则要看分别看三个文档才行。
+首先，mutt 是用来作为邮件管理器使用的，它不负责邮件的收和发，只负责管理。所谓的管理是指，邮件排序，写邮件，删除邮件等等操作。
+具体的收件操作由 fetchmail 来做，而我会将它配置成一个周期性自动执行的任务，即写入 crontab 。
+发件操作由 msmtp 来做，我也将它配置成了一个周期性执行的任务。这样我以后唯一要做的事情就是打开  mutt 看邮件，而收发之类的事，就与我无关了，呵呵。
+
+首先看 fetchmail 配置，我是在 ~/.fetchmailrc 中配置的，如下。要注意的是，要用
+chmod 600 ~/.fetchmailrc 来设置它的权限，因为在这个文件里，密码是明文形式。不要让其它人读到这个文件。我的本地用户名叫 nico ，你的可能不一定。 
+
+# ~/.fetchmailrc for user-specific
+# This file MUST be chmod 0600, owner fetchmail
+set postmaster 你的用户名       #设定当邮件在本地无匹配用户收取时，让此人来收
+   defaults
+       protocol pop3
+       mda "formail -s procmail"
+       antispam -1
+       ssl sslcertck
+           sslcertpath '/etc/ssl/certs/'
+   poll pop.gmail.com proto pop3
+user '电子邮件地址' there with password '密码' is '对应的本地用户名' here fastuidl 1
+
+
+现在配置 /etc/msmtprc，由于我的系统里就我一个人，所以我用了系统默认的 /etc/msmtprc 文件。
+同样要注意这个文件的权限问题。配置的时候，需要有写入权(root)。一旦配置结束，可以将它设为只读。
+如果你觉得这样还不好的话，就把内容放在 ~/.msmtprc 中，并对这个文件设置只读权。我用的是 gmail 帐户，你可能不用这个。请自行修改。
+
+#Set default values for all following accounts
+defaults
+tls on
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+logfile ~/Mail/msmtplog  #发件记录放在这个文件中
+
+# Gmail service
+account gmail            #帐户名，主要是为了多帐户时区分不同帐户用的
+host smtp.gmail.com
+from 电子邮件地址
+auth on
+user 用户名
+password 密码
+
+# Set a default account
+account default : gmail   #多帐户时，用 gmail 作为默认帐户
+
+为减少以后的一些劳动工作，我将 msmtp 和 fetchmail 放入了 cron 任务中，让它们自己运行。
+用 crontab -e 进行编辑。以后 fetchmail 每15分钟收件一次，msmtp 每5分钟发件一次。
+
+# m h dom mon dow command
+*/4 * * * * fetchmail
+*/12 * * * * /home/nico/Mail/msmtp-runqueue.sh
+设置时用到的 msmtp-enqueue.sh 和 msmtp-runqueue.sh 这两个文件来自
+/usr/share/doc/msmtp/examples/msmtpqueue/
+这个目录下。只是两个小脚本而已。请注意要放在对应目录下，并给它们加上对应的权限。由于我是把所有与邮件有关的内容都放在了 ~/Mail 目录下，所以在这两个文件中相应的地方也要做个小改动。在这两个文件的开头，把
+原来的 QUEUEDIR="$HOME/.msmtpqueue"
+改成   QUEUEDIR="$HOME/Mail/.msmtpqueue"
+这样，以后所有待发邮件全放在了 ~/Mail/.msmtpqueue 目录下。
+
+
+最后是 mutt 的配置。配置 mutt 的目的，只是为了个人喜好方便使用而已。由于我所用的系统是 debian，在 /etc/Muttrc 中已经存在一个默认设定了。因此，在这里我只要设定一下自己喜欢用的操作方式就 OK 了。其实也可以不设，一切都用系统默认的也可以了。在 ~/.muttrc 中写上这些就可以了，这个文件的权限就无所谓了，因为没有任何密码之类的东西在里面。如果你在这个文件中写上了密码用户名之类的东西，那也请你注意权限问题。
+
+subscribe debian-laptop@lists.debian.org
+subscribe debian-science@lists.debian.org
+subscribe debian-chinese-gb@lists.debian.org
+subscribe i18n-zh@googlegroups.com               #我订的一些邮件列表
+
+alias i18n i18n-zh@googlegroups.com
+alias benno coordinator@translationproject.org
+alias gb-list debian-chinese-gb@lists.debian.org
+alias laptop-list debian-laptop@lists.debian.org
+alias sci-list debian-science@lists.debian.org  
+
+#一些联系人的简写，发件时可以少打点字 :-)
+
+ignore *
+unignore from: subject to cc date x-mailer x-url mail-followup-to
+# 对于邮件头，我只要 from subject to cc date 等几项，其它隐藏。
+
+# 颜色模板，个人喜好而已。在 /usr/share/doc/mutt/ 下有好几个模板用的，网上也能找到
+color normal    white black
+color attachment brightyellow black
+color hdrdefault cyan black
+color indicator black cyan
+color markers    brightred black
+color quoted    green black
+color signature cyan black
+color status    brightgreen blue
+color tilde    blue black
+color tree    red black
+color header    brightgreen black ^From:
+color header    brightcyan black ^To:
+color header    brightcyan black ^Reply-To:
+color header    brightcyan black ^Cc:
+color header    brightblue black ^Subject:
+color body    brightred black [\-\.+_a-zA-Z0-9]+@[\-\.a-zA-Z0-9]+
+color body    brightblue black (https?|ftp)://[\-\.,/%~_:?&=\#a-zA-Z0-9]+
+
+# 这是我自己的设定 (nico)
+set move=no                  #已读邮件还是放在 /var/mail/nico
+#set mbox=~/Mail/seen        #如果上面 move 设为yes，则将已读邮件放在这里
+set trash=~/Mail/trash       #放已删除邮件
+set record=~/Mail/sent       #放已发邮件
+set postponed=~/Mail/draft   #放草稿
+set postpone=yes             #已编辑但最后关头取消的邮件直接放草稿
+set abort_unmodified=no      #邮件内容不改没关系，照样能发送。申请ML时有用
+
+set wait_key=yes
+set pager_index_lines=4      #浏览邮件内容时，上方只要看到4封邮件
+set send_charset="us-ascii:iso-8859-1:utf-8"  #一般发邮件时按这个顺序选编码
+set editor="vim"            #用这个编辑器来写邮件
+auto_view text/html   #自动看一些 html 格式的邮件，其实我最不喜欢这种格式
+set include                  #回复时包括原文
+set sendmail=/home/nico/Mail/msmtp-enqueue.sh #让msmtp 来发邮件
+alternates 邮件地址1|邮件地址2|邮件地址3  # 跟下面的 reverse_name 配合用的
+set use_from
+set from="姓名<邮件地址>"     #默认的 From 字段
+set reverse_name=yes        #哪个邮箱收的就以那个邮箱的名字填 From 字段
+hdr_order date from subject to cc  #邮件头的显示顺序
+
+应该说，muttrc 中的自定义设置内容很丰富。但一般使用只要以上这些就够了。如果还想更进一步的了解这些内容，可以 man muttrc。不过，我说真的，大部分内容根本用不上的。以上这些绝对够了。
+

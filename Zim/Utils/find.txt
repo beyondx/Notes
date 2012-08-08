@@ -1,0 +1,71 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-24T12:54:04+08:00
+
+====== find ======
+Created Saturday 24 December 2011
+
+[geekard@geekard ~]$ ls -F .
+bin/    Desktop/    download/  musics/  pictures/  softwares/  tmp/    vms/
+codes/  documents/  dumy.c     notes/   ppc/       **test file**   video/  www/     #含有空格的文件名
+[geekard@geekard ~]$ 
+[geekard@geekard ~]$ find . -maxdepth 1 -type f __! -regex__ '^\./\..*'  
+./test file
+./dumy.c
+[geekard@geekard ~]$ 
+[geekard@geekard ~]$ find . -maxdepth 1 -type f  ! -regex '^\./\..*' |od -co
+0000000   .   /   t   e   s   t       f   i   l   e  __\n__   .   /   d   u
+         027456  062564  072163  063040  066151  005145  027456  072544
+0000020   m   y   .   c  \n
+         074555  061456  000012
+0000025
+[geekard@geekard ~]$ find . -maxdepth 1 -type f  ! -regex '^\./\..*' |xargs__ ls__
+ls: cannot access ./test: No such file or directory
+ls: cannot access file: No such file or directory
+./dumy.c
+[geekard@geekard ~]$ 
+[geekard@geekard ~]$  find . -maxdepth 1 -type f  ! -regex '^\./\..*' __-print0__ |xargs__ -0__  ls
+./dumy.c  ./test file
+[geekard@geekard ~]$ 
+
+find 默认使用的action是print，它用__换行符分割__找到的每个文件(可能包含有相对路径)。如果把这样的输出传给其它程序如ls，含有空格的文件名就会出错。这是可以使用-print0，它用null来终止每个文件名，加-0 参数的xargs命令可以识别这个null，从而每次__将输入以null分割为单独的字符串__传给后面的程序(xargs默认是以__空白符__为单位将输入传给程序)。
+
+find 的-print0就是为xargs准备的特殊action.
+
+使用find是要注意，其命令行语法为：
+[geekard@geekard ~]$ find --help
+Usage: find [-H] [-L] [-P] [-Olevel] [-D help|tree|search|stat|rates|opt|exec] **[path...] [expression]**
+
+default path is the** current** directory; default expression is** -print**
+expression may consist of: __operators, options, tests, and actions:__
+
+operators (decreasing precedence; -and is implicit where no others are given):
+      __( EXPR )__  __ ! __EXPR   **-not** EXPR   EXPR1 -a EXPR2   EXPR1 -and EXPR2
+      EXPR1 -o EXPR2   EXPR1 -or EXPR2   
+      EXPR1 __, __EXPR2   #同时执行这两个test但是，**结果取决于后一个**
+
+positional options (always true): -daystart -follow -regextype
+
+normal options (always true, specified before other expressions):
+      **-depth** --help **-maxdepth** LEVELS **-mindepth** LEVELS -mount -noleaf
+      --version **-xdev** -ignore_readdir_race -noignore_readdir_race
+
+tests (N can be +N or -N or N): -amin N -anewer FILE -atime N -cmin N
+      -cnewer FILE -ctime N -empty -false -fstype TYPE -gid N -group NAME
+      -ilname PATTERN -iname PATTERN -inum N -iwholename PATTERN -iregex PATTERN
+      -links N -lname PATTERN -mmin N -mtime N -name PATTERN -newer FILE
+      -nouser -nogroup -path PATTERN -perm [+-]MODE -regex PATTERN
+      -readable -writable -executable
+      -wholename PATTERN -size N[bcwkMG] -true -type [bcdpflsD] -uid N
+      -used N -user NAME -xtype [bcdpfls]
+
+actions: -delete -print0 -printf FORMAT -fprintf FILE FORMAT -print 
+      -fprint0 FILE -fprint FILE -ls -fls FILE -prune -quit
+      -exec COMMAND ; -exec COMMAND {} + -ok COMMAND ;
+      -execdir COMMAND ; -execdir COMMAND {} + -okdir COMMAND ;
+
+Report (and track progress on fixing) bugs via the findutils bug-reporting
+page at http://savannah.gnu.org/ or, if you have no web access, by sending
+email to <bug-findutils@gnu.org>.
+[geekard@geekard ~]$ 
+__选项(options)必须要在tests和actions前指定__。

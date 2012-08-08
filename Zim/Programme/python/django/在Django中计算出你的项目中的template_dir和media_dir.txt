@@ -1,0 +1,46 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-21T22:28:04+08:00
+
+====== 在Django中计算出你的项目中的template dir和media dir ======
+Created Friday 21 October 2011
+
+在django中需要设定一些目录的路径， 比如TEMPLATE_DIRS，STATIC_DOC_ROOT，LOCALE_PATHS 等等， 如果是多人一起开发一个项目，每个人的路径可能都不一样。 最理想的方式是都把资源文件放在目录中，我们可以通过相对路径来得到那些资源的path。 下面说下我的做法，django的配置文件是settings.py。 这个文件本省就是一个py文件。 所以我们如果可以计算出settings.py的路径，那我们就自然知道放在项目中的资源的路径了。
+
+在settings.py的开头加入以下代码。
+
+Java代码  收藏代码
+
+    import os  
+      
+    base_dir = os.path.dirname(__file__)  
+
+
+
+这样我们就得到了settings.py的文件在的文件夹的path。 所以我们就可以把TEMPLATE_DIRS定义成
+
+Java代码  收藏代码
+
+    TEMPLATE_DIRS = (  
+        # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".  
+        # Always use forward slashes, even on Windows.  
+        # Don't forget to use absolute paths, not relative paths.  
+        base_dir + "/website/templates",  
+    )  
+      
+    STATIC_DOC_ROOT = base_dir + '/website/zoomino_media'  
+      
+    LOCALE_PATHS = (base_dir + "/conf/locale",)  
+
+
+
+项目结构为 
+
++project
+   +conf
+      +locale
+   +website
+       +templates
+       +zoomino_media
+settings.py
+  

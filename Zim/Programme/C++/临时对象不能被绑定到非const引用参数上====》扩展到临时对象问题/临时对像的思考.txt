@@ -1,0 +1,86 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-06T16:47:10+08:00
+
+====== 临时对像的思考 ======
+Created Saturday 06 August 2011
+http://www.cnblogs.com/welkinwalker/archive/2011/03/10/1979745.html
+
+由无名对象（临时对象）引发的关于“引用”的思考
+
+预备知识： 
+
+    __无名对象，也叫临时对象__。指的是**直接由构造函数产生**，但是__没有被任何符号所引用的对象__。例如：string("abc")，这句话产生的就是一个无名对象，这个对象产生以后，没有什么办法使用它。但是对于string str("abc")来说，则产生的是一个有名字的对象，他的名字就是 str。
+   __ 任何引用必须初始化。__
+   __ const（对象）变量只能传递给const引用，不能传递给非const引用__。假如说把一个const的对象传递给了非const引用，那么修改这个引用就相当于修改了原来的const对象，这个违反了const约束。这种方式不能通过编译，会报error: passing `const ref' as `this' argument of `void ref::change()' discards qualifiers。
+
+请观察下面的代码的微妙差别，特别留意注释中的说明
+ 
+#include <iostream>
+using namespace std;
+
+class ref
+{
+    public:
+        ref(int input);
+        ~ref();
+        int i;
+        void change();
+        **void change_const() const;**
+
+};
+
+void ref::change_const() const
+{
+    cout<<"in change_const"<<endl;
+}
+void ref::change() 
+{
+    i=3;
+    cout<<"in change"<<endl;
+}
+ref::ref(int input)
+{
+    i=input;
+}
+ref::~ref()
+{
+    cout<<"tear down"<<endl;
+}
+
+
+void test_const(const string & str)
+{
+    cout<<str<<endl;
+}
+
+void test(string & str)
+{
+    cout<<str<<endl;
+}
+
+main()
+{
+//  int &i=1;  //__不能用非对象去初始化一个引用, 其实就是不能用一个常量来初始化一个引用。__
+注意： 其实上面的更深层原因是，编译器调用 int(1)生成一个__临时对像__，而临时对像只能用const同类型的引用。
+
+    const int &j=1;//这样可以，但是没什么实际意义
+
+    string str("haha");  // 这里创建的str是一个__有名的局部对像。__
+    test(str);
+    test_const(str);
+
+//    test(string("haha"));
+//报invalid initialization of non-const reference of type 'std::string&' from a temporary of type 'std::string'。使用__临时对象不能初始化test的string & 引用__。
+    test_const(string("haha"));//__使用临时对象初始化函数形参的时候，函数形参必须是有const限定。__
+
+
+    ref const obj(1);
+    cout<<obj.i<<endl;
+    obj.change_const();
+    cout<<obj.i<<endl;
+
+    ref(2).change();__//无名对象调用非const函数,这说明无名对象（临时对象）并不能等同于用const修饰的有名对象，用const修饰的有名对象，是不允许调用非const方法的(不管该方法是否真的修改了对像的状态)，因为那样会修改对象的成员。这可以从下面的例子看到。__
+__//  obj.change();//const对象调用非const函数,报passing `const ref' as `this' argument of `void ref::change()' discards qualifiers（限定符）__
+//上面的意思是，obj对像是一个const ref类型的实例，但是调用的方法change()是非const型的（即丢弃了const限定符）。
+}

@@ -1,0 +1,168 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-09-02T18:39:42+08:00
+
+====== Get Organized with Emacs Org-mode ======
+Created Friday 02 September 2011
+http://www.linuxjournal.com/article/9116
+
+Use Emacs to create a flexible plain-text organizer and personal productivity system.
+
+It is said that Emacs, that versatile toolbox for working with text, is more than merely a text editor—it's a lifestyle. That's not just hyperbole. In this article, I show you how to turn Emacs into a flexible personal organizer and productivity system.
+
+I started using Emacs for programming but soon discovered that it worked well for nonprogramming writing tasks too. I began experimenting with several modes that extend Emacs for writing notes and planning projects. Though each one was useful in its own way, none of these features or modes fit my style of working. Then I discovered Org-mode.
+
+Org-mode is a new Emacs mode developed by Carsten Dominik. It is designed for taking notes, outlining, writing, project planning, maintaining to-do lists, time management and even publishing to Web sites—all this using only Emacs and plain text.
+
+Plain text? Why would anyone want to use plain text for doing all of the above? Plain text offers several advantages. You are not locked in to a file format or an operating system. You can edit plain-text files using any available text editor. It is easy to copy and paste plain text from and into e-mail messages. You can track changes in your document using a version control system, such as CVS or Subversion. When I am writing, I find that plain text offers one more advantage—it enables me to think better and focus on my ideas, without the distractions of a word processor.
+Getting Started with Org-mode
+
+For this article, I assume that you have Emacs installed and have some familiarity with using it. If you are not already an Emacs user, maybe Org-mode will give you a good reason to start using it. (See Resources for information on getting started with Emacs.)
+
+Org-mode is included in GNU Emacs 22. You also can install Org-mode to work with GNU Emacs 21 and XEmacs. I used GNU Emacs 22 and Org-mode 4.42 to write this article. If you already have Emacs on your system, check whether Org-mode is available by typing the following command:
+
+M-x org-mode
+
+The above notation means press the meta key (Esc or Alt, depending on your setup) followed by x, followed by org-mode, and then press the Return (or Enter) key.
+
+If Emacs displays “No Match”, it means you do not have Org-mode installed. You will need to install org-mode manually or install GNU Emacs 22. You can find precompiled binaries of GNU Emacs 22 for your Linux distribution and even for other operating systems. On Ubuntu 7.04 (Feisty Fawn), you can install GNU Emacs 22 (with Org-mode 4.56d) by running the following command:
+
+sudo apt-get install emacs-snapshot
+
+If you need to install Org-mode for GNU Emacs 21 or XEmacs, download the latest version from orgmode.org, and look for the manual that provides detailed installation instructions. (The Org-mode documentation includes an excellent manual with more than 100 pages and a handy reference card.) Once you have org-mode installed, run the M-x org-mode command again. If Org-mode is installed correctly, Emacs will display “(Org)” in its mode line area, and Org-mode will be active. If you are running Emacs in a graphical environment, you also should see the Org pull-down menu (Figure 1).
+
+Figure 1. Graphical User Interface Menu for Org-mode
+
+Although Org-mode provides a graphical menu, in this article I refer to Org-mode keyboard commands only. Once you get familiar with Org-mode keystrokes, you will find them to be more efficient than the graphical menu.
+
+Add the following lines to your ~/.emacs file and restart Emacs:
+
+;; Org-mode settings
+(add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
+(global-set-key "\C-cl" 'org-store-link)
+(global-set-key "\C-ca" 'org-agenda)
+(global-font-lock-mode 1)
+
+Now, if you save your org files with the .org extension, they will open up using Org-mode in Emacs. I recommend creating a directory to keep all your Org files. I use ~/notes. Although you can invoke org-mode for any text file, it's convenient to have them in one directory.
+Outlining and Writing
+
+Outlining is an effective technique for organizing thoughts, taking notes or writing articles. Emacs has a built-in outline-mode that stores text as entries. Each entry has a headline and a body. Entries can be nested to create a tree of hierarchical information. Emacs uses asterisks (stars) to denote the hierarchy of an outline tree. Lines that do not begin with a star are considered to be the body of the headline above it. In the following example, ** Apples is a headline. Apples are red is the body for the Apples headline.
+
+* Fruit 
+** Apples 
+Apples are red 
+** Oranges 
+Oranges are orange 
+*Vegetables
+
+Branches of a tree can be folded and hidden from view to make it easier to navigate the tree and work on specific parts of the tree. When a headline is folded, its body and subtree (all branches) are hidden from view, and the headline is displayed ending with ellipses (three dots).
+
+Outline Structure
+
+Org-mode is based on Emacs' outlinemode, but it makes working with outlines much easier. Place the cursor on a headline. Using the Tab key, you can expand the headline to show its branches and body. Using Shift-Tab does the same for the entire document (Figures 2–4).
+
+Figure 2. Outline Overview
+
+Figure 3. Outline Partially Expanded
+
+Figure 4. Outline Fully Expanded
+
+Org-mode provides useful keystrokes for modifying the outline structure. To promote a heading by one level, place the cursor on the heading, and use the keystroke M-left (meta and left arrow keys together). To demote a heading by one level use M-right. You can promote an entire subtree with M-Shift-left (Meta, Shift and left arrow keys together) and demote it with M-Shift-right.
+Plain Lists
+
+Sometimes you may need to add a plain list within the body of a subtree that is not part of the tree structure of the document. To add an unordered plain list, start the line with - or +. To make Org-mode add a - or + at the start of subsequent list items automatically, use M-Return to insert the next list item. To add an ordered list, start the line with 1., and to make Org-mode number subsequent items automatically, use M-Return to insert the next list item. Add an item in the middle of an ordered list, and Org-mode automatically renumbers the list items. You can mix ordered and unordered lists too. Want to add check boxes to a plain list? Start the list item with -[ ]. You can toggle the check box using C-c C-c, which displays the check box as [X] (Figure 5).
+
+Figure 5. Plain Lists
+Hyperlinks
+
+Org-mode recognizes URLs and turns them into clickable links. If Emacs knows your default Web browser, clicking on URLs in Org-mode opens up the link in your default Web browser. Org-mode supports other types of external links, including links to files and images (Figure 6).
+
+Figure 6. Hyperlinks
+Tables
+
+Org-mode includes a table editor that makes it possible to format tables in plain ASCII text. Using | as a column separator, Org-mode automatically reformats the plain-text table to realign columns or add new rows. Use Tab to move to the next cell and Shift-Tab to move to the previous cell. Org-mode helpfully right-aligns numbers. You can do spreadsheet calculations in these plain-text tables by inserting formulae within cells (Figure 7).
+
+Figure 7. Plain-Text Tables
+
+These are just a few examples of how Org-mode makes it easy to write and format in plain text. But Org-mode's most impressive features are those that enable you to organize and track tasks.
+Tags
+
+You can assign tags to any headline. Tags are simply letters or numbers preceded and followed by a colon. For example, :RED: could be a tag. You can associate multiple tags with a single headline as in :RED:GREEN:. Tags are added to the end of a headline. To add a tag to a headline, place the cursor on the headline and type C-c C-c. Org-mode will prompt you for a tag.
+
+Org-mode creates a dynamic list of all tags in the file. If you already have tags in a file and want to tag a headline, Org-mode presents a list of already-entered tags. After typing C-c C-c on a headline, use the up and down arrow keys to see other tags in use.
+
+Figure 8. Tags
+
+Tags can be used to set up a system of labels to relate and group information spread out across an Org file. You could use tags to mark the activity type, such as :CODE: and :CALL:. If you are coordinating tasks with others, you could use colleagues' names as tags. 
+
+Work Flow and To-Do Lists
+
+In Org-mode you can create a to-do list in the same file that you are using to write notes or outline a project. This has the advantage of placing the task in the context of the entire project. To mark a headline as a to-do item, start the headline with the word TODO. You can do this more quickly by placing the cursor on the headline and typing in C-c C-t. This adds the label TODO to the start of the headline for you. The same command can be used to toggle the TODO to DONE when you complete the task. Use the command once again, and Org-mode removes DONE from the headline.
+
+TODO and DONE are the standard work-flow states in Org-mode, but it's possible to configure your own work flow, either globally for all Org-mode files or a custom one for each file. For example, if you wanted to set up a custom work flow, such as TODO --> TEST --> DONE, add the following to the top of your Org file:
+
+#+SEQ_TODO: TODO TEST DONE
+
+Priorities
+
+Once you create tasks, you will need to prioritize them. Org-mode supports three priority levels: A, B and C. A is the highest priority. Priority for a task can be set by adding [#A] to a headline. The command C-c also can be used to set priorities. Figure 9 shows an example of a task list using tags, a custom to-do work flow and priorities.
+
+Figure 9. Tags, Custom To-Do Work Flow and Priorities
+
+Tags, custom work flows and priorities, make Org-mode flexible enough for many different uses. It's easy to develop a custom organization system that suits a project. Each Org file can use a different system.
+Timestamps
+
+To associate an event or a meeting with a date in Org-mode, use a plain timestamp. You can insert a plain timestamp in headlines or the body of an entry with C-c. You also can specify date ranges. Org-mode provides special timestamps useful for scheduling and tracking tasks. To set a reminder to start working on an entry on a certain date, precede the timestamp with the label SCHEDULED. If an entry is to be completed by a certain date, precede the timestamp with the label DEADLINE. You also can use Org-mode for tracking time spent on each task. This is done by using the CLOCK label preceding the timestamp. Org-mode has keyboard commands to make it easy to insert timestamps and timestamp labels.
+Example
+
+Figure 10 shows a fictional example that illustrates some of Org-mode's planning and scheduling features. This Org file uses a custom to-do work flow, which is specified at the top of the file. Task are marked with work-flow states. Major project phases are outlined some with scheduled or deadline dates. Tags are used for marking activity type and team member responsibilities. Dates and times are marked for meetings. A clock timestamp is used to track time spent on a meeting. The “On-site Meetings” entry uses a date range because it spans multiple days. High and low priority markers help prioritize tasks. Folded away from view are the project proposal, meeting minutes, reports and a budget spreadsheet. Everything related to a project can be kept in one file.
+
+Figure 10. Project Planning with Org-mode
+Tag Searches
+
+Since Org files can get large, Org-mode provides mechanisms to generate different views of an Org file showing only the information you are interested in. In Figure 10, if you want to search for all entries with the tag PAT, use the command C-c \ and type in PAT (Figure 11).
+
+Figure 11. Tag Searches
+Agenda Views
+
+Org-mode's Agenda feature offers other views, such as a list of all to-do items or an agenda-like display of entries and their dates. First, you need to add your Org file to your Org agenda by using the command C-c [. Then, type C-c a to be presented with options for different views. For example, to see a to-do list of the fictional project shown in Figure 10, type C-c a t (Figure 12). You also can generate views based on tags (Figure 13).
+
+Figure 12. Agenda To-Do List
+
+Figure 13. Agenda Tag List 
+
+Exporting and Publishing
+
+Org-mode files are readable, and you can copy and paste the text directly from the Org file into e-mail messages or other documents. You also can export from Org-mode to other file formats. To export an Org file to a formatted ASCII text file with a contents page and automatically numbered headings, use the command M-x org-export-as-ascii. Org-mode generates a file with the same name as the Org file, but with a .txt extension. To export as HTML, use the command M-x org-export-as-html, and Org-mode creates a file with a .html extension. The HTML version will have a hyperlinked contents page, numbered headings, formatted tables, hyperlinks and images, if any (Figure 14).
+
+Figure 14. Org File Exported to HTML Format
+Conclusion
+
+I have covered only some of the features Org-mode offers using a single Org file as an example, but there is more to Org-mode. You can maintain multiple Org files and generate agenda views or to-do lists across Org files. Entries can be archived. Org-mode also includes a publishing system to generate a set of interlinked HTML files automatically and upload them to a server. Much of Org-mode's behavior can be customized. Org-mode builds on top of Emacs' core features. It also provides hooks to interact with other Emacs modes and packages. It also can be used to implement David Allen's “Getting Things Done” method for personal productivity (see Resources). I find Org-mode invaluable for taking notes, planning projects, tracking tasks and organizing ideas.
+
+Using only plain-text for writing, organizing, planning, and scheduling may appear to be a quixotic goal. Org-mode meets the challenge and delivers a practical, intuitive, and elegant solution.
+
+Resources
+
+Emacs Wiki: www.emacswiki.org
+
+GNU Emacs: www.gnu.org/software/emacs
+
+Org-mode Web Site: orgmode.org
+
+Chua, S., 2005, “Taming the TODO”, Linux Journal: www.linuxjournal.com/article/8378
+
+Cave, C., 2006, “Using Emacs org-mode for GTD”: members.optusnet.com.au/~charles57/GTD/orgmode.html
+
+Curley, C., 2002, “Getting Started with Emacs”, Linux Journal: www.linuxjournal.com/article/6242
+
+Curley, C., 2004, “Intermediate Emacs Hacking”, Linux Journal: www.linuxjournal.com/article/6771
+
+Dominik, C., 2006, “Re: Another GTD Question”, Gmane: article.gmane.org/gmane.emacs.orgmode/715
+
+Pedersen, J., 2000, “Emacs Macros and the Power-Macros Package”, Linux Journal: www.linuxjournal.com/article/3769
+
+Welsh, M., 1994, “Emacs: Friend or Foe”, Linux Journal: www.linuxjournal.com/article/2801
+
+Abhijeet Chavan is the Chief Technology Officer of Urban Insight, an Internet consulting firm (urbaninsight.com). He also is the cofounder and co-editor of Planetizen (planetizen.com). He wrote this article using Org-mode. 
+

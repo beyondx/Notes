@@ -1,0 +1,256 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-07T09:21:54+08:00
+
+====== C++之类与对象(1) ======
+Created Sunday 07 August 2011
+
+　下个阶段，我将讲解C++中面向对象的部分，也是C++对C语言改进的最重要的部分。以前C++也被叫做是"带类的C"。今天主要讲类的构成，成员函数以及对象的定义和使用。
+
+　　1.其实这一节，对于用C#开发的人来说，简直就是驾轻就熟啊。C++类的构成，我想
+
+===== 从C的结构体开始说起 =====
+。C中的结构体我想大家在熟悉不过了。
+
+ 1 #include "stdafx.h"
+ 2 #include <iostream>
+ 3 
+ 4 using namespace std;
+ 5 
+ 6 struct Kid
+ 7 {
+ 8     int age;
+ 9     char *name;
+10     char *sex;
+11 };
+12 
+13 int main()
+14 {
+15     Kid kid1;
+16     kid1.age=10;
+17     kid1.name="rookie_j";
+18     kid1.sex="男";
+19     cout<<"姓名："<<kid1.name<<endl<<"年龄："<<kid1.age<<endl<<"性别："<<kid1.sex<<endl;
+20     return 0;
+21 }
+
+==== 　　但是C中的结构体存在缺点： ====
+1.main函数中的任意赋值语句都可以访问结构体中的成员，但在现实生活中并不是什么数据都可以被随意访问的，因此C语言中的结构体的数据是__不安全的__；
+2.结构体中的__数据和对该数据的操作是分离的__，并不是一个被封装起来的整体，因此使程序难以重用，影响了软件生产效率；于是C++中引入了类的概念。
+
+===== C++中类的一般格式为： =====
+
+class Kid
+{
+　　private:
+　　　　int age;　　　　//私有成员
+　　　　char *name;
+　　　　char *sex;
+　　public:　　　　　　//公有成员
+　　　　void setKid(int age,char *name,char *sex);
+　　　　void showKid();
+};
+
+C++中规定如果没有对类的成员加私有private，保护protected，或公有public,则__默认为私有的__。而对于C++的结构体来说，成员可以是私有的，保护的或公有的，但默认为公有的；还有要注意的是__不能在类的声明中给数据成员赋值__，比如：
+
+class Kid
+
+{
+　　private :
+　　　　int age=10;
+　　　　char *name="rookie_j";
+　　　　char *sex="男";
+};
+
+　　一般情况下，一个类的数据成员应该声明为私有的，成员函数声明为公有的。这样，内部的数据隐藏在类中，在类的外部无法访问直接访问，使数据得到有效的保护。而__公有的成员函数就成为一种与类外部沟通的接口__。
+
+===== 2.C++中的成员函数有两种，一种为普通的成员函数： =====
+
+ 1 class Kid
+ 2 {
+ 3     private:
+ 4         int age;
+ 5         char *name;
+ 6         char *sex;
+ 7     public:
+ 8         void setKid(int age,char *name,char *sex);
+ 9         void showKid();
+10 
+11 };
+12 
+13 
+14 void Kid::setKid(int age,char *name,char *sex)
+15 {
+16     Kid::age=age;
+17     Kid::name=name;
+18     Kid::sex=sex;
+19 }
+20 
+21 void Kid::showKid()
+22 {
+23     cout<<"姓名："<<name<<endl<<"年龄："<<age<<endl<<"性别："<<sex<<endl;
+24 }
+
+要注意几点：
+1.类名和函数名之间应加上作用__域运算符“::”__，用于声明这个成员函数是属于哪一个类的，如果在函数名前没有类名，或既无类名又无作用域运算符“::”，比如：::showKid()或showKid()，那么这个函数__不属于任何类，不是成员函数，而是普通函数__;
+2.在类的声明中，成员函数原型的参数表中可以不说明参数的名字，而只说明它的类型，但在类外定义时必须既要说明参数类型又要说明参数名;
+
+==== 　　另外一种就是内联成员函数，它又分显式声明和隐式声明： ====
+
+隐式声明：
+
+ 1 class Kid
+ 2 {
+ 3     private:
+ 4         int age;
+ 5         char *name;
+ 6         char *sex;
+ 7     public:
+ 8         void setKid(int age,char *name,char *sex)
+ 9         {
+10             __Kid::age__=age;
+11             Kid::name=name;
+12             Kid::sex=sex;
+13         }
+14         void showKid()
+15         {
+16             cout<<"姓名："<<name<<endl<<"年龄："<<age<<endl<<"性别："<<sex<<endl;
+17         }
+18 
+19 };
+
+　因为这种定义的内联成员函数没有使用__关键字inline__进行声明，因此叫__隐式定义__；
+
+显式声明：
+
+ 1 class Kid
+ 2 {
+ 3     private:
+ 4         int age;
+ 5         char *name;
+ 6         char *sex;
+ 7     public:
+ 8        __ inline void __setKid(int age,char *name,char *sex);
+ 9         inline void showKid();
+10 };
+11 
+12 
+13__ inline void__ Kid::setKid(int age,char *name,char *sex)
+14 {
+15     Kid::age=age;
+16     Kid::name=name;
+17     Kid::sex=sex;
+18 }
+19 
+20 inline void Kid::showKid()
+21 {
+22     cout<<"姓名："<<name<<endl<<"年龄："<<age<<endl<<"性别："<<sex<<endl;
+23 }
+
+__内联函数的调用就是代码的扩展__，而不是一般函数的调用的操作；但要注意的是__使用inline定义的内联函数必须将类的声明和内联成员函数的定义都放在同一个文件中__，否则编译时无法进行代码的置换；
+
+===== 3.在C++中，类与对象的关系，可以用数据类型int和整形变量i之间的关系来类比。 =====
+int类型和类类型代表一种__抽象的概念__，而整形变量和类的对象代表__具体的东西__。C++把类的变量称为类的对象，对象也被称为类的实例；类的对象可以是：
+
+ 1 class Kid
+ 2 {
+ 3     private:
+ 4         int age;
+ 5         char *name;
+ 6         char *sex;
+ 7     public:
+ 8         inline void setKid(int age,char *name,char *sex);
+ 9         inline void showKid();
+10 }kid1,kid2;
+
+也可以是声明了类后，使用时再定义对象：Kid kid1,kid2;(__声明一个类后，它并不接受和存储具体的值__，只作为生成具体对象的一种“样板”，**只有定义了对象后，系统才为对象分配存储空间**，以存放对象中的成员);
+
+==== 对对象中的成员的访问可以是： ====
+1.对象名.数据成员名/对象名.成员函数名（参数），比如kid1.setKid(10,"rookie_j","男");
+2.指针访问对象中成员，比如：class Kid{public: int age;}; Kid kid,*ptr; ptr=&kid;cout<<ptr->age//cout<<(*ptr).age;
+3.还记得上节所讲到的引用(reference)么，还可以通过引用来访问对象中的成员：class Kid{public: int age;}; Kid kid;Kid &ptr=kid; cout<<ptr.age//cout<<kid.age;
+4.最后我们还是一样，用一个实例来总结一下今天所讲的内容(开发工具：vs2010)：
+
+ 1 #include "stdafx.h"
+ 2 #include <iostream>
+ 3 
+ 4 using namespace std;
+ 5 
+ 6 struct struct_Kid //结构体
+ 7 {
+ 8     int age; //默认公有
+ 9     char *name;
+10     char *sex;
+11 }kid1;
+12 
+13 class Kid
+14 {
+15     int age; __//默认私有__
+16 
+17     private:  //私有    
+18         char *name;
+19         char *sex;
+20 
+21     public: //公有
+22         __inline void __setKid(int age,char *name,char *sex);//显式内联
+23         /*{
+24             Kid::age=age;
+25             Kid::name=name;
+26             Kid::sex=sex;
+27         }*/
+28         void showKid()//隐式内联
+29         {
+30             cout<<"类："<<endl<<"姓名："<<name<<endl<<"年龄："<<age<<endl<<"性别："<<sex<<endl;
+31         }
+32 
+33 }__kid2;//直接定义对象__
+34 
+35 
+36 inline void Kid::setKid(int age,char *name,char *sex)
+37 {
+38     Kid::age=age;
+39     Kid::name=name;
+40     Kid::sex=sex;
+41 }
+42 
+43 int main()
+44 {
+45     //结构体
+46     kid1.age=10;
+47     kid1.name="rookie_j";
+48     kid1.sex="男";
+49     cout<<"结构体："<<endl<<"姓名："<<kid1.name<<endl<<"年龄："<<kid1.age<<endl<<"性别："<<kid1.sex<<endl;
+50 
+51     cout<<"--------------------"<<endl;
+52 
+53     //类
+54     Kid kid3,*ptr;
+55     Kid &kid4=kid3;
+56     ptr=&kid2;
+57 
+58     kid2.setKid(0,"rookie_y","男");
+59     kid2.showKid();
+60 
+61     cout<<"--------------------"<<endl;
+62 
+63     //指针调用成员函数
+64     (*ptr).setKid(20,"rookie_y","女");//或ptr->setKid(20,"rookie_z","女");
+65     kid2.showKid();
+66 
+67     cout<<"--------------------"<<endl;
+68 
+69     //对象名调用成员函数
+70     kid3.setKid(10,"rookie_x","男");
+71     kid3.showKid();
+72 
+73     cout<<"--------------------"<<endl;
+74     
+75     //引用调用成员函数
+76     kid4.setKid(30,"rookie_x","女");
+77     kid3.showKid();
+78 
+79     return 0;
+80 }
+
+结果：
+

@@ -1,0 +1,20 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-05T15:41:07+08:00
+
+====== 交换位置与大小写 ======
+Created Thursday 05 May 2011
+
+C-t	transpose-chars	交换光标当前位置和前一个位置的两字符
+M-t	transpose-words	交换量单词的位置(光标位于两单词间的空格处)
+C-x C-t	transpose-lines	
+M-x	transpose-sentense	
+M-x transpose-paragraph
+
+===== 字母大小写 =====
+M-c		capitalize-word			把单词首字母大写
+M-u		upcase-word				把单词所有字母大写
+M-l		downcase-word			把单词所有字母小写
+M- - M-c		 negtive-argument;capitalize-word  	把前一个单词的首字母改为大写
+M- - M-u 	negtive-argument;upcase-word		把。。。全部字母改为大写
+M- - M-l  	negtive-argument;downcase-word	把。。。。。。。。。小写

@@ -1,0 +1,315 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-22T16:55:04+08:00
+
+====== 命令行解析顺序 ======
+Created Thursday 22 December 2011
+http://blog.chinaunix.net/space.php?uid=8746761&do=blog&id=2015319
+
+
+1. token解析：将命令行分成由固定元字符集分隔的记号：SPACE, TAB, NEWLINE, __;__ , (, ), <, >, __|__, __&__
+记号类型包括单词，关键字，I/O重定向符和分号。
+2.检测每个命令的第一个记号，查看是否为不带引号或反斜线的__关键字__。如果是一个开放的关键字，如if和其他控制结构起始字符串，function，{或(，则命令实际上为一__复合命令__。shell在内部对复合命令进行处理，读取下一个命令，并重复这一过程。如果关键字不是__复合命令起始字符串__(如then等一个控制结构中间出现的关键字)，则给出语法错误信号。
+3.依据__别名列表__检查每个命令的第一个关键字。如果找到相应匹配，则替换其别名定义，并退回第一步;否则进入第4步。该策略允许递归别名，还允许定义关键字别名。如alias procedure=function
+4.执行**大括号扩展**，例如a{b,c}变成ab ac
+5.如果~位于单词开头，用$HOME替换~。使用usr的主目录替换__~user__。
+6.**参数(变量)替换**：对任何以符号$开头的表达式执行参数(变量)替换,注意参数扩展时的**大括号内容有多种形式**。
+${foo:-bar}  ${foo:=bar} ${foo:?bar}  ${foo:+bar}
+7.**命令替换**: 对形式$(string)的表达式进行命令替换，这里是__嵌套的命令行处理__。
+8.**算术替换**：计算形式为$((string))的算术表达式
+9.把行的参数，命令和算术__替换部分再次分成单词__，这次它使用__$IFS__中的字符做分割符而不是步骤1的**元字符集**。
+10.**通配符扩展**：对出现*, ?, [ / ]对执行路径名扩展，也称为通配符扩展
+11. 按命令优先级表(跳过别名)，进行命令查寻
+12.设置完I/O重定向和其他操作后执行该命令。
+**函数名---->别名----->内部命令----->外部命令**
+总结： bash（ksh）执行命令的过程：分析命令－变量求值－命令替代（``和$( )）－重定向－通配符展开－确定路径－执行命令；
+
+关于引用
+1. 单引号__跳过了前10个步骤__，不能在单引号里放单引号
+2. 双引号跳过了步骤1~5，步骤9~10，也就是说，只处理6~8个步骤。**bash不会对引号中的参数扩展结果进行IFS分词。**
+也就是说，双引号忽略了管道字符，别名，~替换，通配符扩展，和通过分隔符分裂成单词。
+双引号里的单引号没有作用，但双引号允许参数替换，命令替换和算术表达式求值。可以在双引号里包含双引号，方式是加上转义符"\"，还__必须转义$, `, \__。
+
+===== 一、读取命令行 =====
+
+Shell解释命令的第一步是读取命令行，从命令语句中**解析出空格和制表符**。命令行可以来自terminal，也可以取自一个普通的文本文件（如shell脚本）读取命令语句时，直至遇到一个分号“；”、后台进程执行符合“&” 、逻辑与“&&” 、逻辑或“||”或__一个换行字符__时，整个读取过程即告结束。如果读取的是一个__结构语句__，如if/then、for或while等，shell将会完整地读入整个结构语句。
+
+在读入一条命令或结构语句之后，shell将会命令语句进行__语法分析__，把命令语句分解为**一系列单词或关键字(此时并**__不使用IFS__**)**。默认情况下，shell假定每个单词都是由空格或制表符分隔，由一系列连续的字符组成的，或者包含空白符但用引号包含的字符。Shell从命令语句行首的第一个字符开始解析，直至行尾结束，依次__找出一系列单词__，包括由“<” 、“>” 、“|” 、和“^”等特殊字符组成的单字。__不管IFS变量__的设置如何，这个解析过程总是如此处理。至于如何处理IFS变量，则是另外一个解析步骤。在这一步骤中，还要处理别名替换、大括号替换和~扩展。
+
+===== 二、回显输入的命令 =====
+
+命令行解释的第二步是确定__命令回显标志__是否已经设置。如果已经设置，shell将把读入的命令或结构语句回显到用户终端的**标准错误输出**。
+子进程可以继承父进程的运行环境或打开的文件等，但__无法继承命令回显标志__。如果特定shell的回显标志已经设置，shell也无法回显由子进程处理的命令。
+
+===== 三、变量替换 =====
+
+命令行解释的第三步是变量替换，包括位置参数替换和特殊替换。变量替换表达式是由“$”与后随的变量名或参数名构成的、如$var。变量名或参数名也可以用“{}”括起来，如${var}。引用时，通常需要在变量替换表达式前后加双引号，如fname=“${var}”。但在变量包含若干单词，而shell又需要处理每一个单词时属于例外。
+
+===== 四、命令替换 =====
+
+命令行解释的第四步是命令替换。命令替换表达式是由反向单引号“`”或$(…)括住的命令语句，表达式的值则是
+ 
+
+===== 优先顺序 ： =====
+
+一, Linux命令的分类:
+
+包括:alias, keyword, function, built-in, $PATH这5类
+基本顺序 shell会按照alias->keyword->function,->built-in->$PATH的顺序进行搜索, 本着”先到先得”的原则, 就是说如果有如名为mycmd的命令同时存在于alias和function中的话, 那么肯定会使用alias的mycmd命令(当然, 这不是绝对的, 下面会说到特例).
+
+set +-h, hash, type, command, enable, builtin
+1) hash命令:
+首先, 我们来看hash这命令(和我上面说的”不是绝对的”有关系了!), hash命令用于记录在当前shell环境下用户曾经键入的命令路径记录缓存表, 主要是为了加快命令搜寻速度. 下面看个例子:
+例:我在shell下键入 ls, find, pwd, ls, echo “Hello, world”, mail及if共7个命令(注意, ls执行2次), 下面是history的结果:
+1 ls
+2 find
+3 pwd
+4 ls
+5 echo “Hello, world”
+6 mail
+7 if
+那么, 现在我执行hash命令, 其显示结果为:
+[ancharn@fc8 ~]$ hash
+hits command
+1 /bin/mail
+2 /bin/ls
+1 /usr/bin/find
+不知大家发现了什么没有? 这个hash表左边一列表示该命令在当前shell环境下共被使用了几次, 右边一列表示命令路径. 但是我们发现这个hash缓存中缺少了if,pwd和echo3个命令, 为什么呢? 我们在这儿要得出一个重要的结论就是: (1) hash不会记录function, built-in命令(其实还包括alias), 为什么呢? 答案是因为他们没有路径, 即不会存在于某个目录之下, 它们是随shell而加载进而存在于内存中, 所以这样的命令还有必要进行缓存以提高搜索效率吗?!
+但是有人会说, ls不是被hash记录下来了吗? 没错, 你的观察很细致, 通常ls在bash中是一个alias, 那么, 在这儿我们先下一个结论: (2) alias中若定义的是包含了路径的别名命令则不会被记录到hash中, 只有没有指定路径的alias才会被记录到hash中. 情况例子:
+这是我当前shell(bash)环境下的ls别名的定义
+[ancharn@fc8 //]$ alias ls
+alias ls=’ls –color=auto’
+(注意:后面的”ls –color=auto”没有指定如/bin/ls这样的路径)
+所以, 正如你看到的, 上面我键入了2次ls命令(是ls –color=auto的别名), 那么在hash中能够看到被记录; 下面看个write命令的例子:
+[ancharn@fc8 //]$ alias write
+-bash: alias: write: not found
+[ancharn@fc8 //]$ write
+usage: write user [tty]
+[ancharn@fc8 //]$ hash
+hits command
+1 /usr/bin/write
+1 /bin/mail
+2 /bin/ls
+1 /usr/bin/find
+write 这个命令没有alias, 也就是说当执行write命令时其实找到的是PATH变量中的/usr/bin/write这个二进制文件来执行的, 这时hash记录了write的路径并被引用了1次, 然后我定义write别名就是write本身, 但是指定具体路径是/usr/bin/write:
+[ancharn@fc8 //]$ alias write=’/usr/bin/write’
+[ancharn@fc8 //]$ alias write
+alias write=’/usr/bin/write’
+[ancharn@fc8 //]$ write
+usage: write user [tty]
+[ancharn@fc8 //]$ hash
+hits command
+1 /usr/bin/write
+1 /bin/mail
+2 /bin/ls
+1 /usr/bin/find
+请看, hash表中的write的hits数还是1次; 这里要注意的是当我们定义了write的alias后(指定路径), PATH就不会被搜到了, 为什么呢? 很简单, 因为write的alias中已经指明了它的具体路径 了!
+接着unalias掉write重新定义write别名:
+[ancharn@fc8 //]$ unalias write
+[ancharn@fc8 //]$ alias write
+-bash: alias: write: not found
+[ancharn@fc8 //]$ alias write=’write’
+[ancharn@fc8 //]$ alias write
+alias write=’write’
+[ancharn@fc8 //]$ write
+usage: write user [tty]
+[ancharn@fc8 //]$ hash
+hits command
+2 /usr/bin/write
+1 /bin/mail
+2 /bin/ls
+1 /usr/bin/find
+这次, 我们没有指定write别名中的路径, 当我们定义好write的别名后去执行write时, hash表中就会增加一次hits. 这里要注意的是当我们定义了write的alias后(不指定路径, 请和上面的例子比较下), PATH就会被搜到了, 所以hash的hits增加了. 请大家切记alias中若定义的是包含了路径的别名命令则不会被记录到hash中, 只有没有指定路径的alias才会被记录到hash中这条结论.
+另外, hash因为是built-in命令, 所以用help hash来查看帮助. 常用的有hash -r用于清空hash表, hash -d name用于delete某个command. 如:
+[ancharn@fc8 //]$ hash
+hits command
+3 /usr/bin/write
+1 /bin/mail
+2 /bin/ls
+1 /usr/bin/find
+删除具体的:
+[ancharn@fc8 //]$ hash -d ls
+[ancharn@fc8 //]$ hash
+hits command
+3 /usr/bin/write
+1 /bin/mail
+1 /usr/bin/find
+清空hash:
+[ancharn@fc8 //]$ hash -r
+[ancharn@fc8 //]$ hash
+hash: hash table empty
+
+2) set +-h:
+set 命令大家应该很熟悉, 我们在这里主要说的是set +-h的作用: help set可以看到”-h Remember the location of commands as they are looked up.” 中文意思就是记忆命令的路径以便于查询. 当我们键入set +h后再运行hash:
+[ancharn@fc8 //]$ set +h
+[ancharn@fc8 //]$ hash
+-bash: hash: hashing disabled
+也就是说”set +h”用于禁用hash而”set -h”用于启用hash.
+
+3) type:
+此命令用于列出某个命令属于哪类. 如:
+[ancharn@fc8 //]$ type -a pwd
+pwd is a shell builtin
+pwd is /bin/pwd
+pwd属于内置和PATH变量中.
+[ancharn@fc8 //]$ type pwd
+pwd is a shell builtin
+直接用type commandname可以告诉你该命令在运行时会执行哪一类.
+
+4) command:
+该命令的作用是: 如果你有一个命令如gcc既是一个function, 同时又是一个PATH变量中的命令, 那么如果你直接执行gcc, 按照顺序来说, 会执行function而不是gcc的PATH变量中的命令, 而用command gcc会跳过function的选择.
+[ancharn@fc8 //]$ function gcc { echo “just a test for gcc”; }
+[ancharn@fc8 //]$ gcc
+just a test for gcc
+[ancharn@fc8 //]$ command gcc
+gcc: no input files
+
+5) enable:
+enable命令如果直接运行则会列出当前shell的所有built-in命令, enable -n commandname会在当前shell下disable掉该内置命令:
+[ancharn@fc8 ~]$ type -a pwd
+pwd is a shell builtin
+pwd is /bin/pwd
+[ancharn@fc8 ~]$ enable -n pwd
+[ancharn@fc8 ~]$ type -a pwd
+pwd is /bin/pwd
+[ancharn@fc8 ~]$ enable pwd
+[ancharn@fc8 ~]$ type -a pwd
+pwd is a shell builtin
+pwd is /bin/pwd
+
+6) builtin
+用于运行一个内置命令. 例如:
+[ancharn@fc8 ~]$ cd /var
+[ancharn@fc8 var]$ function pwd { echo “just a test for pwd”; }
+[ancharn@fc8 var]$ type -a pwd
+pwd is a function
+pwd ()
+{
+echo “just a test for pwd”
+}
+pwd is a shell builtin
+pwd is /bin/pwd
+(注: pwd既是函数, 又是内置命令, 又存在PATH变量中)
+[ancharn@fc8 var]$ pwd
+just a test for pwd
+[ancharn@fc8 var]$ builtin pwd // (注: 此时我们就去直接执行pwd这个内置命令)
+/var
+
+小结: 我们都知道了shell在搜索命令时的顺序是alias->keyword->function,->built- in->$PATH, 那么其中还有2点需要注意的就是 (1) hash不会记录function, built-in命令(其实还包括alias), (2) alias中若定义的是包含了路径的别名命令则不会被记录到hash中, 只有没有指定路径的alias才会被记录到hash中. 另外, (3) 不要忘记, 我们讨论的前提是a) 受限于具体的shell种类b)且只在当前shell环境有效.切记!!!
+
+到这里, 请大家来思考一个问题:
+请看下面的执行情况:
+[ancharn@fc8 var]$ function gcc { echo “just a test for gcc”; }
+[ancharn@fc8 var]$ alias gcc=’gcc’
+[ancharn@fc8 var]$ gcc
+just a test for gcc
+[ancharn@fc8 var]$ /usr/bin/gcc
+gcc: no input files
+[ancharn@fc8 var]$ alias gcc=’/usr/bin/gcc’
+[ancharn@fc8 var]$ gcc
+gcc: no input files
+[ancharn@fc8 var]$
+为什么定义了gcc这个funtion后, 两次定义gcc的alias时指定不指定具体的/usr/bin/gcc路径时, 执行gcc这个命令的反应不同呢? 按照alias->keyword->function,->built-in->$PATH 这个顺序来看, 应该执行alias的gcc啊?! 请思考!
+当然, 别着急, 后面我会给出答案. 但是, 请您思考下!
+
+四, 命令举例:
+
+* alias(别名):
+alias 命令通常被设定在文件~/.bashrc和/etc/bashrc中,~/.bashrc通常用于用户自己的环境,而/etc/bashrc用于全局定义 (即对所有用户生效,当然,只对用户shell是bash生效). 具体的这两个文件的关系及如何加载在后面有介绍.
+
+* Shell keyword(shell关键字):
+诸如if,while,until,case,for这些命令.
+
+* Function(函数):
+举例:
+定义个名为pwd的函数, 其功能是简单地显示”my function pwd”这句话
+function pwd { echo “my function pwd”; }
+定义好了之后可以用set或type -a pwd来查看，取消则用unset pwd即可。
+
+* Shell built-in command(shell内置命令):
+命令enable可以查看所有当前shell环境下的内置命令; 或者用man cd（任何一个内置命令均可）查看到的manpage的上部列出了全部的内置命令.
+
+* PATH variable
+该变量定义在文件/etc/profile, /etc/profile.d/*.sh(POSIX), ~/.bash_profile(Bash)中.
+其加载顺序是: 先/etc/profile (invoke /etc/profile.d/*.sh), 然后是~/.bash_profile, 再由~/.bash_profile调用执行 ~/.bashrc, 然后由~/.bashrc去调用执行 ~/.bashrc, ~/.bashrc再调用执行文件/etc/bashrc.
+1) 为了查看具体的加载顺序, 你可以在四个文件中的头部和尾部分别添加两句话, 例如:
+
+[ancharn@fc8 ~]$ cat ~/.bashrc
+echo “start of ~/.bashrc”
+if [ -f /etc/bashrc ] ; then
+. /etc/bashrc
+fi
+alias ll=’ls -l’
+alias cp=’cp -i’
+alias mv=’mv -i’
+alias rm=’rm -i’
+……
+echo “end of ~/.bashrc”
+其它的文件一样添加, 这样当你用某个用户登录系统时就会看到如下的显示, 诸如:
+start of /etc/profile
+end of /etc/profile
+start of ~/.bash_profile
+start of ~/.bashrc
+start of /etc/bashrc
+end of /etc/bashrc
+end of ~/.bashrc
+end of ~/.bash_profile
+
+从上面的显示你能够清晰的看到每个文件的加载顺序及相互调用执行关系(注意查看start和end).
+
+2) PATH变量和hash的关系
+这里, 我们来看一个例子:
+[ancharn@fc8 ~]$ echo $PATH
+/usr/kerberos/bin:/usr/local/bin:/bin:/usr/bin:/home/ancharn/bin
+我首先在/home/ancharn/bin目录下写一个名为test.sh的脚本,内容如下:
+[ancharn@fc8 bin]$ cat /home/ancharn/bin/test.sh
+#!/bin/sh
+# just test for PATH and hash
+echo “This is my 1st shell script in /home/ancharn/bin directory.”
+
+# end
+[ancharn@fc8 bin]$
+那么, 执行test.sh这个脚本如下：
+[ancharn@fc8 /]$ echo $PATH
+/usr/kerberos/bin:/usr/local/bin:/bin:/usr/bin:/home/ancharn/bin
+[ancharn@fc8 /]$ test.sh
+This is my 1st shell script in /home/ancharn/bin directory.
+[ancharn@fc8 /]$ hash
+hits command
+1 /home/ancharn/bin/test.sh
+接着，在/usr/bin目录下建立一个同test.sh名的文件, 内容如下:
+
+[ancharn@fc8 /]$ cat /usr/bin/test.sh
+#!/bin/sh
+# just test for PATH and hash
+echo “This is my 2nd shell script in /usr/bin directory.”
+
+# end
+继续执行test.sh脚本:
+
+[ancharn@fc8 /]$ test.sh
+This is my 1st shell script in /home/ancharn/bin directory.
+[ancharn@fc8 /]$ hash
+hits command
+2 /home/ancharn/bin/test.sh
+说明什么呢? 如果按照PATH的顺序即/usr/kerberos/bin:/usr/local/bin:/bin:/usr/bin:/home/ancharn /bin, 会先找/usr/bin然后再找/home/ancharn/bin, 注意, 这个前提是hash表中没有该命令的记录, 因此我们看到/usr/bin/test.sh脚本并没有被执行, 因为在执行test.sh前, shell去hash表中查看了缓存, 进而继续执行了/home/ancharn/bin/test.sh脚本, 所以我们看到hits数增加了一次, 而/usr/bin/test.sh不会被执行.
+现在, 我们清空hash, 重新执行test.sh脚本:
+[ancharn@fc8 /]$ hash -r
+[ancharn@fc8 /]$ hash
+hash: hash table empty
+[ancharn@fc8 /]$ test.sh
+This is my 2nd shell script in /usr/bin directory.
+[ancharn@fc8 /]$ hash
+hits command
+1 /usr/bin/test.sh
+现在正常了. 所以一定要注意PATH和hash的这层关系.
+
+注意: su, su-, bash –login, bash –norc这些命令的不同就在于是否执行了login-shell, 大家可以su和su -后, 再去运行echo $PATH看看有何不同.
+
+好了, 回答上面的思考题, 其核心在于alias如果定义的如alias gcc=’gcc’时, 其实alias->keyword->function,->built-in->$PATH 这个顺序并没有变, 但是要知道alias gcc=’gcc’这种没有指定路径的alias会在找到gcc这个alias后, 再去找到后面指定的’gcc’, 怎么找? 当然到下一个了, 就是keyword->function….这个顺序了. 而如果是alias gcc=’/usr/bin/gcc’这样的指定具体路径的定义alias的话, 那么alias执行后就直接找到了那个具体文件而跳过了后面的所有搜索(即keyword->function,->built- in->$PATH). 请大家留意.
+
+最后, 大家在做实验验证的时候可以分成2类验证, 因为一个命令不可能既属于keyword又属于built-in, 所以你可以:
+1) 选择一个keyword如while, 定义一个while的alias,function,然后编写一个shell脚本名为while存放于PATH变量的某个路径下;
+2) 选择一个built-in命令如pwd来验证.
+
+

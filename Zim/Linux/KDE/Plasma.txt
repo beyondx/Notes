@@ -1,0 +1,146 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-16T14:36:07+08:00
+
+====== Plasma ======
+Created Wednesday 16 November 2011
+
+http://userbase.kde.org/Plasma
+
+目录
+
+    1 At A Glance
+        1.1 The Plasma Desktop FAQ
+        1.2 Finding your way around Plasma
+        1.3 Folder Views
+        1.4 Panels
+        1.5 Widgets
+    2 Activities
+        2.1 Use Cases
+    3 Widget Layouts and Virtual Desktops
+    4 Hints and Tips
+        4.1 Tweaking Plasma
+        4.2 Reloading Plasma
+    5 Further information
+
+===== At A Glance =====
+
+A typical Plasma desktop looks like this:
+{{~/sync/notes/zim/Linux/KDE/Plasma/512px-KDESC_Default_Desktop.png}}
+
+The four key components of a default Plasma desktop are:
+
+* The **panel**, sometimes referred to as "the task bar", it provides room for the application launcher, the list of windows (programs), clock and system tray;
+* The **desktop**, the area where widgets and icons reside;
+* The **folder view**, a widget that lists the content of a folder on your computer, giving you quick access to basic file management tasks;
+* The **Plasma toolbox** This is located at the top right of the screen as well as at end of the panel. These are used to access configuration and other options quickly and reliably. 
+
+All of these default items are fully configurable and can host a wide variety of tools and content.
+
+===== The Plasma Desktop FAQ =====
+
+A "Frequent Asked Questions" for the current version of the Plasma Desktop is maintained on this page. It provides succinct answers to common questions as well as links to FAQs for older versions.
+
+=== Finding your way around Plasma ===
+
+You can use Plasma as you would use the desktop of any other operating system, by accessing the **application launcher**, viewing the currently active programs on the **taskbar**, accessing icons on the **system tray**, and so on.
+
+An important part of Plasma are the "**widgets**". Widgets are the **individual units **of the desktop and they include (although they are not limited to) the application menu, icons, the system tray, the clock, etc. Widgets can exist on the desktop itself, or be inserted into the panel, on the screen saver or on the dashboard among other places. Widgets exist for a large number of tasks besides usual desktop helpers, including microblogging (Twitter, identi.ca), unit conversion calculators, weather forecasts, file sharing and much more. Panels and desktops are also __special kinds of widgets __themselves, meant to contain other widgets.
+
+How does that relate with desktop usage? Plasma has some new features with respect to traditional desktop usage. We have already mentioned the **Plasma toolboxes**: those are the way to start interacting and customizing your Plasma Desktop. By clicking on them, a menu will pop up on the screen with a variety of choices: from there you can add widgets to your panel or desktop, resize, add or remove panels, change the wallpaper and other operations.
+
+=== Folder Views ===
+
+As you may notice in the screenshot above, there are** no icons** placed directly on the desktop. Instead, they are placed inside a __container__ called a "Folder View". By default, the Folder View shows the Desktop folder and allows you to drag files to it, open them, cut, copy, paste, rename files and also create new folders/files.
+
+You can have more than one Folder View on the desktop, and they can also be placed in panels. You can set Folder View to show any folder, local or remote, you have access to. Each Folder View can be moved and resized independently to your preference.
+
+Folder View can also be set as the __default full-screen desktop background__ for a more traditional "icons scattered on the desktop" layout.
+
+=== Panels ===
+{{~/sync/notes/zim/Linux/KDE/Plasma/512px-Panel_Settings.png}}
+
+Panels allow you to place widgets around the edges of the screen. These collections of widgets can be configured in various ways, including making them automatically hide when not in use or aligned to certain areas of the screen.
+
+By default, there is one panel at the bottom of the screen, but you can add more panels, move and otherwise configure the default panel and remove panels you no longer want. The widgets in all of the panels may also be adjusted to your liking.
+
+For more information on configuring panels in Plasma Desktop and what they are capable of doing for you, visit the **Plasma Panels** page.
+
+===== Widgets =====
+{{~/sync/notes/zim/Linux/KDE/Plasma/512px-Plasma_Widget_Explorer.png}}
+Plasma Widget Explorer
+
+Plasma supports widgets written **specifically** for Plasma (also known as __Plasmoids__) as well as widgets from other sources such as Google Gadgets, Superkaramba and some Dashboard Widgets from Mac OSX. Additional widgets can easily be found and installed through **Get Hot New Stuff.**
+
+To see the widgets that are installed on your system and ready to use open the Plasma Widget Explorer by either
+
+* opening the **Desktop Toolbox** in the upper right corner of the screen and selecting Add Widgets,
+* opening the **Panel Toolbox** furthest to the right in the Panel and selecting Add Widgets, or
+* right clicking on the Desktop and choosing Add Widgets from the context menu. 
+
+To place a widget on the Desktop simply **drag** it from the Wigdet Explorer to the Desktop. To place a widget in the panel first open the Panel Toolbox and from there open the Widget Explorer (click Add Widgets), locate the widget you wish to add and drag it to the desired position in the Panel.
+
+
+**Note**
+
+You can not add widgets if they are __locked__. Open the Desktop Toolbox or the Panel Toolbox or right click on the Desktop - if you see an item labled __Unlock Widgets__ then select that, and then proceed to add widgets to your Desktop or your Panel.
+
+
+When you are done adding widgets you might want to** lock widgets again**: Open a Toolbox or the Desktop context menu and click **Lock Widgets**.
+
+
+Widgets that are docked into a panel usually have an __Options menu__, while those on the desktop have the configuration options within the '__handle__', the shaded area which pops up when hovering over the widget. Clicking and holding the mouse on the blank part of the handle will allow you to drag the widget to the desired position.
+{{~/sync/notes/zim/Linux/KDE/Plasma/300px-Handle.png}}
+
+You have four tools on this handle. The top one is the **re-sizer**. Click and drag on the tool to resize the widget.
+
+The second tool is a** rotate** tool. Again, click and hold the tool, while rotating to the desired angle.
+{{~/sync/notes/zim/Linux/KDE/Plasma/300px-Handle_rotate.png}}
+
+
+The third is the wrench or spanner which allows you to** configure** that particular widget's settings.
+
+Finally, the fourth tool is the "**expanded view**" tool and is available only on widgets that support this feature, such as the Picture Frame or Web viewers. When clicked, the Picture Frame widget will, for example, open the currently viewed in an image viewer while the Web Slice widget will open the web page in a full web browser window.
+
+A list of Plasma widgets with their own page can be found here, and some of our favourite widgets are discussed on the Plasma Widgets page
+
+===== Activities =====
+{{~/sync/notes/zim/Linux/KDE/Plasma/512px-Plasma_Activity_Explorer.png}}
+Plasma Activity Explorer
+
+=== Use Cases ===
+
+A user likes web comics so they add their favorite web comics via the comics widget. The user now has __a full desktop activity __dedicated to their favorite web comics. Now the user is happy with the web comics, but the user now has to go to work, so the user** creates an activity** with the folder view widgets set to the folders of the projects the user is currently working on. After work the user goes home and works on a side project of writing romance novels. The user always gains inspiration by looking at pictures of the user's significant other. The user now **creates a new Activity** but now puts pictures frame widgets with pictures of the user's significant other. The user also has a folder view of the romance novel project folder. Now no matter what the user is doing the user has a custom tailored activity to match it.
+
+Go to this blog to read a few tips on using activities. Chanis blog has a number of examples as well as screencasts about activities.
+
+=== Widget Layouts and Virtual Desktops ===
+
+Virtual desktops, the ability to have a separate sets of windows on separate desktops, can **tie in with Activities**. You can have a different activity on each virtual desktop. In Plasma Desktop 4.4, this can be configured by entering System Settings and navigating to Desktop -> Multiple Desktops, and checking__ Different Activity for Each Desktop__.
+
+In Plasma Desktop 4.3, You configure this by zooming out and choosing configure Plasma. Then select use a different activity on each desktop and zoom in again.
+
+===== Hints and Tips =====
+
+=== Tweaking Plasma ===
+
+    Learn how to add a sidebar with clock and news 
+
+    Customize your Plasma by mixing multiple Plasma themes 
+
+=== Reloading Plasma ===
+
+Sometimes you might want to **reload Plasma**, like right after changing system language so the changes takes effect, or because of a problem with the desktop. To do that, open a terminal and run these commands:
+
+	//kquitapp plasma-desktop//
+	//plasma-desktop//
+
+
+===== Further information =====
+
+    The Plasma FAQ's
+    Plasma HowTo's - short screencasts
+    Glossary
+    Some of our favourite plamoids - why not add yours?
+    Here's how to install more Plasmas widgets
+    Learn the versatility of KRunner 

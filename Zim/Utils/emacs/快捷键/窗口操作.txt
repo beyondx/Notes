@@ -1,0 +1,45 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-05T16:50:47+08:00
+
+====== 窗口操作 ======
+Created Thursday 05 May 2011
+
+**M-x winner-mode **	启动frame中窗口布局记忆机制，当一种窗口布局改变后，可以用
+		C-c ←  命令恢复上一个布局
+		C-c →  恢复下一个窗口布局 
+C-x 0 			关闭本窗口 　　
+C-x 1 			只留下一个窗口 　　
+C-x 2 			垂直均分窗口 　　
+C-x 3 			水平均分窗口 　　
+
+C-x o 			切换到别的窗口 　　
+M-NUMBER C-x o    快速切换到第NUMBER个窗口
+C-u NUMBER C-x o  同上
+
+C-x +			把所有窗口调整为同样大小
+C-x - 			如果编辑缓冲区比窗口小就压缩窗口面积
+C-M-v			对下一个窗口作卷屏操作(如插入点在minibuffer中时可以对自动补全列表窗口做卷屏)
+C-x 4 b			在其它窗口中选择一编辑缓冲区
+ 　　
+C-x ^ 			纵向扩大窗口 　　
+C-x } 			横向扩大窗口
+C-x {			同上
+C-x <			向左滚动窗口
+C-x >			向右滚动窗口
+C-x b 			选择当前窗口的缓冲区
+
+C-x 5 2	make-frame	创建一个frame，并把当前缓冲区内容显示在里面 
+C-x 5 b	switch-to-buffer-other-frame	创建新frame并在其中显示另外一个编辑缓冲区　
+C-x 5  o			移到其它frame
+C-x 5  0			删除当前窗格
+
+C-x  5  r			创建窗格并查找文件，将缓冲区设为只读的
+C-x 5   f			同上，但是读写的
+
+
+
+
+
+
+

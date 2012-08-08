@@ -1,0 +1,160 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T19:56:15+08:00
+
+====== single pc ======
+Created Sunday 27 March 2011
+
+1、安装依赖软件
+        sudo apt-get install vde2 graphviz gv qemu genisoimage psmisc \
+        debootstrap git git-core screen xterm python2.5 python-xml 
+
+注意：python2.5 python-xml 在ubuntu10.10中已经被移除了，可以安装用 python 代替
+
+2、下载openflowvms
+
+git clone git://openflowswitch.org/openflow-vms.git openflowvms
+
+3、将下列路径加到各环境变量中
+[[/home/yourlogname/openflowvms/pylib]]   directory is in your PYTHONPATH
+/home/yourlogname/openflowvms/bin                                                directory is in your PATH
+
+如：
+vim [[/etc/profile]]
+export   PATH=$PATH:/home/yourlogname/openflowvms/bin 
+export   PYTHONPATH=[[/home/yourlogname/openflowvms/pylib]]
+
+4、下载相关软件包
+
+http://openflowswitch.org/downloads/diskimages/openflowvms-image.tgz
+http://openflowswitch.org/downloads/diskimages/kernel.bin
+http://openflowswitch.org/downloads/diskimages/openflow1.0-bin.tgz
+
+各软件包的内容如下：
+hda.dsk	disk image used for the hosts running on qemu
+kernel.bin	kernel image used for the hosts running on qemu
+ofdatapath	openflow switch (userspace)
+ofprotocol	openflow protocol module (used to communicate to the controller)
+dpctl	openflow datapath control command
+
+如果以前安装了openflow则最后一个文件不用下载了，直接从系统中copy就可以了。
+
+5、建立工作目录，并将相关 文件见如下放置
+
+<working directory>
+ |- openflow.cd
+      |- ofprotcol
+      |- dpctl
+      |- ofdatapath 
+ |- kernel.bin
+ |- hda.dsk
+
+6、设置仿真网络的拓扑结构文件
+
+cp openflowvms/samples/2hosts-1ofsw.vms.xml  <working directory>/2hosts-2ofsw.vms.xml
+vim <working directory>/2hosts-2ofsw.vms.xml
+
+将其修改为如下内容(加粗的为添加的内容)：
+
+<network name="Simple Network">
+  <of_mem>48</of_mem>
+
+  <openflowswitch name="of1">
+ <!--To let spawn an xterm-->       
+** <xterm>true</xterm>    **
+  </openflowswitch>
+
+  <openflowswitch name="of2">  
+**   <xterm>true</xterm>  **
+  </openflowswitch> 
+
+  <host name="host1">
+**    <ip><static>192.168.100.1</static></ip> **
+**    <xterm>true</xterm> **
+  </host>
+**  <host name="host2">**
+**    <ip><static>192.168.100.2</static></ip> **
+**    <xterm>true</xterm> **
+**  </host>**
+
+  <link end1="of1" end2="host1" />
+**  <link end1="of1" end2="of2" /> **
+  <link end1="of2" end2="host2" />
+</network>
+
+该文件描述的拓扑结构如下：
+{{~/OpenFlow/Slide2.gif}}
+
+7、验证配置文件有无错误
+
+ xmlstarlet val -e -s [[/home/geekard/openflowvms/xsd/vms.xsd]]   2hosts-2ofsw.vms.xml
+
+注意：这条语句执行后会报错(xterm对象有误)，但 没有关系。
+
+
+8、画出配置文件代表的拓扑结构图
+
+ vms-draw.py 2hosts-2ofsw.vms.xml
+
+注意：直接执行这条语句时会报错，提示找不到vmxml, 可以在其前面手动加上python库路径就可以了，如下所示：
+
+PYTHONPATH=/home/geekard/openflowvms/pylib   vms-draw.py 2hosts-2ofsw.vms.xml
+
+
+9、本机 运行controller , 它在后台监听QEMU虚拟机里的OpenFlow Switch的连接请求
+
+controller  ptcp:  &
+
+10、验证controller是否在后台运行
+
+netstat -n |grep  6633
+
+11、运行仿真系统
+
+vms-start.py -u 2hosts-2ofsw.vms.xml
+
+对于kernel space switch , 用下个命令代替
+
+vms-start.py 2hosts-2ofsw.vms.xml
+
+
+12、停止仿真
+
+./<your network name>-stop.sh
+
+或：
+
+vms-start.py -k
+
+<your network name>-stop.sh是运行vms-start.py后，在当前工作目录自动产生的，<your network name>为2hosts-2ofsw.vms.xml文件
+中指定的网络名。
+
+
+13、远程登陆虚拟主机和交换机
+
+等虚拟主机和交换机启动完成后，关闭其窗口，然后执行一下命令
+
+ screen -r  ***
+
+***代表2hosts-2ofsw.vms.xml文件中指定的主机或交换机名，如: of1,of2, host1 , host2   ，就可以登陆到上面去
+
+11、测试OpenFlow Switch 
+
+ screen -r of1
+cd /cdrom
+./dpctl **dump-flows**  unix:/tmp/ofsw
+show 
+status
+show-protostat
+dump-tables
+dump-ports
+probe
+ping
+
+注意： **dump-flows**  可以替换为任意dpctl支持的命令。
+
+
+
+
+
+

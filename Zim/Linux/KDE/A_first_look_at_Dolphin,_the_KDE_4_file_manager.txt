@@ -1,0 +1,20 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-16T17:09:48+08:00
+
+====== A first look at Dolphin, the KDE 4 file manager ======
+Created Wednesday 16 November 2011
+http://arstechnica.com/old/content/2007/04/afirst-look-at-dolphin-the-kde-4-file-manager.ars
+
+By Ryan Paul | Published 4 years ago
+
+The Linux-based Dolphin file manager is now scheduled for official inclusion in KDE 4, the next major release of the KDE desktop environment. Dolphin includes several unique usability enhancements that aren't available in** Konqueror**, KDE's** current** file manager. In particular, Dolphin features a navigation bar inspired by Thunar and Windows Vista, a bookmark system built around file management rather than web browsing, a more flexible sidebar system, and a less-invasive notification system that doesn't interrupt user work flow.
+
+
+===== Dolphin in action =====
+
+Although Konqueror is one of the most powerful file-management applications available on the Linux platform, the **broad scope** of its functionality creates some usability problems that aren't easily resolved. Konqueror's elaborate profile system and support for KParts-based document viewing add complexity to file management and intimidate users who are accustomed to less sophisticated file managers. By focusing exclusively on file management, Dolphin avoids many of the pitfalls inherent in Konqueror's approach. Although Dolphin is still under development and lacks a number of critical features, early releases illuminate the significant potential of the application. Dolphin appears to be a well-thought compromise that will provide a more reasonable** balance** of versatility and usability.
+
+In many respects, Dolphin is reminiscent of the Nautilus file browser from the GNOME desktop environment. Dolphin's navigation bar is a lot like the Thunar-inspired path bar found in the Nautilus browser, and Dolphin's bookmark system is a lot like the Nautilus Places sidebar. Like Nautilus, Dolphin also has icon and detail views as well as support for thumbnail previews. In some ways, Dolphin exceeds Nautilus and provides advanced features that simplify navigation and file management. The individual **path elements** in Dolphin's navigation bar act as menus that enable users to switch to sibling directories. This feature, which is also found in Windows Vista, is unfortunately absent in Nautilus. Dolphin also inherits a few nice advanced features from Konqueror, like split window panes.
+
+Although Konqueror will** no longer **be the default file manager in KDE 4, it will still be available for users who rely on its advanced features and extreme flexibility. It is likely that the Konqueror developers will focus more on **web browsing** functionality now that Konqueror is no longer the default file manager, but the change could also give Konqueror's developers the freedom to experiment with file management features intended specifically for an audience of advanced users. Although some Konqueror enthusiasts are skeptical about the potential benefits of the transition to Dolphin, I think it's important to keep an open mind and wait until Dolphin is complete before passing judgment.

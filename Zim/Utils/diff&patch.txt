@@ -1,0 +1,43 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-14T16:35:13+08:00
+
+====== diff&patch ======
+Created Saturday 14 May 2011
+http://blog.csdn.net/hfyinsdu/archive/2010/12/01/6047465.aspx
+
+diff patch 命令 
+
+    diff 命令常用来比较文件、目录，也可以用来制作补丁文件。所谓“补丁文件”就是“修改后的文件”与“原始文件”的差别。
+
+    常用的选项如下：
+
+    1. -u:  表示在比较结果中输出上下文中一些相同的行，这有利于人工定位。
+    2. -r:  递归比较各个子目录下的文件。
+    3. -N:  将不存在的文件当作空文件。
+    4. -w:  忽略空格的比较。
+    5. -B:  忽略空行的比较。
+    例如： 假设 linux-2.6 是目录中最原始的内核，linux-2.6-ok 目录是修改过的内核，可以用下面的命令制作补丁文件 linux.diff（两个目录放在同一个目录下，命令中原始目录在前，修改过的目录在后）。
+
+view plaincopy to clipboardprint?
+
+    $ diff -urNwB linux-2.6 linux-2.6-ok > linux.diff  
+
+    由于 linux-2.6 是标准的代码，可以从网上下载，当发布 linux-2.6 的修改时，只需提供补丁文件，这个文件通常比较小。
+    patch 命令被用来打补丁--就是依据补丁文件修改原始文件。例如上面的例子，可以通过下面的命令将 linux.diff 应用到原始目录 linux-2.6 中。假设 linux-2.6 和 linux.diff 位于同一个目录下。
+
+view plaincopy to clipboardprint?
+
+    $ cd linux-2.6  
+    $ patch -p1 < ../linux.diff  
+
+    patch命令中最重要的选项是“-pn”：补丁文件中指明了要修改的文件的路径，“-pn”表示忽略路径中的第n个斜线之前的目录。假设，linux.diff 中有如下几行：
+
+view plaincopy to clipboardprint?
+
+    diff -urNwB linux-2.6/drivers/rtc/s3c24x0_rtc.c linux-2.6-ok/drivers/rtc/s3c24x0_rtc.c  
+    --- linux-2.6/drivers/rtc/s3c24x0_rtc.c 2009-09-01 01:57:42.000000000 +0800  
+    +++ linux-2.6-ok/drivers/rtc/s3c24x0_rtc.c  2010-11-29 22:07:34.412018000 +0800  
+
+    使用上述命令打补丁时，patch 命令根据 linux-2.6/drivers/rtc/s3c24x0_rtc.c 寻找源文件，“-p1”表示忽略第一个斜线之前的目录，所以要修改的源文件是当前目录下的：drivers/rtc/s3c24x0_rtc.c
+

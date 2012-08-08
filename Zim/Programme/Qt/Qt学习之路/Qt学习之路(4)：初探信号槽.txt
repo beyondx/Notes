@@ -1,0 +1,38 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-31T13:36:10+08:00
+
+====== Qt学习之路(4)：初探信号槽 ======
+Created Monday 31 October 2011
+
+原创作品，允许转载，转载时请务必以超链接形式标明文章 原始出处 、作者信息和本声明。否则将追究法律责任。http://devbean.blog.51cto.com/448512/194442
+
+看过了简单的Hello, world! 之后，下面来看看Qt最引以为豪的信号槽机制！
+ 
+所谓信号槽，简单来说，就像是插销一样：一个插头和一个插座。怎么说呢？当某种事件发生之后，比如，点击了一下鼠标，或者按了某个按键，这时，这个**组件**就会发出一个信号。就像是广播一样，如果有了事件，它就漫天发声。这时，如果有一个槽，正好对应上这个信号，那么，这个**槽函数**就会执行，也就是回调。就像广播发出了，如果你感兴趣，那么你就会对这个广播有反应。干巴巴的解释很无力，还是看代码：
+ 
+#include <QtGui/QApplication>
+#include <QtGui/QPushButton>
+
+int main(int argc, char *argv[])
+{
+        QApplication a(argc, argv);
+        QPushButton *button = new QPushButton("Quit");
+        QObject::connect(button, SIGNAL(clicked()), __&a__, SLOT(quit()));
+        button->show();
+        return a.exec();
+}
+ 
+这是在Qt Creator上面新建的文件，因为前面已经详细的说明怎么新建工程，所以这里就不再赘述了。这个程序很简单，只有一个按钮，点击之后程序退出。(顺便说一句，Qt里面的button被叫做__QPushButton__，真搞不明白为什么一个简单的button非得加上push呢？呵呵)
+ 
+主要是看这一句：
+ 
+QObject::connect(button, SIGNAL(clicked()), &a, SLOT(quit()));
+ 
+__QObject__是所有类的根。Qt使用这个QObject实现了一个__单根继承的C++__。它里面有一个__connect静态函数__，用于连接信号槽。
+ 
+当一个按钮被点击时，它会发出一个clicked信号，意思是，向周围的组件们声明：我被点击啦！当然，其它很多组件都懒得理他。如果对它感兴趣，就告诉QObject说，你帮我盯着点，只要button发出clicked信号，你就告诉我——想了想之后，说，算了，你也别告诉我了，直接去执行我的某某某函数吧！就这样，一个信号槽就形成了。具体来说呢，这个例子就是QApplication的实例a说，如果button发出了clicked信号，你就去执行我的quit函数。所以，当我们点击button的时候，__a的quit__函数被调用，程序退出了。所以，在这里，clicked()就是一个信号，而quit()就是槽，形象地说就是把这个信号插进这个槽里面去。
+ 
+Qt使用信号槽机制完成了__事件监听__操作。这类似与Swing里面的listener机制，只是要比这个listener简单得多。以后我们会看到，这种信号槽的定义也异常的简单。值得注意的是，这个信号槽机制仅仅是使用的QObject的connect函数，其他并没有什么耦合——也就是说，完全可以利用这种机制实现你自己的信号监听！不过，这就需要使用qmake预处理一下了！
+ 
+细心的你或许发现，在Qt Creator里面，SIGNAL和SLOT竟然变颜色了！没错，Qt确实把它们当成了关键字！实际上，Qt正是利用它们扩展了C++语言，因此才需要使用qmake进行预处理，比便使普通的C++编译器能够顺利编译。另外，这里的signal和Unix系统里面的signal没有任何的关系！哦哦，有一点关系，那就是名字是一样的！

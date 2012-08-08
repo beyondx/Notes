@@ -1,0 +1,234 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-01T14:03:10+08:00
+
+====== EMACS LISP 基本知识小结 ======
+Created Wednesday 01 February 2012
+
+http://forum.ubuntu.org.cn/viewtopic.php?f=88&t=332316
+
+这些是我最近两天为了理解定制Emacs 而学习的LISP编程基本知识，贴来供大家一览。
+
+[本文内容选自 <Emacs lisp 入门>]
+
+主要是给出关于 Emacs & LISP 的一个初步的感性直观认识。
+官方文档地址： http://www.gnu.org/software/emacs/manua ... index.html
+Programming in Emacs Lisp:
+http://www.gnu.org/software/emacs/emacs ... intro.html
+
+===== [1] 按键方法 =====
+C-x: 表示按键 Ctrl+x ; M-x 表示 Alt+x
+按键序列： C-x f: 先按组合键 Ctrl+x, 松开后再按 f 字母键即可（注意回显区的内容显示）。
+键和弦： 在书中提到这个词，感觉很不错。用一系列的快捷键序列来进行操作，那种感觉跟在钢琴上击键，何尝不是一种快感！
+
+===== [2] EMACS 的 LISP 相关快捷键 =====
+LISP 表达式求值： 将光标移到LISP表达式的右括号外，按 __C-x C-e__
+
+安装自定义的 LISP 函数：
+(1) 在函数定义后的右括号外执行 C-x C-e 即可 [只能供本次使用，下次打开时又要安装]。
+(2) 写在一个文件里，然后在 .emacs 中加载。
+比如建立一个 myfun.el 文件， 将函数定义写在里面， 然后在 ~/.emacs 中加载。
+(**load** "~/csat/lisp/myfun.el")
+
+可以在打开时 C-h f ---> Describe function: 输入函数名， 验证是否确实已经安装。
+查看 LISP 函数说明： **C-h f** ---> Describe function: 输入函数名
+查看 LISP 变量说明： **C-h v** ---> Describe variable: 输入变量名
+[
+例如，要查看 concat 的函数说明，可以按 Ctrl+h f,
+回显区会显示 Describe function: 在冒号后输入 concat 即可。
+]
+
+在 emacs 中查看源代码：
+(1) 建立 TAGS 文件， Emacs 根据 TAGS 文件来查找源代码
+例如， find ~/csat/C/ -name "*.c" -print | etags -
+将目录 /home/shuqin1984/csat/C 下的所有 .c 文件建立 TAGS，
+此时将在 ~/ 下生成 TAGS 文件(ls 命令可查看结果)
+(2) 加载 TAGS 文件： 在 ~/.emacs 中加入
+;;;; tags files
+(setq tags-file-name "~/TAGS")
+(3) 在 Emacs 中 按 M+. , 然后按提示输入函数名
+
+可以为不同语言的源代码建立不同的TAGS文件，然后进行加载
+
+===== EMACS 工作方式： =====
+
+[1] 缓冲区文件与持久性文件：
+
+当打开一个持久性文件进行编辑时，Emacs 将会为这个文件创建一个名字几乎相同的缓冲区文件，在Emacs作出的修改都是对该缓冲区文件的修改，而不是原文件。只有当进行保存时，才会将缓冲区文件中的修改存入原文件。
+
+[2] EMACS 执行命令：
+
+当键入一个命令，比如 C-x C-f 时， **Emacs 将查找键绑定的函数**(可能用C或LISP写成)，必要的时候还需要输入参数。在输入参数之后按回车键，Emacs将执行该命令，并在**缓冲区文件**中显示执行结果（缓冲区文件就是你正打开的正编辑的文件，它并不是最终被保存的持久文件）。
+例如 按 C-x b 时，将会调用 switch-to-buffer 函数，并在回显区显示：
+switch to buffer (default *缓冲区名*): 键入缓冲区文件名即可。
+
+-----------------------------------------------------------------------
+
+===== 1. LISP 合法表达式： =====
+
+LISP 合法表达式可以是如下情况：
+A. 不带括号的原子常量或变量;
+B. 紧跟单引号的列表元素;
+C. 带括号的列表： (函数名 参数1 参数2 ... 参数N)
+其中参数可以是 A,B,C 三种形式中的任一种(__不能是函数名__)。
+
+很显然，LISP表达式含有嵌套和递归的特性，可以写出任意层嵌套的复杂表达式，只要记住合理地使用括号。
+
+下面是一些合法的表达式（有错误的都标识出来了）[可以直接在表达式最后面按 C-x C-e 查看回显区结果]
+
+; __LISP 原子常量__： 数值，字符串(带__双__引号的文本)，紧跟单引号的列表
+3.1415926	 [在这里按 C-x C-e 查看结果]
+"i ahadd"
+("i ahadd") ; __ERROR__ 不紧跟 ' 号的列表第一个符号必须是已定义的__函数名__
+'("i ahadd")
+'(one two three four)
+'(this list has (a list inside of it))	 [在这里按 C-x C-e 查看结果]
+
+__; 求值__，非常类似于前缀表达式
+(* (+ 2 3) (- 1 3))
+'(* (+ 2 3) (- 1 3)) ; 注意，这是一个文本
+
+; __全局变量定义__ set setq
+(set__ '__PI 3.1415926) ; 第一个变量符号必须紧跟单引号 '
+PI
+(setq E 2.71) ; 第一个变量会**自动加上**单引号 '
+E
+
+; __局部变量定义__ let
+(let
+((person 'me)
+(dream '(a house))
+)
+
+(message "%s dream is %s." person dream)
+person ; Error: person 未定义
+
+; 一个计数器
+(setq counter 0)
+(setq counter (+ counter 1))
+counter
+
+fill-column ; EMACS__ 内建变量__
+(* 2 fill-column)
+(fill-column) ; ERROR：__ fill-column 是未定义的函数__
+
+(this is an unquoted list) ; Error：** this 是**__未定义的函数__
+(error info) ; Error：** info 是**__未定义的变量__
+
+; __内建函数 message__， 类似于 C 的 prinf
+(message "the name of this buffer is %s." (buffer-name))
+(message "the buffer is %s." (current-buffer))
+(message "the name of this buffer is %s." (buffer-file-name))
+(message "the value of this fill-column is %d." fill-column)
+
+; buffer-size, point 等都是内建函数，只是**不需任何参数列表**
+(other-buffer)
+(buffer-size)
+(point)
+(point-max)
+(point-min)
+(other-buffer)
+(switch-to-buffer (other-buffer))
+
+; 函数定义
+(defun multiply (x y)
+"将给定的两个数相乘"
+(* x y)
+)
+(multiply 3 5)
+
+
+; if 测试
+; (if (expr) (action-if-true) __(action-if-false)[可选]__)
+
+__; LISP nil为假 ， 非 nil 为真__
+(if () 'true 'false) ; __空列表() 视为假__
+
+(if (- 1 1) 'true 'false) ; __零 非假，因为它不是空列表，而是 0__
+
+; while 测试
+; (while (expr) (action1-if-true) (action2-if-true) ... (actionN-if-true))
+
+(let ((i 10) (result __""__))
+(while (>= i 0)
+(setq result (__append__ result (__list__ i)))
+(setq i (__1-__ i))
+)
+(message "result = %s." result)
+)
+
+; __cond 测试__
+; (cond 
+; (expr1 action1-if-true)
+; (expr2 action2-if-true)
+; ...
+; (exprN actionN-if-true)
+;
+; )
+; 类似于 switch-case
+
+(defun signof (num)
+"测试给定数的符号"
+   (let ((sign))
+       (cond
+	   ((> num 0) (message "%d is a positive." num))
+	   ((eq num 0) (message "%d is zero." num))
+	   ((< num 0) (message "%d is a negative." num))
+      )
+   )
+)
+
+(signof 1)
+(signof -1)
+(signof 0)
+
+__; 交互函数定义__
+(defun IsGreaterThanZero(num)
+"测试是否给定参数是否大于零"
+(__interactive __"p")
+(if (> num 0)
+(message "%d is greater than 0. " num)
+(message "%d is not greater than 0." num)
+)
+)
+; 可以作为非交互函数调用
+(IsGreaterThanZero 0)
+(IsGreaterThanZero 1)
+(IsGreaterThanZero -1)
+
+; 调用内建函数
+(__concat __"abc" "123")
+(concat "oh" (list 1 2) "god!" )
+等价于：
+(concat "oh" **'(1 2)** "god!")
+(__substring__ "hei, look!" 5 9)
+(concat "hei, " (substring "hei, look!" 5 9) "!") ; 嵌套表达式
+
+; 带任意数量参数的函数
+(*) (* 3) (* 1 2 3 4 5)
+(+) (+ 3) (+ 1 2 3 4 5)
+(concat) (concat "1") (concat "1" () "(+ 33 44)")
+
+; __参数类型出错 __hello 必须是数值
+(+ "hello" 2) ; ERROR
+
+; 这是给出的错误消息
+Debugger entered--Lisp error: (wrong-type-argument number-or-__marker__-p "hello")
+
+; 递归函数
+(defun refac(num)
+"递归计算阶乘 n! = 1 * 2 * ... * n"
+(interactive "p")
+(if (eq num 0) 1
+(* (refac(1- num)) num)
+)
+)
+
+(defun printfac(num)
+"打印阶乘值"
+(interactive "p")
+(message "%d! = %d." num (refac num))
+)
+(refac 0)
+(refac 1)
+(refac 3)

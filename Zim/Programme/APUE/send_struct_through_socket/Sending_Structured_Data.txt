@@ -1,0 +1,54 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-04T23:02:43+08:00
+
+====== Sending Structured Data ======
+Created 星期六 04 六月 2011
+Hey,
+I thought it was incredibly cool that I could send in a structure over using send(2) and not have to parse a single string in both my client and server. So I thought I'd share, as I saw someone was using strings and was asking about "\r\n", I'm sure it's not hard to figure out as we were sending over integers in our labs anyway.
+ 
+Quote:
+
+// Please note that I just wrote this here, it's not a part of my actual code – you may use this idea:
+
+typedef struct Data {
+char message[140];
+int type;
+} Data;
+
+/* You can use send(2) to send over a copy of your structure
+and receive it using recv(2): */
+
+// send:
+Data data;
+sprintf(data.message, "Hello, I'm Nima");
+data.type = 0x01;
+
+int sent = send(sock, &amp;data, sizeof(Data), 0);
+
+// recv:
+
+Data data;
+memset(&amp;data, 0, sizeof(Data));
+int recved = recv(sock, &amp;data, sizeof(Data), 0);
+
+I love C.
+Back to top 	
+ 
+« Last Edit: Dec 8th, 2010, 3:34am by Nimsical »  
+WWW   IP Logged
+reid
+Global Moderator
+Instructor
+*****
+
+
+
+
+Posts: 933
+	
+Show the link to this post Re: Sending Structured Data
+Reply #1 - Dec 8th, 2010, 9:49am  
+Nice.
+ 
+The problem with sending structured data is that you need to be careful about byte ordering.  This will work fine as long as the two machines have the same byte order.  I think it will work more generally if you convert the int to network byte order and back. 

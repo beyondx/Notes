@@ -1,0 +1,46 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-18T19:27:59+08:00
+
+====== 组织 .emacs 的文件内容的技巧 ======
+Created Thursday 18 August 2011
+
+一下内容是我很早以前的组织配置文件的办法。后来发现文件太分散了也不好。找一个功能很费劲。以后有时间的话，我会更新一下，描述一下我现在组织文件的。原来的文章仅供参考。我自己已经不用这种方法了。
+
+更加条理的组织 .emacs 内容的方法。我把每一类功能，单独放在一个文件中，如果不喜欢某个功能的话，就把对应的文件名称改为 xxx.el.bak
+
+如果又想要某一个功能了，就在把 xxx.el.bak 改名为 xxx.el
+
+我的 .emacs 的内容是
+
+(mapc 'load (directory-files "~/Emacs/myconfig/my-site-start.d" t "\\.el$"))
+;;;----------------------automatic customize----------------------------
+(custom-set-variables
+
+  ;; custom-set-variables was added by Custom -- don't edit or cut/paste it!
+  ;; Your init file should contain only one such instance.
+ '(browse-url-netscape-program "mozilla")
+ '(emacs-wiki-charset-default "gb2312")
+ '(emacs-wiki-coding-default (quote gb2312)))
+(custom-set-faces
+  ;; custom-set-faces was added by Custom -- don't edit or cut/paste it!
+  ;; Your init file should contain only one such instance.
+ )
+;; ---------------------------------------------------------------------
+
+而且，我以后再也不会修改这个 .emacs 了。因为我把每一个配置功能都放在 ~/Emacs/myconfig/my-site-start.d 下面。要配置 c mode ，就在那个目录下写一个 cmode.el 要配置 xxx , 就在该目录下写一个 xxx.el ，这样，我的 ~/Emacs/myconfig/my-site-start.d 有很多这样的小文件，每个文件对应一个功能，什么时候我讨厌某个功能的时候，就
+
+cd ~/Emacs/myconfig/my-site-start.d
+mv bad-function.el bad-function.el.bak
+
+干净清楚一些了.
+
+关于 mapc load 文件的顺序问题，会跟根据文件名称的 ASCII 的值来排序。也就是 explore 中按名称排序的是一样的。
+
+如果想指定执行顺序。那么这样起名字.
+
+a.01.chinese.el
+a.02.add-path.el
+
+z.01.destop.el
+z.02.session.el

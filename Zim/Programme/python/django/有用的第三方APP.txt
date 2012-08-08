@@ -1,0 +1,11 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-24T19:53:21+08:00
+
+====== 有用的第三方APP ======
+Created Monday 24 October 2011
+
+1.django-grappelli--------admin美化插件
+        http://readthedocs.org/docs/django-grappelli/en/latest/quickstart.html
+	git://github.com/sehmaschine/django-grappelli.git
+2.

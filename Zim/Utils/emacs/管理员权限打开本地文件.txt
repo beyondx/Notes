@@ -1,0 +1,14 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-19T14:21:51+08:00
+
+====== 管理员权限打开本地文件 ======
+Created Friday 19 August 2011
+http://www.wanglianghome.org/blog/2008/03/let-emacs-open-file-as-root-with-tramp.html
+TRAMP不仅仅可以用来打开远程的文件，还能以root权限打开本地的文件。又少了一个使用vi的理由。:-D
+
+使用方法是：
+
+    C-x C-f /su::/etc/profile TAB
+
+TAB可以在/su::后的任意地方使用，emacs会提示输入root密码，验证成功后还可以使用自动补全。另一种方式是使用/sudo::，这时要输入自己的密码。

@@ -1,0 +1,155 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-05T12:32:12+08:00
+
+====== pragma ======
+Created 星期日 05 六月 2011
+#pragma
+百科名片
+
+在所有的预处理指令中，#Pragma 指令可能是最复杂的了，它的作用是设定编译器的状态或者是指示编译器完成一些特定的动作。#pragma指令对每个编译器给出了一个方法,在保持与C和C++语言完全兼容的情况下,给出主机或操作系统专有的特征。依据定义,编译指示是机器或操作系统专有的,且对于每个编译器都是不同的。
+
+目录
+
+    一般格式
+    常用参数
+    应用实例
+展开
+
+编辑本段一般格式
+　　其格式一般为: #Pragma Para。其中Para 为参数，下面来看一些常用的参数
+编辑本段常用参数
+　　
+   [#pragma]
+
+#pragma
+message 参数
+　　Message 参数能够在编译信息输出窗口中输出相应的信息，这对于源代码信息的控制是非常重要的。其使用方法为：
+　　#Pragma message(“消息文本”)
+　　当编译器遇到这条指令时就在编译输出窗口中将消息文本打印出来。
+　　当我们在程序中定义了许多宏来控制源代码版本的时候，我们自己有可能都会忘记有没有正确的设置这些宏，此时我们可以用这条指令在编译的时候就进行检查。假设我们希望判断自己有没有在源代码的什么地方定义了_X86这个宏可以用下面的方法
+　　#ifdef _X86
+　　#Pragma message(“_X86 macro activated!”)
+　　#endif
+　　当我们定义了_X86这个宏以后，应用程序在编译时就会在编译输出窗口里显示“_X86 macro activated!”。我们就不会因为不记得自己定义的一些特定的宏而抓耳挠腮了。
+code_seg
+　　另一个使用得比较多的pragma参数是code_seg。格式如：
+　　#pragma code_seg( ["section-name"[,"section-class"] ] )
+　　它能够设置程序中函数代码存放的代码段，当我们开发驱动程序的时候就会使用到它。
+#pragma once
+　　(比较常用）
+　　只要在头文件的最开始加入这条指令就能够保证头文件被编译一次，这条指令实际上在VC6中就已经有了，但是考虑到兼容性并没有太多的使用它。
+　　#pragma once是编译相关，就是说这个编译系统上能用，但在其他编译系统不一定可以，也就是说移植性差，不过现在基本上已经是每个编译器都有这个定义了。
+　　#ifndef，#define，#endif这个是C++语言相关，这是C++语言中的宏定义，通过宏定义避免文件多次编译。所以在所有支持C++语言的编译器上都是有效的，如果写的程序要跨平台，最好使用这种方式
+#pragma hdrstop
+　　#pragma hdrstop表示预编译头文件到此为止，后面的头文件不进行预编译。BCB可以预编译头文件以加快链接的速度，但如果所有头文件都进行预编译又可能占太多磁盘空间，所以使用这个选项排除一些头文件。
+　　有时单元之间有依赖关系，比如单元A依赖单元B，所以单元B要先于单元A编译。你可以用#pragma startup指定编译优先级，如果使用了#pragma package(smart_init) ，BCB就会根据优先级的大小先后编译。
+#pragma resource
+　　#pragma resource "*.dfm"表示把*.dfm文件中的资源加入工程。*.dfm中包括窗体外观的定义。
+#pragma warning
+　　#pragma warning( disable : 4507 34; once : 4385; error : 164 )
+　　等价于：
+　　#pragma warning(disable:4507 34) // 不显示4507和34号警告信息
+　　#pragma warning(once:4385) // 4385号警告信息仅报告一次
+　　#pragma warning(error:164) // 把164号警告信息作为一个错误。
+　　同时这个pragma warning 也支持如下格式：
+　　#pragma warning( push [ ,n ] )
+　　#pragma warning( pop )
+　　这里n代表一个警告等级(1---4)。
+　　#pragma warning( push )保存所有警告信息的现有的警告状态。
+　　#pragma warning( push, n)保存所有警告信息的现有的警告状态，并且把全局警告等级设定为n。
+　　#pragma warning( pop )向栈中弹出最后一个警告信息，
+　　在入栈和出栈之间所作的一切改动取消。例如：
+　　#pragma warning( push )
+　　#pragma warning( disable : 4705 )
+　　#pragma warning( disable : 4706 )
+　　#pragma warning( disable : 4707 )
+　　//.......
+　　#pragma warning( pop )
+　　在这段代码的最后，重新保存所有的警告信息(包括4705，4706和4707)。
+pragma comment
+　　pragma comment(...)
+　　该指令将一个注释记录放入一个对象文件或可执行文件中。
+　　常用的lib关键字，可以帮我们连入一个库文件。
+　　每个编译程序可以用#pragma指令激活或终止该编译程序支持的一些编译功能。例如，对循环优化功能：
+　　#pragma loop_opt(on) // 激活
+　　#pragma loop_opt(off) // 终止
+　　有时，程序中会有些函数会使编译器发出你熟知而想忽略的警告，如“Parameter xxx is never used in function xxx”，可以这样：
+　　#pragma warn —100 // Turn off the warning message for warning #100
+　　int insert_record(REC *r)
+　　{ /* function body */ }
+　　#pragma warn +100 // Turn the warning message for warning #100 back on
+　　函数会产生一条有唯一特征码100的警告信息，如此可暂时终止该警告。
+　　每个编译器对#pragma的实现不同，在一个编译器中有效在别的编译器中几乎无效。可从编译器的文档中查看。
+　　#pragma pack(n)和#pragma pack()
+　　struct sample
+　　{
+　　char a;
+　　double b;
+　　};
+　　当sample结构没有加#pragma pack(n)的时候,sample按最大的成员那个对齐;
+　　（所谓的对齐是指对齐数为n时,对每个成员进行对齐,既如果成员a的大小小于n则将a扩大到n个大小;
+　　如果a的大小大于n则使用a的大小;）所以上面那个结构的大小为16字节.
+　　当sample结构加#pragma pack(1)的时候,sizeof(sample)=9字节;无空字节。
+　　（另注：当n大于sample结构的最大成员的大小时，n取最大成员的大小。
+　　所以当n越大时，结构的速度越快，大小越大；反之则）
+　　#pragma pack()就是取消#pragma pack(n)的意思了，也就是说接下来的结构不用#pragma pack(n)
+　　#pragma comment( comment-type ,["commentstring"] )
+　　comment-type是一个预定义的标识符，指定注释的类型，应该是compiler，exestr，lib，linker之一。
+　　commentstring是一个提供为comment-type提供附加信息的字符串。
+　　注释类型：
+　　1、compiler：
+　　放置编译器的版本或者名字到一个对象文件，该选项是被linker忽略的。
+　　2、exestr：
+　　在以后的版本将被取消。
+　　3、lib：
+　　放置一个库搜索记录到对象文件中，这个类型应该是和commentstring（指定你要Linker搜索的lib的名称和路径）这个库的名字放在Object文件的默认库搜索记录的后面，linker搜索这个这个库就像你在命令行输入这个命令一样。你可以在一个源文件中设置多个库记录，它们在object文件中的顺序和在源文件中的顺序一样。如果默认库和附加库的次序是需要区别的，使用Z编译开关是防止默认库放到object模块。
+　　4、linker：
+　　指定一个连接选项，这样就不用在命令行输入或者在开发环境中设置了。
+　　只有下面的linker选项能被传给Linker.
+　　/DEFAULTLIB ,/EXPORT,/INCLUDE,/MANIFESTDEPENDENCY, /MERGE,/SECTION
+　　(1) /DEFAULTLIB:library
+　　/DEFAULTLIB 选项将一个 library 添加到 LINK 在解析引用时搜索的库列表。用 /DEFAULTLIB指定的库在命令行上指定的库之后和 .obj 文件中指定的默认库之前被搜索。忽略所有默认库 (/NODEFAULTLIB) 选项重写 /DEFAULTLIB:library。如果在两者中指定了相同的 library 名称，忽略库 (/NODEFAULTLIB:library) 选项将重写 /DEFAULTLIB:library。
+　　(2)/EXPORT:entryname[,@ordinal[,NONAME]][,DATA]
+　　使用该选项，可以从程序导出函数，以便其他程序可以调用该函数。也可以导出数据。通常在 DLL 中定义导出。entryname 是调用程序要使用的函数或数据项的名称。ordinal 在导出表中指定范围在 1 至 65,535 的索引；如果没有指定 ordinal，则 LINK 将分配一个。NONAME 关键字只将函数导出为序号，没有 entryname。
+　　DATA 关键字指定导出项为数据项。客户程序中的数据项必须用 extern __declspec(dllimport) 来声明。
+　　有三种导出定义的方法，按照建议的使用顺序依次为：
+　　源代码中的 __declspec(dllexport).def 文件中的 EXPORTS 语句LINK 命令中的 /EXPORT 规范所有这三种方法可以用在同一个程序中。LINK 在生成包含导出的程序时还创建导入库，除非生成中使用了 .exp 文件。
+　　LINK 使用标识符的修饰形式。编译器在创建 .obj 文件时修饰标识符。如果 entryname 以其未修饰的形式指定给链接器（与其在源代码中一样），则 LINK 将试图匹配该名称。如果无法找到唯一的匹配名称，则 LINK 发出错误信息。当需要将标识符指定给链接器时，请使用 Dumpbin 工具获取该标识符的修饰名形式。
+　　(3)/INCLUDE:symbol
+　　/INCLUDE 选项通知链接器将指定的符号添加到符号表。
+　　若要指定多个符号，请在符号名称之间键入逗号 (,)、分号 (;) 或空格。在命令行上，对每个符号指定一次 /INCLUDE:symbol。
+　　链接器通过将包含符号定义的对象添加到程序来解析 symbol。该功能对于添包含不会链接到程序的库对象非常有用。用该选项指定符号将通过 /OPT:REF 重写该符号的移除。
+　　我们经常用到的是#pragma comment（lib，"*.lib"）这类的。#pragma comment(lib,"Ws2_32.lib")表示链接Ws2_32.lib这个库。 和在工程设置里写上链入Ws2_32.lib的效果一样，不过这种方法写的 程序别人在使用你的代码的时候就不用再设置工程settings了
+编辑本段应用实例
+　　在网络协议编程中，经常会处理不同协议的数据报文。一种方法是通过指针偏移的
+　　方法来得到各种信息，但这样做不仅编程复杂，而且一旦协议有变化，程序修改起来
+　　也比较麻烦。在了解了编译器对结构空间的分配原则之后，我们完全可以利用这
+　　一特性定义自己的协议结构，通过访问结构的成员来获取各种信息。这样做，
+　　不仅简化了编程，而且即使协议发生变化，我们也只需修改协议结构的定义即可，
+　　其它程序无需修改，省时省力。下面以TCP协议首部为例，说明如何定义协议结构。
+　　其协议结构定义如下：
+　　#pragma pack(1) // 按照1字节方式进行对齐
+　　struct TCPHEADER
+　　{
+　　short SrcPort; // 16位源端口号
+　　short DstPort; // 16位目的端口号
+　　int SerialNo; // 32位序列号
+　　int AckNo; // 32位确认号
+　　unsigned char HaderLen : 4; // 4位首部长度
+　　unsigned char Reserved1 : 4; // 保留6位中的4位
+　　unsigned char Reserved2 : 2; // 保留6位中的2位
+　　unsigned char URG : 1;
+　　unsigned char ACK : 1;
+　　unsigned char PSH : 1;
+　　unsigned char RST : 1;
+　　unsigned char SYN : 1;
+　　unsigned char FIN : 1;
+　　short WindowSize; // 16位窗口大小
+　　short TcpChkSum; // 16位TCP检验和
+　　short UrgentPointer; // 16位紧急指针
+　　};
+　　#pragma pack() // 取消1字节对齐方式 #pragma pack规定的对齐长度，实际使用的规则是： 结构，联合，或者类的数据成员，第一个放在偏移为0的地方，以后每个数据成员的对齐，按照#pragma pack指定的数值和这个数据成员自身长度中，比较小的那个进行。 也就是说，当#pragma pack的值等于或超过所有数据成员长度的时候，这个值的大小将不产生任何效果。 而结构整体的对齐，则按照结构体中最大的数据成员 和 #pragma pack指定值 之间，较小的那个进行。
+　　指定连接要使用的库比如我们连接的时候用到了 WSock32.lib，你当然可以不辞辛苦地把它加入到你的工程中。但是我觉得更方便的方法是使用 #pragma 指示符，指定要连接的库:#pragma comment(lib, "WSock32.lib")
+
+扩展阅读：

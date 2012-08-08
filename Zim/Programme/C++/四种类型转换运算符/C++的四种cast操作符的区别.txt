@@ -1,0 +1,73 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-17T15:43:20+08:00
+
+====== C++的四种cast操作符的区别 ======
+Created Friday 17 February 2012
+http://welfare.cnblogs.com/articles/336091.html
+
+C++的4种类型转换
+
+    一、C 风格（C-style）强制转型如下：
+
+    (T) expression // cast expression to be of type T
+    函数风格（Function-style）强制转型使用这样的语法：
+    T(expression) // cast expression to be of type T
+    这两种形式之间没有本质上的不同，它纯粹就是一个把括号放在哪的问题。我把这两种形式称为__旧风格（old-style）的强制转型__。
+
+   二、 C++的四种强制转型形式：
+
+　　C++ 同时提供了四种新的强制转型形式（通常称为新风格的或 C++ 风格的强制转型）：
+　　const_cast <new_type>(expression)
+　　dynamic_cast<new_type>(expression)
+　　reinterpret_cast<new_type>(expression)
+　　static_cast<new_type>(expression)
+
+　　每一种适用于特定的目的：
+
+　　·dynamic_cast 主要用于执行“__安全的向下转型__（safe downcasting）”，也就是说，要确定一个对象是否是一个继承体系中的一个特定类型。它是唯一不能用旧风格语法执行的强制转型，也是唯一可能有**重大运行时代价**的强制转型。
+    
+    ·static_cast 可以被用于强制隐型转换（例如，non-const 对象转型为 const 对象，int 转型为 double，等等），它还可以用于很多这样的转换的反向转换（例如，void* 指针转型为有类型指针，基类指针转型为派生类指针），但是它**不能将一个 const 对象转型为 non-const 对象**（只有 const_cast 能做到），__它最接近于C-style的转换__。
+    
+　　·const_cast 一般用于强制消除对象的常量性。它是唯一能做到这一点的 C++ 风格的强制转型。
+
+　　·reinterpret_cast 是特意用于底层的强制转型，导致实现依赖（implementation-dependent）（就是说，不可移植）的结果，例如，将一个指针转型为一个整数。这样的强制转型在底层代码以外应该极为罕见。
+　　
+　　旧风格的强制转型依然合法，但是__新的形式更可取__。首先，在代码中它们更容易识别（无论是人还是像 grep 这样的工具都是如此），这样就简化了在代码中寻找类型系统被破坏的地方的过程。第二，更精确地指定每一个强制转型的目的，使得编译器诊断使用错误成为可能。例如，如果你试图使用一个 const_cast 以外的新风格强制转型来消除常量性，你的代码将无法编译。
+
+==  
+==  dynamic_cast .vs. static_cast
+==
+
+class B { ... };
+class D : public B { ... };
+
+void f(B* pb)
+{
+   D* pd1 = dynamic_cast<D *>(pb);
+   D* pd2 = static_cast<D*>(pb);
+}
+
+If pb** really points to an object of type D**, then pd1 and pd2 will get the same value. They will also get the same value if pb == 0.
+
+If pb points to an object of type B and not to the complete D class, then dynamic_cast will know enough to __return zero__. However, static_cast relies on the programmer’s assertion that pb points to an object of type D and simply returns a pointer to that supposed D object.
+
+    即dynamic_cast可__用于继承体系中的向下转型，即将基类指针转换为派生类指针__，比static_cast更严格更安全。dynamic_cast在执行效率上比static_cast要差一些,但static_cast在更宽上范围内可以完成映射,这种**不加限制的映射伴随着不安全性**.  static_cast覆盖的变换类型除类层次的静态导航以外,还包括无映射变换,窄化变换(这种变换会导致对象切片,丢失信息),用void*的强制变换,隐式类型变换等...
+
+
+==
+==  static_cast .vs. reinterpret_cast
+==
+
+    reinterpret_cast是为了__映射到一个完全不同类型__的意思,这个关键词在我们需要把类型映射回原有类型时用到它.我们映射到的类型仅仅是为了故弄玄虚和其他目的,这是所有映射中__最危险__的.(这句话是C++编程思想中的原话)
+
+    static_cast 和 reinterpret_cast 操作符修改了操作数类型. 它们__不是互逆的__; static_cast 在编译时使用类型信息执行转换, **在转换执行必要的检测**(诸如指针越界计算, 类型检查). 其操作数**相对是安全的**. 另一方面, reinterpret_cast 仅仅是重新解释了给出的对象的比特模型而没有进行二进制转换, 例子如下:
+
+    int n=9; double d=static_cast < double > (n);
+
+    上面的例子中, 我们将一个变量从 int 转换到 double. 这些类型的二进制表达式是不同的. 要将整数 9 转换到 双精度整数 9, static_cast 需要正确地为双精度整数 d 补足比特位. 其结果为 9.0. 而reinterpret_cast 的行为却不同:
+
+    int n=9;
+    double d=reinterpret_cast<double & > (n);
+
+    这次, 结果有所不同. 在进行计算以后, __d 包含无用值__. 这是因为 reinterpret_cast 仅仅是**复制 n 的比特位到 d**, **没有进行必要的分析**. 

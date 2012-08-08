@@ -1,0 +1,58 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-07T09:42:59+08:00
+
+====== 类（一、内联函数） ======
+Created Sunday 07 August 2011
+
+1 //4_1.cpp
+2  #include<iostream>
+3 using namespace std;
+4
+5 // 抽象、封装、继承、多态
+6
+7 class Clock { //时钟类的定义
+8 public: //外部接口，公有成员函数
+9 void SetTime(int newH=0,int newM=0,int newS=0); // 设置参数的默认值
+10 void ShowTime();
+11 //====================================================================================
+12 // 函数的调用过程要消耗一些内存资源和运行时间来传递参数和返回值，要记录调用的状态，
+13 // 以保证调用完成后能够正确地返回并继续执行。如果有的函数成员需要被频繁调用，并且代
+14 // 码相对简单，这个函数可以定义为内联函数（inline function）。内联函数的函数体会在
+15 // 编译时被插入到每一个调用它的位置，这可以减少调用时的开销，却增加了编译后代码的长
+16 // 度。
+17 //
+18 // 内联函数的声明分为：隐式声明和显式声明。
+19 //===================================================================================
+20__ // 隐式声明内联函数__
+21 /*
+22 *
+23 * void ShowTime() {
+24 * cout<<hour<<":"<<minute<<":"<<second<<endl;
+25 *
+26 * */
+27 private: //私有数据成员
+28 int hour,minute,second;
+29 };
+30 // 时钟类成员函数的具体实现，必须声明该函数所属的类名
+31 void __Clock::__SetTime(int i,int j,int k) {
+32 hour=i;
+33 minute=j;
+34 second=k;
+35 }
+36 // 显式声明内联函数
+37 __inline v__oid Clock::ShowTime() {
+38 cout<<hour<<":"<<minute<<":"<<second<<endl;
+39 }
+40 // 主函数
+41 int main() {
+42 Clock myClock; // myClock 成为目的对象
+43 cout<<"First time set and output:"<<endl;
+44 myClock.SetTime();
+45 myClock.ShowTime();
+46 cout<<"Second time set and output:"<<endl;
+47 myClock.SetTime(0,12,30);
+48 myClock.ShowTime();
+49 return 0;
+50 }
+

@@ -1,0 +1,198 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-30T13:29:36+08:00
+
+====== 随机化算法(4) — 拉斯维加斯(Las Vegas)算法 ======
+Created Saturday 30 July 2011
+正文：
+
+悟性不够，这一章看代码看了快一个上午，才理解。
+
+上一章讲过《概率算法(3) — 舍伍德(Sherwood)算法》，但是他的有点是计算时间复杂性对所有实例而言相对均匀，而其平均时间复杂性没有改变。而拉斯维加斯算法怎么显著改进了算法的有效性。
+
+拉斯维加斯算法的一个显著特征是它所作的随机性决策有可能导致算法找不到所需的解。因此通常用一个bool型函数表示拉斯维加斯算法。
+
+
+void Obstinate(InputType x, OutputType &y)
+{
+ 
+    // 反复调用拉斯维加斯算法LV(x, y)，直到找到问题的一个解
+    bool success= false;
+    while (!success) 
+         success = LV(x,y);
+}
+
+
+考虑用拉斯维加斯算法解决N皇后问题：
+
+对于n后问题的任何一个解而言，每一个皇后在棋盘上的位置无任何规律，不具有系统性，而更象是随机放置的。由此容易想到下面的拉斯维加斯算法。
+在棋盘上相继的各行中随机地放置皇后，并注意使新放置的皇后与已放置的皇后互不攻击，直至n个皇后已相容地放置好，或已没有下一个皇后的可放置位置时为止。注意这里解决的是找到其中一个方法，求不是求出N皇后的全部解。
+
+这里提前说明一下，否则不好理解。
+
+接下来的这个用Las Vegas算法解决N皇后问题，我们采用的是随机放置位置策略和回溯法相结合，具体就是比如八皇后中，前几行选择用随机法放置皇后，剩下的选择用回溯法解决。
+
+这个程序不是很好理解，有的地方我特别说明了是理解程序的关键，大家看时一定要认真了，另外，王晓东的书上先是用单纯的随机法解决，大家可以先去理解书上这个例子。然后再来分析我这个程序。不过那本书上关于这一块错误比较多，大家看时要注意哪些地方他写错了。
+
+拉斯维加斯算法解决N皇后代码：
+
+依然用到了RandomNumber.h头文件，大家可以去看下第一章，我就不贴出来了。
+
+剩下部分的代码：
+
+注意QueensLV()函数是这个程序的精髓所在。
+
+Queen.h头文件
+
+#ifndef QUEEN_H
+#define QUEEN_H
+ 
+class Queen
+{
+	friend bool nQueen(int);
+private:
+	bool Place(int k);             // 测试皇后k置于第x[k]列的合法性
+	bool Backtrack(int t);         // 解n后问题的回溯法
+	bool QueensLV(int stopVegas);  // 随机放置n个皇后拉斯维加斯算法
+	int n, *x, *y;
+};
+ 
+#endif
+
+Queen.cpp文件
+
+#include <iostream>
+#include "Queen.h"
+#include "RandomNumber.h"
+using namespace std;
+ 
+bool Queen::Place(int k)
+{
+	// 测试皇后k置于第x[k]列的合法性
+	for(int j = 1; j < k; ++ j)
+		if((abs(k-j) == abs(x[j]-x[k])) || (x[j]==x[k]))
+			return false;
+	return true;
+}
+ 
+bool Queen::Backtrack(int t)
+{
+	// 解n后问题的回溯法
+	if(t > n)
+	{
+		for(int i=1; i<=n; ++i)
+			y[i] = x[i];
+		return true;
+	}
+	else
+		for(int i=1; i<=n; ++i)
+		{
+			x[t] = i;
+			if(Place(t) && Backtrack(t+1))
+				return true;
+		}
+		return false;
+}
+ 
+/*
+* QueensLV是整个Las Vegas解n皇后的精髓。而且这个函数不好理解，我在这里具体分析下。
+* k是第k行，x[k]表示第k行的皇后放在x[k]列
+* 下面这两点解析请认真看了，我个人就是卡在这里半天了，但是理解后很简单。
+* 标号①处：这里是遍历第k行所有可以放置的列号，用y保存下来，并用count记录有多少个位置可以放置
+* 标号②处：这里利用上面保存的可以放置的列，然后随机取其中一列来放置第k行的皇后。这就是Las Vegas的精髓！
+*/
+// Author: Tanky Woo
+// Blog:    www.WuTianQi.com
+bool Queen::QueensLV(int stopVegas)
+{
+	// 随机放置n个皇后的拉斯维加斯算法
+	RandomNumber rnd;    // 随机数产生器
+	int k = 1;           // 下一个放置的皇后编号
+	int count = 1;
+	// 1 <= stopVegas <= n 表示允许随机放置的皇后数
+	while((k <= stopVegas) && (count > 0))
+	{
+		count = 0;
+		for(int i = 1; i<=n; ++i)      // ----------- ①
+		{
+			x[k] = i;
+			if(Place(k))
+				y[count++] = i;
+		}
+		if(count > 0)                   // -------------②
+			x[k++] = y[rnd.Random(count)];   // 随机位置
+	}
+	return (count > 0);   // count > 0表示放置位置成功
+}
+
+Main.cpp主文件：
+
+
+/*
+* Author: Tanky woo
+* Blog:   www.WuTianQi.com
+* Date:   2010.12.9
+* 拉斯维加斯(Las Vegas)算法解决N皇后问题
+* 代码来至王晓东《计算机算法设计与分析》
+*/
+#include "Queen.h"
+#include "RandomNumber.h"
+#include <iostream>
+using namespace std;
+ 
+bool nQueen(int n)
+{
+	// 与回溯法结合的解n后问题的拉斯维加斯算法
+	Queen X;
+	// 初始化X
+	X.n = n;
+	int *p = new int[n+1];
+	int *q = new int[n+1];
+	for(int i=0; i<=n; ++i)
+	{
+		p[i] = 0;
+		q[i] = 0;
+	}
+	X.y = q;
+	X.x = p;
+	// 设置随机放置皇后的个数
+	int stop = 8;
+	if(n > 15)
+		stop = n-15;
+	bool found = false;
+	while(! X.QueensLV(stop));
+	// 算法的回溯搜索部分
+	if(X.Backtrack(stop+1))
+	{
+		for(int i=1; i<=n; ++i)
+			cout << p[i] << " ";
+		found = true;
+	}
+	cout << endl;
+	delete [] p;
+	delete [] q;
+	return found;
+}
+ 
+int main()
+{
+	nQueen(8);
+}
+
+在8皇后问题中：
+
+1.stopVegas=0表示完全使用回溯法解决问题。因此一定可以得到一组解。
+
+2.stopVegas=8表示完全实用随机法解决问题。因此一定可以得到一组解。
+
+注意书上说解决8皇后问题时，列出了一个不同stopVegas值时，所对应的算法成功率，在stopVegas=8时，他写着是0.1293，我个人认为是错的。接下来我说下自己这么理解的原因：
+
+首先，这个程序为何会造成有失败的情况，那就是因为在随机求出前stopVegas行成立时，不代表后面N-stopVegas行用回溯就可以成立，因为这不是一个彻底的回溯。它是从stopVegas+1行开始计算，回溯不成立最后返回时，也只停留在stopVegas。
+
+而我们在完全随机时，那么它就是反复调用随机位置放置n个皇后的Las Vegas算法，直至放置成功。所以当stopVegas=8时，他的成功率也应该是100%。
+
+另外在stopVegas=3时，成功率等于0.49，趋近于0.5，大家可以试试，基本上每运行两次会有一次回来结果。
+
+如果上面我的理解有错，欢迎大家指出，我的博客(www.WuTianQi.com)。
+
+下一篇我会写《随机化算法(5) — 蒙特卡罗(Monte Carlo)算法》。

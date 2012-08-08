@@ -1,0 +1,61 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-27T10:56:44+08:00
+
+====== 3 ======
+Created Friday 27 May 2011
+http://linux.chinaitlab.com/administer/770766.html
+一般而言，安装完VirtualBox设定网路时选择默认的NAT模式，Guest就可顺利联网了，但是这种方式比较死板，要作更有弹性的变化，应该采用桥接模式(Bridged)，这里的桥接模式就如同VMware中的Bridged模式，Host与Guest在局域网(LAN)中的地位是相等的。
+
+    1. 在基于 Debian 和 Ubuntu 的系统上，首先要安装含有建立虚拟网络设备 ( TAP interfaces ) 的工具 uml-utilities 和桥接工具 bridge-utils：
+    sudo apt-get install uml-utilities
+    sudo apt-get install bridge-utils
+    为了使你的虚拟机能够访问网络接口，你必须将运行虚拟主机的用户的用户名（通常是你的ubuntu登录用户名）添加到uml-net用户组（请用你的用户名替换其中的“vboxuser”）：
+    sudo gpasswd -a vboxuser uml-net
+    注意：为了使改动生效，请重新启动你的电脑。
+
+
+    2. 向你的 Debian 或者 ubuntu 操作系统描述你要添加的虚拟网络设备，编辑 /etc/network/interfaces：（请先备份）
+    sudo vim /etc/network/interfaces
+    在打开的文件后面添加下面的内容，将虚拟网络接口命名为 "tap0"，指定该接口IP配置方法为手动，并指定使用该接口的用户（请用你的用户名替换其中的 "vboxuser"）：
+    auto tap0
+    iface tap0 inet manual
+    up ifconfig $IFACE 0.0.0.0 up
+    down ifconfig $IFACE down
+    tunctl_user vboxuser
+
+
+    3. 首次使用需要激活刚才建立的虚拟网络接口和网络桥：
+    sudo /sbin/ifup tap0
+    sudo /sbin/ifup br0
+    这个步骤只需要做一次，下次主机重新启动时，这个接口和桥将自动激活。
+
+
+    3. 另外还需要在 /etc/network/interfaces 中加入如下内容，建立一个名叫 "br0" 的桥，该桥的IP配置方法为通过DHCP配置，主机中的所有网络接口，也包括tap0这个虚拟网络接口，都将建立在这个桥之上：
+    auto br0
+    iface br0 inet dhcp
+    bridge_ports all tap0
+    在这里你可以根据自己的网络状况做相应的更改，你可以使网络桥使用静态 IP：
+    #iface br0 inet static
+    address 192.168.1.2
+    netmask 255.255.255.0
+    network 192.168.1.0
+    broadcast 192.168.1.255
+    gateway 192.168.1.1
+
+    4. 首次使用需要激活刚才建立的虚拟网络接口和网络桥：
+    sudo /sbin/ifup tap0
+    sudo /sbin/ifup br0
+    这个步骤只需要做一次，下次主机重新启动时，这个接口和桥将自动激活
+    5. 让 virtualbox 使用这个虚拟网络接口，启动 virtualbox，在主界面上选中要使用刚才建立的虚拟网络接口tap0的虚拟机，点“设置”，在弹出的窗口中选“网络”，选中其中一块网卡（通常为 “网络适配器 0”），选中“启用网络适配器”，“连接到”后面选 "Host Interface"，选中“接入网线”，然后在“主机网络界面名称”中填入刚才建立的虚拟网络接口的名字 "tap0"，确定。同样的你也可以使用 VBoxManage 的命令行工具（将 "My VM" 换成你的虚拟机名字 ）：
+    VBoxManage modifyvm "My VM" -hostifdev1 tap0\
+
+
+    最后，配置主机和虚拟机的网络，使主机和虚拟机在同一个网段，这样主机和虚拟机就成了局域网中地位相同的两台机器了，可以互相访问了。
+
+
+    撤销网络桥
+    1. 禁用网桥和虚拟网卡：
+    sudo /sbin/ifdown br0
+    sudo /sbin/ifdown tap0
+    2. 将前面修改的 /etc/network/interfaces 文件还原。

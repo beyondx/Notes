@@ -1,0 +1,53 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-19T22:22:45+08:00
+
+====== BOOST FOREACH 介绍 ======
+Created Sunday 19 February 2012
+http://www.cnblogs.com/sld666666/archive/2011/05/30/2063140.html
+
+“Make simple things easy.”
+-- Larry Wall
+
+c++中，写一个循环去迭代一个序列是很单调的。
+
+1 string hello("hello, boost!");
+2
+3  for (int i = 0; i != hello.size(); ++i)
+4 {
+5 cout<<hello.at(i);
+6 }
+
+我们可以用__std:for_each__,但是这样并没有减少代码了，而且让很多功能分离太远
+
+1 void print (char ch)
+2 {
+3 cout << ch;
+4 }
+5 int _tmain(int argc, _TCHAR* argv[])
+6 {
+7 string hello("hello, boost!");
+8 __for_each__(hello.begin(), hello.end(),print);
+9
+10 cout<<endl;
+11
+12 return 0;
+13 }
+
+
+BOOST_FOREACH 是为了__易用性和高效性__而设计的。它不进行动态的内存分配，没有虚拟函数调用或通过函数指针的调用。这样可以生成近似于最优化的代码。
+
+1 string hello("hello, boost!");
+2 __BOOST_FOREACH(char ch, hello)__
+3 {
+4 cout<< ch;
+5 }
+6
+7 cout<<endl;
+
+
+BOOST_FOREACH **支持所有序列式容器。**
+当然，为了更漂亮我们可以这样改造
+
+1 #define foreach BOOST_FOREACH
+2 #define reverse_foreach BOOST_REVERSE_FOREACH

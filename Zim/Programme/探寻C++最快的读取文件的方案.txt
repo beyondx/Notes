@@ -1,0 +1,158 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-28T10:46:05+08:00
+
+====== 探寻C++最快的读取文件的方案 ======
+Created Tuesday 28 February 2012
+http://www.byvoid.com/blog/fast-readfile/
+
+在竞赛中，遇到大数据时，往往读文件成了程序运行速度的瓶颈，需要更快的读取方式。相信几乎所有的C++学习者都在cin机器缓慢的速度上栽过跟头，于是从此以后发誓不用cin读数据。还有人说Pascal的read语句的速度是C/C++中scanf比不上的，C++选手只能干着急。难道C++真的低Pascal一等吗？答案是不言而喻的。一个进阶的方法是把数据一下子读进来，然后再转化字符串，这种方法传说中很不错，但具体如何从没试过，因此今天就索性把能想到的所有的读数据的方式都测试了一边，结果是惊人的。
+
+竞赛中读数据的情况最多的莫过于读一大堆整数了，于是我写了一个程序，生成一千万个随机数到data.txt中，一共55MB。然后我写了个程序主干计算运行时间，代码如下：
+
+#include <ctime>
+int main()
+{
+	int start = clock();
+	//DO SOMETHING
+	printf("%.3lf\n",double(clock()-start)/CLOCKS_PER_SEC);
+}
+
+最简单的方法就算写一个循环__scanf(格式化输入)__了，代码如下：
+
+const int MAXN = 10000000;
+ 
+int numbers[MAXN];
+ 
+void scanf_read()
+{
+	freopen("data.txt","r",stdin);
+	for (int i=0;i<MAXN;i++)
+		scanf("%d",&numbers[i]);
+}
+
+可是效率如何呢？在我的电脑Linux平台上测试结果为2.01秒。接下来是cin，代码如下
+
+const int MAXN = 10000000;
+ 
+int numbers[MAXN];
+ 
+void cin_read()
+{
+	freopen("data.txt","r",stdin);
+	for (int i=0;i<MAXN;i++)
+		std::cin >> numbers[i];
+}
+
+出乎我的意料，cin仅仅用了6.38秒，比我想象的要快。cin慢是有原因的，其实默认的时候，__cin与stdin总是保持同步__的，也就是说这两种方法可以混用，而不必担心文件指针混乱，同时cout和stdout也一样，两者混用不会输出顺序错乱。正因为这个兼容性的特性，导致**cin有许多额外的开销**，如何禁用这个特性呢？只需一个语句std::ios::sync_with_stdio(false);，这样就可以取消cin于stdin的同步了。程序如下：
+
+const int MAXN = 10000000;
+ 
+int numbers[MAXN];
+ 
+void cin_read_nosync()
+{
+	freopen("data.txt","r",stdin);
+	std::ios::sync_with_stdio(false);
+	for (int i=0;i<MAXN;i++)
+		std::cin >> numbers[i];
+}
+
+取消同步后效率究竟如何？经测试运行时间__锐减到了2.05秒__，与scanf效率相差无几了！有了这个以后可以放心使用cin和cout了。
+
+接下来让我们测试一下读入整个文件再处理的方法，首先要__写一个字符串转化为数组的函数__，代码如下
+?
+const int MAXS = 60*1024*1024;
+char buf[MAXS];
+ 
+void analyse(char *buf,int len = MAXS)
+{
+	int i;
+	numbers[i=0]=0;
+	for (char *p=buf;*p && p-buf<len;p++)
+		if (*p == ' ')
+			n**umbers[++i]=0**;
+		else
+			numbers[i] = numbers[i] * 10 + *p - '0';
+}
+
+把整个文件读入一个字符串最常用的方法是用fread，代码如下：
+
+const int MAXN = 10000000;
+const int MAXS = 60*1024*1024;
+ 
+int numbers[MAXN];
+char buf[MAXS];
+ 
+void fread_analyse()
+{
+	freopen("data.txt","rb",stdin);
+	int len = fread(buf,1,MAXS,stdin);
+	buf[len] = '\0';
+	analyse(buf,len);
+}
+
+上述代码有着惊人的效率，经测试读取这10000000个数只用了__0.29秒__，效率提高了几乎10倍！掌握着种方法简直无敌了，不过，我记得**fread是封装过的read**，如果直接使用read，是不是更快呢？代码如下：
+
+const int MAXN = 10000000;
+const int MAXS = 60*1024*1024;
+ 
+int numbers[MAXN];
+char buf[MAXS];
+ 
+void read_analyse()
+{
+	int fd = open("data.txt",O_RDONLY);
+	int len = read(fd,buf,MAXS);
+	buf[len] = '\0';
+	analyse(buf,len);
+}
+
+测试发现运行时间仍然是0.29秒，可见read不具备特殊的优势。到此已经结束了吗？不，我可以调用Linux的底层函数mmap，这个函数的功能是将文件映射到内存，是__所有读文件方法都要封装的基础方法__，直接使用mmap会怎样呢？代码如下：
+
+const int MAXN = 10000000;
+const int MAXS = 60*1024*1024;
+ 
+int numbers[MAXN];
+char buf[MAXS];
+void mmap_analyse()
+{
+	int fd = open("data.txt",O_RDONLY);
+	int len = lseek(fd,0,SEEK_END);
+	char *mbuf = (char *) mmap(NULL,len,PROT_READ,MAP_PRIVATE,fd,0);	
+	analyse(mbuf,len);
+}
+
+经测试，运行时间缩短到了__0.25秒__，效率继续提高了14%。到此为止我已经没有更好的方法继续提高读文件的速度了。回头测一下Pascal的速度如何？结果令人大跌眼镜，居然运行了2.16秒之多。程序如下：
+
+const
+	MAXN = 10000000;
+var
+	numbers :array[0..MAXN] of longint;
+	i :longint;
+begin
+	assign(input,'data.txt');
+	reset(input);
+	for i:=0 to MAXN do
+		read(numbers[i]);
+end.
+
+为确保准确性，我又换到Windows平台上测试了一下。结果如下表：
+方法/平台/时间(秒) 	Linux gcc 	Windows mingw 	Windows VC2008
+scanf 	2.010 	3.704 	3.425
+cin 	6.380 	64.003 	19.208
+cin取消同步 	2.050 	6.004 	19.616
+fread 	0.290 	0.241 	0.304
+read 	0.290 	0.398 	不支持
+mmap 	0.250 	不支持 	不支持
+Pascal read 	2.160 	4.668 	
+
+从上面可以看出几个问题
+
+* Linux平台上运行程序普遍比Windows上快。
+* Windows下VC编译的程序一般运行比MINGW（MINimal Gcc for Windows）快。
+* VC对cin取消同步与否不敏感，前后效率相同。反过来MINGW则非常敏感，前后效率相差8倍。
+* read本是linux系统函数，MINGW可能采用了某种模拟方式，read比fread更慢。
+* Pascal程序运行速度实在令人不敢恭维。
+
+希望此文能对大家有所启发，欢迎与我继续讨论。

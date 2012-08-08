@@ -1,0 +1,86 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-07T15:21:50+08:00
+
+====== Auto-installing packages in Emacs with ELPA and el-get ======
+Created Saturday 07 January 2012
+
+http://www.facebook.com/notes/xmms2/auto-installing-packages-in-emacs-with-elpa-and-el-get/10150401940759307
+
+由 XMMS2 于 2011年8月12日16:05 发布
+
+Those who live in emacs all know the pain of __manually installing__ extra modes and extensions, especially on different hosts. **System packages** sometimes help, but they differ on every OS (Debian packages, MacPorts, etc.), don’t always exist, and need to be installed manually.
+
+A better alternative is to__ use emacs itself__ to manage, install and update all the required extra code. The __ELPA project__ provides a way to install packages from different repositories, while __el-get__ can help you declare recipes to install and update code from ELPA, or even Github or Emacswiki.
+
+First, let’s setup some code that tries to load ELPA and el-get, and installs them if they are not present.
+		
+		; derived from ELPA installation
+		; http://tromey.com/elpa/install.html
+		(defun eval-url (url)
+		  (let ((buffer (url-retrieve-synchronously url)))
+		  (save-excursion
+		    (set-buffer buffer)
+		    (goto-char (point-min))
+		    (re-search-forward "^$" nil 'move)
+		    (eval-region (point) (point-max))
+		    (kill-buffer (current-buffer)))))
+		
+		;; Load ELPA
+		(add-to-list 'load-path "~/.emacs.d/elpa")
+		
+		(defun install-elpa ()
+		  (__eval-url __"http://tromey.com/elpa/package-install.el"))
+		
+		(if (__require 'package nil t)__
+		    (progn
+		      ;; Emacs 24+ includes ELPA, but requires some extra setup
+		      ;; to use the (better) tromey repo
+		      (if (>= emacs-major-version 24)
+		          (setq package-archives
+		                (cons '("tromey" . "http://tromey.com/elpa/")
+		                package-archives)))
+		      (package-initialize))
+		  (install-elpa))
+		
+		;; Load el-get
+		(add-to-list 'load-path "~/.emacs.d/el-get/el-get")
+		
+		(defun install-el-get ()
+		  (eval-url
+		   "https://github.com/dimitri/el-get/raw/master/el-get-install.el"))
+		
+		(unless (__require 'el-get nil t__)
+		  (install-el-get))
+		
+
+Note that when using** emacs 24, package.el is distributed with emacs** but it points to the GNU package repository; the code above adds tromey’s more complete ELPA repository to the sources.
+
+Unfortunately, the ELPA installer script **appends a snippet of code to the end of the ~/.emacs** file to **auto-load package.el on startup**. To avoid any problem, it is best to __manually remove__ that code any only keep the load-or-install code above.
+
+Now that ELPA and el-get are setup, we can **declare all the packages we want installed**. They will be installed after the first time emacs is started, and simply **loaded and initialized** in the future.
+		
+		; extra recipes for packages __unknown to el-get__ (yet)
+		(setq el-get-sources
+		      '((:name css-mode :type __elpa__)
+		        (:name js2-mode-mooz
+		               :type git
+		               :url "git://github.com/mooz/js2-mode.git"
+		               :load "js2-mode.el"
+		               :compile ("js2-mode.el")
+		               :features js2-mode)))
+		
+		; list all packages you want installed
+		(setq my-el-get-packages
+		      (append
+		       '(css-mode egg gist js2-mode-mooz)
+		       (mapcar 'el-get-source-name el-get-sources)))
+		
+		(el-get 'sync** my-el-get-packages**)
+
+
+The el-get 'sync call does all the magic, based on all the packages **past in argument** (as my-el-get-packages). Any packages for which el-get __has a recipe__ can be installed.
+
+The el-get-sources variable allows to __declare extra custom recipes__ for code to install. In the example above, css-mode is simply pulled from the ELPA repository, while js2-mode-mooz is fetched directly from Github.
+
+Replicating this code in all your ~/.emacs files is a very easy and convenient way to bootstrap the same emacs environment on multiple hosts.

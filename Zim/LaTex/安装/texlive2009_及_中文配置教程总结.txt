@@ -1,0 +1,114 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-21T15:38:10+08:00
+
+====== texlive2009 及 中文配置教程总结 ======
+Created Sunday 21 August 2011
+
+===== 1. 安装xetex及相关 =====
+
+sudo apt-get install texlive-xetex
+
+至此，你已经有了基本的texlive，完全可以编译英文。
+
+鉴于基本的tex功能有限，再装上额外和推荐的包：
+
+sudo apt-get install texlive-latex-extra texlive-latex-recommended
+
+===== 2. 让xeCJK调用系统字体 =====
+
+打开文本编辑器（gedit，kate等）
+输入文本：
+
+\documentclass{article}
+
+\usepackage{xeCJK} %使用xeCJK
+\setCJKmainfont{WenQuanYi Micro Hei} %使用系统自带的字体
+
+\begin{document}
+xeCJK 调用微米黑
+\end{document}
+
+保存为test.tex。然后在当前目录输入命令：
+**xelatex test.tex**
+
+记住哦，xetex的编译口令是xelatex。然后就会编译出一份pdf文件。
+想换个字体，修改\setCJKmainfont{……}，替换上系统里有的字体即可。
+
+===== 3. 关于 CJK 原始方案的错误 =====
+
+看过帖子 “texlive2010安装与中文设置” 的同学知道一种CJK只处理宋体与楷体的原始方案：
+
+\documentclass{article}
+\usepackage{CJKutf8}
+
+\begin{document}
+\begin{CJK}{UTF8}{gkai}
+我是楷体
+\end{CJK}
+\begin{CJK}{UTF8}{gbsn}
+我是宋体
+\end{CJK}
+\end{document}
+
+
+编译命令是
+引用:
+latex test.tex
+
+是latex哦。
+
+但是，编译会出现错误：（我已经试过了）
+
+LaTeX Error: File `CJKutf8.sty' not found.
+为什么？因为源安装2009不像镜像安装2010那样大包大揽，什么都有。我们之前安装的__xeCJK不是传统的CJK__，传统CJK根本没有安装，所以没有CJKutf8.sty，也没有 gbsn 和 gkai 字体。
+
+安装很简单
+
+sudo apt-get install latex-cjk-*
+
+但是如果用传统的CJK，也没有必要用xetex，只需普通的latex套件就够了。所以这里说的东西意义不大。
+ps. latex命令编译出来的文件不是pdf，是dvi。
+
+
+===== 字体的小贴士>> =====
+
+猜测：xeCJK是不能调用CJK之下的gbsn和gkai，因为gbsn和gkai在texmf的目录里而不是系统的字体目录。不要问我怎么拷贝windows下的字体并安装到linux，我不知道。我连windows都没有，更不懂怎么去搞SimSun。
+不过，我们有开源字体。而且11.04的源里面就有宋体（港台叫“明体”）和楷体。你可以在软件包管理器里搜索 ttf-arphic ，装一两个喜欢或者需要的就行了。
+
+===== 4. 安装 ctex 宏包 =====
+
+为什么要装 ctex 宏包？ctex 宏包可以使中国人更方便地写中文论文，比如自动编译的章节标题是“第一章”而非“Chapter 1”。
+
+先下载 ctex 宏包：ftp://ftp.ctex.org/CTAN/language/chinese/ctex.zip
+源自 ctex 主页：http://code.google.com/p/ctex-kit/wiki/CTeXPackage
+
+解压 zip ，然后以超级用户的身份把解压出来的 ctex 文件夹放至 /usr/share/texmf/tex/latex/ 内。
+接着运行
+
+__sudo texhash__
+
+为了运行 ctex ，确保已经安装了 texlive-latex-extra（见2），否则会出现错误 etoolbox.sty not found
+
+然后测试：
+引用:
+\documentclass[__nofonts__]{ctexart}
+\setCJKmainfont{WenQuanYi Micro Hei}
+\begin{document}
+你好 CTeX 文档类
+\end{document}
+
+！看见红色部分的[nofonts]了吗？一定一定要加上这个选项，否则 ctex 会默认去调用windows或者Adobe字体，然后，你的中文就编译不成了。
+另外 __ctex 封装了 xeCJK__ ，意思是，你不用\usepackage{xeCJK}，可以直接\setCJKmainfont{WenQuanYi Micro Hei}
+
+编译的口令依然是 xelatex ，中间会有停顿提示错误什么的，不用管它一路Enter到底，最后可以编译出中文的pdf。
+ 
+
+===== 5. 给新手的提示 =====
+
+1 手动安装或者更新了宏包之后必须 sudo texhash 才能生效；
+2 看到错误不要怕，冷静，看看错误是什么，有可能只是个小小的拼写错误；
+3 如果手动安装了字体，一般需要__刷新字体映射__才能在 xetex 里使用；如果出现了错误“ ! Font 等等等等 at 10.0pt（或者别的字号） not loadable ”，解决的办法也是刷新字体映射。更新映射的命令是
+sudo updmap-sys
+4 宏包不会使用，多看文档。看文档的命令是 texdoc 要看的宏包名，比如看xeCJK文档：
+texdoc xecjk

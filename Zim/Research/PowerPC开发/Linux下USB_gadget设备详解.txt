@@ -1,0 +1,45 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-01T20:32:27+08:00
+
+====== Linux下USB gadget设备详解 ======
+Created Thursday 01 December 2011
+
+http://www.deepin.org/article-2530-1.html
+
+===== USB gadget是什么？ =====
+
+Linux-USB Gadget 驱动框架（以下简称 Gadget）实现了USB 协议定义的__设备端的软件功能__。相对于 Linux USB 主机端（Host） 驱动而言， Gadget 驱动出现较晚，它出现在2.4.23 以后。
+
+　　Gadget 框架提出了一套标准 API, 在底层， __USB 设备控制器__（USB Device Controller, UDC）驱动则实现这一套 API, 不同的 UDC （通常是 SOC 的一部分） 需要不同的驱动， 甚至基于同样的 UDC 的不同板子也需要进行代码修改。这一层我们可以称之为平台相关层。
+
+　　基于 API, Gadget 驱动实现了**一套硬件无关的功能**，这基本上可以对应到 USB 协议里 的各种 USB Class，也有比如 USB Gadget Generic Serial 驱动，没有对应的 Class。当然，Gadget 驱动还是**受限于底层提供的功能**的。比如 某些 Class 需要 USB Isochronous  端点，这时我们就不能支持该 Class。
+
+　　普通的 Gadget 驱动只实现一个功能（比如， u 盘，usb 网卡）。__复合设备__可以支持多个功能，后面将仔细研究一下复合设备的实现。像智能手机， PDA这样的设备，硬件支持较丰富的端点、DMA Buffer, 给软件提了支持复合功能的基础。
+
+　　有两点值得注意，第一是 usb gaget 驱动框架不象__ usb 主机端__有 usb core 的概念，usb 主机可能支持成百类型的外设，把通用功能抽象出来很有意义。Usb device 端则通常没有这个需求，一些通用功能抽象在一些 Helper 函数里就可以了。第二是 usb 2.0 里提出了 OTG 的概念，可以在同一接口上支持 host 以及 device 功能。OTG 是一个比较复杂的规范，以后有时间再研究。
+
+**其实gadget的作用就是将一个usb device controller模拟为一个一个usb设备，这样将该controller对应的USB接口插到别的设备上时就会被识别为模拟的usb设备。**
+
+===== 控制器驱动 =====
+　　常见的 usb device 有 U 盘， usb 鼠标、键盘，usb 蓝牙模块，usb 读卡器，等等。这些设备比较简单，通常不会运行Linux。运行Linux Gadget 的通常是**一些集成 CPU 以及很多外设接口的 SOC **（System-on-Chip）， 其中 CPU 通常为 32 bit 的 CPU, 并且 udc 也是该 SOC 的一部分（顺带还有 DMA 通道，FIFO）。
+
+　　Linux 标准内核里支持各主流 SOC 的 udc 驱动，make menuconfig 一下可以看到具体列表，其中值得一提的是 __dummy_hcd,__ 它是一个软件模拟的 udc, 在开发新的 gadget 驱动时很有帮助。
+
+　　控制器驱动处理很少的 USB 控制请求（主要由硬件负责的部分）。其它所有的控制请求，比如返回描述符，设置当前配置，由 Gadget Driver 完成。__控制器驱动一个主要责任就是负责管理各个端点的 I/O 队列__，在 Gadget Driver 的 buffer 和硬件buffer 之间传输数据（通常是通过 DMA）。
+
+　　我们前面提过，上层 Gadget 驱动能够实现什么功能要依赖底层提供的硬件条件。比如一个复合设备需要至少 5 个端点，这些硬件特性通过一组 gadget_is_*（）函数实现。
+
+===== Gadget 驱动 =====
+
+　　基于底层提供的资源， Gadget 驱动可以运行在各种硬件平台上。重要的驱动有：
+
+　　Gadget Zero, 类似于 dummy hcd, 该驱动用于测试 udc 驱动。它会帮助您通过 USB-IF 测试。
+　　Ethernet over USB， 该驱动**模拟以太网网口**，它支持多种运行方式：
+　　CDC Ethernet: usb 规范规定的 **Communications Device Class** “Ethernet Model” protocol。
+　　CDC Subset： 对硬件要求最低的一种方式，主要是 Linux 主机支持该方式。
+　　RNDIS： __微软公司__对 CDC Ethernet 的变种实现。
+　　File-backed Storage Gadget最常见的 U 盘功能实现。
+　　Serial Gadget 实现，包括：Generic Serial 实现（只需要Bulk-in/Bulk-out端点+ep0）CDC ACM 规范实现。
+　　Gadget Filesystem, 将 Gadget API 接口暴露给应用层，以便在应用层实现user mode driver。
+　　MIDI: 暴露ALSA接口，提供 recording 以及 playback 功能。

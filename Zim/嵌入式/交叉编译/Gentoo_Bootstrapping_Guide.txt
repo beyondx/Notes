@@ -1,0 +1,320 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-14T13:33:24+08:00
+
+====== Gentoo Bootstrapping Guide ======
+Created Saturday 14 January 2012
+http://www.gentoo.org/doc/en/draft/bootstrapping-guide.xml
+
+===== 1.  What is Bootstrapping? =====
+
+=== Definition ===
+
+Warning: Not only is this guide still in its__ early stage__, it is also built on theoretical information found on the Internet and not from experience. It should be taken with a big grain of salt until the steps in it are verified and accepted by more experienced people.
+
+If we were to believe the stories, **bootstrapping** - the term - __originates from a German legend__ about Baron Münchhausen who was able to save himself from drowning in a swamp by pulling himself up by his hairs.
+
+In computer theory, bootstrapping has several meanings. All of them boil down to **building more complex systems from simple ones**. This document will discuss __bootstrapping a toolchain__: building a full cross-compilation environment able to build software for the target system, followed by a rebuild of the system to the native environment.
+
+Sounds strange to you? Don't despair, we'll discuss all that in the rest of this document...
+
+==== Toolchain Bootstrapping ====
+
+The process of bootstrapping a toolchain is __three-fold__.
+
+At first, you use** an existing toolchain** to create __a cross-compilation environment__, a toolchain capable of __running on one system but building software for a different one__. 
+
+The second step is to use the cross-compilation toolchain to __rebuild itself__ so that it builds code __native to the system__ it is booted on.
+
+The third step uses the native compiler to __(re)build all packages__ (including itself) so that every tool is built on the target system, for the target system.
+
+There are three important terms we use in this definition:
+
+* the __host system__ is the system on which the programs are ran,
+* the __build system__ is the system on which a particular package is being built, and
+* the __target system__ is the system **for which** the software generates output (like the compiler)
+
+Each of those terms has a certain syntax used by the GNU compiler collection. It is therefore adviseable to consult the online GCC documentation for more information.
+
+===== 2.  Installing Gentoo on an Unsupported Platform =====
+
+==== Creating the Cross-Compilation Environment ====
+
+We first reserve some space in the home directory to install the __cross-compilation environment__ in. We advise to perform the next steps as a regular, unprivileged user, so that you can not harm the current system. After all, we are going to rebuild core system packages on the system, ready for use on a different system, and we don't want to overwrite the ones on the current system ;) 
+
+毕竟，我们打算重新编译一个将在不同系统上使用的核心软件包，而不是覆盖当前系统上的这些软件包。
+
+Code Listing 2.1: Creating a destination for the cross-compilation environment
+
+$ mkdir ~/cd ~/cd/src
+
+We'll store all source code and binaries inside ~/cd because we will need to use those files to boot the new system when the first two phases are complete.
+
+At first, extract the source code for the following packages (or similar ones, depending on your setup) inside the ~/cd/src directory:
+
+gcc
+    The GNU Compiler Collection
+glibc
+    The GNU C Library
+binutils
+    The tools needed to build programs
+vanilla-sources
+    The Linux kernel tree
+
+These are just examples that are well known, but you can also try using the Intel compiler with the ucLibc library, etc.
+
+Copy over the header files from the kernel to the build root, allowing the other tools to use the architecture-specific settings of the target architecture:
+
+Code Listing 2.2: Copying over the header files
+
+$ mkdir -p ~/cd/usr/include
+$ cp -a /usr/include/asm* /usr/include/linux ~/cd/usr/include
+
+The next step is to build the binutils package suitable for cross-compiling. It is recommended that you read the documentation of binutils for precise instructions how to do this (just like you should for the next packages, gcc, glibc and the Linux kernel).
+
+Code Listing 2.3: Building the binutils package
+
+$ cd ~/cd/src/binutils-*
+$ ./configure --prefix=/usr --target=<target> --with-sysroot=~/cd
+$ make all && make install
+
+Now that the binutils are available in the cross-compilation environment, we install the glibc headers (the function & constant definitions of the c library). Lucky for us, the fine folks at GNU have made this step easier by adding a install-headers directive for make:
+
+Code Listing 2.4: Installing the glibc headers
+
+$ cd ~/cd/src/glibc*
+$ ./configure --prefix=/usr --build=<build> --host=<target> \
+  --with-headers=~/cd/usr/include --without-cvs --disable-profile \
+  --disable-debug --without-gd --enable-add-ons=nptl --with-tls \
+  --without-__thread --enable-kernel=2.6
+$ make cross-compiling=yes install-headers install_root=~/cd
+$ cp -r include/* ~/cd/usr/include
+
+Our next step is to build the cross-compiler:
+
+Code Listing 2.5: Installing the cross-compiler
+
+$ cd ~/cd/src/gcc*
+$ ./configure --prefix=/usr --target=<target> --with-sysroot=~/cd \
+  --with-headers=~/cd/usr/include --disable-threads --disable-shared \
+  --enable-language=c
+$ make && make install
+
+Our almost-final step is to build the glibc package (previously, we just used the header files):
+
+Code Listing 2.6: Building the glibc package
+
+$ cd ~/cd/src/glibc*
+$ ./configure --prefix=/usr --libdir=/usr/lib --build=<build> \
+  --host=<target> --with-headers=/usr/include --without-cvs \
+  --disable-profile --disable-debug --without-gd \
+  --enable-add-ons=nptl --with-tls --without-__thread --enable-kernel=2.6
+$ make && make install install_root=~/cd
+
+In our final step, we build the gcc package again, but now we enable support for C++ and shared libraries (which wasn't possible at first):
+
+Code Listing 2.7: Building gcc
+
+$ cd ~/cd/src/gcc*
+$ ./configure --prefix=/usr --target=<target> --with-sysroot=~/cd \
+  --with-headers=/usr/include --enable-threads=posix --enable-languages=c,++
+$ make && make install
+
+Filling the Environment
+
+The ~/cd location now contains a minimal environment with the cross-compiling toolchain. The next step is to build the core system packages so that you are able to boot into the minimal environment later on.
+
+Our first task is to build a Linux kernel:
+
+Code Listing 2.8: Building the Linux kernel
+
+$ cd ~/cd/src/linux-*
+$ make menuconfig
+$ make dep boot CROSS_COMPILE=<target>
+
+Next, build the core packages required to succesfully boot the system. The set of packages you'll need are:
+
+coreutils
+    Standard set of (POSIX) commands
+diffutils
+    Tools for displaying the differences between files
+grep
+    Text pattern searcher
+sed
+    Streaming text editor
+make
+    Makefile parser
+tar
+    Tape Archive tool
+gzip
+    Compression tool
+util-linux
+    Linux utilities
+
+All these tools should be fairly easy to build. Generally, you can set the following variables to declare your platform; the configure and make steps will then use those variables to make their platform-dependant decisions:
+
+Code Listing 2.9: Setting platform environment variables
+
+$ export CC=your-platform-gcc
+$ export AR=your-platform-ar
+$ export RANLIB=your-platform-ranlib
+$ export LD=your-platform-ld
+$ export BUILD_CC=cc
+$ export HOST_CC=cc
+$ export CFLAGS=sane cflags -I~/cd/usr/include
+
+The build steps are then quite simple:
+
+Code Listing 2.10: Build steps for the core packages
+
+$ ./configure --prefix=/usr
+$ make
+$ make install prefix=~/cd/final
+
+The last thing you'll need is a statically linked version of a shell, for instance, bash:
+
+Code Listing 2.11: Building a statically-linked bash
+
+$ TODO
+
+Bootstrapping the Toolchain
+
+Now that you have build a minimal environment inside ~/cd, we'll rebuild the toolchain so that it not only builds for the target platform (which it does already) but also builds on the target platform (it currently only works on the current system).
+
+First, we rebuild the glibc package:
+
+Code Listing 2.12: Rebuilding glibc
+
+$ ./configure --prefix=/usr --libdir=~/cd/usr/lib --build=${BUILD} \
+  --host=${TARGET} --with-headers=~/cd/usr/include --without-cvs \
+  --disable-profile --disable-debug --without-gd --enable-add-ons=nptl \
+  --with-tls --enable-kernel=2.6 --enable-shared
+$ make
+$ make install install_root=~/cd/final
+
+Next, we rebuild the binutils package:
+
+Code Listing 2.13: Rebuilding binutils
+
+$ ./configure --prefix=/usr --target=${TARGET} --with-sysroot=~/cd/final \
+  --libdir=~/cd/usr/lib --with-headers=~/cd/usr/include
+$ make all
+$ make install
+
+Finally, we rebuild the gcc package:
+
+Code Listing 2.14: Rebuilding gcc
+
+$ ./configure --prefix=/usr --target=${TARGET} --with-sysroot=~/cd/final \
+  --with-headers=~/cd/usr/include --enable-threads=posix \
+  --enable-languages=c,c++
+$ make
+$ make install
+
+Now the directory ~/cd/final contains everything needed to continue.
+
+Booting the System
+
+The next step is to try and boot the system. The easiest approach is to NFS-mount ~/cd/final and boot the target platform using the kernel built at the beginning. Don't forget to set init=/bin/sh since the entire bootup sequence stuff (like init) isn't available yet.
+
+TODO inform how to boot from the CD and use an NFS-mounted root file system.
+
+Porting Portage
+
+To be able to use Portage, we need to be able to use Python. Download the sources in ~/cd/final/tmp (so that it is available for the booted platform) and build it:
+
+Code Listing 2.15: Building python
+
+TODO
+
+Next, download a Portage rescue set and install it. As Portage is a set of Python scripts with bash scripts, this should have no further requirements after installation:
+
+Code Listing 2.16: Installing Portage
+
+TODO
+
+Once installed, try to run emerge and ebuild to find out if they appear to work:
+
+Code Listing 2.17: Checking emerge
+
+$ emerge --info
+
+Creating a Stage1 Tarball
+
+Booted in the platform and with a working Portage, you are now ready to create a stage1 tarball. Create a snapshot of your environment using tar:
+
+Code Listing 2.18: Creating a stage1 tarball
+
+TODO
+Don't forget to talk about unmasking all packages...
+
+Creating a Bootable Environment
+
+Next, to make sure that you'll always be able to boot the system (and help others as well), we'll create a bootable environment for the platform. Assuming that all platforms have a CD-ROM drive they can boot from, we'll focus on such environment.
+
+TODO talk about creating bootable CD.
+
+Finishing Off
+
+All set. Right? Nope, but almost :-)
+
+The most important step now is to inform the Gentoo community about what you've accomplished. Make sure you pay a visit at #gentoo-dev on irc.freenode.net and use our Gentoo Forums to tell about the up and downfalls of your expedition. The most difficult steps are finished!
+
+3. Bootstrapping the System
+
+Installing Gentoo
+
+With the bootable environment at your disposal, you can now boot the target system into a small Linux environment. Once booted, follow the installation instructions inside the Gentoo Handbook to the point where you chroot into your Gentoo environment. Of course, since you only have a stage1 tarball at your disposal, you should use that one instead of the stage3 used in the installation instructions.
+
+After chrooting the system, you should update the Portage tree.
+
+Code Listing 3.1: Updating the Portage tree
+
+# emerge --sync
+
+Using the Bootstrap Script
+
+Next, we'll rebuild the toolchain provided by the stage1 tarball natively. Gentoo provides a script that does this for you.
+
+Code Listing 3.2: Rebuilding the toolchain
+
+# /usr/portage/scripts/bootstrap.sh
+
+Building the Core System
+
+With the toolchain rebuild and ready for general usage, we'll build the core system packages for the system:
+
+Code Listing 3.3: Building the core system packages
+
+# emerge --emptytree system
+
+Finishing the Installation
+
+Now that the core system packages are built, you can continue using the installation instructions in the Gentoo Handbook. You will probably get a few complaints by Portage telling you certain packages are masked. This is because your architecture isn't supported by Gentoo yet, in which case you need to unmask the packages in /etc/portage/package.keywords like you did previously.
+
+Creating a Fully Working Installation CD
+
+If your entire installation has succeeded it is best to try and create an installation CD for your platform using catalyst. Not only will this require an additional profile (to support the new platform) but also some help from the Gentoo developers themselves. On the other hand, if you've succeeded in following all I've written until this part, you're probably already on your way to become a developer yourself :)
+
+The major benefit of using catalyst is that Gentoo is then able to create official support for the platform. Not only will there be a fully functional profile and keyword setting, but the core packages will be accepted for your platform, stages will be build and a working installation CD, just like those for the other architectures, will be available.
+
+TODO Talk about using catalyst to create all needed stuff.
+
+4. Frequently Asked Questions
+
+Should I bootstrap when I want my entire system to use changed CFLAGS, CXXFLAGS, USE settings and profile changes?
+
+No. After your changes, you should rebuild the toolchain first, after which you can rebuild the entire system using the new toolchain. When your system suffers from circular dependencies, you'll need to rebuild the participants in that circle. For instance, if openssl depends on python which depends on perl which depends on openssl again (yes, this is a fictuous example), rebuild all those packages too.
+
+Code Listing 4.1: Rebuilding the system
+
+# emerge --oneshot --emptytree glibc binutils gcc
+# emerge --emptytree world
+
+You don't need to bootstrap here because your architecture still remains the same, as is the target system.
+
+Should I bootstrap when I want my entire system to use changed CHOST settings?
+
+Not if the system itself supports the new CHOST setting too (for instance, i386-pc-linux-gnu and i686-pc-linux-gnu on a Pentium IV system). Otherwise, yes, but then we are really interested in hearing how you managed to install Gentoo using the current - wrong - CHOST settings in the first place ;)
+
+If your system supports both CHOST settings, you can follow the same instructions as given in the previous FAQ. 

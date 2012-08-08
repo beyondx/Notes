@@ -1,0 +1,21 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-05T17:02:57+08:00
+
+====== 区域操作 ======
+Created Thursday 05 May 2011
+
+
+M-x prepend-to-buffer   	将区域内容添加到缓冲区首
+M-x append-to-buffer
+M-x append-to-file
+M-x copy-to-buffer
+M-x insert-buffer
+
+C-x r k 	M-x kill-rectangle 		删除矩形区块到删除环中
+C-x r d						删除矩形块但不能恢复
+C-x r y 	M-x yank-rectangle 	粘贴上一次删除的矩形区块，注意插入点位矩形的左上角
+C-x r t 	M-x string-rectangle 	用指定字符填充选定的矩形区域
+C-x r o 	M-x open-rectangle 	用空格插入选择的矩形块，选择的内容右移
+C-x r c 	M-x clear-rectangle 	用空格填充选择的矩形块
+C-x r r 	M-x copy-rectangle-to-register 	拷贝到寄存器中

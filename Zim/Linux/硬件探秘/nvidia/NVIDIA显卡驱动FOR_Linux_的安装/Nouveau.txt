@@ -1,0 +1,188 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-21T21:14:48+08:00
+
+====== Nouveau ======
+Created Monday 21 November 2011
+https://wiki.archlinux.org/index.php/Nouveau
+Nouveau is an open source graphic driver for NVIDIA cards.
+
+Do not forget to check out the FAQ if you have any questions, as there is a lot of valuable information there.
+Contents
+[hide]
+
+    1 Installation
+    2 Loading
+        2.1 KMS
+            2.1.1 Late start
+            2.1.2 Early start
+    3 Tips and tricks
+        3.1 Keep NVIDIA driver installed
+        3.2 Installing the latest development packages
+        3.3 Tearing free compositing
+        3.4 DualHead
+        3.5 Setting console resolution
+
+===== Installation =====
+
+Before proceeding, have a look at the FeatureMatrix to see what features are supported for a given architecture, and the list of codenames to determine the card's category. You could also consult wikipedia for an even more detailed list.
+
+    If you already installed the __proprietary NVIDIA driver,__ then remove it first:
+
+    # pacman -Rdds** nvidia nvidia-utils**
+    # pacman -S --asdeps libgl
+
+    Tip: If you want to keep Nvidia driver installed, then it requires some configuration to load the Nouveau driver instead of NVIDIA.
+
+    Install the DDX driver with the following package:
+
+    # pacman -S__ xf86-video-nouveau__
+
+    Also make sure you have Xorg properly installed. 
+
+    If you want **hardware-accelerated 3D support** (to run GNOME Shell or KWin's effects for instance), install the DRI driver with the following package:
+
+    # pacman -S __nouveau-dri__
+
+    Warning:
+
+        The DRI driver is experimental, and may cause rendering corruptions or random GPU lockups (especially on older cards that uses the classic Mesa driver). If you use it, it is recommended to enable the Magic SysRq key to be able to recover from a lockup.
+        See http://nouveau.freedesktop.org/wiki/MesaDrivers before reporting bugs with the 3D drivers.
+
+===== Loading =====
+
+The nouveau kernel module should load fine automatically on system boot.
+
+If it does not happen, then:
+
+    Make sure you do not have **nomodeset** or **vga=** in GRUB's menu.lst/menu.cfg **kernel line**, since Nouveau needs kernel mode-setting in order to run successfully (see below).
+    Also, check that you have not disabled Nouveau by using any **modprobe blacklisting** within /etc/modprobe.d/. 
+
+===== KMS =====
+
+Kernel Mode-Setting (KMS) is required by the Nouveau driver. As the system boots, the __resolution will likely change__ when KMS initializes the display driver(这时X server还没有启动。). Simply installing the Nouveau driver should be enough to get the system to recognize and initialize it in "Late Start" mode (see below). Additional reading: KernelModeSetting.
+
+Note: Users may prefer the early start method as it does not cause the annoying resolution change part way through the boot process.
+
+=== Late start ===
+
+With this choice KMS will be enabled when other kernel modules are loaded. You will see the text__ "Loading modules"__ and the size of the text may change, possibly with an __undesirable flicker__.
+
+=== Early start ===
+
+This method will start KMS as early as possible in the boot process, when __the initramfs is loaded__. Here is how to do this with the official packages:
+
+    Add "nouveau" to the MODULES array in /etc/mkinitcpio.conf:
+
+ **   MODULES**="... nouveau ..."
+
+    Re-generate boot image:
+
+    # mkinitcpio -p <kernel preset, e.g. linux>
+
+If experiencing troubles with nouveau leading to rebuild nouveau-drm several times for testing purposes, do not add nouveau to the initramfs. It is too easy to forget to rebuild the initramfs and it will just make any testing harder. Just use __late start__ until you are confident the system is stable. There might be additional problems with initramfs if you need a firmware for the nv50 family.
+
+===== Tips and tricks =====
+
+=== Keep NVIDIA driver installed ===
+
+If you want to keep the proprietary NVIDIA driver installed, but want to use the Nouveau driver:
+
+    Comment out nouveau blacklisting in etc/modprobe.d/nouveau_blacklist.conf by modifying the line from:
+
+    blacklist nouveau
+
+    to:
+
+    **#blacklist nouveau**
+
+    And tell Xorg to load nouveau instead of nvidia by creating the file** /etc/X11/xorg.conf.d/20-nouveau.conf** with the following content:
+
+    Section "Device"
+        Identifier "Nvidia card"
+        __Driver "nouveau"__
+    EndSection
+
+Tip: You can use these scripts if you are switching between open and closed drivers often.
+
+If you already used the NVIDIA driver, and want to test Nouveau without reboot:
+
+    Make sure the 'nvidia' module is no longer loaded:
+
+    # __rmmod nvidia__
+
+    Then load the 'nouveau' module:
+
+    #__ modprobe nouveau__
+
+    And check that it loaded fine by looking at kernel messages:
+
+    $ __dmesg__
+
+=== Installing the latest development packages ===
+
+You may install the latest -git packages, through AUR:
+
+    You can use mesa-git which will allow the installation of the latest Mesa (including the latest DRI driver).
+    You can use xf86-video-nouveau-git which will allow the installation of the latest DDX driver.
+    You can also try installing a newer kernel version, through packages like linux-mainline in which the Nouveau DRM code would allow better performance.
+    To get the latest nouveau improvements, you should use the linux-git package from the AUR, edit the PKGBUILD and use nouveau's own kernel repository, which is currently located at: git://anongit.freedesktop.org/nouveau/linux-2.6. 
+
+Upsteam driver sources can be found here: http://nouveau.freedesktop.org/wiki/Source.
+
+===== Tearing free compositing =====
+
+Edit your /etc/X11/xorg.conf.d/20-nouveau.conf, in the Device section add:
+
+Section "Device"
+    Identifier "nvidia card"
+    Driver "nouveau"
+    Option "GLXVBlank" "true"
+EndSection
+
+===== DualHead =====
+
+Nouveau supports the__ xrandr__ extension for modesetting and multiple monitors. See the RandR12 page for tutorials.
+
+Here is a full sample /etc/X11/xorg.conf.d/20-nouveau.conf above for running 2 monitors in dual head mode. You may prefer to use a graphical tool to configure monitors like GNOME Control Center's Display panel (gnome-control-center display).
+
+# the right one
+Section "Monitor"
+          Identifier   "NEC"
+          Option "PreferredMode" "1280x1024_60.00"
+EndSection
+
+# the left one
+Section "Monitor"
+          Identifier   "FUS"
+          Option "PreferredMode" "1280x1024_60.00"
+          Option "LeftOf" "NEC"
+EndSection
+
+Section "Device"
+    Identifier "nvidia card"
+    Driver "nouveau"
+    Option  "Monitor-DVI-I-0" **"NEC"**
+    Option  "Monitor-DVI-I-1" **"FUS"**
+EndSection
+
+Section "Screen"
+    Identifier "screen1"
+    DefaultDepth 24
+      SubSection "Display"
+       Depth      24
+       Virtual 2560 2048
+      EndSubSection
+    Device "nvidia card"
+EndSection
+
+Section "ServerLayout"
+    Identifier "layout1"
+    Screen "screen1"
+EndSection
+
+Setting console resolution
+
+Use the fbset tool to adjust console resolution.
+
+You can also pass the resolution to nouveau with the video= kernel line option (see KMS). 

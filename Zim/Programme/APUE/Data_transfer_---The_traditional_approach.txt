@@ -1,0 +1,48 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-04T23:16:15+08:00
+
+====== Data transfer ---The traditional approach ======
+Created 星期六 04 六月 2011
+http://www.ibm.com/developerworks/linux/library/j-zerocopy/
+Many Web applications serve a significant amount of static content, which amounts to reading data off of a disk and writing the exact same data back to the response socket. This activity might appear to require relatively little CPU activity, but it's somewhat inefficient: the kernel reads the data off of disk and pushes it across the kernel-user boundary to the application, and then the application pushes it back across the kernel-user boundary to be written out to the socket. In effect, the application serves as an inefficient intermediary that gets the data from the disk file to the socket.
+
+Each time data traverses the user-kernel boundary, it must be copied, which consumes CPU cycles and memory bandwidth. Fortunately, you can eliminate these copies through a technique called — appropriately enough — zero copy. Applications that use zero copy request that the kernel copy the data directly from the disk file to the socket, without going through the application. Zero copy greatly improves application performance and reduces the number of context switches between kernel and user mode.
+
+The Java class libraries support zero copy on Linux and UNIX systems through the transferTo() method in java.nio.channels.FileChannel. You can use the transferTo() method to transfer bytes directly from the channel on which it is invoked to another writable byte channel, without requiring data to flow through the application. This article first demonstrates the overhead incurred by simple file transfer done through traditional copy semantics, then shows how the zero-copy technique using transferTo() achieves better performance.
+
+Date transfer: The traditional approach
+
+Consider the scenario of reading from a file and transferring the data to another program over the network. (This scenario describes the behavior of many server applications, including Web applications serving static content, FTP servers, mail servers, and so on.) The core of the operation is in the two calls in Listing 1 (see Download for a link to the complete sample code):
+
+Listing 1. Copying bytes from a file to a socket
+
+File.read(fileDesc, buf, len);
+Socket.send(socket, buf, len);
+
+
+Although Listing 1 is conceptually simple, internally, the copy operation requires four context switches between user mode and kernel mode, and the data is copied four times before the operation is complete. Figure 1 shows how data is moved internally from the file to the socket:
+
+Figure 1. Traditional data copying approach
+Traditional data copying approach
+{{./figure1.gif}}
+Figure 2 shows the context switching:
+
+Figure 2. Traditional context switches
+Traditional context switches
+{{./figure2.gif}}
+The steps involved are:
+
+    The read() call causes a context switch (see Figure 2) from user mode to kernel mode. Internally a sys_read() (or equivalent) is issued to read the data from the file. The first copy (see Figure 1) is performed by the direct memory access (DMA) engine, which reads file contents from the disk and stores them into a kernel address space buffer.
+
+    The requested amount of data is copied from the read buffer into the user buffer, and the read() call returns. The return from the call causes another context switch from kernel back to user mode. Now the data is stored in the user address space buffer.
+
+    The send() socket call causes a context switch from user mode to kernel mode. A third copy is performed to put the data into a kernel address space buffer again. This time, though, the data is put into a different buffer, one that is associated with the destination socket.
+
+    The send() system call returns, creating the fourth context switch. Independently and asynchronously, a fourth copy happens as the DMA engine passes the data from the kernel buffer to the protocol engine.
+
+Use of the intermediate kernel buffer (rather than a direct transfer of the data into the user buffer) might seem inefficient. But intermediate kernel buffers were introduced into the process to improve performance. Using the intermediate buffer on the read side allows the kernel buffer to act as a "readahead cache" when the application hasn't asked for as much data as the kernel buffer holds. This significantly improves performance when the requested data amount is less than the kernel buffer size. The intermediate buffer on the write side allows the write to complete asynchronously.
+
+Unfortunately, this approach itself can become a performance bottleneck if the size of the data requested is considerably larger than the kernel buffer size. The data gets copied multiple times among the disk, kernel buffer, and user buffer before it is finally delivered to the application.
+
+Zero copy improves performance by eliminating these redundant data copies. 

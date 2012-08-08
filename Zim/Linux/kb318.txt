@@ -1,0 +1,14 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-02T14:03:59+08:00
+
+====== kb318 ======
+Created Friday 02 December 2011
+
+常利伟帐号：
+ ssh -p 1998 clw@192.168.1.1
+密码：000000
+
+ssh 192.168.1.85
+root: 000000
+geekard:ho4o44

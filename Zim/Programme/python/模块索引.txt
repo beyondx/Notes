@@ -1,0 +1,229 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-05T15:11:29+08:00
+
+====== 模块索引 ======
+Created 星期二 05 七月 2011
+1. 模块索引
+
+    核心模块
+        _ _builtin_ _ 模块
+        exceptions 模块
+        os 模块
+        os.path 模块
+        stat 模块
+        string 模块
+        re 模块
+        math 模块
+        cmath 模块
+        operator 模块
+        copy 模块
+        sys 模块
+        atexit 模块
+        time 模块
+        types 模块
+        gc 模块
+
+    更多标准模块
+        fileinput 模块
+        shutil 模块
+        tempfile 模块
+        StringIO 模块
+        cStringIO 模块
+        mmap 模块
+
+        UserDict 模块
+
+        UserList 模块
+
+        UserString 模块
+        traceback 模块
+        errno 模块
+        getopt 模块
+        getpass 模块
+        glob 模块
+        fnmatch 模块
+        random 模块
+        whrandom 模
+        md5 模块
+        sha 模块
+        crypt 模块
+        rotor 模块
+        zlib 模块
+        code 模块
+
+    线程和进程
+        threading 模块
+        Queue 模块
+        thread 模块
+        commands 模块
+        pipes 模块
+        popen2 模块
+        signal 模块
+
+    数据表示
+        array 模块
+        struct 模块
+        xdrlib 模块
+        marshal 模块
+        pickle 模块
+        cPickle 模块
+        copy_reg 模块
+        pprint 模块
+        repr 模块
+        base64 模块
+        binhex 模块
+        quopri 模块
+        uu 模块
+        binascii 模块
+
+    文件格式
+        xmllib 模块
+        xml.parsers.expat 模块
+        sgmllib 模块
+        htmllib 模块
+        htmlentitydefs 模块
+        formatter 模块
+
+        ConfigParser 模块
+        netrc 模块
+        shlex 模块
+        zipfile 模块
+        gzip 模块
+
+    邮件和新闻消息处理
+        rfc822 模块
+        mimetools 模块
+
+        MimeWriter 模块
+        mailbox 模块
+        mailcap 模块
+        mimetypes 模块
+        packmail 模块
+        mimify 模块
+        multifile 模块
+
+    网络协议
+        socket 模块
+        select 模块
+        asyncore 模块
+        asynchat 模块
+        urllib 模块
+        urlparse 模块
+        cookie 模块
+        robotparser 模块
+        ftplib 模块
+        gopherlib 模块
+        httplib 模块
+        poplib 模块
+        imaplib 模块
+        smtplib 模块
+        telnetlib 模块
+        nntplib 模块
+
+        SocketServer 模块
+        BaseHTTPServer 模块
+        SimpleHTTPServer 模块
+        CGIHTTPServer 模块
+        cgi 模块webbrowser 模块
+
+    国际化
+        locale 模块
+        unicodedata 模块
+        ucnhash 模块
+
+    多媒体相关模块
+        imghdr 模块
+        sndhdr 模块
+        whatsound 模块
+        aifc 模块
+        sunau 模块
+        sunaudio 模块
+        wave 模块
+        audiodev 模块
+        winsound 模块
+
+    数据储存
+        anydbm 模块
+        whichdb 模块
+        shelve 模块
+        dbhash 模块
+        dbm 模块
+        dumbdbm 模块
+        gdbm 模块
+
+    工具和实用程序
+        dis 模块
+        pdb 模块
+        bdb 模块
+        profile 模块
+        pstats 模块
+        tabnanny 模块
+
+    其他模块
+        fcntl 模块
+        pwd 模块
+        grp 模块
+        nis 模块
+        curses 模块
+        termios 模块
+        tty 模块
+        resource 模块
+        syslog 模块
+        msvcrt 模块
+        nt 模块
+        _winreg 模块
+        posix 模块
+
+    执行支持模块
+        dospath 模块
+        macpath 模块
+        ntpath 模块
+        posixpath 模块
+        strop 模块
+        imp 模块
+        new 模块
+        pre 模块
+        sre 模块
+        py_compile 模块
+        compileall 模块
+        ihooks 模块
+        linecache 模块
+        macurl2path 模块
+        nturl2path 模块
+        tokenize 模块
+        keyword 模块
+        parser 模块
+        symbol 模块
+        token 模块
+
+    其他模块
+        pyclbr 模块
+        filecmp 模块
+        cmd 模块
+        rexec 模块
+        Bastion 模块
+        readline 模块
+        rlcompleter 模块
+        statvfs 模块
+        calendar 模块
+        sched 模块
+        statcache 模块
+        grep 模块
+        dircache 模块
+        dircmp 模块
+        cmp 模块
+        cmpcache 模块
+        util 模块
+        soundex 模块
+        timing 模块
+        posixfile 模块
+        bisect 模块
+        knee 模块
+        tzparse 模块
+        regex 模块
+        regsub 模块
+        reconvert 模块
+        regex_syntax 模块
+        find 模块
+

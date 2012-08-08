@@ -1,0 +1,84 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-30T18:55:01+08:00
+
+====== Xdefaults ======
+Created Wednesday 30 March 2011
+
+如何在Debian Lenny中美化urxvt的字体？
+2009-05-16
+
+版权声明：转载时请以超链接形式标明文章原始出处和作者信息及本声明http://626c6f67.blogbus.com/logs/39457463.html
+
+首先已经假设你安装好了xfonts-wqy和rxvt-unicode了。
+
+然后在$HOME下找到或新建.Xresources文件
+
+写入下面的代码：
+
+URxvt.font:9x15,xft:WenQuanYi Bitmap Song-12
+URxvt.boldFont:9x15,xft:WenQuanYi Bitmap Song-12
+
+其中：
+URxvt表示rxvt-unicode
+font和boldFont表示要显示字体所给予屏幕上的空间大小
+xft:之后是“用xlsfonts显示出来的已安装的字体”
+最后那个数字是所呈现字体的大小（即字号）
+
+PS: 搞了半天才明白……而且网上有90％的关于这样的资料都是抄的，实在对于那些抄袭的人深恶痛绝！
+Wednesday 30/03/2011
+
+以下为配置文件：
+
+!!$HOME/.Xdefaults
+URxvt.preeditType:Root
+!!调整此处设置输入法
+URxvt.inputMethod:ibus
+!!颜色设置
+URxvt.depth:32
+!!中括号内数表示透明度
+URxvt.background: [90]#000000
+URxvt.foreground:  #ffffff
+URxvt.colorBD:Gray95
+URxvt.colorUL:Green
+URxvt.color1:Red2
+URxvt.color4:RoyalBlue
+URxvt.color5:Magenta2
+URxvt.color8:Gray50
+URxvt.color10:Green2
+URxvt.color12:DodgerBlue
+URxvt.color14:Cyan2
+URxvt.color15:Gray95
+!!URL操作
+URxvt.urlLauncher:chromium
+URxvt.matcher.button:1
+Urxvt.perl-ext-common:matcher
+!!滚动条设置
+URxvt.scrollBar:True
+URxvt.scrollBar_right:True
+URxvt.scrollBar_floating:False
+URxvt.scrollstyle:plain
+!!滚屏设置
+URxvt.mouseWheelScrollPage:True
+URxvt.scrollTtyOutput: False
+URxvt.scrollWithBuffer: True
+URxvt.scrollTtyKeypress: True
+!!光标闪烁
+URxvt.cursorBlink:True
+URxvt.saveLines:3000
+!!边框
+URxvt.borderLess:      False
+!!字体设置(四种字体方案)
+Xft.dpi:96
+
+URxvt.font:xft:**Monaco**:size=12:antialias=true,xft:WenQuanYi Zen Hei:size=10:antialias=true:charwidth=13 
+
+URxvt.font:xft:Liberation Mono:pixelsize=16:antialias=false,xft:WenQuanYi Zen Hei:pixelsize=14
+URxvt.boldFont:xft:Liberation Mono:pixelsize=16:antialias=false:Bold,xft:WenQuanYi Zen Hei:pixelsize=14:Bold
+
+!!Rxvt.font:9*15,xft:DejaVu Sans Mono-11,xft:WenQuanYi Zen Hei-10
+!!Rxvt.boldFont:9*15,xft:DejaVu Sans Mono-11:Bold,xft:WenQuanYi Zen Hei-10:Bold  
+
+!!URxvt.font:9x15,xft:WenQuanYi Bitmap Song-12
+!!URxvt.boldFont:9x15,xft:WenQuanYi Bitmap Song-12 
+urxvt.imLocale:zh_CN.utf8

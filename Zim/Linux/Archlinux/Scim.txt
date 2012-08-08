@@ -1,0 +1,22 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T19:05:39+08:00
+
+====== Scim ======
+Created Sunday 27 March 2011
+
+===== Install nessary pacakages =====
+**$ sudo apt-get install scim  language-pack-ta language-pack-ta-base scim-tables-additional scim-modules-table**
+
+===== then put some envs in your bash init file(.bashrc). =====
+export XMODIFIERS="@im=SCIM"
+export GTK_IM_MODULE=xim
+export QT_IM_MODULE=xim
+export XIM_PROGRAM="scim -d"
+
+or 
+export GTK_IM_MODULE=scim
+export QT_IM_MODULE=scim
+
+===== Logout and in. =====
+ Then an icon should appear in the panel, click on it and choose language .

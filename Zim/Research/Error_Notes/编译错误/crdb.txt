@@ -1,0 +1,17 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-05T18:18:20+08:00
+
+====== crdb ======
+Created Sunday 05 August 2012
+
+在编译kernel时需要选中Network Supporting-->Wireless中的：
+			[*] use statically compiled regulatory rules database
+
+该database文件可以用git获取：
+ git clone git://git.kernel.org/pub/scm/linux/kernel/git/linville/wireless-regdb.git
+目录中的db.txt即为database文件。然后将该文件复制到kernel的net/wiress目录中，然后重新编译kernle即可：
+[geekard@kb310 ltib-mpc8315erdb-20100719]$ cp db.txt ~/PPC/source/linux-3.4.7/net/wireless/
+
+附：
+[[./db001.txt]] 

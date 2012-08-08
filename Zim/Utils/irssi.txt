@@ -1,0 +1,85 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-04T12:14:56+08:00
+
+====== irssi ======
+Created Sunday 04 March 2012
+http://hi.baidu.com/suzp1984/blog/item/aa134b4fcb368ec1d1c86a2b.html
+
+
+关于irssi中///window//的操作:
+要打开其他的channel先要新建一个**窗口和容器**，
+/window new,然后再用/window stick 2 off, /window hide,就可以把的二个新建的window隐藏，让更多的window共用一个container.
+使用ctrl+n,p或者是Alt+1,2就可以切换窗口.、
+
+一般在新建的window中使用
+**/connect irc.xxxx.net**
+**/join #channels**
+就可以链接上一个新的channel了。
+
+第一次使用可以用下面的命令配置irssi
+
+/network add -autosendcmd "/^msg nickserv identify passwd;wait 2000" OFTC
+/server add -auto -network OFTC irc.oftc.net 6667
+/channel add -auto #arch-cn  OFTC
+
+这样就可以自动登录了，上面第一命令表明你已经向其服务器注册了帐号了！
+
+至于帐号如何注册, 首先连接服务器，用/connect server-name
+1. /nick <name>
+选择一个没有重名的用户。（重名会有提示）
+2. /msg nickserv register <password> <e-mail>
+通过email认证后：
+3. /msg nickserv identify <password>
+
+使用log:
+1.使用pgUP,pgDn键可以实现记录的翻页。
+2./goto 12:00, /goto end
+3./lastlog nickname 查看nickname所说的话！
+4./away暂时离开，/away查看离开时段的聊天记录。
+
+－－－－－－－－－－－－－
+【日常操作】
+(1) /nick <昵称> ，修改昵称
+(2) /join #<频道> ，加入一个频道
+(3) /wc，离开当前频道
+(4) /part <频道> <消息>，退出频道，不加频道名退出当前频道，后面可以跟退出原因。
+(5) /disconnect <服务器>，断开一个服务器
+(6) /quit 或者 /exit，退出 irssi，结束IRC会话。
+
+(7) /msg <昵称> <消息>，向某人发私消息（新开窗口）
+(8) /query <昵称> <消息>，向某人发私消息（新开窗口且转换到这个窗口）
+(9) **/say <昵称>** <消息>，向某人说话（不新开窗口）
+(10) **/notice <昵称>** <消息>，向指定人发出注意消息
+(11) /me <动作>，在当前聊天室窗口中做出动作。 如做出晕倒动作：/me 晕倒
+(12) /away <原因>，留下信息说明暂时离开，别人向你发出私聊时将会返回此消息，再重新输入 /away（不指定参数）则解除离开状态。
+(13) /ignore <昵称>，忽略某人的聊天内容
+(14) /set autolog on，自动保存聊天记录
+
+【窗口操作】
+(1) Alt+1~0，对应1~10的频道编号
+(2) Alt+q~p，对应11~20的频道编号
+(3) Ctrl+n/p，**切换上/下一个频道**
+(4) PageUP/PageDn，切换上/下页讯息
+(5) /window close，关闭当前窗口
+(6) /window close <数字>，关闭指定编号的窗口
+(7) /window list，窗口列表
+
+【查询信息】
+(1)__ /list__，频道列表
+(2) /names [#聊天室]，列出当前服务器或指定聊天室下的所有人员名称（无法列出隐藏人员）
+(3) /who，查看频道的所有人
+(4) /whois [昵称]，查看某人的基本资料
+(5) /ison <别名1> <别名2> ...查询指定别名是否在线
+(6) /info，查询服务器信息
+(7) /admin，查询当前服务器上的Admin
+(8) /lusers，查询当前服务器上的统计信息
+(9) /motd，查询当前服务器今日的统计信息
+(10) /links，查询当前的服务器，解析当前的有几个服务器。
+
+【提示信息】
+[Act: 1,3,6,9,10]：这些数字提示**各个频道上对话情况**：[灰白色] 表示有人登录或登出，[白色] 代表有人在此channel上说话，[灰红色] 代表对话中提起你的名字或呼叫你。
+
+【转换编码】
+/recode add #<频道> <编码>，加入此频道编码格式
+/recode，查看加入的编码列表

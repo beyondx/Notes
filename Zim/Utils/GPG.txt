@@ -1,0 +1,185 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-29T18:21:52+08:00
+
+====== GPG ======
+Created Thursday 29 December 2011
+http://wowubuntu.com/gpg.html
+加密：公钥加密，私钥解密［数据保密性］
+数字签名：私钥加密，公钥解密［身份认证］［数据完整性］［不可抵赖性］
+
+===== GPG 加密解密简明教程 =====
+10 一2011
+# 作者: riku / 本文采用CC BY-NC-SA 2.5协议授权，转载请注明本文链接。
+
+大家都知道，互联网上充斥着大量的明文传输方式，可以说绝对是不安全地带。那么，我们如何保证在不安全的互联网中更可靠的传输重要数据呢？个人认为最好的方式之一就是使用 GPG 工具进行加密。此文只是简单介绍了 GPG 的常规用法，重在推广和普及 GPG 加密工具，详细的使用请参见 GPG 手册。
+
+# 名词解释
+
+RSA / DSA / ElGamal : 是指加密算法
+
+GPG :（全称 GnuPG ) 是一款__非对称加密__(PGP)的免费软件，非对称加密方式简单讲就是指用公钥加密文件，用私钥解密文件。如果你想给谁发送加密信息，首先你要得到他的公钥，然后通过该公钥加密后传给他，对方利用自已的私钥就可解密并读取文件了。
+
+# 配置文件介绍
+
+GPG 配置文件目录:~/.gnupg
+
+    ~/.gnupg/gpg.conf – 配置文件
+    ~/.gnupg/trustdb.gpg –** 信任库**
+    ~/.gnupg/pubring.gpg – **公钥库**
+    ~/.gnupg/secring.gpg –** 私钥库**
+
+====== # 基本操作 ======
+
+===== 1 生成密钥对 =====
+
+gpg --gen-key
+
+生成过程中会让你选择加密方式，一般选 (1) RSA and RSA (default) 就可以了，然后还需要选择加密位数、过期日期及输入**姓名**，邮件地址，备注，Passphrase(访问密码）等信息。最后你就可以干点别的事，比如上上网，玩玩游戏什么的，以便让机器生成一些随机数，回头你就可以看到密钥对已经生成完毕。
+
+===== 2 传播公钥： =====
+
+__导出公钥__:生成后你可以把公钥中公钥库中导出来，以便传播给你的朋友。
+
+    gpg --export --armor mykeyID > gpgkey.pub.asc # mykeyID 部分可以用 name 或 mail 地址代替
+
+注： - -armor 表示加内容转换成可见的 __ASCII 码__输出,否则是__二进制__不可见内容。
+
+现在你可以把导出的公钥通过 Email 等途径发送给你的朋友了，或者你也可以不导出公钥__直接上传公钥到密钥服务器__。
+
+    gpg --keyserver keyserverAddress** --send-keys **mykeyID
+
+注： --keyserver 可以不加，默认为 keys.gnupg.net
+
+然后只要把**公钥 ID 和服务器地址**告诉给朋友就可以了，朋友可以通过搜索你的公钥 ID ，Email 地址或名字来获取并导入你的公钥，如下：
+
+    gpg --keyserver keyserverAddress** --search-keys** keyid/name/Email
+
+比如搜索我的：
+
+    gpg --keyserver keyserver.ubuntu.com --search-keys rikulu
+
+===== 3 导入朋友的公钥 =====
+
+当你获得朋友的公钥文件后，你首先需要导入公钥到公钥库
+
+    gpg --import gpgkey.pub.asc
+
+或直接从公钥服务器导入
+
+    gpg --keyserver keyserverAddress** --recv-keys **pubkeyID
+
+**编辑公钥，以验证导入的公钥的真实性**
+#gpg --edit-key someone
+someone是别人的用户ID
+出现命令提示符 >
+>fpr
+查看用户someone的公钥的指纹，之后应设法__核对指纹__，以证明真实性。如果真实，则可以签署。
+查看someone的指纹，用下面这个命令gpg --list-key
+>sign
+签署这个公钥，这样以后再使用它加密时，就不会再警告
+>check
+检查用户someone的公钥已有的签名
+出现sig! 3   sig! 1   表示已完成。输入quit，回车，再输入y保存退出
+
+
+====== # 私钥备份与密钥回收 ======
+
+1 密钥的导出和导入:以便用来备份密钥或导入到其它机器上。这里的密钥指的是**私钥**。
+
+导出
+
+    gpg -oa seckey.asc **--export-secret-keys** mykeyID  
+
+导入
+
+    gpg --import seckey.asc
+
+2 密钥回收:当您的密钥对生成之后，您应该立即做一个__公钥回收证书__，如果您忘记了您的**私钥的口令**或者您的私钥丢失或者被盗窃，您可以发布这个证书来__声明以前的公钥不再有效__。
+
+生成回收证书
+
+    gpg --output revoke.asc **--gen-revoke** mykeyID
+
+**导入回收证书**
+
+    gpg --import revoke.asc
+
+发送回收证书到服务器，__声明原 GPG Key 作废__
+
+    gpg --keyserver keyserverAddress --send mykeyID
+
+====== # 列出机器中保存的所有密钥 ======
+
+列出所有公钥
+
+    gpg -k
+
+列出所有私钥
+
+    gpg -K
+
+====== # 常规使用 ======
+下面的username均可以使用 keyid/name/Email任何一个。
+
+===== 1 非对称文件加密与解密： =====
+
+加密：当你**导入完好友的公钥**后，就可以__用朋友的公钥加密文件__了，
+
+    gpg -e -r username filename (-r 指定接收用户) 或
+    gpg -e -r username -o outfilename filename  #-o 可以指定输出文件名称
+
+解密：上面的操作会生成 filename__.gpg__ 加密文件，之后你可以把此文件发送给好友了，对方就可以用自已的密钥来解密文件了。
+
+    gpg -d filename.gpg   #gpg会**自动调用**本地私钥环中的私钥解密，default operation depends on the input data
+
+===== 2 对称加密与解密: =====
+有时候没有得到对方的公钥，而且资料不是太重要，此时还可以使用简单的**对称加密方式**(加密及解密都使用相同的密钥/密码)，加密过程中提示输出对称密钥/密码，注意:此密码是临时用的密码,不要设置和自
+
+己的私钥保护密码一样，以防别人猜测及盗用!
+
+加密
+
+    gpg **--symmetric** filename  -o filename.output
+
+解密
+
+    gpg -d filename.gpg   -o filename.output
+
+===== 3 对文件签名: =====
+
+**数字签名   #用自己的私钥对文件签名，对方用我的公钥验证。**
+
+    gpg -o doc.sig__ -s__ doc   #适合任何文件类型，但加密后内容是二进制。
+
+其中doc是原文件，doc.sig包含了__原文件和签名，是二进制的__。这个命令会要求你输入你的私钥的密码句。
+
+    gpg -o doc.sig   -s  -er** name** doc __既签名又加密,签名用的是自己的私钥，加密使用的是对方的公钥。__
+#-s  签名选项
+#-e -r peer-name   加密选项
+
+**文本签名**
+
+    gpg -o doc.sig --clearsign doc  #加密后文件认为ASCII，所以适合文本文件。
+
+这样产生的doc.sig同样包含原文件和签名，其中**签名是文本的**，而**原文件内容不变**。
+
+**分离式签名**
+
+    gpg -o doc.sig -ab doc
+
+doc.sig仅包括签名，分离式签名的意思是原文件和签名是分开的。b 表示分离式签名detach-sign
+
+**验证签名**
+
+    gpg --verify doc.sig [doc]
+
+验证之前**必须导入文件作者的公钥**，对于分离式签名，最后还要加上原文件，即后面的doc。
+
+
+
+-- 完
+
+关于 GPG 更详细的介绍请看以下两篇参考资料：
+［1］GnuPG HOWTO (中文版) http://www.gnupg.org/howtos/zh/
+［2］GPG(pgp)加解密中文完整教程 http://www.alexgao.com/2009/01/24/gpg/（PDF下载 )

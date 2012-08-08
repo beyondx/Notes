@@ -1,0 +1,116 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-18T13:59:10+08:00
+
+====== semantic ======
+Created Friday 18 November 2011
+http://www.unixresources.net/linux/clf/vim/archive/00/00/68/75/687565.html
+cedet 在 cedet.sourceforge.net 下载，这个不用我说了吧，我用的是 cvs 的 cedet；自从发现 cvs 的比 1.0pre4 的快以后就放弃 1.0pre4 了，不过配置方法应该也是一样的。
+
+这里只会说 semantic 的补全功能的配置，ede（我目前还只是借助它来处理用 #include "..." 引入的头文件）我没摸透，其他工具我不需要（也不懂用）。
+
+cvs 出来以后，touch `find -name "Makefile"`(注意是左引号)，make bootstrap，然后把整个目录都扔到 emacs 的 site-lisp 目录下去吧。然后在 .emacs 里添加一句 (require 'cedet)就好了。
+
+首先开始配置头文件，注意了，g++ 的头文件不只是在 /usr/include 下面的，具体在哪里找头文件，可以 "g++ -E -v -P dummy.cpp"，看输出信息，两屏，不太多。dummy.cpp 是个空文件而已。
+例如我在 mingw 下就有这么一段输出信息：
+
+#include "..." search starts here:
+#include <...> search starts here:
+e:emacshome.emacs.dmsysmingwin../lib/gcc/mingw32/4.3.0/include/c++
+e:emacshome.emacs.dmsysmingwin../lib/gcc/mingw32/4.3.0/include/c++/mingw32
+e:emacshome.emacs.dmsysmingwin../lib/gcc/mingw32/4.3.0/include/c++/backward
+e:emacshome.emacs.dmsysmingwin../lib/gcc/mingw32/4.3.0/../../../../include
+e:emacshome.emacs.dmsysmingwin../lib/gcc/mingw32/4.3.0/include
+e:emacshome.emacs.dmsysmingwin../lib/gcc/mingw32/4.3.0/include-fixed
+e:/emacs/home/.emacs.d/msys/mingw/lib/gcc/../../lib/gcc/mingw32/4.3.0/include/c++
+e:/emacs/home/.emacs.d/msys/mingw/lib/gcc/../../lib/gcc/mingw32/4.3.0/include/c++/mingw32
+e:/emacs/home/.emacs.d/msys/mingw/lib/gcc/../../lib/gcc/mingw32/4.3.0/include/c++/backward
+e:/emacs/home/.emacs.d/msys/mingw/lib/gcc/../../include
+e:/emacs/home/.emacs.d/msys/mingw/lib/gcc/../../lib/gcc/mingw32/4.3.0/include
+e:/emacs/home/.emacs.d/msys/mingw/lib/gcc/../../lib/gcc/mingw32/4.3.0/include-fixed
+End of search list.
+
+把这个目录列表整理一下，用 (semantic-add-system-include "......") 添加加进 semantic 的查找目录。例如我自己的 win 下面的 .emacs 里就是像下面这样；linux下只要把那一串目录改一改就好
+
+(eval-after-load "semantic-c" ;;e:/emacs/home 是我的 $HOME
+'(dolist (d (list "~/.emacs.d/msys/mingw/include"
+"~/.emacs.d/msys/mingw/lib/gcc/mingw32/4.3.0/include"
+"~/.emacs.d/msys/mingw/lib/gcc/mingw32/4.3.0/include-fixed"
+"~/.emacs.d/msys/mingw/lib/gcc/mingw32/4.3.0/include/c++"
+"~/.emacs.d/msys/mingw/lib/gcc/mingw32/4.3.0/include/c++/backward"
+"~/.emacs.d/msys/mingw/lib/gcc/mingw32/4.3.0/include/c++/mingw32"
+))
+(semantic-add-system-include d)))
+
+我这里让它在 semantic-c 被 load 以后才用 semantic-add-system-include ，我也忘记了不这样会有什么不妥了。反正我一直就这么用的。
+
+下面配置一下semantic分析结果文件的存放目录。注意这个目录是要自己建立的。
+(setq semanticdb-default-save-directory
+(expand-file-name "~/.emacs.d/semanticdb"))
+
+头文件的查找目录定义好了，下面对 c-mode 做一些小小的定义：
+
+(add-hook 'c-mode-common-hook
+'(lambda()
+(require 'cedet)
+(ede-minor-mode t)
+;;;;以下3个按机器适用的强劲程度排列，最下面的对机器需求最低。三选一。
+;; (semantic-load-enable-gaudy-code-helpers)
+;; (semantic-load-enable-code-helpers)
+(semantic-load-enable-minimum-features)
+
+;;;;这三个按键绑定按个人喜欢启用，除了第一个可以修改成自己喜欢的按键之外，另外两个都没有修改的意义。
+;;;;反正主要的补全就靠 semantic-complete-analyze-inline了，以后偷摸骗抢都靠它了。
+;;;;semantic-complete-self-inset也是调用semantic-complete-analyze-inline的。
+(local-set-key (kbd "M-/") 'semantic-complete-analyze-inline)
+(local-set-key "." 'semantic-complete-self-insert)
+(local-set-key ">" 'semantic-complete-self-insert)
+(c-toggle-auto-hungry-state 1)
+(c-set-style "K&R")))
+
+OK，semantic 补全的基本功能就出来了。来这么一个程序片段吧：
+
+#include <string>
+#include <iostream>
+using namespace std;
+int main(int argc, char* argv[])
+{
+string mystr;
+mystr.
+
+看到补全选项了吗？看不到？哦，semantic 还没 parse 你这个程序片段呢，一般来说，semantic 会每隔一段时间（默认2秒） parse 一次的，现在你要等2秒再来过吗？别：C-u M-x bovinate，强行让它立刻 parse，然后再按 M-/，minibuffer里一大堆的 LL/某某文件###### ，然后出来了把。顺便说一下，第一次parse的时候会冒出和Variable binding depth exceeds max-specpdl-size，我的做法是重新启动emacs再来过。
+
+什么？补全的时候会跳出一个分割窗口你不喜欢？
+M-x customize-variable RET semantic-complete-inline-analyzer-displayor-class RET，选一个你喜欢的把，我就喜欢 semantic-displayor-ghost，像幽灵一样在你需要的时候默默地出现、不需要的时候默默地走开（要女人也像这样那该多好啊），所以我的 .emacs 里有这样一句：
+
+(eval-after-load "semantic-complete"
+'(setq semantic-complete-inline-analyzer-displayor-class
+semantic-displayor-ghost))
+
+注意 eval-after-load 又来了。因为 cedet/semantic 里的很多文件都是在需要的时候才 load 的，semantic-complete-inline-analyzer-displayor-class 要在 semantic-complete 被 load 以后设置才有效。
+
+#include <string>
+#include <iostream>
+using namespace std;
+int main(int argc, char* argv[])
+{
+cout.
+
+没补全选项；C-u M-x bovinate, M-/还是不行？哦，忘了说一下，直到今天(6月30日) cvs 出来的代码，semantic 还是只认得 "public virtual" 这样的虚拟继承，而不认识 "virtual public" 这样的虚拟继承；而 iostream 系的头文件里就是用的 "virtual public" 这样的虚拟继承；没办法，改 semantic 代码吧，打开 cedet/semantic/bovine/c.by 文件，找到
+
+one-class-parent
+: opt-class-protection opt-class-declmods namespace-symbol
+(TYPE-TAG (car $3) "class" nil nil rotection (car $1))
+;
+
+把它改成
+
+one-class-parent
+: opt-class-protection opt-class-declmods namespace-symbol
+(TYPE-TAG (car $3) "class" nil nil rotection (car $1))
+| opt-class-declmods opt-class-protection namespace-symbol
+(TYPE-TAG (car $3) "class" nil nil rotection (car $2))
+;
+（注意了，上面那三个笑脸符号应该是冒号p，论坛把冒号p转成笑脸了。）
+
+然后回到 cedet 目录下，重新 make bootstrap，再试试？

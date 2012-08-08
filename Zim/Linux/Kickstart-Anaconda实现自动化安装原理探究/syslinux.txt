@@ -1,0 +1,228 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-23T22:09:00+08:00
+
+====== syslinux ======
+Created Friday 23 December 2011
+
+http://baike.baidu.com/view/3867652.html?fromTaglist
+
+syslinux是一个功能强大的引导加载程序，而且兼容各种介质。更加确切地说：SYSLINUX是一个小型的Linux操作系统，它的目的是简化首次安装Linux的时间，并建立修护或其它特殊用途的启动盘。它的安装很简单，一旦安装syslinux好之后，sysLinux启动盘就可以引导各种基于DOS的工具，以及MS-DOS/Windows或者任何其它操作系统。
+
+目录
+
+    创建启动磁盘
+    相关选项
+    配置设定
+    APPEND options（附加选项）
+    cpio简介
+展开
+
+编辑本段创建启动磁盘
+　　安装syslinux的磁盘将改变磁盘上的引导扇区，并复制ldlinux.sys文件到其根目录(或者复制到指定的目录)下。
+　　注意：SYSLINUX不支持NTFS文件系统，所以磁盘必须是FAT(FAT16/FAT32)文件系统。
+NT/2K/XP
+　　语法：
+　　syslinux.exe [-sfmar][-d directory] <drive>: [bootsecfile]
+　　例如：
+　　Floppy:(a:为软驱)
+　　syslinux.exe a:
+　　硬盘/可移动磁盘等：(z:为盘符)
+　　syslinux.exe -m -a -d /boot/syslinux z:
+　　【将引导文件复制到其分区的/boot/syslinux目录下，注意：/boot/syslinux目录必须事先建好。】
+　　*上例中的启动菜单配置文件(syslinux.cfg)要在/boot/syslinux目录下。*注意：在NT/2K中你可能会收到错误的信息，你只要选择"Ignore"(忽略)就可以正确完成命令了。
+DOS
+　　语法：
+　　syslinux.exe [-sfmar][-d directory] <drive>: [bootsecfile]
+Linux
+　　语法：
+　　syslinux [-sfr][-d directory][-o offset] <DeviceOrImage>
+　　例如：
+　　syslinux /dev/fd0
+　　syslinux /设备/第一个软驱
+　　【将syslinux的引导代码写入第一个软驱】
+编辑本段相关选项
+适用所有版本
+　　　-s
+　　Safe, solw, stupid：这个参数可以提高syslinux的引导兼容性。此参数可以让syslinux工作在一些非常规的BOIS上，有些机器上-s的选项(参数)是必需的，也就是说这是一个安全的选项(参数)，建议一般要用上这个选项(参数)。
+　　-f
+　　Force installing：强制写入syslinux的引导代码，这是一个可选的选项(参数)，如果你发现不能写入syslinux时，就可以使用这个选项(参数)，但一般建议：写入本地磁盘时加上这个选项(参数)。
+　　-r
+　　Raid mode：RAID 模式。这是一个可选的选项(参数)，如果启动失败，告诉BIOS启动顺序(通常是下一个硬盘)，而不是给出错误信息后停止，这个一个RAID模式的选项(参数)，一般来说可以不使用。
+只适用于Windows的版本
+　　-m
+　　MBR：将syslinux引导代码写入到驱动器的MBR启动扇区。这是一个可选的选项(参数)，建议使用此选项(参数)，如果之前有将GURB4DOS写入磁盘的MBR中，那么你必须使用-m选项(参数)，否则将写入失败。
+　　之前有将“grub for dos”写入过MBR，而之后将syslinux引导代码写入MBR时，又没有使用-m选项(参数)，则不能将syslinux引导代码写入MBR。
+　　示例：syslinux.exe -s -f -m -a -d /boot/syslinux x:(x: 为盘符)
+　　-a
+　　Active：激活指定分区为活动分区，这是一个可选的选项(参数)，当你不确定你所指定的分区是否是活动分区时可以加上这个选项(参数)，实际上，就算你所指定的分区已经是活动的主分区了，也可以加上这个选项(参数)。(=bootable)
+只适用于Linux的版本
+　　-o
+　　指定文件系统映像文件中的字节偏移量，它必须是一个可使用的磁盘映像文件。
+编辑本段配置设定
+　　所有的syslinux默认配置都可以在一个名为syslinux.cfg的文件里面更改。
+　　syslinux会在下列位置搜索syslinux.cfg配置文件：
+　　/boot/syslinux/syslinux.cfg
+　　/syslinux/syslinux.cfg
+　　/syslinux.cfg
+　　(以上为执行的优先顺序)
+　　syslinux.cfg文件必须是UNIX或DOS格式的文本文件。
+　　下面是一个简单的例子，我们来看一下syslinux.cfg文件怎样引导一个linux内核：
+　　DEFAULT linux
+　　LABEL linux
+　　SAY Now booting the kernel from SYSLINUX...
+　　KERNEL vmlinuz.img
+　　APPEND ro root=/dev/sda1 initrd=initrd.img
+　　SYSLINUX与LILO是不同的，下面是一个LILO的例子：
+　　image = mykernel
+　　label = mylabel
+　　append = "myoptions"
+　　而SYSLINUX是这样写的：
+　　label mylabel
+　　kernel mykernel
+　　append myoptions
+　　下面我们一起看一下SYSLINUX中的选项：
+　　注：以下所有选项适用于PXELINUX，ISOLINUX和EXTLINUX以及SYSLINUX，除非另有说明。
+　　# comment注释行，#后面的空格是必须的。
+　　INCLUDE filename在此处插入其他文件的内容。
+　　LABEL command【标签命令】标签命令，主要是用于描述syslinu.cfg文件中的命令的，自己看得懂就可以了，因为这个标签是不会在启动菜单中看到的。
+　　MENU LABEL【菜单标签】这个是在启动菜单中看到的标题项，所以这个一定要写个有意义的描述
+　　例如：LABEL maxdos
+　　MENU LABEL [01] -- Run MaxDos
+　　kernel /boot/syslinux/memdisk
+　　append initrd=/boot/imgs/maxdos.img
+　　KERNEL file【内核文件】这个就是SYSLINUX指向的启动文件，这个“kernel”不一定是Linux kernel【Linux内核】，它可以是启动扇区，或者COMBOOT文件。
+　　
+公认的文件扩展名（不区分大小写）扩展名	英文说明	中文说明
+none or other	Linux kernel image	Linux内核映像
+.0	PXE bootstrap program (NBP) [PXELINUX only]	PXE 启动引导程序(NBP)【只用于PXELINUX】
+.bin	"CD boot sector" [ISOLINUX only]	“光盘引导扇区”【只用于ISOLINUX】
+.bs	Boot sector [SYSLINUX only]	“磁盘引导扇区”【只用于SYSLINUX】，例如：bsf，
+.bss	Boot sector, DOS superblock will be patched in [SYSLINUX only]	“磁盘引导扇区”， 用在DOS superblock上，【只用于SYSLINUX】
+.c32	COM32 image (32-bit COMBOOT)	COM32映像文件【32-bit COMBOOT】
+.cbt	COMBOOT image (not runnable from DOS)	COMBOOT映像文件【不能运行于DOS】
+.com	COMBOOT image (runnable from DOS)	COMBOOT映像文件【可运行于DOS】
+.img	Disk image [ISOLINUX only]	磁盘映像文件【实际上可用于ISOLINUX、SYSLINUX、PXELINUX】
+.ima	Floppy image [ISOLINUX only]	软盘映像文件【实际上可用于ISOLINUX、SYSLINUX、PXELINUX】
+　　使用这些关键字之一而不KERNEL强制文件类型，与文件名无关。
+　　LINUX image
+　　你可以直接使用这个，而不是使用KERNEL file来启动一个Linux kernel image【Linux内核映像】。
+　　BOOT image
+　　启动引导程序(.bs，.bsf，.bin)
+　　BSS image
+　　BSS映像启动引导程序(.bss)
+　　PXE image
+　　PXE网络启动引导程序(.0)
+　　FDIMAGE image
+　　软盘映像(.img，.ima)
+　　COMBOOT image
+　　COMBOOT程序(.com，.cbt)
+　　COM32 image
+　　COM32程序(.c32)
+　　CONFIG image
+　　CONFIG将重新启动引导程序而使用不同的配置文件
+编辑本段APPEND options（附加选项）
+　　添加一个或多个选项(参数)到 kernel 命令行中，这些选项(参数)可以是手动或者是自动的。该选项(参数)是添加在 kernel 命令行的开始处，通常允许输入的选项覆盖。这点与LILO的“append”选项(参数)是相同的。
+　　APPEND-
+　　简单点说，不附加任何命令，可用于覆盖全局的APPEND。
+　　IPAPPEND flag_val 【只适用于PXELINUX】
+　　这个IPAPPEND选项(参数)只适用于PXELINUX，这个“flag_val”为下列选项(参数)：
+　　1、下列的选项(参数)将以如下格式添加到内核命令行：
+　　ip=<client-ip>:<boot-server-ip>:<gw-ip>:<netmask>
+　　……以上基于DHCP/BOOTP或者PXE的启动服务器。
+　　但不推荐使用此选项(参数)，使用IP=DHCP的内核命令行更为合适。
+　　2、下列的选项(参数)将以如下格式添加到内核命令行：
+　　BOOTIF=<hardware-address-of-boot-interface>
+　　这在PXELINUX的文档中有相关的介绍，这将决定临时文件系统程序将从哪一个Interface【端口】启动系统。
+　　LABEL label KERNEL image APPEND options... IPAPPEND flag_val【只适用于PXELINUX】
+　　……以上表明，如果“LABEL”作为内核启动，其引导的“image”和指定的 APPEND 和 IPAPPEND 选项将取代配置文件中的全局(在第一个LABEL命令之前)命令。“image”默认值与“label”相同，而且如果没有定义 APPEND，则使用全局命令(如果存在)。
+　　LOCALBOOT type【ISOLINUX，PXELINUX】
+　　在PXELINUX，指定“LOCALBOOT 0”代替一个“KERNEL”选项(参数)，这个意味着调用此特定LABEL将会引导本地磁盘，而不是一个“KERNEL”。
+　　参数0表示执行正常启动，参数4将执行一个本地启动和通用网络驱动器接口(UNDI)——常驻内存。
+　　最后，参数5将执行一个本地启动与整个PXE的堆栈，包括UNDI驱动器，也是常驻内存。
+　　所有其它的值都是未定义的。
+　　如果你不知道什么是UNDI和PXE堆栈，不要紧——你只要指定参数0就可以了。
+　　INITRD initrd_file
+　　从3.71版本开始，一个initrd可以指定一个单独的语句，（INITRD）而不是作为APPEND语句的一部分；这个功能添加“initrd=initrd_file”到内核命令行中。
+　　它支持以逗号分隔的多个文件名，这主要是有益于initramfs【一个新的initial RAM disks模型】，它可以支持多个单独的cpio或cpio.gz压缩文件。
+编辑本段cpio简介
+　　CPIO是Linux下的一种新的内核启动镜像所附带的虚拟磁盘格式。他与传统的Image格式比较而言有一些改进，主要体现在打包速度和启动引导方式上。
+　　cpio 可以从 cpio 或 tar 格式的归档包中存入和读取文件, 归档包是一种包含其他文件和有关信息的文件。有关信息包括：文件名, 属主, 时标(timestamp), 和访问权限。归档包可以是磁盘上的 其他文件, 也可以是磁带或管道。
+　　Note: all files except the last one are zero-padded to a 4K page boundary. This should not affect initramfs.
+　　DEFAULT command【默认命令】
+　　SYSLINUX启动时默认执行的命令项——当用户没有进行选择时。
+　　如果没有配置文件存在，或在配置文件没有设置默认项时，默认是启动名为“linux”的内核，不会添加其它的选项(参数)。
+　　例如：可以用于设置所要加载的菜单模块default vesamenu.c32
+　　UI module options【用户界面模块选项(参数)】
+　　用于设置菜单模块(通常是“menu.c32”或“vesamenu.c32”)，也就是说这是一个命令行界面(菜单指令)，它可以覆盖DEFAULT和PROMPT指令。
+　　PROMPT flag_val
+　　如果flag_val为0，启动将显示：“提示符”只有在Shift或Alt键被按下，或Caps Lock键或Scroll lock键设置（这是默认值）。如果flag_val是1，启动时将始终：“提示符”。
+　　NOESCAPE flag_val
+　　如果flag_val设置为1，那么将忽略Shift/Alt/Caps Lock/Scroll Lock退出，将强制使用此默认选择项目启动(也同时忽略PROMPT 0)。
+　　NOCOMPLETE flag_val
+　　如果flag_val设置为1，那么启动时将不会在显示标签中提示Tab键。
+　　IMPLICIT flag_val
+　　如果flag_val为设置为0，将不会加载的kernel image【内核映像】，除非它已在LABEL声明中明确指定。The default is 1【默认值为1】。
+　　ALLOWOPTIONS flag_val
+　　如果flag_val为0，用户将不能指定内核命令行的任何选项(参数)。唯一可用是在APPEND声明中所指定的选项。The default is 1。
+　　TIMEOUT timeout【超时】
+　　在执行默认启动菜单项前的等待时间。
+　　如果设置为0，那么将将完全禁用timeout(始终等待用户选择)，这也是默认的设置。
+　　其单位为：1/10秒。
+　　以下timeout为30秒：
+　　timeout 300
+　　注：最大的值为35996，建议设置为小于一小时。
+　　TOTALTIMEOUT timeout
+　　不会被用户的输入取消，用于处理串口故障或类似 "用户离开" 的状况。
+　　默认值是 0。
+　　# 等待5s除非用户输入，但15m后一定启动
+　　TIMEOUT 50TOTALTIMEOUT 9000
+　　ONTIMEOUT kernel options...
+　　timeout 后调用的命令。一般与 DEFAULT 调用相同。如果指定，DEFAULT只适用于用户按<Enter>启动时。
+　　ONERROR kernel options...
+　　如果一个内核映像没有找到(不存在或设置了IMPLICIT)，运行指定的命令。
+　　如果ONERROR指令为：
+　　ONERROR xyzzy plugh
+　　并且用户输入的命令行是：
+　　foo bar baz
+　　那么SYSLINUX将执行：
+　　xyzzy plugh foo bar baz
+　　SERIAL port 【[baudrate] flowcontrol】
+　　开启一个串口作为控制台，“port【端口】”是一个数字(0 = /dev/ttyS0 = COM1，etc。)或者I/O端口地址(例如：0x3F8)；如果省略“baudrate【波特率】”，波特率默认为9600 bps。串行的硬编码是 8 bits，无奇偶校验，1个停止位。
+　　下列为“flowcontrol【流控制】”的 bits 组合：
+　　0x001 - Assert DTR
+　　0x002 - Assert RTS
+　　0x010 - Wait for CTS assertion
+　　0x020 - Wait for DSR assertion
+　　0x040 - Wait for RI assertion
+　　0x080 - Wait for DCD assertion
+　　0x100 - Ignore input unless CTS asserted
+　　0x200 - Ignore input unless DSR asserted
+　　0x400 - Ignore input unless RI asserted
+　　0x800 - Ignore input unless DCD asserted
+　　所有其它的 bits 给予保留。
+　　典型值为：
+　　0 - No flow control (default)
+　　0x303 - Null modem cable detect
+　　0x013 - RTS/CTS flow control
+　　0x813 - RTS/CTS flow control，modem input
+　　0x023 - DTR/DSR flow control
+　　0x083 - DTR/DCD flow control
+　　作为SERIA【串口】指令，它必须保证工作正常，它在配置文件中应该是“First”指令。
+　　CONSOLE flag_val
+　　如果flag_val为0，禁止输出到普通视频终端。
+　　如果flag_val为1，允许输出到视频终端(默认值)。
+　　有些BIOS因为这个选项(参数)会令视频终端出现异常。
+　　所以该选项(参数)允许你在这些系统上禁用视频控制台。
+　　FONT filename
+　　在显示任何输出之前，装载.psf格式的字体(除了版权行，ldlinux.sys本身被加载里就输出这些)。SYSLINUX只装载字体到显卡。忽略.psf文件包含的Unicode表。并且只工作于EGA和VGA显示卡。
+　　注：.psf格式的字体不支持中文。
+　　KBDMAP keymap
+　　装载一个简单的键盘映射。该重映射使用很简单(由于这个重映射是基于BIOS的，所以只有标准的美式键盘布局才能被映射)，不过这至少可以帮助使用QWERTZ和AZERTY键盘布局的人(这两个特殊字符大量用于Linux内核命令行)。
+　　syslinux的还附带一个名为“kbdmap.c32”的comboot模块文件，它允许动态地改变键盘映射，这样就可以在syslinux的配置文件中增加一个键盘选择菜单或键盘选择标签【keyboard-selection menu and/or keyboard-selection labels】。
+　　SAY message
+　　在屏幕上打印Message【信息】。
+　　DISPLAY filename
+　　启动时在屏幕上显示指定文件(如果显示：则在启动前：“提示符”显示内容)。
+　　请参阅下面一节的“DISPLAY file”。
+　　注：如果指定的文件未找到，那么此选项(参数)将被完全忽略。

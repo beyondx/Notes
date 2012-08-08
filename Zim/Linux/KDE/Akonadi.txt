@@ -1,0 +1,70 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-16T16:53:31+08:00
+
+====== Akonadi ======
+Created Wednesday 16 November 2011
+http://userbase.kde.org/Akonadi
+
+==== Introduction ====
+
+The Akonadi **framework** is responsible for providing applications with a **centralized database to store, index and retrieve the user's personal information**. This includes the user's emails, contacts, calendars, events, journals, alarms, notes, etc. In SC 4.4, KAddressBook became the first application to start using the Akonadi framework. In SC 4.7, KMail, KOrganizer, KJots, etc. were updated to use Akonadi as well. In addition, several Plasma widgets also use Akonadi to store and retrieve calendar events, notes, etc.
+
+At the time of writing, the following applications are enabled to use the Akonadi framework to centrally store and access **user data**. Follow through to each application's page to learn more.
+
+* KMail	Mail Client    Uses Akonadi to store emails
+* KAddressBook     	Contact Manager    Uses Akonadi to store contact information
+* KOrganizer    	Personal Organizer    Uses Akonadi to store calendars, events, journals, etc.
+* KJots    	Note Taking Application    Uses Akonadi to store notes
+
+In addition to this, plasma widgets like the **Digital Clock** widget, the **Notes** widget also use Akonadi to store and retrieve events and notes.
+
+===== Controlling the Akonadi server =====
+
+The Akonadi control module in System Settings provides an easy means to starting, stopping, restarting and querying the status of the Akonadi server. You may also accomplish this from the commandline using the command __akonadictl__.
+
+To start the Akonadi server,
+
+	akonadictl start
+
+To stop the Akonadi server,
+
+	akonadictl stop
+
+To restart a running Akonadi server,
+
+	akonadictl restart
+
+To query the status of the Akonadi server,
+
+	akonadictl status
+
+
+===== Disabling the Akonadi subsystem =====
+
+**Remember!**
+
+If you don't want to have Akonadi running on your system, you __can not__ use any of the Akonadi-enabled applications. Such applications will start Akonadi, whenever they need its services __even if__ you have disabled it. See the list of Akonadi-enabled applications. Also note, that some Plasma widgets, such as the Digital Clock uses Akonadi
+
+The Akonadi server is launched automatically **at login** whenever any Akonadi-enabled application requests access to it.
+To disable the Akonadi subsystem, first, shut down the running Akonadi server from the control module or the command line:
+
+	akonadictl stop
+
+Now, edit the file ~/.config/akonadi/akonadiserverrc and change StartServer from true to false:
+
+	StartServer=false
+
+The Akonadi server should no longer launch automatically on login.
+
+
+**Note**
+
+The Akonadi server will __still __be started by any Akonadi-enabled application. Ensure that no Akonadi-enabled application is launched at login or thereafter. Remember to check Plasma widgets as well — the Digital Clock widget in the default panel, for instance uses Akonadi to (optionally) display calendar events and this is enabled in its settings by default. You must remove any widgets that may start it from your start-up, if you wish Akonadi to remain disabled.
+
+
+Frequently Asked Questions
+
+Refer to the Troubleshooting page for resolving glitches during migration. Akonadi's Glossary entry has a brief description of its purpose and other useful links. This page explains how Akonadi and KAddressBook work together.
+
+If you are experiencing 100% CPU usage by the virtuoso-t process when using Akonadi and related applications, try this proposed workaround while it is being investigated: In KRunner's configuration page, disable the Nepomuk search plugin and the Contact plugin. Then, log out and back in. For further information and inputs, report back here or on the Forum or on the IRC channel #kontact. 

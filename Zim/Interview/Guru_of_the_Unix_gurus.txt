@@ -1,0 +1,53 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-06T14:52:01+08:00
+
+====== Guru of the Unix gurus ======
+Created 星期一 06 六月 2011
+http://www.salon.com/technology/feature/2000/09/01/rich_stevens/index.html
+
+Guru of the Unix gurus
+A year after his death, the programming community still treasures the influence of Rich Stevens.
+By Rachel Chalmers
+
+When Andrew Hume presented the Usenix Lifetime Achievement Award in San Diego in June, he managed to say exactly two words -- "Richard Stevens" -- before a standing ovation drowned him out. "I sat next to Richard's family at the presentation," says Tom Christiansen, a well-known figure in the Perl programming community who had known Stevens on and off for years. "It was stunning. I don't know if his family did, but I sure noticed a lot of the audience in tears."
+
+"Usenix," (a word coined to get around trademark restrictions on the word "Unix") is the Advanced Computing Systems Association. W. Richard Stevens is the author of "TCP/IP Illustrated" and "Unix Network Programming," each of which runs to three volumes, and "Advanced Programming in the Unix Environment." Their influence among Unix users is hard to overstate. Thousands of programmers all over the world consider Stevens a guru and his works essential to their jobs.
+
+"It blew my mind," says his sister, Claire Stevens. "I knew he wrote those books, but it never made a dent. I had absolutely no idea that all these people knew and were touched by him." Claire and Richard's wife, Sally, accepted the award on Stevens' behalf. Stevens died on Sept. 1, 1999. He was 48 years old.
+
+His death hit the close-knit Unix community hard. Fiercely intelligent and deeply private, Stevens set an example for everyone in the Unix world. What he didn't know, he determined to find out; what he did know, he strove to pass on to anyone who was interested. A year after his death, memories of one of the Unix community's most beloved experts are still fresh and vital.
+
+Christiansen's recollection is typical. The two were casual acquaintances from the academic conference circuit. "I remember I was doodling around on the piano, and Richard came over and said, 'I heard you doing that at some other conference and it inspired me to take up the piano again,'" Christiansen says. "On subsequent meetings he would tell me all about his progress. As with everything he talked about that he really loved, his eyes just kind of sparkled."
+
+With Christiansen, Stevens talked about music. With cryptographer Greg Rose, a fellow pilot, he talked about flying. With Dave Hanson, who sat on the committee to assess his doctoral thesis, Stevens talked about yet another shared passion, skiing. To everyone who knew him, it seemed he cared about the things that mattered most to them.
+
+"He was a very good listener and he knew something about every subject," says Claire. "He could always contribute something, or at least sound intelligent."
+
+Yet Stevens was also an extraordinarily private man. Christiansen, Rose and Hanson all knew him for years, yet none felt that they knew him well. "I wouldn't say he was complex, but because of his intelligence he could come across that way," Claire admits.
+
+He brought the full force of his intellect to bear on his work, and it showed. Stevens' books are regarded as models of the genre. "I remember he shocked me, because I ran into him at some conference and he said, 'I wish I'd brought the 'Perl Cookbook' so I could have had you autograph it for me,'" says Christiansen. "I don't consider my books to be in anywhere near the same league of serious, hard work as his. That he would say to me 'I should have got your autograph' was like Dennis [Ritchie, one of the original authors of Unix] saying it."
+
+"He gave extremely cogent explanations of what's going on," says Rose. "His books are so much more readable than most computer books. A lot of authors look at the documentation and rewrite it with little or no interpretation. He took the time to understand."
+
+His perseverance was an artifact of an apparently ferocious curiosity. "When I hit something that I don't understand, I take a detour and learn something new," said Stevens in an interview two years before his death. "This often makes my books late by a few months, but I think accuracy and completeness are essential."
+
+It may have been Stevens' sense of himself as an outsider that inspired this level of dedication. He and his brother and sister were copper-mining brats, born in Africa to a metallurgical engineer; they divided their childhood among northern Rhodesia (now Zambia), Utah, New Mexico, Washington and South Africa. Stevens didn't start out in computer science at all, but in aerospace. It just happened that he graduated in 1973, when Boeing was laying off thousands of aerospace engineers. Programming, like piano, was a late acquisition that took.
+
+"I really believe that my background is fundamental to the success of 'Unix Network Programming' and my other books," he said. "That is, I was not one of the developers at Berkeley or AT&T, so the writing of UNP was not a 'memory dump.' Everything that is in the book I had to dig out of somewhere and understand myself."
+
+In fact, Stevens belonged to the generation of Unix geeks who pored over not-exactly-legal copies of John Lions' legendary commentary on the Unix source code. Lions firmly believed that no one could understand the theory of computer science without concrete examples, ideally embodied in C programs. Stevens seems to have agreed.
+
+"Certainly his books do that. He tends to walk you through the code," says Hanson, who led the graduate seminars at the University of Arizona where Stevens discovered the Lions books. "It's not like you can read this stuff while you're sitting in front of the television. It's a particular style of learning about software that requires a very heavy investment upfront. But it pays off."
+
+It's not as easy, or as obvious, as it sounds. Publishing code legibly is hard work, and calls for stubborn authors who insist on the best tools for the job. Stevens greatly admired and strove to emulate Donald Knuth, who wrote "The Art of Computer Programming," and Brian Kernighan, "The C Programming Language," whose books are as beautifully laid out as they are brilliantly written.
+
+For his own work, he insisted on a text-formatting tool even more venerable and revered than Knuth's Tex. "Rich had told me that he gets to send 'troff,'" says Christiansen in awed tones, referring to a fairly archaic layout program. "He still used all the cool old tools, and he prepared camera-ready copy for the publisher. It's very, very rare that authors aren't forced to use Microsoft Word or unadorned SGML." Controlling his own means of production allowed Stevens to explain difficult concepts visually as well as verbally -- hence the apparently perverse theme of "TCP/IP Illustrated." Visualizing a protocol? It sounds crazy, but it works.
+
+His books are so good that they have come to symbolize intelligence. In "Wayne's World II," Garth's girlfriend carries a copy of "Unix Network Programming." Stevens discovered this when he took his 13-year-old son to see the film. His son grabbed his arm and said, "Dad, that's your book!"
+
+"I couldn't believe it," he told programmer Trent Hein. "My book was used to define the ultimate geek, and suddenly my son thinks I'm really cool."
+
+His son was right.
+
+

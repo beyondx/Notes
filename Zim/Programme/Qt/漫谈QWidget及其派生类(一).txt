@@ -1,0 +1,103 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-31T19:00:46+08:00
+
+====== 漫谈QWidget及其派生类(一) ======
+Created Monday 31 October 2011
+http://blog.csdn.net/dbzhang800/article/details/6737540
+
+对于QWidget，总觉得该写点什么。可又不知道具体该写些什么，思路又乱又杂。简单理理，简单写写，就叫漫谈吧
+注意：我不知道本文写完会是什么样子，可能写着写着就没下文了。也可能各部分隔很长时间。
+注意：本系列涉及到的东西都是Qt用户需要理解的，但是，我们不应该在实际项目中这么用。
+
+===== QWidget =====
+
+QWidget 是Qt中所有widget部件(比如QDialog、QPushButton、QLabel)的__基类__。 任何你可以通过其派生类实现的东西，你都可以通过QWidget实现(只要你不怕麻烦)
+
+比如：
+
+QDialog有模态非模态之说 :   	QWidget 有没有？当然有,不要怀疑
+
+QDialog dlg(this)是一个窗口: 	 QWidget wgt(this)能不能是窗口？当然行
+
+QMainWindow可以有菜单栏、工具栏等,QWidget 可不可以加？:		当然可以，只要你需要。
+...
+
+===== Window 与 Widget =====
+
+Qt中的部件有Window和普通widget之说：
+
+Window:	窗口,  Window是这样的Widget：它不是其他Widget的一__部分区域__，通常有标题栏等__窗口装饰器__！(和是否有parent无关)
+
+Widget:		普通部件(非窗口),	 除Window外的部件
+
+如何可以知道一个widget是否是Window？注意：QWidget::isWindow()
+
+	inline bool QWidget::isWindow() const
+	{ return (windowType() & __Qt::Window__); }
+
+呵呵，不小心将源码给出了，那就继续吧，Qt::Window是一个Qt::WindowFlags类型的枚举值。
+
+windowType() 是什么东西？为了避免混乱，我将它和**windowFlags()**同等看待(其中的细微区别不会影响我们的分析)
+
+看看下面的函数：
+
+	QWidget::QWidget(QWidget * parent = 0, Qt::WindowFlags f = 0 )
+	
+	QDialog::QDialog(QWidget * parent = 0, Qt::WindowFlags f = 0 )
+	
+	void QWidget::setWindowFlags(Qt::WindowFlags type )
+	...
+
+恩，你可以通过构造函数或者成员函数setWindowFlags传递这个参数。 而且，你从前面的isWindow()的源码可以得出结论： 一个Widget是不是一个Window，只取决于它的的WindowFlags中__是否包含__Qt::Window枚举值。
+
+对么？？ 你会不会说：不对！！！
+
+    例子一
+
+比如：一个QPushButton，如果没有parent，它就是一个窗口。而设置了parent，它却不是一个窗口了。分明就是和是否有parent相关嘛！(这种例子太常见了，对吧)
+
+    例子二
+
+恩，再看一个很多人迷惑的例子：在一个函数内
+
+void Widget::onXXXX()
+{
+     QDialog * dlg = new QDialog(this);
+     //QWidget * dlg = new QWidget(this);
+     dlg->show();
+}
+
+如果用 QDialog，则会出现一个窗口，而如果用 QWidget，则不会出现窗口(而是一个普通部件)。为什么啊？都有parent啊？为什么会这样？？
+
+其实：**例子一是特例**，原因就是前面提到的，__是否是窗口取决于flags，而不是有无parent__
+
+原因： 记住前面的黑体部分！
+
+对于QWidget，如果其parent为空，构造时会有下面的动作：
+
+    uint type = (flags & Qt::WindowType_Mask);
+
+    if ((type == Qt::Widget || type == Qt::SubWindow) && w && !w->parent()) {
+        type = Qt::Window;
+        flags |= Qt::Window;
+    }
+
+注意看，如果__一个widget没有parent，且没有Qt::Window标记，会被强制设置该标记__(如果有parent，w->parent()为真，就不会设置标记了)。这就是parent的影响，也是上面例子一的答案。
+
+可是第二个例子怎么回事？QDialog默认的flags也是0啊，为啥还是窗口呢？？
+
+QDialog::QDialog(QWidget *parent, Qt::WindowFlags f)
+    : QWidget(*new QDialogPrivate, parent,
+              f | ((f & Qt::WindowType_Mask) == 0 ? Qt::Dialog : Qt::WindowType(0)))
+{
+...
+
+答案很简单，QDialog是**派生类**嘛，它构造函数中传给基类的参数包含了Qt::Dailog（即0x00000002|__Qt::Window__）。既然包含了Qt::Widnow标记，当然就和是否有parent无关喽！(例子一其实才是特例，只不过大家见的多了，反倒习以为常了)
+
+    例子三
+
+感兴趣的看看，会有什么结果，嘿嘿，本节完
+
+QPushButton * btn = new QPushButton(this);
+btn->setWindowFlags(Qt::Window);

@@ -1,0 +1,33 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-01T11:26:53+08:00
+
+====== 9总线,设备,和驱动(下) ======
+Created Sunday 01 July 2012
+
+bus上的两张链表记录了每一个device和driver,那么device和driver这两者之间又是如何联系起来的呢?此刻,必须抛出这样一个问题,**先有device还是driver?**
+
+很久很久以前,在那激情燃烧的岁月里,先有的是device,每一个要用的device在计算机启动之前就已经插好了,插放在它应该在的位置上,然后计算机启动,然后操作系统开始初始化,__总线开始扫描设备__,每找到一个设备,就为其申请一个struct device结构,并且挂入总线中的devices链表中来,然后__每一个驱动程序开始初始化__,开始注册其struct device_driver结构,然后它__去总线的devices链表中去寻找(遍历),去寻找每一个还没有绑定driver的设备__,即struct device中的struct device_driver指针仍为空的设备,然后它会去__观察（probe）__这种设备的特征,看是否是他所支持的设备,如果是,那么调用一个叫做__device_bind_driver__的函数,然后他们就结为了秦晋之好.换句话说,把struct device中的struct device_driver driver指向这个driver,而struct device_driver driver把struct device加入他的那张struct list_head devices链表中来.就这样,bus,device,和driver,这三者之间或者说他们中的两两之间,就给联系上了.知道其中之一,就能找到另外两个.一荣俱荣,一损俱损.
+
+但现在情况变了,在这红莲绽放的日子里,在这樱花伤逝的日子里,出现了一种新的名词,叫__热插拔__.device可以在计算机启动以后在插入或者拔出计算机了.因此,**很难再说是先有device还是先有driver了**.因为都有可能.device可以在任何时刻出现,而driver也可以在任何时刻被加载,所以,出现的情况就是,__每当一个struct device诞生,它就会去bus的drivers链表中寻找自己的另一半,反之,每当一个一个struct device_driver诞生,它就去bus的devices链表中寻找它的那些设备__.如果找到了合适的,那么ok,和之前那种情况一下,调用device_bind_driver绑定好.
+
+如果找不到,没有关系,**等待吧**,等到昙花再开,等到风景看透,心中相信,这世界上总有一个人是你所等的,只是还没有遇到而已.
+
+好,继续,事实上,完善这个三角关系,正是**每一个设备驱动初始化阶段所完成的重要使命**之一.让我们还是回到代码中来,usb_register这个函数调用是调用了,但是传递给他的参数是什么呢?
+
+我们注意到,那句调用是这样子的,
+
+   1064         /* register the driver, return usb_register return code if error */
+   1065         retval = usb_register(&usb_storage_driver);
+
+是的,传递了一个叫做usb_storage_driver的家伙,这是什么?同一文件中,drivers/usb/storage/usb.c:
+
+    232 **struct usb_driver** usb_storage_driver = {
+    233         .owner =        THIS_MODULE,
+    234         .name =         "__usb-storage__",
+    235         .probe =        __storage_probe__,
+    236         .disconnect =   storage_disconnect,
+    237         .id_table =     __storage_usb_ids__,
+    238 };
+
+可以看到这里定义了一个struct usb_driver的结构体变量,usb_storage_driver,关于usb_driver我们上节已经说过了,当时主要说的是其中的成员driver,而眼下要讲的则是另外几个成员.首先,.owner和.name这两个没啥好多说的,__owner这玩艺是用来给模块计数的__,每个模块都这么用,赋值总是THIS_MODULE,而name就是这个模块的名字,usb core会处理它,所以如果这个模块正常被加载了的话,使用lsmod命令能看到一个叫做usb-storage的模块名.重点要讲一讲,.probe和.disconnect以及这个id_table.

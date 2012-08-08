@@ -1,0 +1,543 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-04T17:02:41+08:00
+
+====== rxvt-unicode ======
+Created Sunday 04 March 2012
+
+https://wiki.archlinux.org/index.php/Rxvt-unicode
+
+rxvt-unicode is a highly customizable terminal emulator forked from rxvt. Commonly known as__ urxvt__, rxvt-unicode can be __daemonized__ to run clients within a single process in order to **minimize the use of system resources**. Developed by Marc Lehmann, some of the more outstanding features of rxvt-unicode include international language support through Unicode, the ability to display multiple font types and support for **Perl extensions**.
+
+===== Contents =====
+    1 Installation
+    2 Configuration
+        2.1 Creating ~/.Xresources
+        2.2 True transparency
+        2.3 Native transparency
+        2.4 Scrollbar
+        2.5 Font Declaration Methods
+        2.6 Set icon
+        2.7 Set as Login Shell
+        2.8 Set TERM
+    3 Perl extensions
+        3.1 Clickable URLs
+        3.2 Yankable URLs (No Mouse)
+        3.3 Tabs
+        3.4 Fullscreen
+        3.5 Scrollwheel Support
+        3.6 Disabling Perl extensions
+    4 Colors
+    5 Improving Performance
+    6 Cut and Paste
+        6.1 Clipboard Management
+        6.2 Automatic Script Management
+    7 Improved Kuake-like Behavior in Openbox
+        7.1 Scriptlets
+        7.2 urxvtq with tabbing
+            7.2.1 Tab control
+        7.3 Openbox configuration
+        7.4 Further configuration
+        7.5 Related scripts
+    8 Troubleshooting
+        8.1 Transparency not working after upgrade to V9.09
+        8.2 Remote Hosts
+        8.3 Using rxvt-unicode as gmrun terminal
+        8.4 My numerical keypad acts weird and generates differing output? (e.g. in vim)
+    9 External resources
+
+===== Installation =====
+
+rxvt-unicode is available in the __Official__ Repositories and includes **256 **color support.
+
+rxvt-unicode-patched is available in the AUR and includes a fix for the font width bug.
+
+===== Configuration =====
+
+See the rxvt-unicode reference page for the complete list of available setting and values.
+Creating **~/.Xresources**
+
+The look, feel, and function of rxvt-unicode is controlled by command-line arguments and/or X resources. X resources can be set using ~/.Xresources and xrdb (xorg-xrdb), see the wiki page for details.
+
+If ~/.Xresources is not affecting rxvt-unicode, add the following to your ~/.xinitrc file and restart your X session:
+
+__xrdb -merge ~/.Xresources__
+
+Note: Command-line arguments override and take precedence over the resource settings established in this file.
+
+===== True transparency =====
+To use true transparency, you need to be using __a window manager that supports compositing__ or a separate compositor.
+
+From the command-line:
+
+$ urxvt -depth 32 -bg rgb__a__:3f00/3f00/3f00/dddd
+
+Using the configuration file:
+
+~/.Xresources
+
+URxvt.depth: 32
+URxvt.background: rgba:1111/1111/1111/dddd
+
+===== Native transparency =====
+
+If there is no need for true transparency, or if compositing uses too many resources on your system, you can get transparency working in the following way:
+
+~/.Xresources
+
+! Xresources file
+
+URxvt.transparent: true
+! URxvt.shading: 0 to 99 darkens, 101 to 200 lightens
+URxvt.shading: 10
+
+Note: Avoid using shading if you have a URxvt.tintColor set. Use a different tintColor instead.
+
+===== Scrollbar =====
+The look of the scrollbar can be chosen through this entry in ~/.Xresources:
+
+! scrollbar style - **rxvt** (default), **plain** (most compact), next, or xterm
+URxvt.scrollstyle: rxvt
+
+The scrollbar can also be completely deactivated like so:
+
+URxvt.scrollBar: off
+
+===== Font Declaration Methods =====
+
+URxvt.font: 9x15
+
+is the same as:
+
+URxvt.font: -misc-fixed-medium-r-normal--15-140-75-75-c-90-iso8859-1
+
+and:
+
+URxvt.font: 9x15bold
+
+is the same as:
+
+URxvt.font: -misc-fixed-bold-r-normal--15-140-75-75-c-90-iso8859-1
+
+The complete list of short names for **X core fonts** can be found in /usr/share/fonts/misc/fonts.alias (there's also some fonts.alias files in some of the other subdirectories of /usr/share/fonts/, but as they are packaged separately from the actual fonts, they may list fonts you do not actually have installed). It is worth noting that these short aliases select for __ISO-8859-1__ versions of the fonts rather than__ ISO-10646-1__ (Unicode) versions, and **75 DPI** rather than 100 DPI versions, so you're probably better off avoiding them and choosing fonts by their__ full__ long names instead.
+Note: The above paragraph is only for **bitmap fonts**. __Xft fonts__ can be specified using the following format:
+
+URxvt.font: xft:monaco:size=10
+
+Or
+
+URxvt.font: xft:monaco:bold:size=10
+
+===== Set icon =====
+By default URxvt does not feature a taskbar icon. However, this can be easily changed by adding the following line to ~/.Xresources and pointing to the desired icon:
+
+URxvt.iconFile:    /usr/share/icons/Clarity/scalable/apps/terminal.svg
+
+===== Set as Login Shell =====
+
+This will cause the shell to be started as a loginshell, like the option -ls.
+
+URxvt*loginShell:true
+
+===== Set TERM =====
+
+Sets TERM to a specific terminal, like the option -tn.
+
+URxvt*termName:screen-256color
+
+===== Perl extensions =====
+
+=== Clickable URLs ===
+
+You can make URLs in the terminal clickable using the matcher extension. For example, to open links in Firefox add the following to .Xresources:
+
+URxvt.perl-ext-common:  default,matcher
+URxvt.urlLauncher:      /usr/bin/firefox
+URxvt.matcher.button:   1
+
+Since rxvt-unicode 9.14, it's also possible to use matcher to open and list recent (currently limited to 10) URLs via keyboard:
+
+URxvt.keysym.C-Delete:  perl:matcher:last
+URxvt.keysym.M-Delete:  perl:matcher:list
+
+Yankable URLs (No Mouse)
+
+In addition, you can select and open URLs in your web browser without using the mouse.
+
+Install the urxvt-url-select package from the Official Repositories and adjust your .Xresources as necessary. An example is shown below:
+
+URxvt.perl-ext:      default,url-select
+URxvt.keysym.M-u:    perl:url-select:select_next
+URxvt.urlLauncher:   firefox
+URxvt.underlineURLs: true
+
+Note: This extension replaces the Clickable URLs extension mentioned above, so matcher can be removed from the URxvt.perl-ext list.
+
+Key commands:
+
+Alt+U Enter selection mode. The last URL on your screen will be selected. You can repeat Alt+U to select the next upward URL.
+
+K Select next upward URL
+
+J Select next downward URL
+
+Return Open selected URL in browser and quit selection mode
+
+O Open selected URL in browser without quitting selection mode
+
+Y Copy (yank) selected URL and quit selection mode
+
+Esc Cancel URL selection mode
+Tabs
+
+To add tabs to urxvt, add the following to your ~/.Xresources:
+
+URxvt.perl-ext-common:  default,tabbed
+
+To control tabs use:
+
+Shift+↓ new tab
+
+Shift+← go to left tab
+
+Shift+→ go to right tab
+
+Ctrl+← move tab to the left
+
+Ctrl+→ move tab to the right
+
+Ctrl+D: close tab
+
+You can change the colors of tabs with the following:
+
+URxvt.tabbed.tabbar-fg: 2
+URxvt.tabbed.tabbar-bg: 0
+URxvt.tabbed.tab-fg:    3
+URxvt.tabbed.tab-bg:    0
+
+For named tabs, see urxvt-tabbedex, (Shift+↑: names a tab).
+Fullscreen
+
+You can install the urxvt-fullscreen in the AUR and then set a key bind to put urxvt fullscreen.
+
+~/.Xdefaults:
+
+URxvt.keysym.F11: perl:fullscreen:switch
+
+Scrollwheel Support
+
+Install urxvt-vtwheel from the AUR and add it to your perl extensions within ~/.Xresources or ~/.Xdefaults:
+
+ URxvt.perl-ext-common:  ...,vtwheel,...
+
+Disabling Perl extensions
+
+If you do not use the perl extension features, you can improve the security and speed by disabling perl extensions completely.
+
+URxvt.perl-ext:
+URxvt.perl-ext-common:
+
+Colors
+
+Colors must be specified using color indexes: 0 to 15 correspond with the colors from the rxvt manual "Colors and Graphics" Section.
+
+COLORS AND GRAPHICS
+
+If graphics support was enabled at compile-time, rxvt can be queried with ANSI escape sequences and can address individual pixels instead of text
+characters. Note the graphics support is still considered beta code.
+
+In addition to the default foreground and background colours, rxvt can display up to 16 colours (8 ANSI colours plus high-intensity bold/blink
+versions of the same). Here is a list of the colours with their rgb.txt names.
+
+color0 	(black) 	= Black
+color1 	(red) 	        = Red3
+color2 	(green) 	= Green3
+color3 	(yellow) 	= Yellow3
+color4 	(blue) 	        = Blue3
+color5 	(magenta) 	= Magenta3
+color6 	(cyan) 	        = Cyan3
+color7 	(white) 	= AntiqueWhite
+color8 	(bright black) 	= Grey25
+color9 	(bright red) 	= Red
+color10 (bright green) 	= Green
+color11 (bright yellow) = Yellow
+color12 (bright blue) 	= Blue
+color13 (bright magenta)= Magenta
+color14 (bright cyan) 	= Cyan
+color15 (bright white) 	= White
+foreground 		= Black
+background 		= White
+
+It is also possible to specify the colour values of foreground, background, cursorColor, cursorColor2, colorBD, colorUL as a number 0-15, as a
+convenient shorthand to reference the colour name of color0-color15.
+
+Note that -rv ("reverseVideo: True") simulates reverse video by always swapping the foreground/background colours. This is in contrast to xterm(1)
+where the colours are only swapped if they have not otherwise been specified. For example,
+
+rxvt -fg Black -bg White -rv
+    would yield White on Black, while on xterm(1) it would yield Black on White.
+
+Improving Performance
+
+    Avoid the use of Xft fonts. If Xft fonts must be used, append :antialias=false to the setting value.[1] 
+
+    Build rxvt-unicode with disabled support for unnecessary features, --disable-xft and --disable-unicode3 in particular.[2] 
+
+    Limit the number of saveLines (option -sl) in the scrollback buffer to reduce memory usage.[3] 
+
+    Consider running urxvtd as a daemon accepting connections from urxvtc clients. 
+
+Cut and Paste
+Note: With the use of a VDT multiplexer, urxvt (or any VDT emulator) CLIPBOARD integration will not be effective, since it will not be possible to select all of the desired text in a straightforward fashion or at all, in some cases (e.g., when the active multiplexed terminal is changed to another one and then back to the original one, and one selects text beyond what is visible, which causes text from the other terminal to be displayed). Obviously this is due to the fact that the VDT emulator lacks the ability to distinguish between multiplexed terminals. Therefore, it would be effectively redundant for one who always uses a VDT multiplexer capable of maintaining a scrollback buffer and integrating with CLIPBOARD (e.g., tmux with customized key bindings) to integrate CLIPBOARD with urxvt.
+
+For users unfamiliar with Xorg data transfer methods, the exchange of information to and from rxvt-unicode can become a burden. Suffice to say that rxvt-unicode uses cut buffers which are typically loaded into the current PRIMARY selection by default.[4] Users are urged to review Wikipedia:X Window selection for additional information.
+Clipboard Management
+
+    Parcellite is a GTK+ clipboard manager which can also run in the background as a daemon. 
+
+    autocutsel provides command line and daemon interfaces to synchronize PRIMARY, CLIPBOARD and cut buffer selections. 
+
+    Glipper is a GNOME panel applet with older versions available for use in environments other than GNOME. 
+
+    Clipman (xfce-clipman-plugin) is a GUI clipboard manager plugin for the Xfce panel (xfpanel). 
+
+    xclip is a lightweight, command-line based interface to the clipboard. 
+
+Automatic Script Management
+
+Skottish[5] created a Perl script to automatically copy any selection in rxvt-unicode to the X clipboard. Save the following as /usr/lib/urxvt/perl/clipboard:
+
+#! /usr/bin/perl
+
+sub on_sel_grab {
+    my $query=quotemeta $_[0]->selection;
+    $query=~ s/\n/\\n/g;
+    $query=~ s/\r/\\r/g;
+    system( "echo -en " . $query . " | xsel -i -b -p" );
+}
+
+Xyne has also created his own variation of Skottish's script named urxvt-clipboard which is available in the AUR that allows the user to paste the selection with Ctrl+V instead of only with a middle mouse click:
+
+#! /usr/bin/perl
+
+sub on_sel_grab
+{
+  my $query = $_[0]->selection;
+  open (my $pipe,'|-','xsel -ib') or die;
+  print $pipe $query;
+  close $pipe;
+  open (my $pipe,'|-','xsel -ip') or die;
+  print $pipe $query;
+  close $pipe;
+}
+
+It also requires xsel and needs to be enabled in the *perl-ext-common or *perl-ext field in ~/.Xresources. For example:
+
+URxvt.perl-ext-common: default,clipboard
+
+The AUR package urxvt-perls-git is another option one can use. urxvt-perls-git includes the same functionality as urxvt-clipboard, in addition to the keyboard-select and url-select Perl extensions.
+Improved Kuake-like Behavior in Openbox
+
+This was originally posted on the forum by Xyne[6], and it relies on the xdotool found in the official repositories.
+Scriptlets
+
+Save this scriptlet from the urxvtc man page somewhere on your system as urxvtc (e.g., in ~/.config/openbox):
+
+#!/bin/sh
+urxvtc "$@"
+if [ $? -eq 2 ]; then
+   urxvtd -q -o -f
+   urxvtc "$@"
+fi
+
+and save this one as urxvtq:
+
+#!/bin/bash
+
+wid=$(xdotool search --classname urxvtq)
+if [ -z "$wid" ]; then
+  /path/to/urxvtc -name urxvtq -geometry 80x28
+  wid=$(xdotool search --classname urxvtq | head -1)
+  xdotool windowfocus $wid
+  xdotool key Control_L+l
+else
+  if [ -z "$(xdotool search --onlyvisible --classname urxvtq 2>/dev/null)" ]; then
+    xdotool windowmap $wid
+    xdotool windowfocus $wid
+  else
+    xdotool windowunmap $wid
+  fi
+fi
+
+A previous version of xdotool introduced a bug which disabled recognition of visible windows and thus led some users to use the following scriptlet in place of the previous one. This is no longer necessary as of xdotool >= 1.20100416.2809, but it has been left here for future reference.
+
+#!/bin/bash
+
+wid=$(xprop -name urxvtq | grep 'WM_COMMAND' | awk -F ',' '{print $3}' | awk -F '"' '{print $2}')
+if [ -z "$wid" ]; then
+  /path/to/urxvtc -name urxvtq -geometry 200x28
+  wid=$(xprop -name urxvtq | grep 'WM_COMMAND' | awk -F ',' '{print $3}' | awk -F '"' '{print $2}')
+  xdotool windowfocus $wid
+  xdotool key Control_L+l
+else
+  if [ -z "$(xprop -id $wid | grep 'window state: Normal' 2>/dev/null)" ]; then
+    xdotool windowmap $wid
+    xdotool windowfocus $wid
+  else
+    xdotool windowunmap $wid
+  fi
+fi
+
+Make sure that you change /path/to/urxvtc to the actual path to the urxvtc scriptlet that you saved above. We will be using urxvtc to launch both regular instances of urxvt and the kuake-like instance.
+urxvtq with tabbing
+
+If you want to have tabs in your kuake-like urxvtc (here called urxvtq) just replace the third line in your urxvtq:
+
+wid=$(xdotool search --name urxvtq)
+
+with:
+
+wid=$(xdotool search --name urxvtq | grep -m 1 "" )
+
+To activate the tab support, you can either replace the fifth line of your urxvtq:
+
+/path/to/urxvtc -name urxvtq -geometry 80x28
+
+with:
+
+/path/to/urxvtc -name urxvtq -pe tabbed -geometry 80x28
+
+or replace this line of your ~/.Xresources file:
+
+URxvt.perl-ext-common: default,matcher
+
+with
+
+URxvt.perl-ext-common: default,matcher,tabbed
+
+Tab control
+
+Shift+←: Switch to the tab left of the current one
+
+Shift+→: Switch to the tab right of the current one
+
+Shift+↓: Create a new tab
+
+You can also use your mouse to switch the tabs by clicking the wished one and create a new tab by clicking on [NEW].\\
+
+To close a tab just enter exit like you would to normally close a terminal.
+Openbox configuration
+
+Now add the following lines to the <applications> section of ~/.config/openbox/rc.xml:
+
+<application name="urxvtq">
+   <decor>no</decor>
+   <position force="yes">
+     <x>center</x>
+     <y>0</y>
+   </position>
+   <desktop>all</desktop>
+   <layer>above</layer>
+   <skip_pager>yes</skip_pager>
+   <skip_taskbar>yes</skip_taskbar>
+   <maximized>Horizontal</maximized>
+</application>
+
+and add these lines to the <keyboard> section:
+
+<keybind key="W-t">
+  <action name="Execute">
+    <command>/path/to/urxvtc</command>
+  </action>
+</keybind>
+<keybind key="W-grave">
+  <action name="Execute">
+    <execute>/path/to/urxvtq</execute>
+  </action>
+</keybind>
+
+Here too you need to change the /path/to/* lines to point to the scripts that you saved above. Save the file and then reconfigure Openbox. You should now be able to launch regular instances of urxvt with the Windows/Super key + T, and toggle the kuake-like console with the Windows/Super key + ` (the grave key also known as the backtick).
+Further configuration
+
+The advantage of this configuration over the urxvt kuake Perl script is that Openbox provides more keybinding options such as modifier keys. The kuake script hijacks an entire physical key regardless of any modifier combination. Review the Openbox bindings documentation for the full range or possibilities.
+
+The Openbox per-app settings can be used to further configure the behavior of the kuake-like console (e.g. screen position, layer, etc.). You may need to change the "geometry" parameter in the urxvtq scriptlet to adjust the height of the console.
+Related scripts
+
+    hbekel has posted a generalized version of the urxvtq here which can be used to toggle any application using xdotool. 
+
+    http://www.jukie.net/~bart/blog/20070503013555 - A script for opening URLs with your keyboard instead of mouse with urxvt. 
+
+Troubleshooting
+Transparency not working after upgrade to V9.09
+
+The rxvt-unicode devs removed compatibility code for a lot of non standard wallpaper setters with this update. Using a non compatible wallpaper setter will break transparency support. Recommended wallpaper setters:
+
+    feh
+    hsetroot
+    esetroot 
+
+To make true transparency work, make sure to comment URxvt.tintColor and URxvt.inheritPixmap.
+Remote Hosts
+
+If you are logging into a remote host, you may encounter problems when running text-mode programs under rxvt-unicode. This can be fixed by copying /usr/share/terminfo/r/rxvt-unicode from your local machine to your host at ~/.terminfo/r/rxvt-unicode. Same for rxvt-unicode-256color.
+
+Some remote systems do not change title automatically unless you specify TERM=xterm. To fix the issue add this line to .bashrc on the remote machine:
+
+PROMPT_COMMAND='echo -ne "\033]0;${USER}@${HOSTNAME}:${PWD}\007"'
+
+Using rxvt-unicode as gmrun terminal
+
+Unlike some other terminals, urxvt expects the arguments to -e to be given separately, rather than grouped together with quotes. This causes trouble with gmrun, which assumes the opposite behavior. This can be worked around by putting an "eval" in front of gmrun's "Terminal" variable in .gmrunrc:
+
+Terminal = eval urxvt
+TermExec = ${Terminal} -e
+
+(gmrun uses /bin/sh to execute commands, so the "eval" is understood here.) The "eval" has the side-effect of "breaking up" the argument to -e in the same way that $@ does in Bash, making the command intelligible to urxvt.
+My numerical keypad acts weird and generates differing output? (e.g. in vim)
+
+Some Debian GNU/Linux users seem to have this problem, although no specific details were reported so far. It is possible that this is caused by the wrong TERM setting, although the details of whether and how this can happen are unknown, as TERM=rxvt should offer a compatible keymap. See the answer to the previous question, and please report if that helped.
+
+However, using the xmodmap program (xorg-xmodmap), you can re-map your numpad keys back.
+
+1. Check the keycode that your numerical keypad (numpad) generates using xev program.
+
+        Start xev program
+        Press your numpad keys and looks for ... keycode xxx ... in xev output. For example, numpad 1 in my keyboard is also "End" key, that have a 'keycode 87'. 
+
+2. Create or modify your xmodmap file, usually ~/.Xmodmap, with the content representing your keycode.
+
+    Example of xmodmap file with numpad keycode, 
+
+keycode 63 = KP_Multiply
+keycode 79 = Home KP_7
+keycode 80 = Up KP_8
+keycode 81 = Prior KP_9
+keycode 82 = KP_Subtract
+keycode 83 = Left KP_4
+keycode 84 = KP_5
+keycode 85 = Right KP_6
+keycode 86 = KP_Add
+keycode 87 = End KP_1
+keycode 88 = Down KP_2
+keycode 89 = Next KP_3
+keycode 90 = Insert KP_0
+keycode 91 = Delete KP_Decimal
+keycode 112 = Prior
+keycode 117 = Next
+
+3. Load your xmodmap file at X session start-up.
+
+    For example, in ~/.xinitrc file add, 
+
+...
+xmodmap ~/.Xmodmap
+...
+
+External resources
+
+    rxvt-unicode - Official site
+    rxvt-unicode FAQ - Official FAQ
+    rxvt-unicode Reference - Official manual page
+    urxvtperl - Official Perl extension reference
+    man urxvt 

@@ -1,0 +1,348 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-22T21:38:22+08:00
+
+====== The Linux USB sub-system ======
+Created Tuesday 22 November 2011
+
+http://www.linux-usb.org/USB-guide/c15.html
+
+===== USB Introduction =====
+
+This chapter provides a brief introduction into the Universal Serial Bus (USB) in general, and may be skipped if you are already familiar with the bus, and its software and hardware architecture.
+
+===== The Universal Serial Bus =====
+
+In 1994 an alliance of four industrial partners (Compaq, Intel, Microsoft and NEC) started to specify the Universal Serial Bus (USB). The bus was originally designed with these intentions:
+
+    Connection of the PC to the telephone
+    Ease-of-use
+    Port expansion
+
+The specification (version 1.0) was first released in January 1996 and the latest official version 1.1 was released in September 1998 The document is still under development and a version 2.0 was announced in 1999. The USB is strictly **hierarchical **and it is controlled by **one host**. The host uses a **master / slave** protocol to communicate with attached USB devices. This means that every kind of communication is **initiated by the host** and devices cannot establish any direct connection to other devices. This seems to be a drawback in comparison to other bus architectures but it is not because the USB was designed as a compromise of costs and performance. The master / slave protocol **solves implicitly problems** like collision avoidance or distributed bus arbitration. The current implementation of the USB allows** 127** devices to be connected at the same time and the total communication bandwidth is limited to **12Mbit/s**. Howewer use of low speed devices, management of USB "interrupts" and other overheads mean that actual throughput cannot exceed about __8.5Mbit/s__ under near ideal conditions, and typical performance may be around __2Mbit/s__.
+
+===== Host Controllers =====
+
+Most modern **motherboard chipsets **provide a USB host controller. Older machines which are not equipped with a USB host controller can be upgraded using a PCI cards with a host controller built in.
+
+USB host controllers are compatible with either the Open Host Controller Interface __(OHCI,__ by Compaq) or the Universal Host Controller Interface (__UHCI,__ by Intel) standard. Both types have the same capabilities and USB devices work with both host controller types. Basically the hardware of UHCI is simpler and therefore it is cheaper, but needs a more complex device driver, which could cause slightly more CPU load. 
+
+
+===== USB Devices and Transfer Characteristics =====
+
+There are a wide range of USB devices intended for a wide range of purposes, and this means that implementation details can vary widely.
+
+A device can be __self powered__, __bus powered__ or __both__. The USB can provide a power supply up to __500mA__ for its devices. If there are only bus powered devices on the bus the maximum power dissipation could be exceeded and therefore self powered devices exist. They need to have their own power supply. Devices that support both power types can switch to self powered mode when attaching an external power supply.
+
+Even the maximum communication speed can differ for particular USB devices. The USB specification differentiates between __low speed and full speed devices__.
+ Low speed devices (such as mice, keyboards, joysticks etc.) communicate at** 1.5MBit/s **and have only limited capabilities. Full speed devices (such as audio and video systems) can use up to 90% of the 12Mbit/s which is about **10Mbit/s **including the protocol overhead.
+{{~/sync/notes/zim/Linux/硬件探秘/Linux下的硬件驱动——USB设备/The_Linux_USB_sub-system/slide_4.jpeg}}
+							Figure 1. USB Topology
+
+Version 2.0 of the USB specification is being developed, and is expected to deliver up to 480Mbit/s raw throughput.
+
+=== Hubs ===
+
+Physically there exist one, two or four USB ports at the rear panel of a computer. These ports can be used to attach __normal devices or a hub__. A hub is a **USB device** which extends the number of ports to connect other USB devices. The maximum number of user devices is reduced by the number of hubs on the bus (i.e. if you attach 50 hubs, then at most 77 (=127-50) additional devices can be attached. Hubs are __always full speed__ devices. 
+
+If the hub is self powered, then any device can be attached to it. However if the hub is bus powered, then only **low power** (100mA max) devices can be attached to it. A bus powered hub should not be connected to another bus powered hub - you should alternate between bus powered and self powered hubs.
+
+Normally the physical ports of the host controller are handled by a__ virtual root hub__. This hub is simulated by the host controllers** device driver** and helps to unify the bus topology. So every port can be handled in the same way by the USB subsystem's hub driver (see Figure 1 in the Section called USB Devices and Transfer Characteristics).
+
+=== Data Flow Types ===
+
+The communication on the USB is done in two directions and uses four different transfer types. Data directed from the host to a device is called **downstream** or OUT transfer. The other direction is called **upstream** or IN transfer. Depending on the device type different transfer variants are used:
+
+    **Control transfers** are used to request and send reliable short data packets. It is used to configure devices and every one is required to support a minimum set of control commands. The standard commands are:
+
+    GET_STATUS
+    CLEAR_FEATURE
+    SET_FEATURE
+    SET_ADDRESS
+    GET_DESCRIPTOR
+    SET_DESCRIPTOR
+    GET_CONFIGURATION
+    SET_CONFIGURATION
+    GET_INTERFACE
+    SET_INTERFACE
+    SYNCH_FRAME
+
+    Further control commands can be used to transfer vendor specific data.
+
+ **   Bulk transfers** are used to request or send** reliable** data packets up to the full bus bandwidth. Devices like scanners or scsi adapters use this transfer type.
+
+    **Interrupt transfers **are similar to bulk transfers which are **polled periodically**. If an interrupt transfer was submitted the host controller driver will automatically repeat this request in a specified interval (1ms - 127ms).
+
+    **Isochronous transfers** send or receive data streams in realtime with guaranteed bus bandwidth but** without** any reliability. In general these transfer types are used for audio and video devices.
+
+
+=== Enumeration and Device Descriptors ===
+
+Whenever a USB device is attached to the bus it will be __enumerated__ by the USB subsystem - i.e an **unique device number** (1-127) is assigned and then the__ device descriptor__ is read. The desciptor is a data structure which contains information about the device and its properties. The USB standard defines a hierarchy of descriptors (see Figure 2).
+{{~/sync/notes/zim/Linux/硬件探秘/Linux下的硬件驱动——USB设备/The_Linux_USB_sub-system/desctree.gif}}
+Figure 2. USB Descriptor
+
+=== Standard Descriptors ===
+
+    A Device Descriptor describes **general information** about a USB device. It includes information that applies globally to the device and all of the device s configurations. A USB device has only one device descriptor.
+
+    The Configuration Descriptor gives information about a** specific device configuration**. A USB device has one or more configuration descriptors. Each configuration has one or more** interfaces** and each interface has zero or more **endpoints**. An endpoint is not shared among different interfaces within a single configuration, although a single interface can have several alternate settings which may use the same endpoint. Endpoints may be shared among interfaces that are part of different configurations without this restriction. Configurations can only be activated by the standard control transfer **set_configuration**. Different configurations can be used to change global device settings, such as power consumption.
+
+    An Interface Descriptor describes a **specific interface** within a configuration. A configuration provides one or more interfaces, each with zero or more endpoint descriptors describing a unique set of endpoints within the configuration. An interface may include alternate settings that allow the endpoints and/or their characteristics to be varied after the device has been configured. The default setting for an interface is always alternate setting zero. Alternate settings can be selected exclusively by the standard control transfer set_interface. For example a multifunctional device like a video camera with internal microphone could have three alternate settings to change the bandwidth allocation on the bus.
+
+* Camera activated
+* Microphone activated
+* Camera and microphone activated
+
+    An Endpoint Descriptor contains information required by the host to determine the __bandwidth requirements__ of each endpoint. An endpoint represents a **logical data source or sink of a USB device**. The endpoint zero is used for all control transfers and there is never a descriptor for this endpoint. The USB specification uses the terms pipe and endpoint interchangably.
+{{~/sync/notes/zim/Linux/硬件探秘/Linux下的硬件驱动——USB设备/The_Linux_USB_sub-system/intftree.gif}}
+    String Descriptors are optional and provide additional information in human readable unicode format. They can be used for vendor and device names or serial numbers.
+
+=== Device Classes ===
+
+The standard device and interface descriptors contain fields that are related to __classification: class, sub-class and protocol.__
+
+ These fields may be used by a host system to associate a device or interface to a driver, depending on how they are specified by the class specification. Valid values for the class fields of the device and interface descriptors are defined by the USB Device Working Group.
+
+Grouping devices or interfaces together in classes and then specifying the characteristics in a Class Specification allows the development of host software which can manage multiple implementations based on that class. Such host software adapts its operation to a specific device or interface using descriptive information presented by the device. A class specification serves as a framework defining the minimum operation of all devices or interfaces which identify themselves as members of the class.
+
+=== Human Interface Devices (HID) ===
+
+The__ HID class __consists primarily of devices that are used by humans to control the operation of computer systems. Typical examples of HID class devices include:
+
+* Keyboards and pointing devices for example, standard mouse devices, trackballs, and joysticks.
+* Front-panel controls for example: knobs, switches, buttons, and sliders.
+* Controls that might be found on devices such as telephones, VCR remote controls, games or simulation devices for example: data gloves, throttles, steering wheels, and rudder pedals.
+
+=== USB Device Drivers ===
+
+Finding device drivers for USB devices presents some interesting situations. In some cases the whole USB device is handled by a single device driver. In other cases, each interface of the device has a separate device driver.
+
+===== How to get USB devices working under Linux =====
+You need a late version kernel. Kernel versions 2.2.7 and later contain the USB code. You should, in an ideal world, be running the current 2.4.0-test kernel, ideally with any pre-patches for the next kernel. The current 2.2.x kernels do contain some USB code, but it is less well supported, and development is patchy. USB code is in fairly early development, so the changes between each version (and the bugs) tend to change fairly fast. Support on the mailing list for anything except the lastest version is scant at best.
+
+You need to__ configure USB into your kernel__. Use of **make menuconfig** is recommended. Under USB support, you need to select //Support for USB//. You also need to select either //UHCI (Intel PIIX4, VIA, ...) support, UHCI Alternate Driver (JE) support or OHCI-HCD (Compaq, iMacs, OPTi, SiS, ALi, ...) support. //Which one you select is dependent on what kind of **motherboard or adapter you have**. Intel and Via motherboards, and Via-based adapters are UHCI, and you can use either of the two UHCI drivers - there seems to be little user visible difference between them. Ali and SiS chipsets, Compaq and NEC motherboards, iMacs and any adapter using Opti chips (just about all of them) are OHCI, and you should use OHCI-HCD. If you do not know what kind of controller to choose, check your motherboard documentation. You can also look at /proc/pci for a hint - if the USB entry is of the form 0xHHHH, where HHHH are hex digits (e.g. something like I/O at 0xe400), then it is UHCI. If it is of the form 32 bit memory at 0xHH000000, where HH are hex digits (e.g. something like 32 bit memory at 0xee000000), then it is OHCI. Failing that, just try both.
+
+Always build in the__ Preliminary USB device filesystem__. Leaving this out will make resolving problems almost impossible, and is essential if you need to check that your kernel is configured correctly, and your USB devices are being recognised correctly.
+
+You also need to select **whichever devices **you want to use, for example //USB Human Interface Device (HID) //support for a USB keyboard, mouse, joystick, tablet or gamepad, //USB Scanner support //for certain scanners,// USB Audio support //for USB speakers, //USB Modem (CDC ACM) support //for a POTS or ISDN modem, //USB Printer support //for a USB printer, //USB Serial Converter support //(with the appropriate subordinate options) for some serial port type devices, //USB CPiA Camera support// for cameras based on the Vision CPiA chipset, USB IBM (Xirlink) C-it Camera support for camera based on the IBM camera chipset, USB OV511 Camera support for cameras based on OmniVision's OV511 chipset, USB Kodak DC-2xx Camera support for downloading images from Kodak's DC-200 series cameras, __USB Mass Storage support __for mass storage devices, USS720 parport driver for certain parallel port adapters, DABUSB driver for an experimental Digital Audio Broadcast receiver and PLUSB Prolific USB-Network driver for certain USB to USB type connections. You should be able to use modules, kernel only, or split modules and kernel code.
+
+USB hubs are **automatically supported**. Some devices may stop and start working between kernel versions. Remember that you are using experimental code. Devices not listed in this document are not working at the time of writing, although developers are always welcome to contribute to the current codebase.
+
+Rebuild the kernel and the modules (if you configured to build as modules), and install the new kernel and the new modules. Reboot the system. If you need instruction on how to do this, refer to the Linux Kernel HOWTO.
+
+If you are using modules, you need to load the following modules:
+
+    usbcore.o  uhci-hcd.o, or ohci-hcd.o
+
+and any driver modules, such as scanner.o or printer.o.
+
+Inspect the__ kernel logs__. If there isn't anything that could be USB related, likely causes are use of the wrong driver (UHCI when you needed OHCI or OHCI when you needed UHCI), not physically installing the hardware, a BIOS configuration that disables USB or stuffing up the configuration or installation of the kernel.
+
+===== USB Device Filesystem =====
+The USB device filesystem is a dynamically generated filesystem, similar to the /proc filesystem. This filesystem can be mounted just about anywhere, however it is customarily mounted on __/proc/bus/usb__, which is an entry node created by the USB code, intended to be used as a mount point for this system. Mounting in other locations may break user space utilities, but should not affect the kernel support.
+
+You need to select "__Preliminary USB Device Filesystem__" to make this work. You also need to enable general /proc support, and to have it mounted (normally automatic).
+
+To mount the filesystem, you need to be root. Use the mount command: **mount -t usbdevfs（或者 usbfs） none /proc/bus/usb**. Note that the none keyword is arbitrary - you can use anything, and some people prefer to use usbdevfs, as it makes the mount output look better.
+
+If you do not want to have to mount the filesystem each time you reboot the system, you can add the following to /etc/fstab after the /proc entry:
+
+none            /proc/bus/usb             usbdevfs        defaults   0   0
+
+This has the same effect as the mount command.
+After you have mounted the filesystem, the contents of /proc/bus/usb should look something like:
+
+dr-xr-xr-x   1 root     root            0 Jan 26 10:40 001
+-r--r--r--   1 root     root            0 Jan 26 10:40 devices
+-r--r--r--   1 root     root            0 Jan 26 10:40 drivers
+
+. You may have more than one numbered directory entry if your machine has more than one universal serial bus controller.
+Full interpretation of the devices and drivers files is provided later in this guide, in the user's section. The numbered entries are machine readable, but are not usually of any use to a user.
+
+===== USB Human Interface Device (HID) Configuration =====
+
+=== General HID Configuration ===
+
+There are two options for using a USB mouse or a USB keyboard - the standalone __Boot Protocol (HIDBP) __way and the full featured __HID driver__ way. The Boot Protocol way is generally inferior, and this document describes the full featured way. The Boot Protocol way may be appropriate for embedded systems and other systems with resource constraints and no real need for the full keyboard and mouse capabilities.
+
+It is important to remember that the HID driver **handles** those devices (or actually those interfaces on each device) that claim to comply with the **Human Interface Device (HID) specification**. However the HID specification doesn't say anything about what the HID driver should do with information received from a HID device, or where the information that is sent to a device comes from, since this is obviously dependent on what the device is supposed to be doing, and what the operating system is. Linux (at the operating system kernel level) supports **four interfaces** to a HID device - keyboard, mouse, joystick and a generic interface, known as the __event interface__. These are implemented by the__ Input __device level.
+
+=== HID Mouse Configuration ===
+
+In the kernel configuration stage, you need to turn on **USB Human Interface Device (HID) support** in the **USB support** and **Mouse Support** in the** Input core support**. You don't need to worry about the screen resolution entries for a normal mouse - these are for mouse-like devices such as a graphics tablet. Do not turn on USB HIDBP Mouse support. Perform the normal kernel rebuild and installation steps. If you are installing as modules, you need to load the **input.o, hid.o and mousedev.o **modules.
+
+Plug in a USB mouse and check that your mouse has been correctly sensed by the kernel. If you don't have a kernel message, look for the changes to /proc/bus/usb/devices.
+
+Since USB supports multiple identical devices, you can have multiple __mice(鼠标)__ plugged in. You can get each mouse seperately, or you can get them all mixed together. You almost always want the mixed version, and that is what will be used in this example. You need to set up a device node entry for the __mixed mice__. It is customary to create the entries for this device in the** /dev/input/ **directory. Use the following commands:
+
+mkdir /dev/input
+mknod /dev/input/mice c 13 63
+
+If you** cat /dev/input/mice** you should see some bizarre looking characters as you move the mouse or click any of the buttons.
+
+If you want to use the mouse under X, you have various options. Which one you select is dependent on what version of XFree86 you are using and whether you are using only USB for your mouse (or mice), or whether you want to use a USB mouse and some other kind of pointer device.
+
+    You need to edit the XF86Config file (usually /usr/X11R6/lib/X11/XF86Config or /etc/X11/XF86Config).
+
+    If you are using XFree86 version 4.0 or later, add a InputDevice section that looks like the following:
+
+    Section "InputDevice"
+         Identifier  "USB Mice"
+         Driver     ** "mouse"**
+         Option      "Protocol"   "IMPS/2"
+         Option      **"Device"     "/dev/input/mice"**
+    EndSection
+
+    or, if you want to use a wheel mouse, something like:
+
+    Section "InputDevice"
+         Identifier  "USB Mice"
+         Driver      "mouse"
+         Option      "Protocol"   "IMPS/2"
+         Option      "Device"     "/dev/input/mice"
+         Option      "ZAxisMapping"   "4 5"
+         Option      "Buttons"        "5"
+    EndSection
+
+    may be more useful. Consult the XFree86 documentation for a detailed explaination and more examples.
+
+    You also need to add an entry to each applicable **ServerLayout Section**. These are normally at the end of the configuration file. If you only have a USB mouse (or USB mice), then replace the line with the "CorePointer" entry with the following line:
+
+         InputDevice "USB Mice" "CorePointer"
+
+    If you want to use both a USB mouse (or USB mice) and some other kind of pointer device, then add (do not replace) the following line to the applicable ServerLayout sections:
+
+         InputDevice "USB Mice" "SendCoreEvents"
+
+    If you are using only a USB mouse (or USB mice) with XFree86 3.3, edit the Pointer section so that it looks like the following:
+
+    Section "Pointer"
+        Protocol    "IMPS/2"
+        Device      "/dev/input/mice"
+    EndSection
+
+    If you are trying to use a USB mouse (or USB mice) in addition to another pointer type device with XFree86 3.3, then you need to use the XInput extensions. Keep the existing Pointer (or modify it as required for the other device if you are doing an initial installation), and add the following entry (anywhere sensible, ideally in the Input devices area):
+
+    Section "Xinput"
+       SubSection "Mouse"
+            DeviceName   "USB Mice"
+            Protocol     "IMPS/2"
+            Port         "/dev/input/mice"
+            AlwaysCore
+       EndSubSection
+    EndSection
+
+    Restart the X server. If you don't have any mouse support at this point, remember that Ctrl-Alt-F1 will get you a virtual terminal that you can use to kill the xserver and start debugging from the error messages.
+
+If you want to use the mouse under __gpm__, run (or kill and restart if it is already running) gpm with the following options. **gpm -m /dev/input/mice -t imps2 **(as superuser remember). You can make this the default if you edit the initialisation files. These are typically named something like rc.d and are in /etc/rc.d/ on RedHat distributions.
+
+If you have both a USB mouse (or USB mice) and some other kind of pointer device, you may wish to use gpm in repeater mode. If you have a__ PS/2 mouse on /dev/psaux __and a USB mouse (or USB mice) on__ /dev/input/mice__, then the following gpm command would probably be appropriate: gpm -m /dev/input/mice -t imps2 -M -m /dev/psaux -t ps2 -R imps2. Note that this will make the output appear on /dev/gpmdata, which is a FIFO and does not need to be created in advance. You can use this as the mouse "device" to non-X programs, and both mice will work together.
+
+=== Keyboard Configuration ===
+
+You may not need any operating system support at all to use a USB keyboard if you have a PC architecture. There are several BIOS available where the BIOS can provide USB support from a keyboard plugged into the root hub on the motherboard. This may or may not work through other hubs and does not normally work with add-in boards, so you might want to add in support anyway. You definately want to add keyboard support if you add any operating system support, as the Linux USB support will disable the BIOS support. You also need to use Linux USB keyboard support if you want to use any of the "multimedia" types keys that are provided with some USB keybords.
+
+In the kernel configuration stage, you need to turn on** USB Human Interface Device (HID) support** in USB support and **Keyboard support in Input core support**. Do not turn on USB HIDBP Keyboard support. Perform the normal kernel rebuild and installation steps. If you are installing as modules, you need to load the** hid.o, input.o and keybdev.o** modules.
+
+Check the kernel logs to ensure that your keyboard is being correctly sensed by the kernel.
+
+At this point, you should be able to use your USB keyboard as a normal keyboard. Be aware that LILO is not USB aware, and that unless your BIOS supports a USB keyboard, you may not be able to select a non-default boot image using the USB keyboard. I have personally used only a USB keyboard (and USB mouse) and have experienced no problems.
+
+=== USB Joystick and Gamepad support ===
+
+In the kernel configuration stage, you need to turn on USB Human Interface Device (HID) support in USB support and **Joystick support in Input core support**. Perform the normal kernel rebuild and installation steps. If you are installing as modules, you need to load the **hid.o, input.o and joydev.o** modules.
+
+You need to set up a **device node** entry for the joystick. It is customary to create the entries for USB device in the /dev/input/ directory. You can use the following commands to create four device nodes, although there is no reason why you can not use more:
+
+mknod /dev/input/js0 c 13 0
+mknod /dev/input/js1 c 13 1
+mknod /dev/input/js2 c 13 2
+mknod /dev/input/js3 c 13 3
+
+If you plug in a gamepad or joystick and cat /dev/input/js0 you should see some bizarre looking characters as you move the stick or click any of the buttons.
+
+You should now be able to use the USB joystick or gamepad with any of the normal games or other joystick compatible applications.
+
+
+=== USB Audio Support ===
+USB audio systems such as speakers normally comply with the **USB audio class specification**. If your audio device does not comply with the specification, it will not work with Linux at this time.
+
+You need to turn on the** Sound card support** kernel option, which is in the** Sound section**. You will then be able to turn on the **USB Audio support** option in the normal **USB section**.
+
+If you elected to use modules, you need to load the module called **audio.o**.
+
+You can test your installation by dumping some random data out to the audio interface, using a command like **cat /bin/bash > /dev/dsp**. USB audio is integrated into the normal Linux sound architecture, and most tools should work fine with USB speakers. See the Sound HOWTO for more details and suggestions.
+
+=== USB Serial Converter support ===
+This serial driver supports a wide range of USB to serial adapters. It also allows communication with the Handspring Visor. You need to turn on **USB Serial Converter support**, and then select whichever of the various **particular drivers** you need. The __Generic Serial Driver__ can be used with a wide range of converters, by specifying the vendor and product ID codes when you load the USB serial converter module: **insmod usb-serial.o** vendor=0xVVVV product-0xPPPP, where you need to change the VVVV and PPPP to match your device.
+
+The serial port driver uses a major number of 188. Up to sixteen serial ports are supported. To create the appropriate device entries, use the following commands:
+
+mknod /dev/usb/ttyUSB0 c 188 0
+mknod /dev/usb/ttyUSB1 c 188 1
+mknod /dev/usb/ttyUSB2 c 188 2
+mknod /dev/usb/ttyUSB3 c 188 3
+mknod /dev/usb/ttyUSB4 c 188 4
+mknod /dev/usb/ttyUSB5 c 188 5
+mknod /dev/usb/ttyUSB6 c 188 6
+mknod /dev/usb/ttyUSB7 c 188 7
+mknod /dev/usb/ttyUSB8 c 188 8
+mknod /dev/usb/ttyUSB9 c 188 9
+mknod /dev/usb/ttyUSB10 c 188 10
+mknod /dev/usb/ttyUSB11 c 188 11
+mknod /dev/usb/ttyUSB12 c 188 12
+mknod /dev/usb/ttyUSB13 c 188 13
+mknod /dev/usb/ttyUSB14 c 188 14
+mknod /dev/usb/ttyUSB15 c 188 15
+
+You should now be able to plug in a serial device into the adapter, and use the /dev/usb/ttyUSB0 just as if it were a normal serial port.
+
+To communicate with the Handspring Visor, you need an additional application package known as Pilot-Xfer. Installation and use of this package is covered later in this guide.
+
+=== Mass Storage Devices ===
+The mass storage device driver can potentially be used with a wide a wide range of USB devices, not all of which would normally be considered to be mass storage. This is because the driver is really__ an interface__ between the **USB stack and the SCSI layer**. Despite this, the instructions in this section are oriented around devices like USB floppy drives, Zip drives, LS120 drives and USB CDROMs.
+
+Since the mass storage driver __presents the USB device as a SCSI device__, you need to turn on **SCSI support**, which is under SCSI support in the configuration script. You should also turn on subordinate options as appropriate to your mass storage device - usually one or more of **SCSI disk support**, **SCSI tape support**, **SCSI CD-ROM support** and **SCSI generic support**.
+
+After you have compiled the kernel and rebooted (or added the relevant modules, which is __usb-storage.o__), you should check /proc/scsi/scsi. Information about your device should be listed.
+
+You can now mount your device. The exact syntax depends on the device type. The best way is to make suitable entries in /etc/fstab. A suitable entry for a floppy disk would be:
+
+/dev/sda    /mnt/usbfd       auto            noauto,user 0   0
+
+A suitable entry for a Zip disk would be:
+
+/dev/sda4    /mnt/usbzip      vfat            noauto,user 0   0
+
+A suitable entry for a CDROM disk would be:
+
+/dev/scd0    /mnt/usbcdrom    iso9660         ro,noauto,user 0   0
+
+A suitable entry for a hard disk with a single partition would be:
+
+/dev/sda1    /mnt/usbhd       ext2            defaults   1   2
+
+Note that the above entries assume you have no other SCSI devices. If you do have other devices, then the USB disk may not be /dev/sda, but could instead be /dev/sdb, /dev/sdc or some other device. You would then need to substitute the right device entry for /dev/sda or /dev/scd0 in the entries above.
+
+Having created the entr[y/ies] in /etc/fstab, you need to create matching mount point[s] in the actual filesystem. So if you made an entry as shown above for the USB floppy disk, then the mount point would be made (as root) by:
+
+mkdir /mnt/usbfd
+
+You should now be able to mount your floppy disk with a command like:
+
+mount /mnt/usbfd
+
+or like:
+
+mount /dev/sda
+
+=== PLUSB Prolific USB-Network driver ===
+Prolific manufacture a range of USB chips, including the PL2301 and PL2302 devices that allow__ two USB host controllers to be linked__, providing a simple point to point link at up to 5Mbps. This driver supports both PL2301 andPL2302 chips.
+
+Aserton, Bencent, Butterfly, Camtel, Longshine, Prolific, Share Plus, SIIG, StarMount, Swann, Univex, USBdevices and VVMer cables are all known to use the PL2301 or PL2302 chips. Entrega, Xircom and Belkin adapters do not use Prolific chips and are not supported by this driver.
+
+In addition to selecting this option to either be compiled into the kernel or to be build as a module, you need to configure the **appropriate networking interfaces.** If you have two machines (say zhora and rachel, then on zhora you would enter ifconfig __plusb0__ 192.168.0.1 __pointopoint __192.168.0.2. On rachel you would enter ifconfig plusb0 192.168.0.2 pointopoint 192.168.0.1. To test that it is working, on zhora, enter ping 192.168.0.2. If you get packets back, it is working correctly.
+
+For further information on networking, I suggest that you refer to the many excellent Linux networking documents, including the Linux Network Administrators' Guide and the Linux Network HOWTO.
+

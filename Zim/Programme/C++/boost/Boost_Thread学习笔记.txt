@@ -1,0 +1,692 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-14T19:26:41+08:00
+
+====== Boost Thread学习笔记 ======
+Created Tuesday 14 February 2012
+
+http://www.blogjava.net/LittleDS/archive/2008/05/18/201236.html
+
+thread自然是boost::thread库的主角，但thread类的实现总体上是比较简单的，前面已经说过，thread只是一个跨平台的线程封装库，其中按照所使用的编译选项的不同，分别决定使用 Windows线程API还是pthread，或者Macintosh Carbon平台的thread实现。以下只讨论Windows，即使用 BOOST_HAS_WINTHREADS的情况。
+thread类提供了两种构造函数：
+thread::thread()
+thread::thread(const function0<void>& threadfunc)
+第一种构造函数用于调用GetCurrentThread构造一个当前线程的thread对象，第二种则通过传入一个函数或者一个functor来创建一个新的线程。第二种情况下，thread类在其构造函数中间接调用CreateThread来创建线程，并将线程句柄保存到成员变量m_thread中，并执行传入的函数，或执行functor的operator ()方法来启动工作线程。
+
+我们可以用以下三种方式启动一个新线程：
+1、传递一个工作函数来构造一个工作线程
+
+ 1 #include <boost/thread/thread.hpp>
+ 2 #include <boost/thread/mutex.hpp>
+ 3 #include <iostream>
+ 4 
+ 5 boost::mutex io_mutex;
+ 6 
+ 7 void count()    // worker function
+ 8 {
+ 9     for (int i = 0; i < 10; ++i)
+10     {
+11         boost::mutex::scoped_lock lock(io_mutex);
+12         std::cout << i << std::endl;
+13     }
+14 }
+15 
+16 int main(int argc, char* argv[])
+17 {
+18     boost::thread thrd1(&count);
+19     boost::thread thrd2(&count);
+20     thrd1.join();
+21     thrd2.join();
+22 
+23     return 0;
+24 }
+25 
+
+2、传递一个functor对象来构造一个工作线程
+
+ 1 #include <boost/thread/thread.hpp>
+ 2 #include <boost/thread/mutex.hpp>
+ 3 #include <iostream>
+ 4 
+ 5 boost::mutex io_mutex;
+ 6 
+ 7 struct count
+ 8 {
+ 9     count(int id) : id(id) { }
+10 
+11     void operator()()
+12     {
+13         for (int i = 0; i < 10; ++i)
+14         {
+15             boost::mutex::scoped_lock lock(io_mutex);        // lock io, will be explained soon.
+16             std::cout << id << ": " << i << std::endl;
+17         }
+18     }
+19 
+20     int id;
+21 };
+22 
+23 int main(int argc, char* argv[])
+24 {
+25     boost::thread thrd1(count(1));
+26     boost::thread thrd2(count(2));
+27     thrd1.join();
+28     thrd2.join();
+29     return 0;
+30 }
+31 
+
+3、无需将类设计成一个functor，借助bind来构造functor对象以创建工作线程
+
+ 1 #include <boost/thread/thread.hpp>
+ 2 #include <boost/thread/mutex.hpp>
+ 3 #include <boost/bind.hpp>
+ 4 #include <iostream>
+ 5 
+ 6 boost::mutex io_mutex;
+ 7 
+ 8 struct count
+ 9 {
+10     static int num;
+11     int id;
+12 
+13     count() : id(num++) {}
+14 
+15     int do_count(int n)
+16     {
+17         for (int i = 0; i < n; ++i)
+18         {
+19             boost::mutex::scoped_lock lock(io_mutex);
+20             std::cout << id << ": " << i << std::endl;
+21         }
+22         return id;
+23     }
+24 };
+25 
+26 int count::num = 1;
+27 
+28 int main(int argc, char* argv[])
+29 {
+30     count c1;
+31     boost::thread thrd1(boost::bind(&count::do_count, &c1, 10));
+32     thrd1.join();
+33     return 0;
+34 }
+
+其中bind是一个函数模板，它可以根据后面的实例化参数构造出一个functor来，上面的boost::bind(&count::do_count, &c1, 10)其实等价于返回了一个functor：
+struct countFunctor
+{
+    int operator() ()
+    {
+        (&c1)->do_count(10);    // just a hint, not actual code
+    }
+};
+因此，以后就跟2中是一样的了。
+
+除了thread，boost::thread另一个重要组成部分是mutex，以及工作在mutex上的boost::mutex::scoped_lock、condition和barrier，这些都是为实现线程同步提供的。
+
+mutex
+boost提供的mutex有6种：
+boost::mutex
+boost::try_mutex
+boost::timed_mutex
+boost::recursive_mutex
+boost::recursive_try_mutex
+boost::recursive_timed_mutex
+下面仅对boost::mutex进行分析。
+mutex类是一个CriticalSection（临界区）封装类，它在构造函数中新建一个临界区并InitializeCriticalSection，然后用一个成员变量
+void* m_mutex;
+来保存该临界区结构。
+除此之外，mutex还提供了do_lock、do_unlock等方法，这些方法分别调用EnterCriticalSection、 LeaveCriticalSection来修改成员变量m_mutex（CRITICAL_SECTION结构指针）的状态，但这些方法都是private的，以防止我们直接对mutex进行锁操作，所有的锁操作都必须通过mutex的友元类detail::thread::lock_ops<mutex>来完成，比较有意思的是，lock_ops的所有方法：lock、unlock、trylock等都是static的，如lock_ops<Mutex>::lock的实现：
+ 1 template <typename Mutex>
+ 2 class lock_ops : private noncopyable
+ 3 {
+ 4 
+ 5 public:
+ 6     static void lock(Mutex& m)
+ 7     {
+ 8         m.do_lock();
+ 9     }
+10 
+11 }
+boost::thread的设计者为什么会这么设计呢？我想大概是：
+1、boost::thread的设计者不希望被我们直接操作mutex，改变其状态，所以mutex的所有方法都是private的（除了构造函数，析构函数）。
+2、虽然我们可以通过lock_ops来修改mutex的状态，如：
+ 1 #include <boost/thread/thread.hpp>
+ 2 #include <boost/thread/mutex.hpp>
+ 3 #include <boost/thread/detail/lock.hpp>
+ 4 
+ 5 int main()
+ 6 {
+ 7     boost::mutex mt;
+ 8     //mt.do_lock();        // Error! Can not access private member!
+ 9 
+10     boost::detail::thread::lock_ops<boost::mutex>::lock(mt);
+11 
+12     return 0;
+13 }
+但是，这是不推荐的，因为mutex、scoped_lock、condition、barrier是一套完整的类系，它们是相互协同工作的，像上面这么操作没有办法与后面的几个类协同工作。
+scoped_lock
+上面说过，不应该直接用lock_ops来操作mutex对象，那么，应该用什么呢？答案就是scoped_lock。与存在多种mutex一样，存在多种与mutex对应的scoped_lock：
+
+scoped_lock
+scoped_try_lock
+scoped_timed_lock
+
+这里我们只讨论scoped_lock。
+scoped_lock是定义在namespace boost::detail::thread下的，为了方便我们使用（也为了方便设计者），mutex使用了下面的typedef：
+typedef detail::thread::scoped_lock<mutex> scoped_lock;
+这样我们就可以通过：
+boost::mutex::scoped_lock
+来使用scoped_lock类模板了。
+由于scoped_lock的作用仅在于对mutex加锁/解锁（即使mutex EnterCriticalSection/LeaveCriticalSection），因此，它的接口也很简单，除了构造函数外，仅有lock/unlock/locked（判断是否已加锁），及类型转换操作符void*，一般我们不需要显式调用这些方法，因为scoped_lock的构造函数是这样定义的：
+
+1 explicit scoped_lock(Mutex& mx, bool initially_locked=true)
+2     : m_mutex(mx), m_locked(false)
+3 {
+4     if (initially_locked) lock();
+5 }
+
+注：m_mutex是一个mutex的引用。
+因此，当我们不指定initially_locked参数构造一个scoped_lock对象时，scoped_lock会自动对所绑定的mutex加锁，而析构函数会检查是否加锁，若已加锁，则解锁；当然，有些情况下，我们可能不需要构造时自动加锁，这样就需要自己调用lock方法。后面的condition、barrier也会调用scoped_lock的lock、unlock方法来实现部分方法。
+正因为scoped_lock具有可在构造时加锁，析构时解锁的特性，我们经常会使用局部变量来实现对mutex的独占访问。
+
+ 1 #include <boost/thread/thread.hpp>
+ 2 #include <boost/thread/mutex.hpp>
+ 3 #include <iostream>
+ 4 
+ 5 boost::mutex io_mutex;
+ 6 
+ 7 void count()    // worker function
+ 8 {
+ 9     for (int i = 0; i < 10; ++i)
+10     {
+11         boost::mutex::scoped_lock lock(io_mutex);
+12         std::cout << i << std::endl;
+13     }
+14 }
+15 
+16 int main(int argc, char* argv[])
+17 {
+18     boost::thread thrd1(&count);
+19     boost::thread thrd2(&count);
+20     thrd1.join();
+21     thrd2.join();
+22 
+23     return 0;
+24 }
+
+在每次输出信息时，为了防止整个输出过程被其它线程打乱，通过对io_mutex加锁（进入临界区），从而保证了输出的正确性。
+在使用 scoped_lock时，我们有时候需要使用全局锁（定义一个全局mutex，当需要独占访问全局资源时，以该全局mutex为参数构造一个 scoped_lock对象即可。全局mutex可以是全局变量，也可以是类的静态方法等），有时候则需要使用对象锁（将mutex定义成类的成员变量），应该根据需要进行合理选择。
+Java的synchronized可用于对方法加锁，对代码段加锁，对对象加锁，对类加锁（仍然是对象级的），这几种加锁方式都可以通过上面讲的对象锁来模拟；相反，在Java中实现全局锁好像有点麻烦，必须将请求封装到类中，以转换成上面的四种 synchronized形式之一。
+
+condition
+condition的接口如下：
+
+ 1 class condition : private boost::noncopyable   // Exposition only
+ 2 {
+ 3 public:
+ 4   // construct/copy/destruct
+ 5   condition();
+ 6   ~condition();
+ 7 
+ 8   // notification
+ 9   void notify_one();
+10   void notify_all();
+11 
+12   // waiting
+13   template<typename ScopedLock> void wait(ScopedLock&);
+14   template<typename ScopedLock, typename Pred> void wait(ScopedLock&, Pred);
+15   template<typename ScopedLock>
+16     bool timed_wait(ScopedLock&, const boost::xtime&);
+17   template<typename ScopedLock, typename Pred>
+18     bool timed_wait(ScopedLock&, Pred);
+19 };
+
+其中wait用于等待某个condition的发生，而timed_wait则提供具有超时的wait功能，notify_one用于唤醒一个等待该condition发生的线程，notify_all则用于唤醒所有等待该condition发生的线程。
+
+由于condition的语义相对较为复杂，它的实现也是整个boost::thread库中最复杂的（对Windows版本而言，对支持pthread的版本而言，由于pthread已经提供了pthread_cond_t，使得condition实现起来也十分简单），下面对wait和notify_one进行简要分析。
+condition内部包含了一个condition_impl对象，由该对象执行来处理实际的wait、notify_one...等操作。
+
+下面先对condition_impl进行简要分析。
+condition_impl在其构造函数中会创建两个Semaphore（信号量）：m_gate、m_queue，及一个Mutex（互斥体，跟boost::mutex类似，但boost::mutex是基于CriticalSection<临界区>的）：m_mutex，其中：
+m_queue
+相当于当前所有等待线程的等待队列，构造函数中调用CreateSemaphore来创建Semaphore时，lMaximumCount参数被指定为(std::numeric_limits<long>::max)()，即便如此，condition的实现者为了防止出现大量等待线程的情况（以至于超过了long的最大值），在线程因执行condition::wait进入等待状态时会先：
+WaitForSingleObject(reinterpret_cast<HANDLE>(m_queue), INFINITE);
+以等待被唤醒，但很难想象什么样的应用需要处理这么多线程。
+m_mutex
+用于内部同步的控制。
+但对于m_gate我很奇怪，我仔细研究了一下condition_imp的实现，还是不明白作者引入m_gate这个变量的用意何在，既然已经有了用于同步控制的m_mutex，再引入一个m_gate实在让我有点不解。
+
+以下是condition::wait调用的do_wait方法简化后的代码：
+
+1 template <typename M>
+2 void do_wait(M& mutex)
+3 {
+4     m_impl.enter_wait();
+5     lock_ops::unlock(mutex, state);    //对传入的scoped_lock对象解锁，以便别的线程可以对其进行加锁，并执行某些处理，否则，本线程等待的condition永远不会发生（因为没有线程可以获得访问资源的权利以使condition发生）
+6     m_impl.do_wait();    //执行等待操作，等待其它线程执行notify_one或notify_all操作以获得
+7     lock_ops::lock(mutex, state);    //重新对scoped_lock对象加锁，获得独占访问资源的权利
+8 }
+condition::timed_wait的实现方法与此类似，而notify_one、notify_all仅将调用请求转发给m_impl，就不多讲了。
+
+虽然condition的内部实现比较复杂，但使用起来还是比较方便的。下面是一个使用condition的多Producer-多Consumer同步的例子：
+  1 #include <boost/thread/thread.hpp>
+  2 #include <boost/thread/mutex.hpp>
+  3 #include <boost/thread/condition.hpp>
+  4 #include <boost/thread/xtime.hpp>
+  5 
+  6 #include <iostream>
+  7 #include <time.h> // for time()
+  8 
+  9 #include <Windows.h>    // for Sleep, change it for other platform, we can use
+ 10                         // boost::thread::sleep, but it's too inconvenient.
+ 11 
+ 12 typedef boost::mutex::scoped_lock scoped_lock;
+ 13 boost::mutex io_mutex;
+ 14 
+ 15 class Product
+ 16 {
+ 17     int num;
+ 18 public:
+ 19     Product(int num) : num(num) {}
+ 20 
+ 21     friend std::ostream& operator<< (std::ostream& os, Product& product)
+ 22     {
+ 23         return os << product.num;
+ 24     }
+ 25 };
+ 26 
+ 27 class Mediator
+ 28 {
+ 29 private:
+ 30     boost::condition cond;
+ 31     boost::mutex mutex;
+ 32 
+ 33     Product** pSlot;    // product buffer/slot
+ 34     unsigned int slotCount,    // buffer size
+ 35         productCount; // current product count
+ 36     bool stopFlag;    // should all thread stop or not
+ 37 
+ 38 public:
+ 39     Mediator(const int slotCount) : slotCount(slotCount), stopFlag(false), productCount(0)
+ 40     {
+ 41         pSlot = new Product*[slotCount];
+ 42     }
+ 43 
+ 44     virtual ~Mediator()
+ 45     {
+ 46         for (int i = 0; i < static_cast<int>(productCount); i++)
+ 47         {
+ 48             delete pSlot[i];
+ 49         }
+ 50         delete [] pSlot;
+ 51     }
+ 52 
+ 53     bool Stop() const { return stopFlag; }
+ 54     void Stop(bool) { stopFlag = true; }
+ 55 
+ 56     void NotifyAll()    // notify all blocked thread to exit
+ 57     {
+ 58         cond.notify_all();
+ 59     }
+ 60 
+ 61     bool Put( Product* pProduct)
+ 62     {
+ 63         scoped_lock lock(mutex);
+ 64         if (productCount == slotCount)
+ 65         {
+ 66             {
+ 67                 scoped_lock lock(io_mutex);
+ 68                 std::cout << "Buffer is full. Waiting" << std::endl;
+ 69             }
+ 70             while (!stopFlag && (productCount == slotCount))
+ 71                 cond.wait(lock);
+ 72         }
+ 73         if (stopFlag) // it may be notified by main thread to quit.
+ 74             return false;
+ 75 
+ 76         pSlot[ productCount++ ] = pProduct;
+ 77         cond.notify_one();    // this call may cause *pProduct to be changed if it wakes up a consumer
+ 78 
+ 79         return true;
+ 80     }
+ 81 
+ 82     bool Get(Product** ppProduct)
+ 83     {
+ 84         scoped_lock lock(mutex);
+ 85         if (productCount == 0)
+ 86         {
+ 87             {
+ 88                 scoped_lock lock(io_mutex);
+ 89                 std::cout << "Buffer is empty. Waiting" << std::endl;
+ 90             }
+ 91             while (!stopFlag && (productCount == 0))
+ 92                 cond.wait(lock);
+ 93         }
+ 94         if (stopFlag) // it may be notified by main thread to quit.
+ 95         {
+ 96             *ppProduct = NULL;
+ 97             return false;
+ 98         }
+ 99 
+100         *ppProduct = pSlot[--productCount];
+101         cond.notify_one();
+102 
+103         return true;
+104     }
+105 };
+106 
+107 class Producer
+108 {
+109 private:
+110     Mediator* pMediator;
+111     static unsigned int num;
+112     unsigned int id;    // Producer id
+113 
+114 public:
+115     Producer(Mediator* pMediator) : pMediator(pMediator) { id = num++; }
+116 
+117     void operator() ()
+118     {
+119         Product* pProduct;
+120         srand( (unsigned)time( NULL ) + id );    // each thread need to srand differently
+121         while (!pMediator->Stop())
+122         {
+123             pProduct = new Product( rand() % 100 );
+124             // must print product info before call Put, as Put may wake up a consumer
+125             // and cause *pProuct to be changed
+126             {
+127                 scoped_lock lock(io_mutex);
+128                 std::cout << "Producer[" << id << "] produces Product["
+129                     << *pProduct << "]" << std::endl;
+130             }
+131             if (!pMediator->Put(pProduct))    // this function only fails when it is notified by main thread to exit
+132                 delete pProduct;
+133 
+134             Sleep(100);
+135         }
+136     }
+137 };
+138 
+139 unsigned int Producer::num = 1;
+140 
+141 class Consumer
+142 {
+143 private:
+144     Mediator* pMediator;
+145     static unsigned int num;
+146     unsigned int id;    // Consumer id
+147 
+148 public:
+149     Consumer(Mediator* pMediator) : pMediator(pMediator) { id = num++; }
+150 
+151     void operator() ()
+152     {
+153         Product* pProduct = NULL;
+154         while (!pMediator->Stop())
+155         {
+156             if (pMediator->Get(&pProduct))
+157             {
+158                 scoped_lock lock(io_mutex);
+159                 std::cout << "Consumer[" << id << "] is consuming Product["
+160                     << *pProduct << "]" << std::endl;
+161                 delete pProduct;
+162             }
+163 
+164             Sleep(100);
+165         }
+166     }
+167 };
+168 
+169 unsigned int Consumer::num = 1;
+170 
+171 int main()
+172 {
+173     Mediator mediator(2);    // we have only 2 slot to put products
+174 
+175     // we have 2 producers
+176     Producer producer1(&mediator);
+177     boost::thread thrd1(producer1);
+178     Producer producer2(&mediator);
+179     boost::thread thrd2(producer2);
+180     // and we have 3 consumers
+181     Consumer consumer1(&mediator);
+182     boost::thread thrd3(consumer1);
+183     Consumer consumer2(&mediator);
+184     boost::thread thrd4(consumer2);
+185     Consumer consumer3(&mediator);
+186     boost::thread thrd5(consumer3);
+187 
+188     // wait 1 second
+189     Sleep(1000);
+190     // and then try to stop all threads
+191     mediator.Stop(true);
+192     mediator.NotifyAll();
+193 
+194     // wait for all threads to exit
+195     thrd1.join();
+196     thrd2.join();
+197     thrd3.join();
+198     thrd4.join();
+199     thrd5.join();
+200 
+201     return 0;
+202 }
+
+barrier
+barrier类的接口定义如下：
+ 1 class barrier : private boost::noncopyable   // Exposition only
+ 2 {
+ 3 public:
+ 4   // construct/copy/destruct
+ 5   barrier(size_t n);
+ 6   ~barrier();
+ 7 
+ 8   // waiting
+ 9   bool wait();
+10 };
+
+barrier类为我们提供了这样一种控制线程同步的机制：
+前n - 1次调用wait函数将被阻塞，直到第n次调用wait函数，而此后第n + 1次到第2n - 1次调用wait也会被阻塞，直到第2n次调用，依次类推。
+barrier::wait的实现十分简单：
+
+ 1 barrier::barrier(unsigned int count)
+ 2     : m_threshold(count), m_count(count), m_generation(0)
+ 3 {
+ 4     if (count == 0)
+ 5         throw std::invalid_argument("count cannot be zero.");
+ 6 }
+ 7 
+ 8 bool barrier::wait()
+ 9 {
+10     boost::mutex::scoped_lock lock(m_mutex);    // m_mutex is the base of barrier and is initilized by it's default constructor.
+11     unsigned int gen = m_generation;    // m_generation will be 0 for call 1~n-1, and 1 for n~2n - 1, and so on
+12 
+13     if (--m_count == 0)
+14     {
+15         m_generation++;    // cause m_generation to be changed in call n/2n/
+16         m_count = m_threshold;    // reset count
+17         m_cond.notify_all();    // wake up all thread waiting here
+18         return true;
+19     }
+20 
+21     while (gen == m_generation)    // if m_generation is not changed, lock current thread.
+22         m_cond.wait(lock);
+23     return false;
+24 }
+
+因此，说白了也不过是mutex的一个简单应用。
+以下是一个使用barrier的例子：
+
+ 1 #include <boost/thread/thread.hpp>
+ 2 #include <boost/thread/barrier.hpp>
+ 3 
+ 4 int i = 0;
+ 5 boost::barrier barr(3);    // call barr.wait 3 * n times will release all threads in waiting
+ 6 
+ 7 void thread()
+ 8 {
+ 9     ++i;
+10     barr.wait();
+11 }
+12 
+13 int main()
+14 {
+15     boost::thread thrd1(&thread);
+16     boost::thread thrd2(&thread);
+17     boost::thread thrd3(&thread);
+18 
+19     thrd1.join();
+20     thrd2.join();
+21     thrd3.join();
+22 
+23     return 0;
+24 }
+
+如果去掉其中thrd3相关的代码，将使得线程1、2一直处于wait状态，进而使得主线程无法退出。
+
+xtime
+xtime是boost::thread中用来表示时间的一个辅助类，它是一个仅包含两个成员变量的结构体：
+
+1 struct xtime
+2 {
+3 //
+4     xtime_sec_t sec;
+5     xtime_nsec_t nsec;
+6 };
+
+condition::timed_wait、thread::sleep等涉及超时的函数需要用到xtime。
+需要注意的是，xtime表示的不是一个时间间隔，而是一个时间点，因此使用起来很不方便。为了方便使用xtime，boost提供了一些辅助的xtime操作函数，如xtime_get、xtime_cmp等。
+以下是一个使用xtime来执行sleep的例子（跟简单的一句Sleep比起来，实在是太复杂了），其中用到了xtime初始化函数xtime_get：
+ 1 #include <boost/thread/thread.hpp>
+ 2 #include <boost/thread/xtime.hpp>
+ 3 #include <iostream>
+ 4 
+ 5 int main()
+ 6 {
+ 7     boost::xtime xt;
+ 8     boost::xtime_get(&xt, boost::TIME_UTC);    // initialize xt with current time
+ 9     xt.sec += 1;    // change xt to next second
+10     boost::thread::sleep(xt);    // do sleep
+11 
+12     std::cout << "1 second sleep over." << std::endl;
+13 
+14     return 0;
+15 } 
+
+多线程编程中还有一个重要的概念：Thread Local Store（TLS，线程局部存储），在boost中，TLS也被称作TSS，Thread Specific Storage。
+boost::thread库为我们提供了一个接口简单的TLS的面向对象的封装，以下是tss类的接口定义：
+class tss
+{
+public:
+    tss(boost::function1<void, void*>* pcleanup);
+    void* get() const;
+    void set(void* value);
+    void cleanup(void* p);
+};
+
+分别用于获取、设置、清除线程局部存储变量，这些函数在内部封装了TlsAlloc、TlsGetValue、TlsSetValue等API操作，将它们封装成了OO的形式。
+但boost将该类信息封装在detail名字空间内，即不推荐我们使用，当需要使用tss时，我们应该使用另一个使用更加方便的类：thread_specific_ptr，这是一个智能指针类，该类的接口如下：
+
+ 1 class thread_specific_ptr : private boost::noncopyable   // Exposition only
+ 2 {
+ 3 public:
+ 4   // construct/copy/destruct
+ 5   thread_specific_ptr();
+ 6   thread_specific_ptr(void (*cleanup)(void*));
+ 7   ~thread_specific_ptr();
+ 8 
+ 9   // modifier functions
+10   T* release();
+11   void reset(T* = 0);
+12 
+13   // observer functions
+14   T* get() const;
+15   T* operator->() const;
+16   T& operator*()() const;
+17 };
+
+即可支持get、reset、release等操作。
+thread_specific_ptr类的实现十分简单，仅仅为了将tss类“改装”成智能指针的样子，该类在其构造函数中会自动创建一个tss对象，而在其析构函数中会调用默认参数的reset函数，从而引起内部被封装的tss对象被析构，达到“自动”管理内存分配释放的目的。
+
+以下是一个运用thread_specific_ptr实现TSS的例子：
+ 1 #include <boost/thread/thread.hpp>
+ 2 #include <boost/thread/mutex.hpp>
+ 3 #include <boost/thread/tss.hpp>
+ 4 #include <iostream>
+ 5 
+ 6 boost::mutex io_mutex;
+ 7 boost::thread_specific_ptr<int> ptr;    // use this method to tell that this member will not shared by all threads
+ 8 
+ 9 struct count
+10 {
+11     count(int id) : id(id) { }
+12 
+13     void operator()()
+14     {
+15         if (ptr.get() == 0)    // if ptr is not initialized, initialize it
+16             ptr.reset(new int(0));    // Attention, we pass a pointer to reset (actually set ptr)
+17 
+18         for (int i = 0; i < 10; ++i)
+19         {
+20             (*ptr)++;
+21             boost::mutex::scoped_lock lock(io_mutex);
+22             std::cout << id << ": " << *ptr << std::endl;
+23         }
+24     }
+25 
+26     int id;
+27 };
+28 
+29 int main(int argc, char* argv[])
+30 {
+31     boost::thread thrd1(count(1));
+32     boost::thread thrd2(count(2));
+33     thrd1.join();
+34     thrd2.join();
+35 
+36     return 0;
+37 }
+此外，thread库还提供了一个很有趣的函数，call_once，在tss::init的实现中就用到了该函数。
+该函数的声明如下：
+void call_once(void (*func)(), once_flag& flag);
+该函数的Windows实现通过创建一个Mutex使所有的线程在尝试执行该函数时处于等待状态，直到有一个线程执行完了func函数，该函数的第二个参数表示函数func是否已被执行，该参数往往被初始化成BOOST_ONCE_INIT（即0），如果你将该参数初始化成1，则函数func将不被调用，此时call_once相当于什么也没干，这在有时候可能是需要的，比如，根据程序处理的结果决定是否需要call_once某函数func。
+call_once在执行完函数func后，会将flag修改为1，这样会导致以后执行call_once的线程（包括等待在Mutex处的线程和刚刚进入call_once的线程）都会跳过执行func的代码。
+
+需要注意的是，该函数不是一个模板函数，而是一个普通函数，它的第一个参数1是一个函数指针，其类型为void (*)()，而不是跟boost库的很多其它地方一样用的是function模板，不过这样也没有关系，有了boost::bind这个超级武器，想怎么绑定参数就随你的便了，根据boost的文档，要求传入的函数不能抛出异常，但从实现代码中好像不是这样。
+
+以下是一个典型的运用call_once实现一次初始化的例子：
+
+ 1 #include <boost/thread/thread.hpp>
+ 2 #include <boost/thread/once.hpp>
+ 3 #include <iostream>
+ 4 
+ 5 int i = 0;
+ 6 int j = 0;
+ 7 boost::once_flag flag = BOOST_ONCE_INIT;
+ 8 
+ 9 void init()
+10 {
+11     ++i;
+12 }
+13 
+14 void thread()
+15 {
+16     boost::call_once(&init, flag);
+17     ++j;
+18 }
+19 
+20 int main(int argc, char* argv[])
+21 {
+22     boost::thread thrd1(&thread);
+23     boost::thread thrd2(&thread);
+24     thrd1.join();
+25     thrd2.join();
+26 
+27     std::cout << i << std::endl;
+28     std::cout << j << std::endl;
+29 
+30     return 0;
+31 }
+结果显示，全局变量i仅被执行了一次++操作，而变量j则在两个线程中均执行了++操作。

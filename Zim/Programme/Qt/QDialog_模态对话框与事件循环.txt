@@ -1,0 +1,161 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-31T21:10:59+08:00
+
+====== QDialog 模态对话框与事件循环 ======
+Created Monday 31 October 2011
+
+===== 起源 =====
+
+qtcn中文论坛中有网友问到：
+
+假设程序正常运行时，只有一个简单的窗体A，此时只有一个GUI主线程，在这个主线程中有一个事件循环处理窗体上的事件。当此程序运行到某阶段时，弹出一个模态窗体B（书上说模态窗体是有其自己的事件循环的），此时模态窗体B是否会有一个对应的子线程处理其事件循环？
+
+这儿其实有两个问题：
+
+* 模态对话框 和 事件循环 没有必然联系
+* 事件循环 和 子线程 没有必然联系
+
+===== 题外： =====
+
+如果进一步呢？其实我们还可以说：
+
+* 模态对话框 和 QDialog 没必要联系
+
+===== QDialog 对话框 =====
+
+两种常规用法：
+**非模态**
+
+QDialog * dlg = new QDialog()
+dlg->show();
+
+当然，这儿用指针(即分配到heap中)不是必须的。  (有疑问？或者有时发现窗口一闪而过？那么你需要了解C、C++中变量的作用域和生存周期)
+**模态**
+
+QDialog dlg;
+dlg.exec();
+
+这种情况下，我们一般都是将对象分配上** stack** 上，而不是heap上。
+
+当然，你喜欢用 heap，也没问题：
+
+Dialog * dlg = new QDialog();
+dlg->exec();
+delete dlg;
+
+===== 模态对话框 =====
+
+前面的 show() 与 exec() 并不是模态与非模态的区别。
+
+想让一个Widget成为模态，我们只需要对其设置：
+
+setAttribute(Qt::WA_ShowModal, true);
+
+注意：这是QWidget的成员函数 ，也就是说，QWidget可以显示为模态或非模态！
+
+**setWindowModality**
+
+除了直接调用setAttribute外，QWidget 提供了一个易用的函数，来设置窗体的模态。其源码如下：
+
+void QWidget::setWindowModality(Qt::WindowModality windowModality)
+{
+    data->window_modality = windowModality;
+    // setModal_sys() will be called by setAttribute()
+    setAttribute(Qt::WA_ShowModal, (data->window_modality != Qt::NonModal));
+    setAttribute(Qt::WA_SetWindowModality, true);
+}
+
+注意：该函数的参数取值：**NonModal、WindowModal、ApplicationModal **分别对应默认情况下的
+
+* QDialog::show()
+* QDialog::open()
+* QDialog::exec()
+
+如果你没有使用QDialog::open()的需求，你可能也不需要该函数。
+
+**setModal**
+
+除了QWidget提供的成员，QDialog 提供了 setModal 的成员函数，我们看看其代码：
+
+void QDialog::setModal(bool modal)
+{
+    setAttribute(Qt::WA_ShowModal, modal);
+}
+
+不用解释了吧？我们要显示模态对话框，只需要类似下面的代码：
+
+QDialog * dlg = new QDialog();
+dlg->setAttribute(Qt::WA_ShowModal, true);
+dlg->show();
+
+**exec()**
+
+有问题是不？为啥exec() 直接可以显示模态对话框呢？看QDialog源代码吧
+
+int QDialog::exec()
+{
+    Q_D(QDialog);
+...
+    setAttribute(Qt::WA_ShowModal, true);
+...
+    show();
+...
+    QEventLoop eventLoop;
+    (void) eventLoop.exec(QEventLoop::DialogExec);
+...
+}
+
+看到答案没：exec() 先设置modal属性，而后调用 show() 显示对话框，最后启用事件循环
+
+===== 事件循环 =====
+
+Qt 程序时事件驱动的，每个程序，我们需要调用 QApplication::exec() 来启用事件循环。
+
+int QCoreApplication::exec()
+{
+...
+    QEventLoop eventLoop;
+    int returnCode = eventLoop.exec();
+...
+    return returnCode;
+}
+
+用前面的 QDialog::exec() 一样，都是调用的 QEventLoop::exec()
+
+int QEventLoop::exec(ProcessEventsFlags flags)
+{
+    Q_D(QEventLoop);
+...
+    while (!d->exit)
+        processEvents(flags | WaitForMoreEvents | EventLoopExec);
+...
+    return d->returnCode;
+}
+
+而
+
+bool QEventLoop::processEvents(ProcessEventsFlags flags)
+{
+    Q_D(QEventLoop);
+    if (!d->threadData->eventDispatcher)
+        return false;
+    if (flags & DeferredDeletion)
+        QCoreApplication::sendPostedEvents(0, QEvent::DeferredDelete);
+    return d->threadData->eventDispatcher->processEvents(flags);
+}
+
+进一步：这将调用平台相关的函数，比如在windows下
+
+bool QGuiEventDispatcherWin32::processEvents(QEventLoop::ProcessEventsFlags flags)
+{
+    if (!QEventDispatcherWin32::processEvents(flags))
+        return false;
+    if (configRequests)                        // any pending configs?
+        qWinProcessConfigRequests();
+    return true;
+}
+
+事件循环和线程没有必然的联系，事件循环可以用在QThread中，而且从Qt4.4开始，QThread的run函数默认就调用了自己的事件循环。
+
+对与QDialog来说，当它自己的QEventLoop启用时，主程序的 QEventLoop 当然是处于暂停状态了。说到底，就是两个死循环，一个在内，一个在外，只有里面的退出后，外边的循环才会执行。不过由于两个循环执行的命令是基本一样的，都是调用并处理程序收到的各种事件，所以，可能变得不容易理解

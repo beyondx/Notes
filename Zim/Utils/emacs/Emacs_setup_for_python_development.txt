@@ -1,0 +1,179 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-09T17:11:32+08:00
+
+====== Emacs setup for python development ======
+Created Monday 09 January 2012
+http://www.yilmazhuseyin.com/blog/dev/emacs-setup-python-development/
+
+This is the follow up for basic emacs setup post. In this post I will explain how to update your emacs setup for python development. I will cover
+
+* pymacs (Python binding for emacs. This is a ropemacs dependency)
+* rope (Python refactoring library.This is a ropemacs dependency)
+* ropemacs (Rope bindings for emacs)
+* rope-mode (Minor mode for ropemacs)
+* pyflakes (passive checker of Python programs)
+* flymake (an on-the-fly syntax checker for GNU Emacs)
+* flymake-mode (Minor mode for flymake)
+* pyflakes error format script
+* autocomplete rope integration
+
+Install pymacs
+
+From emacs wiki I found http://pymacs.progiciels-bpi.ca/ page and download pymacs. I also read the manual from this page which has directions to how you can install it. Here is how I did it.
+
+    Untared downloaded file and did a “$sudo python setup.py install” in it.
+    Copy pymacs.el to somewhere in your emacs loadpath. I put it in ~/.emacs.d/plugins/pymacs.el
+
+I also added the following to .emacs file like manual says
+
+1
+2
+3
+4
+5
+6
+7
+
+	
+
+(autoload 'pymacs-apply "pymacs")
+(autoload 'pymacs-call "pymacs")
+(autoload 'pymacs-eval "pymacs" nil t)
+(autoload 'pymacs-exec "pymacs" nil t)
+(autoload 'pymacs-load "pymacs" nil t)
+;;(eval-after-load "pymacs"
+;;  '(add-to-list 'pymacs-load-path YOUR-PYMACS-DIRECTORY"))
+
+Install rope
+
+I googled for rope and found this page http://rope.sourceforge.net/ and found rope-0.9.3.tar.gz. I untared it and did
+
+1
+
+	
+
+$sudo python setup.py install
+
+Install ropemacs
+
+I found this page. From there, I downloaded ropemacs repository snapshot. When you get it just untar it and run
+
+1
+
+	
+
+sudo python setup.py install
+
+After that point I read README.txt that was included in untarred directory. I added following script to .emacs file as README.txt file suggested
+
+1
+2
+
+	
+
+(require 'pymacs)
+ (pymacs-load "ropemacs" "rope-")
+
+Install rope-mode
+
+From ropemacs page I gave in previouse section, I found ropemode repository snapshot and downloaded it. After I untarred it, I called following command as usual.
+
+1
+
+	
+
+sudo python setup.py install
+
+Install pyflakes
+
+Google for pyflakes and when you find the project site download pyflakes from there. After that untarred it and inside untarred directory call
+
+1
+
+	
+
+sudo python setup.py install
+
+Install flymake
+
+UPDATE: As Stéphane Raimbault suggested in the comments. flymake.el is already added in emacs. So you can skip downloading flymake.el.
+
+Google for flymake, find project site and download it. When you get flymake.el put it somewhere on your emacs load path.(~/.emacs.d/plugins/flymake.el)
+Add flymake mode
+
+After that, you should configure flymake to work with pyflakes like emacs-wiki explains. Alternatively you can go to flymake-mode page to get the script.
+
+In my case I added the following script and put it to my .emacs file
+
+ 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+
+	
+
+(when (load "flymake" t) 
+     (defun flymake-pyflakes-init () 
+       (let* ((temp-file (flymake-init-create-temp-buffer-copy 
+                          'flymake-create-temp-inplace)) 
+      (local-file (file-relative-name 
+               temp-file 
+               (file-name-directory buffer-file-name)))) 
+         (list "pyflakes" (list local-file))))
+
+     (add-to-list 'flymake-allowed-file-name-masks 
+          '("\\.py\\'" flymake-pyflakes-init)))
+
+(add-hook 'find-file-hook 'flymake-find-file-hook)
+
+Add flymake errors to mini-buffer
+
+Flymake marks the errors with red. But it does not prints the error on screen. So I found a script that writes the errors on the current line to mini-buffer. Here is the script that I added to my .emacs file
+
+1
+2
+3
+4
+5
+6
+
+	
+
+(defun my-flymake-show-help ()
+  (when (get-char-property (point) 'flymake-overlay)
+   (let ((help (get-char-property (point) 'help-echo)))
+    (if help (message "%s" help)))))
+
+(add-hook 'post-command-hook 'my-flymake-show-help)
+
+Add autocomplete rope integration
+
+If you have auto-complete in your emacs setup, you can actually integrate auto-complete with rope. To do this, I found this page. From there I downloaded script for rope-autocomplete integration. Here is the script that I added to my .emacs file.
+
+1
+2
+3
+4
+
+	
+
+(ac-ropemacs-initialize)
+(add-hook 'python-mode-hook
+      (lambda ()
+    (add-to-list 'ac-sources 'ac-source-ropemacs)))
+
+Note for django developers
+
+If you are developing django apps you might want to cover emacs basic setup and emacs web setup post with this one. All three posts covers total of my emacs setup for developing django applications.
+
+Date: 6 Mayıs 2011 | Tags: python, django, linux, emacs, installation, | Categories: emacs, 

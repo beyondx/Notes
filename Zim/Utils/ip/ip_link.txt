@@ -1,0 +1,292 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-12T15:23:27+08:00
+
+====== ip link ======
+Created Thursday 12 July 2012
+
+==== 查看帮助： ====
+[geekard@kb310 man]$ ip link help
+Usage: ip link add [link DEV] [ name ] NAME
+                   [ txqueuelen PACKETS ]
+                   [ address LLADDR ]
+                   [ broadcast LLADDR ]
+                   [ mtu MTU ]
+                   type TYPE [ ARGS ]
+       ip link delete DEV type TYPE [ ARGS ]    #如果是虚拟设备(vlan, bridge等)，这里的DEV应该是上面指定的NAME。
+
+       ip link set { dev DEVICE | group DEVGROUP } [ { up | down } ]
+                          [ arp { on | off } ]
+                          [ dynamic { on | off } ]
+                          [ multicast { on | off } ]
+                          [ allmulticast { on | off } ]
+                          [ promisc { on | off } ]
+                          [ trailers { on | off } ]
+                          [ txqueuelen PACKETS ]
+                          [ name NEWNAME ]
+                          [ address LLADDR ]
+                          [ broadcast LLADDR ]
+                          [ mtu MTU ]
+                          [ netns PID ]
+                          [ netns NAME ]
+                          [ alias NAME ]
+                          [ vf NUM [ mac LLADDR ]
+                                   [ vlan VLANID [ qos VLAN-QOS ] ]
+                                   [ rate TXRATE ] ] 
+                                   [ spoofchk { on | off} ] ] 
+                          [ master DEVICE ]
+                          [ nomaster ]
+       ip link show [ DEVICE | group GROUP ]
+
+TYPE := { vlan | veth | vcan | dummy | ifb | macvlan | can | __bridge__ }
+[geekard@kb310 man]$ 
+
+===== 添加网桥 =====
+[geekard@kb310 man]$ __ip link show__
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN mode DEFAULT 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP mode DEFAULT qlen 1000
+    link/ether c8:60:00:8a:db:e7 brd ff:ff:ff:ff:ff:ff
+
+[geekard@kb310 man]$ __sudo ip link add link eth0 name demo-bridge type bridge; ip link show__
+**#命令行中的link eth0其实不用加。**
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN mode DEFAULT 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 576 qdisc pfifo_fast state __UP__ mode DEFAULT qlen 1000
+    link/ether c8:60:00:8a:db:e7 brd ff:ff:ff:ff:ff:ff
+10: demo-bridge: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state __DOWN__ mode DEFAULT 
+    link/ether **22:fd:9f:0c:39:97** brd ff:ff:ff:ff:ff:ff
+
+[geekard@kb310 man]$ __sudo ip link set dev demo-bridge up; brctl show__
+bridge name     bridge id               STP enabled     interfaces
+demo-bridge             8000.000000000000       no
+[geekard@kb310 man]$ __ip link show__ 
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN mode DEFAULT 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 576 qdisc pfifo_fast state __UP__ mode DEFAULT qlen 1000
+    link/ether c8:60:00:8a:db:e7 brd ff:ff:ff:ff:ff:ff
+10: demo-bridge: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state __UNKNOWN__ mode DEFAULT 
+    link/ether 22:fd:9f:0c:39:97 brd ff:ff:ff:ff:ff:ff
+
+[geekard@kb310 man]$ __sudo brctl addif demo-bridge eth0; ip link show; brctl show__
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN mode DEFAULT 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 576 qdisc pfifo_fast __master demo-bridge__ state __UP__ mode DEFAULT qlen 1000
+    link/ether __c8:60:00:8a:db:e7__ brd ff:ff:ff:ff:ff:ff
+10: demo-bridge: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 576 qdisc noqueue state __UP__ mode DEFAULT 
+    link/ether __c8:60:00:8a:db:e7__ brd ff:ff:ff:ff:ff:ff
+bridge name     bridge id               STP enabled     interfaces
+demo-bridge             8000.c860008adbe7       no              eth0
+[geekard@kb310 ~]$ __ping 192.168.1.1__
+PING 192.168.1.1 (192.168.1.1) 56(84) bytes of data.
+64 bytes from 192.168.1.1: icmp_req=1 ttl=64 time=1.08 ms
+64 bytes from 192.168.1.1: icmp_req=2 ttl=64 time=0.520 ms                                                                                                                    
+^C                                                                                                                                                                            
+--- 192.168.1.1 ping statistics ---                                                                                                                                           
+2 packets transmitted, 2 received, 0% packet loss, time 1001ms
+rtt min/avg/max/mdev = 0.520/0.804/1.089/0.285 ms
+[geekard@kb310 ~]$ 
+
+
+[geekard@kb310 man]$ __sudo ip addr add 192.168.1.244/24 dev demo-bridge; ip addr show__
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 576 qdisc pfifo_fast master demo-bridge state UP qlen 1000
+    link/ether c8:60:00:8a:db:e7 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.1.**103**/24 brd 255.255.255.255 scope global eth0
+10: demo-bridge: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 576 qdisc noqueue state UP 
+    link/ether c8:60:00:8a:db:e7 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.1.**244**/24 scope global demo-bridge
+[geekard@kb310 man]$ 
+
+[geekard@kb310 man]$ __ip route show    #默认显示的是main路由表中路由__
+192.168.1.0/24 dev eth0  proto kernel  scope link  src 192.168.1.103 
+192.168.1.0/24 dev demo-bridge  proto kernel  scope link  src 192.168.1.244    
+
+[geekard@kb310 man]$ __ip route show table all   #显示local、main和default表中路由__
+**default via 192.168.1.1 dev eth0  metric 202** 
+192.168.1.0/24 dev demo-bridge  proto kernel  scope link  src 192.168.1.244 
+192.168.1.0/24 dev eth0  proto kernel  scope link  src 192.168.1.103  metric 202 
+broadcast 127.0.0.0 dev lo  table local  proto kernel  scope link  src 127.0.0.1 
+local 127.0.0.0/8 dev lo  table local  proto kernel  scope host  src 127.0.0.1 
+local 127.0.0.1 dev lo  table local  proto kernel  scope host  src 127.0.0.1 
+broadcast 127.255.255.255 dev lo  table local  proto kernel  scope link  src 127.0.0.1 
+broadcast 192.168.1.0 dev eth0  table local  proto kernel  scope link  src 192.168.1.103 
+broadcast 192.168.1.0 dev demo-bridge  table local  proto kernel  scope link  src 192.168.1.244 
+local 192.168.1.103 dev eth0  table local  proto kernel  scope host  src 192.168.1.103 
+local 192.168.1.244 dev demo-bridge  table local  proto kernel  scope host  src 192.168.1.244 
+broadcast 192.168.1.255 dev eth0  table local  proto kernel  scope link  src 192.168.1.103 
+broadcast 192.168.1.255 dev demo-bridge  table local  proto kernel  scope link  src 192.168.1.244 
+unreachable default dev lo  table unspec  proto kernel  metric -1  error -101 hoplimit 255
+local ::1 via :: dev lo  table local  proto none  metric 0 
+unreachable default dev lo  table unspec  proto kernel  metric -1  error -101 hoplimit 255
+[geekard@kb310 ~]$
+
+[geekard@kb310 ~]$ brctl show
+bridge name     bridge id               STP enabled     interfaces
+demo-bridge             8000.c860008adbe7       no              eth0
+[geekard@kb310 ~]$ ping 192.168.1.101
+PING 192.168.1.101 (192.168.1.101) 56(84) bytes of data.
+64 bytes from 192.168.1.101: icmp_req=1 ttl=64 time=0.959 ms
+64 bytes from 192.168.1.101: icmp_req=2 ttl=64 time=0.400 ms
+64 bytes from 192.168.1.101: icmp_req=3 ttl=64 time=0.385 ms
+64 bytes from 192.168.1.101: icmp_req=4 ttl=64 time=0.440 ms
+^C
+--- 192.168.1.101 ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 2999ms
+rtt min/avg/max/mdev = 0.385/0.546/0.959/0.239 ms
+[geekard@kb310 ~]$ 
+
+[geekard@kb310 ~]$ ping www.baidu.com
+^C
+[geekard@kb310 ~]$ 
+
+[geekard@kb310 ~]$ sudo ip route chang default via 192.168.1.1 dev demo-bridge
+Password: 
+RTNETLINK answers: No such file or directory
+[geekard@kb310 ~]$ __sudo ip route add default via 192.168.1.1 dev demo-bridge__
+[geekard@kb310 ~]$ __ip route show table all__
+**default via 192.168.1.1 dev demo-bridge **
+**default via 192.168.1.1 dev eth0  metric 202** 
+192.168.1.0/24 dev demo-bridge  proto kernel  scope link  src **192.168.1.244** 
+192.168.1.0/24 dev eth0  proto kernel  scope link  src **192.168.1.103**  metric 202 
+broadcast 127.0.0.0 dev lo  table local  proto kernel  scope link  src 127.0.0.1 
+local 127.0.0.0/8 dev lo  table local  proto kernel  scope host  src 127.0.0.1 
+local 127.0.0.1 dev lo  table local  proto kernel  scope host  src 127.0.0.1 
+broadcast 127.255.255.255 dev lo  table local  proto kernel  scope link  src 127.0.0.1 
+broadcast 192.168.1.0 dev eth0  table local  proto kernel  scope link  src 192.168.1.103 
+broadcast 192.168.1.0 dev demo-bridge  table local  proto kernel  scope link  src 192.168.1.244 
+local 192.168.1.103 dev eth0  table local  proto kernel  scope host  src 192.168.1.103 
+local 192.168.1.244 dev demo-bridge  table local  proto kernel  scope host  src 192.168.1.244 
+broadcast 192.168.1.255 dev eth0  table local  proto kernel  scope link  src 192.168.1.103 
+broadcast 192.168.1.255 dev demo-bridge  table local  proto kernel  scope link  src 192.168.1.244 
+unreachable default dev lo  table unspec  proto kernel  metric -1  error -101 hoplimit 255
+local ::1 via :: dev lo  table local  proto none  metric 0 
+unreachable default dev lo  table unspec  proto kernel  metric -1  error -101 hoplimit 255
+[geekard@kb310 ~]$ __ping www.baidu.com__
+PING www.a.shifen.com (119.75.218.77) 56(84) bytes of data.
+64 bytes from 119.75.218.77: icmp_req=1 ttl=52 time=35.6 ms
+64 bytes from 119.75.218.77: icmp_req=2 ttl=52 time=35.6 ms
+64 bytes from 119.75.218.77: icmp_req=3 ttl=52 time=35.6 ms
+64 bytes from 119.75.218.77: icmp_req=4 ttl=52 time=35.9 ms
+^C
+--- www.a.shifen.com ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3004ms
+rtt min/avg/max/mdev = 35.609/35.711/35.917/0.260 ms
+[geekard@kb310 ~]$ 
+
+[geekard@kb310 ~]$ __sudo ip addr del 192.168.1.103/24 dev eth0__
+Password: 
+[geekard@kb310 ~]$ __ping www.baidu.com   #因为eth0是默认接口，将其删去后对应的DNS和gateway也将删去。__
+ping: **unknown host** www.baidu.com
+[geekard@kb310 ~]$ __ping 192.168.1.1__
+PING 192.168.1.1 (192.168.1.1) 56(84) bytes of data.
+64 bytes from 192.168.1.1: icmp_req=1 ttl=64 time=0.465 ms
+64 bytes from 192.168.1.1: icmp_req=2 ttl=64 time=0.483 ms
+64 bytes from 192.168.1.1: icmp_req=3 ttl=64 time=0.453 ms
+^C64 bytes from 192.168.1.1: icmp_req=4 ttl=64 time=0.499 ms
+^C
+--- 192.168.1.1 ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 2999ms
+rtt min/avg/max/mdev = 0.453/0.475/0.499/0.017 ms
+[geekard@kb310 ~]$ __ping 192.168.1.101    #因为demo-bridge由默认路由，所以可以ping通。__
+PING 192.168.1.101 (192.168.1.101) 56(84) bytes of data.
+64 bytes from 192.168.1.101: icmp_req=1 ttl=64 time=1.12 ms
+64 bytes from 192.168.1.101: icmp_req=2 ttl=64 time=0.458 ms
+^C
+--- 192.168.1.101 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1001ms
+rtt min/avg/max/mdev = 0.458/0.792/1.127/0.335 ms
+
+[geekard@kb310 ~]$ __ip route show table all__
+**default via 192.168.1.1 dev demo-bridge** 
+192.168.1.0/24 dev demo-bridge  proto kernel  scope link  src 192.168.1.244 
+broadcast 127.0.0.0 dev lo  table local  proto kernel  scope link  src 127.0.0.1 
+local 127.0.0.0/8 dev lo  table local  proto kernel  scope host  src 127.0.0.1 
+local 127.0.0.1 dev lo  table local  proto kernel  scope host  src 127.0.0.1 
+broadcast 127.255.255.255 dev lo  table local  proto kernel  scope link  src 127.0.0.1 
+broadcast 192.168.1.0 dev demo-bridge  table local  proto kernel  scope link  src 192.168.1.244 
+local 192.168.1.244 dev demo-bridge  table local  proto kernel  scope host  src 192.168.1.244 
+broadcast 192.168.1.255 dev demo-bridge  table local  proto kernel  scope link  src 192.168.1.244 
+fe80::/64 dev eth0  proto kernel  metric 256 
+unreachable default dev lo  table unspec  proto kernel  metric -1  error -101 hoplimit 255
+local ::1 via :: dev lo  table local  proto none  metric 0 
+local fe80::ca60:ff:fe8a:dbe7 via :: dev lo  table local  proto none  metric 0 
+ff00::/8 dev eth0  table local  metric 256 
+unreachable default dev lo  table unspec  proto kernel  metric -1  error -101 hoplimit 255
+
+[geekard@kb310 ~]$ __sudo dhcpcd demo-bridge    #demo-bridge作为一个虚拟的链路层接口，可以有自己的MAC和IP。__
+dhcpcd[2397]: version 5.5.6 starting
+dhcpcd[2397]: demo-bridge: sending IPv6 Router Solicitation
+dhcpcd[2397]: demo-bridge: sendmsg: Network is unreachable
+dhcpcd[2397]: demo-bridge: broadcasting for a lease
+dhcpcd[2397]: demo-bridge: offered 192.168.1.103 from 192.168.1.1 `�'
+dhcpcd[2397]: demo-bridge: acknowledged 192.168.1.103 from 192.168.1.1 `�'
+dhcpcd[2397]: demo-bridge: checking for 192.168.1.103
+dhcpcd[2397]: demo-bridge: sending IPv6 Router Solicitation
+dhcpcd[2397]: demo-bridge: sendmsg: Network is unreachable
+dhcpcd[2397]: demo-bridge: leased 192.168.1.103 for 7200 seconds
+dhcpcd[2411]: demo-bridge: demo-bridge: MTU set to 576
+dhcpcd[2397]: forked to background, child pid 2427
+[geekard@kb310 ~]$ __ping www.baidu.com__
+PING www.a.shifen.com (119.75.218.77) 56(84) bytes of data.
+64 bytes from 119.75.218.77: icmp_req=1 ttl=52 time=35.6 ms
+64 bytes from 119.75.218.77: icmp_req=2 ttl=52 time=35.5 ms
+^V64 bytes from 119.75.218.77: icmp_req=3 ttl=52 time=35.5 ms
+^C64 bytes from 119.75.218.77: icmp_req=4 ttl=52 time=35.5 ms
+^C
+--- www.a.shifen.com ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3003ms
+rtt min/avg/max/mdev = 35.519/35.587/35.646/0.045 ms
+[geekard@kb310 ~]$ __ip addr show__
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast master demo-bridge state UP qlen 1000
+    link/ether c8:60:00:8a:db:e7 brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::ca60:ff:fe8a:dbe7/64 scope link 
+       valid_lft forever preferred_lft forever
+4: demo-bridge: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 576 qdisc noqueue state UP 
+    link/ether c8:60:00:8a:db:e7 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.1.244/24 scope global demo-bridge
+    **inet 192.168.1.103/24 brd 255.255.255.255 scope global secondary demo-bridge**
+[geekard@kb310 ~]$ __sudo ip addr del 192.168.1.103 dev demo-bridge  #删除接口的IP时，最好带网络后缀，否则会出现如下的警告。__
+Warning: Executing wildcard deletion to stay compatible with old scripts.
+         Explicitly specify the prefix length (192.168.1.103/32) to avoid this warning.
+         This special behaviour is likely to disappear in further releases,
+         fix your scripts!
+[geekard@kb310 ~]$ __ip addr show__
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast master demo-bridge state UP qlen 1000
+    link/ether c8:60:00:8a:db:e7 brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::ca60:ff:fe8a:dbe7/64 scope link 
+       valid_lft forever preferred_lft forever
+4: demo-bridge: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 576 qdisc noqueue state UP 
+    link/ether c8:60:00:8a:db:e7 brd ff:ff:ff:ff:ff:ff
+    **inet 192.168.1.244/24 scope global demo-bridge**
+[geekard@kb310 ~]$ __ping www.baidu.com__
+PING www.a.shifen.com (119.75.217.56) 56(84) bytes of data.
+64 bytes from 119.75.217.56: icmp_req=1 ttl=52 time=36.1 ms
+64 bytes from 119.75.217.56: icmp_req=2 ttl=52 time=36.0 ms
+^C
+--- www.a.shifen.com ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1001ms
+rtt min/avg/max/mdev = 36.027/36.091/36.156/0.200 ms
+[geekard@kb310 ~]$ 
+
+[geekard@kb310 ~]$ __ip route show__
+default via 192.168.1.1 dev demo-bridge 
+default via 192.168.1.1 dev demo-bridge  metric 204 
+[geekard@kb310 ~]$ __sudo ip route del default via 192.168.1.1 dev demo-bridge metric 204  #删除路由时，信息要完整(包括目的主机)。__
+[geekard@kb310 ~]$ ip route show
+default via 192.168.1.1 dev demo-bridge 
+[geekard@kb310 ~]$ 

@@ -1,0 +1,113 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-18T14:00:10+08:00
+
+====== Using CEDET and ECB with Emacs ======
+Created Friday 18 November 2011
+http://cxwangyi.wordpress.com/2010/08/21/using-cedet-with-emacs/
+Using CEDET and ECB with Emacs
+
+(I tested the following procedure about installing and customizing CEDET for Emacs with GNU Emacs 23 under Ubuntu and Snow Leopard.)
+
+Installation
+
+    Install CEDET
+        Download the source package of CEDET
+        Unpack to ~/.emacs.d/cedet (or other places)
+        Compile the package using command
+        1	emacs -Q -nw -l cedet-build.el -f cedet-build -f save-buffers-kill-terminal
+    Install external tag systems (optionally required by CEDET)
+        GNU Global, and/or
+        exuberent ctags
+    Install ECB
+        Download the source package of ECB.
+        Unpack into ~/.emacs.d/ecb (or any other directory)
+
+Customization
+
+An excellent tutorial about customizing CEDET is here. The author also published his .emacs file which contains a few flaws. Mine based on his is as follows:
+
+01	;; CEDET
+02	(load-file "~/.emacs.d/cedet-1.0pre7/common/cedet.el")
+03	 
+04	(global-ede-mode 'nil)                  ; do NOT use project manager
+05	 
+06	(semantic-load-enable-excessive-code-helpers)
+07	 
+08	(require 'semantic-ia)          ; names completion and display of tags
+09	(require 'semantic-gcc)         ; auto locate system include files
+10	 
+11	(semantic-add-system-include "~/3rd-party/boost-1.43.0/include/" 'c++-mode)
+12	(semantic-add-system-include "~/3rd-party/protobuf-2.3.0/include" 'c++-mode)
+13	 
+14	(require 'semanticdb)
+15	(global-semanticdb-minor-mode 1)
+16	 
+17	(defun my-cedet-hook ()
+18	  (local-set-key [(control return)] 'semantic-ia-complete-symbol)
+19	  (local-set-key "\C-c?" 'semantic-ia-complete-symbol-menu)
+20	  (local-set-key "\C-c>" 'semantic-complete-analyze-inline)
+21	  (local-set-key "\C-c=" 'semantic-decoration-include-visit)
+22	  (local-set-key "\C-cj" 'semantic-ia-fast-jump)
+23	  (local-set-key "\C-cq" 'semantic-ia-show-doc)
+24	  (local-set-key "\C-cs" 'semantic-ia-show-summary)
+25	  (local-set-key "\C-cp" 'semantic-analyze-proto-impl-toggle)
+26	  (local-set-key "\C-c+" 'semantic-tag-folding-show-block)
+27	  (local-set-key "\C-c-" 'semantic-tag-folding-fold-block)
+28	  (local-set-key "\C-c\C-c+" 'semantic-tag-folding-show-all)
+29	  (local-set-key "\C-c\C-c-" 'semantic-tag-folding-fold-all)
+30	  )
+31	(add-hook 'c-mode-common-hook 'my-cedet-hook)
+32	 
+33	(global-semantic-tag-folding-mode 1)
+34	 
+35	(require 'eassist)
+36	 
+37	;(concat essist-header-switches ("hh" "cc"))
+38	(defun alexott/c-mode-cedet-hook ()
+39	  (local-set-key "\C-ct" 'eassist-switch-h-cpp)
+40	  (local-set-key "\C-xt" 'eassist-switch-h-cpp)
+41	  (local-set-key "\C-ce" 'eassist-list-methods)
+42	  (local-set-key "\C-c\C-r" 'semantic-symref)
+43	  )
+44	(add-hook 'c-mode-common-hook 'alexott/c-mode-cedet-hook)
+45	 
+46	;; gnu global support
+47	(require 'semanticdb-global)
+48	(semanticdb-enable-gnu-global-databases 'c-mode)
+49	(semanticdb-enable-gnu-global-databases 'c++-mode)
+50	 
+51	;; ctags
+52	(require 'semanticdb-ectag)
+53	(semantic-load-enable-primary-exuberent-ctags-support)
+54	 
+55	(global-semantic-idle-tag-highlight-mode 1)
+
+Using CEDET
+
+    control return: whatever the symbol you are typing, this hot key automatically complete it for you.
+    C-c?: another way to complete the symbol you are typing
+    C-c>: when you typed . or -> after an object name, use this key to show possible public member functions or data members.
+    C-cj: jump to the definition of the symbol under cursor
+    C-cs: show a summary about the symbol under cursor
+    C-cq: show the document of the symbol under cursor
+    C-c=: visit the header file under cursor
+    C-cp: toggle between the implementation and a prototype of symbol under cursor
+    C-ce: when your cursor is in the scope of a class or one of its member function, list all methods in the class
+    C-cC-r: show references of the symbol under cursor
+    C-cC-c-: fold all
+    C-cC-c+: unfold all
+    C-c-: fold the block under cursor
+    C-c+: unfold the block under cursor
+
+Using ECB
+
+Once CEDET is installed and customized, we can use ECB. Add the following lines into your .emacs file:
+
+1	(add-to-list 'load-path "~/.emacs.d/ecb-2.40")
+2	(require 'ecb)
+3	(require 'ecb-autoloads)
+
+In Emacs, we can use M-x ecb-activate to turn on ECB mode. This page shows how to byte compile ECB to make it runs fast.
+Like
+Be the first to like this post.

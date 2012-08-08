@@ -1,0 +1,58 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-18T19:14:56+08:00
+
+====== ibuffer ======
+Created Thursday 18 August 2011
+
+Emacs Tip of the Day: Start Using IBuffer ASAP.
+By Vedang
+
+IBuffer is a drastic improvement on the current emacs buffer management system. It’s main strength is that it allows you to operate on a group of buffers in one go, and it provides an unbelievably large array of keyboard shortcuts to perform said group operations. Using IBuffer is simple, just stick this in your .emacs file:
+
+(require 'ibuffer)
+(global-set-key (kbd "C-x C-b") 'ibuffer-other-window)
+
+I like to see my buffers sorted by major-mode, so I add this bit too:
+
+(setq ibuffer-default-sorting-mode 'major-mode)
+
+To mark a set of buffers for group operations, press ‘m’. To unmark, press ‘u’.
+Now that we know the basics, let’s look at some of the awesomeness at our disposal:
+(Listed in decreasing order of frequency of use)
+
+'O' - ibuffer-do-occur
+- Do an occur on the selected buffers.
+This does a regex search on all the selected buffers and displays the result in an *occur* window. It is unbelievably useful when browsing through code. It becomes truly awesome when you combine it with the ‘filter’ powers of ibuffer (coming up ahead). Eg: Do C-x C-b, mark all files using (say) Perl major-mode, do occur to find out all places where a certain function is mentioned in these files. Navigate to the point at will through the Occur window.
+
+'M-s a C-s' - ibuffer-do-isearch
+- Do an incremental search in the marked buffers.
+This is so awesome that you have to try it right this instant. Select two or more buffers, hit the hotkey, search for something that occurs in all these buffers. These two features alone are enough to make me a lifelong fan of IBuffer. Go do it now!
+
+'Q' - ibuffer-do-query-replace
+- Query replace in each of the marked buffers.
+I don’t think I have to sell this feature now that I’ve explained the first two. ‘I’ is it’s regex brother.
+
+'E' - ibuffer-do-eval
+- Evaluate a form in each of the marked buffers. (i.e. evaluate your own emacs-lisp code on each buffer)
+Eg: suppose you are viewing a set of logs that are being updated in real-time. You want to activate auto-revert-mode on all the logs so that you can see all the changes simultaneously and finally catch that timing issue. Mark the logs in ibuffer, hit ‘E’ and say (auto-revert-mode 1)
+
+Some other magic:
+=================
+
+'t' - Unmark all currently marked buffers, and mark all unmarked buffers.
+'* *' - Unmark all marked buffers.
+'* M' - Mark buffers by major mode.
+'* s' - Mark special buffers
+'/ m' - Add a filter by major mode.
+'/ n' - Add a filter by buffer name.
+'/ c' - Add a filter by buffer content.
+'/ e' - Add a filter by an arbitrary Lisp predicate.
+'/ /' - Remove all filtering currently in effect.
+'s f' - Sort the buffers by the file name.
+'s v' - Sort the buffers by last viewing time.
+'s s' - Sort the buffers by size.
+'s m' - Sort the buffers by major mode.
+'=' - View the differences between this buffer and its associated file.
+
+On a final note, I can stack any of these operations on top of each other. I can do a logical OR or a logical AND of the operations. My creativity is limited only by my imagination.

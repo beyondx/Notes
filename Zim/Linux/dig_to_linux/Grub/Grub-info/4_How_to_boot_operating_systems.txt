@@ -1,0 +1,15 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2010-08-03T21:44:54.043221
+
+====== 4 How To Boot Operating Systems ======
+Created Tuesday 03 August 2010
+
+GRUB has two distinct boot methods. One of the two is to load an
+operating system directly, and the other is to chain-load another boot
+loader which then will load an operating system actually. Generally
+speaking, the former is more desirable, because you don't need to
+install or maintain other boot loaders and GRUB is flexible enough to
+load an operating system from an arbitrary disk/partition. However, the
+latter is sometimes required, since GRUB doesn't support all the
+existing operating systems natively.

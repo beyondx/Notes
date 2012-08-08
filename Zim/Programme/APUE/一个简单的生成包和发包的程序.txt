@@ -1,0 +1,191 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-04T17:21:39+08:00
+
+====== 一个简单的生成包和发包的程序 ======
+Created 星期六 04 六月 2011
+http://hi.baidu.com/soulingm/blog/item/cad303f41998b02c730eeca8.html
+
+步骤：
+
+    1。先生成包
+
+定义结构体
+定义结构体变量
+给结构体变量赋值
+#define FLOWCOUNT 30
+
+struct netflow_header 包头结构
+{
+unsigned short version;
+unsigned short count;
+unsigned int sysUptime;
+unsigned int unix_seconds;
+unsigned int unix_nanoseconds;
+unsigned int flow_sequence_number;
+unsigned char engine_type;
+unsigned char engine_ID;
+unsigned short reserved;
+
+};
+struct netflow_Entry payload结构
+{
+unsigned int src_Ip;
+unsigned int dst_Ip;
+unsigned int next_hop_Ip;
+unsigned short input_interface_index;
+unsigned short output_interface_index;
+unsigned int packets;
+unsigned int bytes;
+unsigned int start_time;
+unsigned int end_time;
+unsigned short src_Port;
+unsigned short dst_Port;
+unsigned char pad;
+unsigned char flag;
+unsigned char proto;
+unsigned char tos;
+unsigned short src_AS;
+unsigned short dst_AS;
+unsigned char src_netmask_len;
+unsigned char dst_netmask_len;
+unsigned short padding;  ** //注意这个Pad**
+ 
+};
+
+struct netflow_pkt 整体包结构
+{
+struct netflow_header hdr; 包头
+struct netflow_Entry entry[30]; payload
+
+} pkts;
+
+    2。再发包
+
+建立socket,
+建立connection
+把前面生成的包发出去
+unsigned int GetTickCount()
+{
+struct tms tm;
+return (unsigned int)times(&tm);
+}
+
+unsigned int rand_long()
+{
+unsigned int ip_addr,ip1,ip2,ip3,ip4;
+ip1 = rand()%254+1;
+ip2 = rand()%254+1;
+ip3 = rand()%254+1;
+ip4 = rand()%254+1;
+
+ip_addr = (ip1<<24)+(ip2<<16)+(ip3<<8)+ip4;
+
+return ip_addr;
+
+}
+
+
+create_packet() 生成一个包
+{
+int i = 0;
+int j = 0;
+int k = 0;
+unsigned int currentT;
+int counts = FLOWCOUNT;
+int numbytes;
+socklen_t socklen = sizeof(servaddr);
+
+
+pkts.hdr.version = __htons__(5);  //注意这些转换
+
+pkts.hdr.count = __htons__(counts);
+
+currentT = GetTickCount();
+pkts.hdr.sysUptime = __htons__(currentT - 2000);
+
+pkts.hdr.unix_seconds = htons(currentT/1000);
+pkts.hdr.unix_nanoseconds = htons(currentT - pkts.hdr.unix_seconds * 1000);
+pkts.hdr.engine_ID = (unsigned char)11;
+pkts.hdr.engine_type = (unsigned char)1;
+pkts.hdr.reserved = (unsigned char)1;
+
+
+for (i =0; i < counts ; i++)
+{
+pkts.entry[i].src_Ip =htons(rand_long());
+pkts.entry[i].dst_Ip =htons(rand_long());
+pkts.entry[i].next_hop_Ip=htons(rand_long());
+
+pkts.entry[i].input_interface_index = htons(rand()%3+1);
+pkts.entry[i].output_interface_index =htons(rand()%3+1);
+
+pkts.entry[i].packets = htons(rand()%1000+5);
+pkts.entry[i].bytes = htons(rand()%2048 + 48);
+
+pkts.entry[i].start_time = htons(currentT - 1500);
+pkts.entry[i].end_time= htons(currentT - 100);
+
+pkts.entry[i].src_Port = htons(rand()%65533+1);
+pkts.entry[i].dst_Port = htons(rand()%65533+1);
+
+pkts.entry[i].pad = htons(1);
+pkts.entry[i].flag = htons(rand()%8129);
+
+if(counts%2 == 0)
+pkts.entry[i].proto = (unsigned char)1; //lfc changed
+else
+if(counts%3 == 0)
+pkts.entry[i].proto = (unsigned char)6;
+else
+pkts.entry[i].proto = (unsigned char)17;
+
+pkts.entry[i].tos = (unsigned char)1;
+
+pkts.entry[i].src_AS = htons(rand()%100+1);
+pkts.entry[i].dst_AS = htons(rand()%100+1);
+
+pkts.entry[i].src_netmask_len = htons(24);
+pkts.entry[i].dst_netmask_len = htons(24);
+
+pkts.entry[i].padding=htons(0);
+
+}
+
+}
+int clifd;
+
+struct sockaddr_in servaddr,cliaddr;
+
+send_packet(char *server_addr_string,unsigned int server_port)发包函数
+{
+
+if ((clifd = socket(AF_INET,SOCK_DGRAM,0)) < 0)
+{
+printf("create socket error!\n");
+exit(1);
+}
+
+bzero(&cliaddr,sizeof(cliaddr));
+cliaddr.sin_family = AF_INET;
+cliaddr.sin_addr.s_addr = htons(INADDR_ANY);
+cliaddr.sin_port = htons(0);
+
+bzero(&servaddr,sizeof(servaddr));
+servaddr.sin_family = AF_INET;
+inet_aton(server_addr_string,&servaddr.sin_addr);
+servaddr.sin_port = htons(server_port);
+
+if ((numbytes=sendto(clifd, (char *)&pkts,24+48*FLOWCOUNT, 0, (struct sockaddr *)&servaddr, socklen)) == -1) {
+printf("error send !\n");
+printf("Wait Error:%s\n",strerror(errno));
+exit(1);
+}
+
+}
+int main() 主程序
+{
+create_packet(); 先生成包
+send_packet(str_dst_ip,dst_port); 再发包
+}
+

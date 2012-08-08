@@ -1,0 +1,321 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-28T19:11:52+08:00
+
+====== 分享Linux下USB无线网卡WL-167G、TL-WN321G驱动安装过程详解 ======
+Created Monday 28 November 2011
+
+sailor_forever sailing_9806@163.com 转贴请注明
+
+http://blog.csdn.net/sailor_8318/archive/2007/08/03/1724477.aspx
+
+ 
+【摘要】嵌入式设备正在向移动化网络化方向发展，本文探讨了**嵌入式linux平台**上移植无线网卡的问题，对PC平台上无线网卡的安装进行了初步分析，为ARM上的移植工作奠定了良好的基础。针对Linux下USB无线网卡，华硕的WL-167G、TP-LINK的TL-WN321G，给出了驱动安装过程详解。
+
+【关键字】WLAN、无线网卡、USB、WL167G、WN321G、RT73、ARM、Linux
+
+
+网卡 华硕 WL-167G、TP-LINK TL-WN321G
+驱动 RT73_Linux_STA_Drv1.0.3.6
+下载地址
+http://dlsvr01.asus.com/pub/ASUS/wireless/WL-167g/Linux_1218.zip
+
+
+=== 一、 准备工作 ===
+ 解压内核源码，拷贝对应内核的makefile，并更改文件属性
+[root@dding RT73_Linux_STA_Drv1.0.3.6]# chmod 777 Module
+[root@dding RT73_Linux_STA_Drv1.0.3.6]# ls -al
+总用量 16
+。。。。。。。。。。
+drwxrwxrwx 2 root root 4096 2006-07-04 Module
+##确保文件对任何用户是可读可执行的，否则可能不能make config，777可以保证所有权限
+
+
+=== 二、 添加对WL-167G ASUS 网卡的支持 ===
+注意官方的1218版本以前驱动包括网卡自带的光盘里没有对此说明，否则驱动加载后会说找不到设备
+[root@dding Module]# gedit __rtmp_def.h__
+##add support for WL-167G ASUS
+{USB_DEVICE(0x0B05,0x1723)}, /* dding add WL-167G ASUS */ /
+{USB_DEVICE(0x0B05,0x1724)}, /* dding add ASUS */ /
+
+
+=== 三、 配置、编译  ===
+确保对应目录下存在/usr/src当前系统运行的内核源码，其他位置不行
+1> $make config
+## ensure there are such directories as** /usr/src/linux-2.4.20-8 **and **/lib/modules/2.4.20-8/kernel/drivers/net**, but they are your own kernel
+2> $make all # compile driver source code
+## ensure no problems occur
+
+
+=== 四、修改自启动配置文件ifcfg-rausb0并安装RT73.o及添加alias rausb0 rt73 ===
+1> 修改当前目录下的**ifcfg-rausb0**，若是动态IP则不需要修改(这个文件被安装到/etc/目录下，且被网络配置程序自动启动)
+[root@dding Module]# gedit ifcfg-rausb0
+## edit the file according to your network system, and it can be auto loaded when booting system. and the file is as follows:
+DEVICE=rausb0
+ONBOOT=yes
+## static for fixed ip
+**BOOTPROTO=static**
+IPADDR=192.168.0.31 ## 你自己的IP及其他相关设置
+NETMASK=255.255.255.0
+**GATEWAY=192.168.0.1**
+2> 安装模块及其他自启动设置
+[root@dding Module]# make install
+install -m 755 -o 0 -g 0 -d /lib/modules/2.4.20-8/extra
+………………
+## 安装完毕后请确认对应目录下存在下列文件
+## 安装完毕后modules.conf内容如下:
+...............
+alias rausb0 rt73
+##安装完毕后 ifcfg-rausb0 内容如gedit ifcfg-rausb0所设
+
+=== 五、拷贝系统固件及默认自启动时的默认配置文件 ===
+1> $cp __rt73.bin__ /etc/Wireless/RT73STA/ # copy firmware
+[root@dding Module]# cp rt73.bin /etc/Wireless/RT73STA/
+##必须先逐层建立目录/etc/Wireless/RT73STA/后，再执行拷贝操作，否则报错
+2> $dos2unix rt73sta.dat
+$cp rt73sta.dat /etc/Wireless/RT73STA/rt73sta.dat
+[root@dding Module]# dos2unix rt73sta.dat
+dos2unix: converting file rt73sta.dat to UNIX format ...
+## 拷贝完毕上述目录确认存在此两个文件
+# Use "vi -b rt73sta.dat" to modify settings according to your need.
+
+=== 六、动态加载模块 用相关命令确认模块加载成功(设备需先插入) ===
+[root@dding Module]# **insmod** rt73.o
+[root@dding Module]# cat /var/log/**messages** | tail
+。。。。。。。。。。
+Apr 14 14:05:44 dding kernel: rtusb init ====>
+Apr 14 14:05:44 dding kernel: usb.c: registered new driver** rt73**
+[root@dding Module]# **dmesg **| tail
+。。。。。。。。。。
+rtusb init ====>
+usb.c: registered new driver rt73
+[root@dding Module]# **lsmod**
+Module Size Used by Not tainted
+**rt73 **233632 0 (unused)
+...............
+usbcore 78784 1 [**rt73** hid usb-uhci ehci-hcd]
+## 也可以确认模块是否加载成功
+
+
+=== 七、插入网卡，看是否能够识别 ===
+## insert the WL-167G card
+[root@dding Module]# cat /var/log/messages | tail
+。。。。。。。。。。
+Apr 14 14:07:58 dding kernel: **idVendor = 0xb05, idProduct = 0x1723**
+Apr 14 14:07:59 dding /etc/hotplug/net.agent: invoke__ ifup rausb0__
+。。。。。。。。。。。
+Apr 14 14:08:02 dding /etc/hotplug/usb.agent: Setup rt73 for USB product b05/1723/1
+
+[root@dding Module]# dmesg | tail
+。。。。。。。。。。。
+
+## pop out the WL-167G card insert the TL-WN321G card
+[root@dding Module]# cat /var/log/messages | tail
+。。。。。。。。。。。。。
+Apr 14 14:11:02 dding /etc/hotplug/usb.agent: Setup rt73 for USB product 148f/2573/1
+Apr 14 14:11:02 dding devlabel: devlabel service started/restarted
+## support for USB product 148f/2573/1, and all is ok
+
+[root@dding Module]# dmesg | tail
+。。。。。。。。。。。。。。。
+
+
+=== 八、成功识别后，用iwconfig查看无线网络并进行相关设置 ===
+[root@dding Module]#** iwconfig**
+rausb0 RT73 WLAN ESSID:"lab706"
+Mode:Ad-Hoc Channel:1 Cell: 00:18:F3:E5:9D:66
+。。。。。。。。。。。。
+[root@dding Module]# iwconfig rausb0 __mode managed__
+[root@dding Module]# iwconfig
+rausb0 RT73 WLAN ESSID:""
+。。。。。。。。。。。。。
+## Infrustructure mod, 默认ESSID:""为空,
+
+[root@dding Module]# iwlist rausb0__ scan__
+rausb0 Scan completed :
+Cell 01 - Address: 00:18:F3:E5:9D:66
+ESSID:"lab706"
+。。。。。。。。。。。。
+Cell 02 - Address: 00:C0:02:0A:8D:52
+ESSID:"A509-ID"
+。。。。。。。。。。。
+##将自动接收周围的**信标帧**,并比较信号值自动进行联接,也可以扫描手动设置
+
+[root@dding Module]# __iwconfig__
+rausb0 RT73 WLAN ESSID:"lab706"
+Mode:Managed Channel:1 Access Point: 00:18:F3:E5:9D:66
+。。。。。。。。。。。。。
+## AP端设置好后,TL-WN321G自动联接到AP上了,太爽了，WL-167G还可以当AP用
+## 在AP端加上了**MAC控制列表**防止其他用户联接到此网络上
+
+
+×××××××××××××××××××××××××××××××××××××××××××
+
+下面的回复未能完整显示，因此将其放在正文里面，相关文档根据我和xuxunlin 的QQ聊天记录整理所得
+
+××××××××××××××××××××××××××××××
+
+ 
+呵呵，最后问题还是你自己发现的, 我稍微把问题的过程再补充下
+ 
+问题：驱动安装完毕后，无线网卡ping不通AP
+ 
+过程：
+
+=== 1、IP未配置 ===
+
+这是iwconfig的结果：
+ 
+rausb0    RT73 WLAN**  ESSID:"VeryBT" **
+          Mode:Managed  Channel:6  Access Point: 00:19:E0:D8:E2:A8 
+          Bit Rate=54Mb/s  
+          RTS thr:off   Fragment thr:off
+          Encryption key:7461-6E67-796F-6E67-3730-324C-42
+          Link Quality:100/100  Signal level:-32 dBm  Noise level:-79 dBm
+          Rx invalid nwid:0  Rx invalid crypt:0  Rx invalid frag:0
+          Tx excessive retries:0  Invalid misc:0   Missed beacon:
+ 
+这是ipconfig的结果：
+
+rausb0  Link encap:Ethernet  HWaddr 00:1B:FC:45:54:58 
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:273 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:839 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:100
+          RX bytes:30678 (29.9 Kb)  TX bytes:60322 (58.9 Kb
+ 
+在ifcfg-rausb0配置里面动态获取的
+BOOTPROTO=**dhcp**
+
+但无线和有线不一样，在该无线网卡未连入系统时，其可能无法和DHCP服务器通信以获得IP, 上面的ifconfig的结果也证实了IP未能获取成功
+
+因此对于Linux下面的**无线网卡要静态配置Ip**
+#xuxunlin add follow
+#BOOTPROTO=static
+#IPADDR=192.168.1.101
+#NETMASK=255.255.255.0
+#GATEWAY=192.168.1.1                                                 
+#add end
+确保上面无线网卡的IP和AP的IP在同一个网段
+ 
+
+=== 2、扫描AP，确保已经连到对应的无线网络上了 ===
+__iwlist rausb0 scan__
+rausb0    Scan completed :
+          Cell 01 - Address: 00:0F:66:B0:8F:84
+                    ESSID:"WLANLAB"
+                    Mode:Managed
+                    Channel:11
+                    Encryption key:off
+                    Bit Rate:0kb/s
+          Cell 02 - Address: 00:19:E0:D8:E2:A8
+                    ESSID:"VeryBT"
+                    Mode:Managed
+                    Channel:6
+                    Encryption key:on
+                    Bit Rate:0kb/
+ 
+**iwconfig：**
+rausb0    RT73 WLAN  ESSID:"VeryBT" 
+          Mode:Managed  Channel:6  Access Point: 00:19:E0:D8:E2:A8 
+          Bit Rate=54Mb/s  
+          RTS thr:off   Fragment thr:off
+          Encryption key:7461-6E67-796F-6E67-3730-324C-42
+          Link Quality:100/100  Signal level:-32 dBm  Noise level:-79 dBm
+          Rx invalid nwid:0  Rx invalid crypt:0  Rx invalid frag:0
+          Tx excessive retries:0  Invalid misc:0   Missed beacon:
+ 
+**ifconfig：**
+eth0      Link encap:Ethernet  HWaddr 00:0C:29:A5:8D:CD 
+          inet addr:202.115.27.234  Bcast:202.115.27.255  Mask:255.255.255.0
+          。。。。。。
+lo        Link encap:Local Loopback 
+       。。。。。。。。。。
+rausb0    Link encap:Ethernet  HWaddr 00:1B:FC:45:54:58 
+         ** inet addr:192.168.1.101  Bcast:192.168.1.255  Mask:255.255.255.0**
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:32973 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:1555 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:100
+          RX bytes:3840399 (3.6 Mb)  TX bytes:100306 (97.9 Kb
+ 
+上述相关命令显示IP地址设置正确，网卡已经连接到AP了
+Access Point: 00:19:E0:D8:E2:A8  和
+Cell 02 - Address: 00:19:E0:D8:E2:A8匹配
+
+但仍然ping不通
+PING 192.168.1.1 (192.168.1.1) 56(84) bytes of data.
+From 192.168.1.101 icmp_seq=1 Destination Host Unreachable
+ 
+
+=== 3、一般情况下Destination Host Unreachable是路由有问题，即数据包不能找到一条合适的路径发送出去，因此确认网关正确 ===
+在图形化界面里面未找到rausb0的配置项，只能通过命令配置
+**route add default gw 192.168.1.1**
+
+仍然不通，用__netstat －r__查看当前存在的路由表项
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+192.168.1.0     *               255.255.255.0   U     0      0        0 rausb0
+169.254.0.0     *               255.255.0.0     U     0      0        0 rausb0
+127.0.0.0       *               255.0.0.0       U     0      0        0 lo
+**default         192.168.1.1     0.0.0.0         UG    0      0        0 rausb**
+ 
+
+192.168.1.0     *               255.255.255.0   U     0      0        0 rausb0
+对应的网关为空
+而default         192.168.1.1     0.0.0.0         UG    0      0        0 rausb
+对应的网络接口不是rausb0，但是以太网的default项接口肯定是eth0的，不是eth
+
+因此添加完整的路由表项
+－net指定网络号，而非IP地址
+__route add -net 192.168.1.0 netmask 255.255.255.0 gw 192.168.1.1__
+ 
+netstat －r
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags   MSS Window  irtt Iface
+192.168.1.0     192.168.1.1     255.255.255.0   UG        0 0          0 rausb0
+192.168.1.0     *               255.255.255.0   U         0 0          0 rausb0
+127.0.0.0       *               255.0.0.0       U         0 0          0 lo
+default         192.168.1.1     0.0.0.0         UG        0 0          0 rausb
+ 
+现在192.168.1.0     192.168.1.1     255.255.255.0   UG        0 0         0 rausb0表项完整了
+ping 192.168.1.1的报文可以**确定**是通过上述表项对应的rasub0发送出去的
+当有线和无线网卡在同一个网段时，可能存在无线对应的网段数据是通过eth0发送的，这个时候肯定是无法reach host的
+ 
+配置好了上述路由后，仍然不通
+Destination Host Unreachable
+ 
+
+=== 4、用traceroute追踪路由 ===
+traceroute 192.168.1.1
+ 1  192.168.1.10 (192.168.1.10)  2653.335 ms !H  2998.934 ms !H  2999.653 ms !
+
+没有出现类似windows下面的
+Trace complete提示
+因此也没有搞明白错误出现在哪一环
+ 
+
+=== 5、IP已经配置，连上AP了，路由表也配了，实在想不到还有什么不对的地方 ===
+采用最原始的办法：__确保防火墙已关闭、网卡本身硬件没问题__，在windows下面尝试确认是无线网卡驱动的问题还是网络本身的问题
+ 
+windows下面尝试的结果是也无法ping通, 因为windows的驱动是不用怀疑的，相关配置都是自动的.
+ 问题的原因进一步缩小，xuxunlin 很快找到了__密码的问题__ ,重新更改密码后，在Linux下面添加密匙
+iwconfig rausb0 essid "xx" key s:xxx
+即可ping通了
+ 
+
+=== 6、疑惑 ===
+因为看到iwlist之后iwconfig的结果中已经连接到AP了
+总是觉得无线网络本身是没有问题的
+因为按照无线的协议，__扫描》认证》关联__，密匙不对是无法经过认证阶段的
+但现在iwconfig的结果却显示连接上了？
+期待哪位大虾解释下iwconfig的结果
+iwconfig：
+rausb0    RT73 WLAN  ESSID:"VeryBT" 
+          Mode:Managed  Channel:6  Access Point: 00:19:E0:D8:E2:A8 
+          Bit Rate=54Mb/s  
+          RTS thr:off   Fragment thr:off
+          Encryption key:7461-6E67-796F-6E67-3730-324C-42
+          Link Quality:100/100  Signal level:-32 dBm  Noise level:-79 dBm
+          Rx invalid nwid:0  Rx invalid crypt:0  Rx invalid frag:0
+          Tx excessive retries:0  Invalid misc:0   Missed beacon

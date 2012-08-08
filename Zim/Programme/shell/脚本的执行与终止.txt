@@ -1,0 +1,84 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-24T13:47:19+08:00
+
+====== 脚本的执行与终止 ======
+Created Saturday 24 December 2011
+
+[geekard@geekard ~]$ **cat test.sh **
+tmpfile=tmpfile
+touch tmpfile
+trap "rm -f $tmpfile; exit" INT TERM EXIT
+while true; do __sleep 1__; done
+[geekard@geekard ~]$ 
+
+[geekard@geekard ~]$ **./test.sh &**
+[1] __6285__
+[geekard@geekard ~]$ ps __ -t pts/0__ -opid,ppid,args f
+  PID  PPID COMMAND
+ 2412  2411 bash
+ __6285__  2412  \_ bash
+** 7414 ** 6285  |   \_ sleep 1
+ 7416  2412  \_ ps -t pts/0 -opid,ppid,args f
+[geekard@geekard ~]$ kill -TERM 7414
+bash: kill: (7414) - **No such process**
+[geekard@geekard ~]$  ps  -t pts/0 -opid,ppid,args f
+  PID  PPID COMMAND
+ 2412  2411 bash
+ 6285  2412  \_ bash
+** 7662**  6285  |   \_ sleep 1
+ 7663  2412  \_ ps -t pts/0 -opid,ppid,args f
+[geekard@geekard ~]$ kill -TERM 7662
+bash: kill: (7662) - No such process
+
+修改一下test.sh文件，延长sleep事件到10s
+[geekard@geekard ~]$ **cat test.sh **
+tmpfile=tmpfile
+touch tmpfile
+trap "rm -f $tmpfile; exit" INT TERM EXIT
+while true; do __sleep 10__; done
+[geekard@geekard ~]$ ./tesh.sh &
+[1] __7909__
+[geekard@geekard ~]$  ps  -t pts/0 -opid,ppid,args f
+  PID  PPID COMMAND
+ 2412  2411 bash
+__ 7909 __ 2412  \_ bash
+** 7944**  7909  |   \_ sleep 10
+ 7951  2412  \_ ps -t pts/0 -opid,ppid,args f
+[geekard@geekard ~]$ kill -TERM 7944
+**Terminated**
+[geekard@geekard ~]$ ls
+bin    Desktop    download  musics  pictures  softwares  test.sh __ tmpfile__  vms
+codes  documents  dumy.c    notes   ppc       test file  tmp      video    www
+[geekard@geekard ~]$  ps  -t pts/0 -opid,ppid,args f
+  PID  PPID COMMAND
+ 2412  2411 bash
+ 7909  2412  \_ bash
+** 7978  7909  |   \_ sleep 10**
+** 8006  2412  \_ ps -t pts/0 -opid,ppid,args f**
+**[geekard@geekard ~]$ kill -TERM 7978**
+**bash: kill: (7978) -** No such process
+[geekard@geekard ~]$  ps  -t pts/0 -opid,ppid,args f
+  PID  PPID COMMAND
+ 2412  2411 bash
+ 7909  2412  \_ bash
+__ 8047 __ 7909  |   \_ sleep 10
+ 8048  2412  \_ ps -t pts/0 -opid,ppid,args f
+[geekard@geekard ~]$ kill -TERM 8047
+Terminated
+[geekard@geekard ~]$ ls
+bin    Desktop    download  musics  pictures  softwares  test.sh  __tmpfile__  vms
+codes  documents  dumy.c    notes   ppc       test file  tmp      video    www
+[geekard@geekard ~]$ kill -TERM__ 7909__
+[geekard@geekard ~]$ ls
+bin    Desktop    download  musics  pictures  softwares  test.sh  __tmpfile__  vms
+codes  documents  dumy.c    notes   ppc       test file  tmp      video    www
+[geekard@geekard ~]$ ls
+bin    Desktop    download  musics  pictures  softwares  test.sh  __tmpfile__  vms
+codes  documents  dumy.c    notes   ppc       test file  tmp      video    www
+[geekard@geekard ~]$  ps  -t pts/0 -opid,ppid,args f
+  PID  PPID COMMAND
+ 2412  2411 bash
+ 8159  2412  \_ ps -t pts/0 -opid,ppid,args f
+**[1]+  Done                    ./test.sh**
+[geekard@geekard ~]$ 

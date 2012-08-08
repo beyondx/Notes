@@ -1,0 +1,156 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-02T22:05:51+08:00
+
+====== libnl ======
+Created Friday 02 March 2012
+
+LTIB中加入libnl支持的方法：
+
+==== 一、使用LTIB的方法： ====
+1.下载libnl-3.2.11.tar.gz文件，计算其md5值。
+   #md5sum libnl-3.2.11.tar.gz >libnl-3.2.11.tar.gz.md5
+
+2.将源文件和md5值拷贝到/opt/freescale/pkgs
+  #cp libnl* /opt/freescale/pkgs
+
+3.向~/ppc/ltib-mpc8315/dist/lfs-5.1/中添加spec文件（可以在template/template.spec的基础上修改）
+# cd ~/ppc/ltib-mpc8315/dist/lfs-5.1
+# mkdir libnl
+# cd libnl
+__# cat libnl.spec__
+
+%define pfx /opt/freescale/rootfs/%{_target_cpu}
+
+Summary         : libnl
+Name            : libnl
+Version         : 3.2.11
+Release         : 1    #任意值，必须要有。
+License         : gpl
+Vendor          : Freescale
+Packager        : geekard
+Group           : Development/Tools
+URL             : http://uestc.edu.cn
+Source          : __%{name}-%{version}.tar.gz  #也可以手动指定全文件名，LTIB会到/opt/freescale/pkgs下查找该文件__
+BuildRoot       : %{_tmppath}/%{name}
+Prefix          : %{pfx}
+
+%Description
+%{summary}
+
+%Prep
+%setup 
+
+%Build
+./configure --prefix=%{_prefix} --host=$CFGHOST --build=%{_build}
+make
+
+%Install
+rm -rf $RPM_BUILD_ROOT
+make install DESTDIR=$RPM_BUILD_ROOT/%{pfx}
+
+%Clean
+rm -rf $RPM_BUILD_ROOT
+
+%Files
+%defattr(-,root,root)
+%{pfx}/*
+
+4. 预处理，编译，部署(添加到根文件系统中)：
+# cd ~/ppc/ltib-mpc8315
+#cp dist/ltf-5.1/libnl/libnl.spec .
+#./ltib -m prep -p libnl.spec
+#./ltib -m scbuild -p libnl.spec   
+#./ltib -m scdeploy -p libnl.spec
+
+== ==================== ==
+-------------------------------------------------------------------------------
++ make
+Making all in include
+make[1]: Entering directory `/home/geekard/PPC/ltib-mpc8315erdb-20100719/rpm/BUILD/libnl-3.2.10/include'
+make[1]: Nothing to be done for `all'.
+make[1]: Leaving directory `/home/geekard/PPC/ltib-mpc8315erdb-20100719/rpm/BUILD/libnl-3.2.10/include'
+Making all in lib
+make[1]: Entering directory `/home/geekard/PPC/ltib-mpc8315erdb-20100719/rpm/BUILD/libnl-3.2.10/lib'
+  GEN      route/pktloc_grammar.c
+  GEN      route/cls/ematch_grammar.c
+  GEN      route/cls/ematch_syntax.c
+  GEN      route/pktloc_syntax.c
+r__oute/cls/ematch_syntax.y:31.9-16: syntax error, unexpected identifier, expecting string__
+make[1]: *** [route/cls/ematch_syntax.c] Error 1
+make[1]: *** Waiting for unfinished jobs....
+route/pktloc_syntax.y:11.9-16: syntax error, unexpected identifier, expecting string
+make[1]: *** [route/pktloc_syntax.c] Error 1
+make[1]: Leaving directory `/home/geekard/PPC/ltib-mpc8315erdb-20100719/rpm/BUILD/libnl-3.2.10/lib'
+make: *** [all-recursive] Error 1
+error: Bad exit status from /home/geekard/PPC/ltib-mpc8315erdb-20100719/tmp/rpm-tmp.19887 (%build)
+
+原因是ltib使用的bison版本老了：
+http://permalink.gmane.org/gmane.comp.lib.uclibc.buildroot/30794
+----------------
+
+commit: http://git.buildroot.net/buildroot/commit/?id=5c22f20f4b12395a34ce47c1aba608fccaf1fbe0
+branch: http://git.buildroot.net/buildroot/commit/?id=refs/heads/master
+
+libnl build breaks with bison <2.4 with:
+
+bison -y -d  -o route/cls/ematch_syntax.c route/cls/ematch_syntax.y
+route/cls/ematch_syntax.y:31.9-16: syntax error, unexpected
+identifier, expecting string
+
+So build our own known good version and use instead.
+-------------------
+
+解决的方法是，将LTIB使用的bison指向系统较新的版本
+# sudo ln -s /usr/bin/bison [[/opt/freescale/ltib/usr/bin/bison]]
+
+-----------------------------------------------------------------------
+> make[3]: Entering directory
+> `/home/sriram/buildroot/buildroot-2011.11/output/build/libnl-3.0/lib'
+> CC route/pktloc.lo
+>
+> route/pktloc.c: In function ‘read_pktlocs’:
+> route/pktloc.c:127:34: error: __‘YY_BUF_SIZE’ undeclared__ (first use in
+> this function)
+> route/pktloc.c:127:34: note: each undeclared identifier is reported
+> only once for each function it appears in
+> make[3]: *** [route/pktloc.lo] Error 1
+> make[3]: Leaving directory
+> `/home/sriram/buildroot/buildroot-2011.11/output/build/libnl-3.0/lib'
+> make[2]: *** [all] Error 2
+> make[2]: Leaving directory
+> `/home/sriram/buildroot/buildroot-2011.11/output/build/libnl-3.0/lib'
+> make[1]: *** [all-recursive] Error 1
+> make[1]: Leaving directory
+> `/home/sriram/buildroot/buildroot-2011.11/output/build/libnl-3.0'
+> make: ***
+> [/home/sriram/buildroot/buildroot-2011.11/output/build/libnl-3.0/.stamp_built]
+> Error 2
+--------------------------------
+解决方法是：http://lkml.indiana.edu/hypermail/linux/kernel/1202.2/01275.html
+I added following lines of code in
+libnl-3.0/lib/route/pktloc_grammer.h
+
+#ifndef YY_BUF_SIZE
+#define YY_BUF_SIZE 16384
+#endif
+
+#ifndef YY_STATE_BUF_SIZE
+#define YY_STATE_BUF_SIZE ((YY_BUF_SIZE + 2) * sizeof(yy_state_type))
+#endif
+
+==== 二、使用交叉编译工具链的方法 ====
+1.解压源代码：
+	$tar xvf libnl-3.2.11.tar.gz
+
+2.在当前shell中导入交叉编译工具链的环境变量脚本：
+	$source ~/PPC/script/env.h  
+
+3.交叉编译libnl
+	$ ./configure --prefix=/usr __--host=powerpc-linux --build=x86_64-unknown-linux-gnu  #--build参数可以不用指定。__
+	$make
+
+4. 安装到目标板的根文件系统中
+      $make install_root=/path-to-target-root-dir install
+
+libnl-3.2.11文件件Attachment dir.

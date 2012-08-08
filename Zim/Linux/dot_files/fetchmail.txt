@@ -1,0 +1,25 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-23T14:44:20+08:00
+
+====== fetchmail ======
+Created Monday 23 May 2011
+
+# Configuration created Sun May 22 22:15:23 2011 by fetchmailconf 1.57
+#set logfile "~/tmp/fetchmail.log"
+set postmaster "geekard"
+set bouncemail
+set no spambounce
+set softbounce
+set properties ""
+set daemon 100
+poll pop.gmail.com with proto POP3 and options uidl
+       user 'geekard' there with password '701178zj12912' is 'geekard' here options keep stripcr ssl
+ mda '/usr/bin/esmtp -f %F %T'
+
+poll pop.qq.com with proto POP3
+       user 'geekard' there with password 'ho4o44' is 'geekard' here options keep stripcr ssl
+ #mda '/usr/bin/mail'
+ mda '/usr/bin/esmtp -f %F %T'
+
+

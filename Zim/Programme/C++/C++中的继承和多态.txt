@@ -1,0 +1,108 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-06T10:11:49+08:00
+
+====== C++中的继承和多态 ======
+Created Saturday 06 August 2011
+
+派生类的构造函数：
+1.在派生类构造函数中，只要基类不是仅使用无参的默认构造函数，都要__显式的给出基类名称参数表__；
+2.基类没有定义构造函数，派生类也可以不定义，使用默认构造函数；
+3.基类有带参构造函数，派生类__必须__定义构造函数。
+
+派生类与基类：
+1.派生类对象可以赋值给基类的对象，其实是把派生类对象中从对应基类中__继承__来的成员赋值给基类对象。反过来不行，因为派生类的新成员无值可赋；
+2.可以讲一个派生类对象的地址赋给其基类的指针变量，但是只能通过这个指针访问派生类中由基类继承来的成员，不能访问新成员；
+__注意__：如果派生类重载了基类中的操作，则将派生类对像赋值给基类对像后基类对像不能使用派生类重载后的操作而实际使用的还是基类的操作，除非该操作是一个虚函数。
+
+多态性：
+__编译时多态__，通过函数的重载和运算符的重载来实现的；
+有别于编译时多态（重载）——__运行时的多态__：
+　　1.运行多态性：通过继承关系和虚函数（必须带virtual）来实现。即派生类对虚函数覆盖（参数表返回类型完全相同），无法在执行之前确定该调用哪一个函数；
+　　2.未加关键字virtual函数，在派生类被覆盖是同名覆盖(这是编译时多态的情况)，不能体现运行时的多态性；
+
+ 1 #include<iostream>
+
+ 2 #include<string>
+ 3 using namespace std;
+ 4 
+ 5 class Student
+ 6 {
+ 7 protected:
+ 8     string name;
+ 9     string curseName;
+10     int hours;
+11     int credit;
+12 
+13 public:
+14     Student (string name) {this->name    = name ; curseName    = "#" ; credit    = 0 ; hours    = 0; }
+15 
+16     /*
+17         有别于编译时多态——重载：
+18         1.运行多态性：通过继承关系和虚函数来实现。即派生类对虚函数覆盖（参数表返回类型完全相同），无法在执行之前确定该调用哪一个函数；
+19         2.未加关键字virtual函数，在派生类被覆盖是同名覆盖，不能体现运行时的多态性；
+20     */
+21     __virtual __void calcu() { credit    = hours/16; }
+22     void setCourse( string str , int cHours)
+23     {
+24         curseName    = str;
+25         hours            = cHours;
+26     }
+27 
+28     string getName() { return name; }
+29     string getCurseName() { return curseName; }
+30     int getHours()    { return hours; }
+31     int getCredit()    { return credit; }
+32 };
+33 
+34 class GStudent : public Student
+35 {
+36 public:
+37     /*
+38         1.在派生类构造函数中，只要基类不是仅使用无参的默认构造函数，都要显示的给出基类名称参数表；
+39         2.基类没有定义构造函数，派生类也可以不定义，使用默认构造函数；
+40         3.基类有带参构造函数，派生类必须定义构造函数。
+41     */
+42     GStudent( string name ) : __Student(name)__ {}      //通过“初始式”来达到初始化数据成员的目的。
+43     void calcu() { credit = hours/20;}
+44 };
+45 
+46 int main()
+47 {
+48     Student s("本科生");
+49     GStudent g("研究生");
+50 
+51     s.setCourse("本科课程",160);
+52     s.calcu();
+53     cout<<s.getName()<<"_"<<s.getCurseName()<<"_学时"<<s.getHours()<<"_学分"<<s.getCredit()<<endl;
+54 
+55     g.setCourse("研究生课程",160);
+56     //这里的学分由GStudent定义的calcu()计算，它屏蔽了基类的同名函数。与不定义为虚函数（同名覆盖）效果一样
+57     g.calcu();
+58     cout<<g.getName()<<"_"<<g.getCurseName()<<"_学时"<<g.getHours()<<"_学分"<<g.getCredit()<<endl;
+59 
+60     Student *ps;
+61     
+62     //将 Student对象赋给Student对象指针，没什么好说的，和Student对象使用完全一样
+63     s.setCourse("本科",160);
+64     ps    = &s;
+65     ps->calcu();
+66     cout<<ps->getName()<<"_"<<ps->getCurseName()<<"_学时"<<ps->getHours()<<"_学分"<<ps->getCredit()<<endl;
+67 
+68     /*
+69         将 GStudent对象赋给Student对象指针，__基类对象用公有派生类对象代替__（赋值兼容规则）
+70         1.派生类对象可以赋值给基类的对象，其实是把派生类对象中从对应基类中__继承(而非重载)__来的成员赋值给基类对象。反过来不行；
+71         2.可以讲一个派生类对象的地址赋给其基类的指针变量，但是只能通过这个指针访问派生类中由基类继承来的成员，不能访问新成员；
+72         3.情况2 可以__访问派生类中覆盖的虚函数__——运行时多态；
+73         4.但函数没有virtual时，按照情况2不能访问新成员，__访问的其实是基类中的成员__，去掉Student中virtual，看运行结果.
+74         ==============================================================='
+75         指针类型是指向基类的指针，但是指向了派生类对象g，按照复制兼容规则是准许的，不过只能使用基类的成员，实际上用了派生类中新定义的
+76         calcu()，这就是虚函数体现的运行时多态性。
+77     */
+78     g.setCourse("研究生",160);
+79     ps = &g;    
+80     ps->calcu();
+81     cout<<ps->getName()<<"_"<<ps->getCurseName()<<"_学时"<<ps->getHours()<<"_学分"<<ps->getCredit()<<endl;
+82 }
+
+

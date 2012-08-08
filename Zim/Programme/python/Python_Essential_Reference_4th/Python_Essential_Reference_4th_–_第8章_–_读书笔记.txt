@@ -1,0 +1,204 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-05T14:49:04+08:00
+
+====== Python Essential Reference 4th – 第8章 – 读书笔记 ======
+Created 星期二 05 七月 2011
+1、Python程序可以通过模块(modules)和包(package)来组织，简单来说，模块就是xx.py文件，而包就是一组这种文件组成的文件夹（含子文件夹）
+
+2、如1中所属，每一个.py文件都可以看做是一个模块，通过import来引用。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#spam.py
+a = 37
+def foo():
+    print("I'm foo and a is %d" % a)
+ 
+def bar():
+    print("I'm bar and calling to foo")
+ 
+class Spam(object):
+    def grok(self):
+        print("I'm Spam.grok in moudles spam")
+ 
+#调用
+import spam
+x = spam.a
+spam.foo()
+......
+
+3、import时会执行模块中的所有语句，包括你可能的一些测试语句。当然他们只会被执行一遍（不管被import了多少次）
+
+4、import仅仅是表示当前程序知道了那个模块的命名空间，使用的时候，必须带上模块，比如上面的例子：
+obj = spam.Spam()
+
+5、可以通过逗号,来引用多个模块：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+import socket, os, re
+
+
+6、可以对import进来的模块重命名，这在解决重名冲突时候非常有用：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+import spam as sp
+
+
+或者，可以作为一种“选择载入”的方法：
+
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+if format == "xml":
+    import xmlreader as reader
+elif format == "cvs":
+    improt csvreader as reader
+
+确实挺好用的吧！
+
+7、模块是Python中的一等公民，也就是说模块可以被赋值到任何变量、列表等等之中……
+
+8、import可以出现在程序的任意地方，但是不管你写了多少个improt，他会且只会被载入一次。
+
+9、想知道当前import了那些模块：print sys.modules()
+
+10、import模块的时候，只是引入了新模块的命名空间。类似于using namespace。但是很多时候，我们需要的是using std::endl这样的，只引用模块中的某函数或者类，这就需要用from functionxxx import modulesxxx。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+from spam import foo
+foo()   #这样就可以直接用foo了！类似于直接cout.....而不用std::cout...
+
+
+11、from xxx import xxx也是可以用as的！
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+from spam import Spam as Sp
+s = Sp()
+
+
+12、from xxxModules import *，可以使用*。这个*并不是全部，而是需要到xxxModules.py里面查找__all__定义。
+因此是可以隐藏的，例如下面：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#spam.py
+ 
+import sys
+ 
+__all__ = ['bar','Spam']
+ 
+a = 37
+def foo():
+    print("I'm foo and a is %d" % a)
+ 
+def bar():
+    print("I'm bar and calling to foo")
+ 
+class Spam(object):
+    def grok(self):
+        print("I'm Spam.grok in moudles spam")
+ 
+#print sys.modules
+ 
+#此时from spam import *时，就不会有foo()
+
+
+13、如果模块中使用了global命名空间，则只以定义模块的文件为依据，而非调用的模块！
+
+14、如何以“main”类似的方式启动模块。
+如果运行代码（非函数什么的）直接写在模块尾部，则import时候会被全执行，因此可以用下面的方法：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+if __name__ == "__main__":
+    print "Hi, I'm in main"
+else:
+    pass
+
+
+只有单独执行python xxx.py的时候，才会进入"Hi I'm main"这里
+
+15、模块的搜索。
+路径在sys.path下，按顺序来，也可以动态添加！
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> print sys.path
+['D:/python', 'D:\\python', 'C:\\Python27\\Lib\\idlelib', 'D:\\python\\%PYTHONPATH%', 'd:\\python', 'C:\\Windows\\system32\\python27.zip', 'C:\\Python27\\DLLs', 'C:\\Python27\\lib', 'C:\\Python27\\lib\\plat-win', 'C:\\Python27\\lib\\lib-tk', 'C:\\Python27', 'C:\\Python27\\lib\\site-packages']
+>>>
+ 
+# 动态添加
+sys.path.append("/tmp/xxx")
+
+
+python会识别的拓展名为：.py .pyw .pyc .pyo以及动态连库
+
+16、如果是动态连库.pyd，则会同时载入**.so(或者dll)
+
+17、.py在第一次被import的时候，会被变异为字节码.pyc，优化后的未.pyo。
+
+18、python搜索模块时候是大小写敏感的！
+
+19、关于重载入：Python现在的版本中已经无法实现！所以不要尝试动态冲载入（更新.py后想载入新版本的）
+
+20、包Package，每个包的下面要包含__init__.py。包的子目录下面也要有__init__.py。
+类似的，也是from xxx improt *的时候，会检查__init__.py的__all__变量。有的才会被import
+
+21、发布python程序。
+首先放在一个目录下，加入README等，然后加入如下的setup.py：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+from distutils.core import setup
+ 
+setup(name = "spam",
+        version = "1.0",
+        py_modules = ['libspam'],
+        packages = ['spampkg'],
+        scripts = ['runspam.py'])
+
+
+python setup.py sdist #自动打包生成一个zip。
+python setup.py install #安装到本地（通常是用户下载会zip包后解压缩后执行）
+python setup.py bdist #生成一个二进制版本（都编译成pyc了）
+其他可转化成可执行程序的工具：py2exe(windows), py2app(MAC OS)，可怜的linux下还没有
+
+22、也可以用setuptools，则setup.py修改为：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
+ 
+setup(name = "spam",
+        version = "1.0",
+        py_modules = ['libspam'],
+        packages = ['spampkg'],
+        scripts = ['runspam.py'])
+
+
+23、Python的包都可以从PyPI上下载。http://pypi.python.org。
+python setup.py install #安装
+python setup.py install --user #安装到用户的目录下(home相关)
+python setup.py install --prefix #安装到其他目录，一般需要修改sys.path。
+很多插件都用了c/c++，则需要对应编译器。
+
+24、使用easy_install可以从网上直接下载，然后安装。
+
+25、附上setuptools(含easy_install)的安装方法：
+Linux下：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+wget -q http://peak.telecommunity.com/dist/ez_setup.py
+sudo python ./ez_setup.py
+
+
+Windows下，下载并安装：http://pypi.python.org/packages/2.7/s/setuptools/setuptools-0.6c11.win32-py2.7.exe#md5=57e1e64f6b7c7f1d2eddfc9746bbaf20

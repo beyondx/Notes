@@ -1,0 +1,116 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-21T16:49:32+08:00
+
+====== xinet ======
+Created Thursday 21 April 2011
+http://blog168.chinaunix.net/space.php?uid=20196318&do=blog&id=172787
+
+inetd超级服务器 (2011-03-15 21:19)
+
+xinetd是inetd超级服务器的升级版，相当于inetd + tcp wrapper，将服务管理与访问控制结合在一起。在介绍inetd之前，先看一个xinetd的实例（我的机器上只有xinetd，关于inetd的配置参考UNP 325页）。
+
+xinet配置实例
+
+为xinetd添加myecho服务（将客户端发来的请求消息回送给客户端）。
+
+1． 在/etc/services中添加myecho服务的信息。
+
+myecho  12580/tcp
+
+2． 编写服务器程序，并生成可执行文件/root/echo。
+
+#include <stdio.h>
+
+int main()
+
+{
+
+int n;
+
+char buf[4096];
+
+n = read(0, buf, 4096);
+
+write(1, buf, n);
+
+return 0;
+
+}
+
+3. 增加myecho的xinetd配置项，创建文件/etc/xinetd.d/myecho
+
+    service myecho
+
+{
+
+        socket_type = stream
+
+        protocol        = tcp
+
+        wait            = no
+
+        user            = root
+
+        server          = /media/sf_desktop/echo
+
+}
+
+4. 重启xinetd或向xinet发送SIGHUP信号，使其重新加载配置文件
+
+    /etc/init.d/xinetd restart  或者
+
+    ps aux | grep xinetd 获取xinetd的进程号xid
+
+    kill –SIGHUP xid
+
+    通过netstat –an | grep 12580查看xinet启动了myecho服务。
+
+5．编写简单客户端程序访问myecho服务器进行测试。
+
+ 
+
+为什么需要inetd？
+
+典型的unix系统可能存在许多服务器，它们只是等待客户请求的到达，如FTP、Telnet、Rlogin、TFTP等。最开始，所有的这些服务都与一个进程相关联，这些进程在系统启动时开始运行，而且执行几乎相同的启动任务:创建一个套接口，把本服务的众所周知的端口捆绑到该套接口，等待一个连接（TCP）或是一个数据报（UDP），然后派生子进程。子进程为客户提供服务，父进程则等待下一个客户请求。这个模型存在两个问题：
+
+1．  所有这些守护进程含有几乎相同的启动代码（套接口的创建以及成为守护进程）。
+
+2．  每个守护进程在进程表中占据一项，并且大部分时间处于睡眠状态。
+
+ 
+
+inetd超级服务器使上述的问题得到简化：
+
+1． 通过inetd处理普通进程的大部分细节以简化守护程序的编写。
+
+2． 单个进程（inetd）就能为多个服务等待外来的客户请求，以此取代每个服务一个进程的做法，减少了系统中的进程数。
+
+ 
+
+inetd的工作原理
+
+inetd守护进程的工作流程（如下图所示）
+
+1． 在启动阶段，读入配置文件(/etc/inetd.conf /etc/xinetd.conf)，对于配置文件中的每个服务创建一个适当类型（TCP或UDP）的套接口。新创建的每个套接口都被加入到将由某个select调用使用的一个描述字集中。、
+
+xinetd(inetd)的配置文件中包含服务的类型（如上例中的stream、tcp），服务模式（如上例中的nowait），服务程序（如上例中的/root/echo）以及访问控制信息、日志等信息。
+
+2． 为每个套接口调用bind（根据/etc/services中的配置项）。
+
+3． 对于每个TCP套接口，调用listen以接受外来的连接请求；
+
+4． 创建完毕所有套接口后，调用select等待其中任何一个套接口变为可读。inetd的大部分时间阻塞于select调用内部，等待某个套接口变为可读。
+
+5． 当select返回指出某个套接口可读以后，如果该套接口是TCP套接口，而且其服务器为nowait类型，则调用accept接受这个连接。
+
+6． inetd调用fork派生进程，并由子进程处理服务请求。
+
+l  子进程关闭要处理的套接口描述字之外的所有描述字（对于TCP为accept返回的套接口，对于UDP为最初创建的套接口），子进程三次调用dup2，把待处理套接口的描述字复制到描述字0、1、2上；然后关闭原套接口描述字。因此，子进程打开的描述字只有0、1、2。子进程从标准输入读，相当于从所处理的套接口读；子进程往标准输出或标准错误上写，相当于往所处理套接口写。
+
+l  子进程根据login-name(user)的配置值，如果不是root，子进程则调用setgid和setuid把自身改为指定的用户。
+
+l  子进程调用exec执行由配置文件指定的程序（ 如上例中的/root/echo）来具体处理请求。
+
+7． 如果5中返回的是TCP套接口，则父进程先关闭接受请求产生的连接套接口。父进程在此调用select，等待下一个变为可读的套接口。
+{{./xinet.jpg}}

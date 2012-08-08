@@ -1,0 +1,151 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-26T20:53:23+08:00
+
+====== PowerPC家族谱系详解 ======
+Created Saturday 26 November 2011
+
+http://www.powerpcdev.net/read.php?tid=5
+
+随着PowerPC的发展，使用PowerPC构架的处理器已经形成了庞大的家族，在通信、工控、航天国防等要求高性能和高可靠性的领域得到广泛应用，是一颗“贵族的芯片”。目前几乎没有什么中文资料详细阐述PowerPC家族谱系，实在是一件遗憾的事。本文就给初学者简介PowerPC家族。
+
+要阐述清楚PowerPC的发展不是一件容易的事情，光是“PowerPC”这个词，就很容易被搞混，尤其是IBM注册了一系列相关的商标。比如Power 、Power PC、PowerPC 这三个词的含义就不止3种，需要工程师聪明的头脑才能区分它们。一般情况下的PowerPC，指的是使用PowerPC指令集的处理器。
+
+二十世纪九十年代，IBM(国际商用机器公司)、Apple（苹果公司）和Motorola（摩托罗拉）公司共同开发PowerPC处理器。
+
+PowerPC，最初的含义却不是Power，而是Performance Optimized With Enhanced RISC；PC指的是Performance Computing。
+目前，主流的PowerPC处理器制造商有IBM、Freescale™ Semiconductor（原摩托罗拉半导体部）、AMCC、LSI等。其中以IBM和Freescale的PowerPC处理器最为流行。本文就以这两家公司的PowerPC处理器为基础，展开讲述PowerPC家族。
+IBM的PowerPC家族
+IBM目前共有3个主要的PowerPC处理系列：Power、Power PC和CELL。POWER，POWER PC中间，还有一个Star系列。
+
+
+POWER系列CPU从1990开始生产、装备到RS/6000（即RISC System/6000）UNIX工作站和服务器上，现在被称为eServer™ pSeries®服务器（最新的名称是POWER System p系列），主要的型号有POWER 1，POWER 2™，POWER 3™，POWER 4™，POWER 4+，以及目前的POWER 5，POWER 5+和刚刚推出的POWER 6处理器。
+最早的801是POWER系列处理器的前身，它的设计非常简单，为了实现所有的指令都能在一个时钟周期内完成，因此缺乏浮点运算和并行处理能力，POWER架构为了解决这个问题，或者说超越801的限制，增加到了100多条指令，成为一种很“复杂”的精简指令集CPU。
+
+1．POWER 1 
+发布于1990年，每个芯片大约封装了80万个晶体管。
+与当时其他的处理器不同，POWER 1进行了功能分区，这种设计方案使POWER 1具有非常好的扩展能力，它有单独的浮点寄存器，可以适用于从低端UNIX工作站到高端UNIX服务器各种环境。最早的POWER 1是安装在同一母板上的几个芯片的组合，不过很快就集成到一个芯片中，成为单芯片设计，总计拥有超过一百万个晶体管的RISC处理器（RSC，RISC Single Chip，即单芯片的RISC处理器）。POWER 1最成功的应用是被用于火星探路者宇宙飞船上。
+2．POWER 2 
+发布于1993年，每个芯片封装了一千五百万个晶体管。
+POWER 2增加了第二个浮点单元处理（floating-point unit，FPU）和更多的缓存。被称为P2SC（Power 2 Scalable Chip）的超级芯片使用CMOS-6S技术，用一个芯片实现了POWER2 8个内核的架构（从这里你可以看到其实在1993年IBM就已经开始了多核芯片的设计，其实如果囊括大型机，在20世纪80年代，就有了多核的概念），就是使用这种处理器的32个节点的DEEP BLUE（深蓝）超级计算机，在1997年战胜了国际象棋冠军卡斯帕罗夫。
+3．POWER 3
+发布于1998年，每个芯片封装了一千五百万个晶体管。
+这是IBM第一款64位对称多处理器结构（SMP），与原有的POWER指令集完全兼容，也兼容Power PC指令集，主要用于科学计算，从航空设计、生物制药数据分析到天气预测。它具有一个数据预取引擎，非阻塞的内置数据缓存和双浮点处理单元。POWER 3-II采用与POWER 3相同的设计，在制造芯片时使用了铜导线技术，在几乎相同的价格制造成本下，提高了一倍的性能。
+4．POWER 4
+发布于2001年，每个芯片封装了一亿七千四百万个晶体管。
+这是一款达到GHz主频的处理器，0.18微米铜导线，硅绝缘技术。它具有POWER 3的全部特性，包括与Power PC指令集兼容，但它又是全新的设计，每个处理器包含两个64位1GHz+ Power PC内核，这是业界第一款批量生产的单芯片双核设计，又被称为单芯片对称多处理设计（multicore design on a single die，SMP on a chip，或者system on a chip），每个处理器可以同时执行200条指令。POWER 4架构可以制造IBM Regatta（即p690）大型服务器，也被用来设计Power PC 970处理器（在苹果公司被称为Apple G5）。POWER 4+™（又被称为POWER 4-II）是POWER 4主频升级的提高版。POWER 4 CPU支持了分区技术，可以将芯片切分成多个单元，运行不同的操作系统。
+5．POWER 5 ™
+2004年发布，与POWER 3和POWER 4类似，POWER 5同时使用了POWER和Power PC架构，利用了更快的片内通信技术、芯片多处理技术、同时多线程技术（simultaneous multithreading，SMT，一个物理CPU内核可以模拟两个逻辑CPU，如果两个线程的工作内容相差较大，则使用SMT技术性能最高可以达到单个CPU方式执行的1.5~1.7倍），比POWER 4性能提高了4倍。POWER 5的高端服务器代号为“骑兵队”（“Squadrons”，IBM希望此CPU能如同骑士马队冲锋一样横扫UNIX服务器市场，结果似乎应验了设计者的期望）。在POWER 5上支持了微分区（Advanced Virtualization）的功能，可以将一个处理器内核虚拟切分成多个处理器，供操作系统使用，最小的分配粒度为0.1个CPU，共享使用粒度是1/100个CPU。在2006年，IBM推出了主频提高，封装变化的POWER 5，被称为POWER 5+，最高主频为2.2GHz。
+
+6．POWER 6 ™
+在2007年5月发布，目前最高主频4.7GHz，最高明年将有超过5GHz主频的版本。片内集成度约为7亿5千万个晶体管。POWER 6将一些总线控制和CPU内核之间的数据通道集成进单一芯片，与POWER 5相比，增加了更多的CPU内核间通信机制和Cache。POWER 6比较有特点的技术是可以直接支持10进制数字处理，这是计算机史上的一次回归，我们从十进制转到二进制以便于计算机处理，而如今，计算机芯片设计已经足够先进，让我们可以不再去适应机器，而是让机器适应我们的需求。
+POWER 6其他的技术包括双核，128KB的L1 Cache（数据、指令各64KB），8条两阶流水线支持在一个时钟周期完成两组32位读或一组64位写操作；两个内核各有4MB“半共享”的L2 Cache，虽然它被一个内核占据，但另一个内核也可以快速访问它；另外32MB的L3 Cache可被两个内核通过80GB/s的带宽访问；POWER 6还通过ViVA-2（VirtualVector Architecture）技术提高了向量处理性能；支持最多1024个虚拟分区也是POWER 6的新特点（POWER 5最多支持256个分区）。POWER 6特有的10进制运算寄存器、指令可以使它在计算时不会产生2-10进制转换误差，同时也提高了运算速度。POWER 6包括一些额外的电路去支持Mainframe的指令，开始了整合z系列的实践，而POWER 6L则是“简化”版的芯片，降低了主频，可以用于刀片服务器。
+在生产POWER 6的同时，POWER 7也处于紧张开发阶段，预计2012年面世。
+
+
+
+Star系列处理器，是Power PC架构的另一种技术实现，与POWER系列非常类似。由于此系列的各种CPU代号都有Star或者用某一颗星的名字来命名，因此被称为Star系列。
+1．RS64
+
+1997年发布，代号为“Apache”。
+
+这一系列使用Power PC处理器设计，继承了大量POWER架构的特点，但为了商业运算进行了特别优化，与POWER 3相比，其中包括指令分支预测、浮点意外处理、硬件预取等功能被取消，而取而代之的是整形计算意外处理、复杂的片内/片外缓存算法、更大的缓存容量。 RS64的设计可以支持64位处理，在2000年发布的RS64 IV中采用了硬件多线程技术，单台服务器最多可以扩展到24颗CPU，消耗的功耗也非常少，每个处理器只有15瓦。此款CPU开始用于AS/400（即后来的iSeries），从RS 64 II起，才用于RS/6000（pSeries）。
+
+这种设计使得RS64芯片比较适用于在线交易（On-Line Transaction Processing，OLTP）、企业资源计划系统（Enterprise Resource Planning，ERP），以及其他大型、混合的多功能、数据库访问、多用户、多进程的业务。不过在实际使用的过程中，发现其计算速度稍有欠缺，可能是 RS64 CPU的主频都很低，典型的几款服务器主频只有100MHz左右，对于商业智能（Business Intelligence，BI）和科学计算一类的应用，性能不佳。
+2．RS64 II
+
+1998年发布，代号为：“Northstar”（北方之星）。
+
+该CPU拥有8MB L2 Cache，256位的数据总线，262MHz主频。装配此款CPU的服务器可以支持最多三个CPU板，每个CPU板装载4路CPU，这样可以使RS/6000服务器具有4路、8路、12路的SMP结构。
+
+3．RS64 III
+1999年发布，代号为：“Pulsar”（脉冲星）。
+第一款使用硅绝缘的RS64芯片，通过6个CPU 卡可以实现24路SMP结构。由于此款CPU主频提高到450MHz，使用优化的指令分支预取技术避免了跳转惩罚（或只需要额外1个时钟周期），5级流水线等技术，CPU处理性能大幅度提高。IBM用此款服务器装配了RS/6000的80系列（H80，M80，S80服务器）。
+
+4．RS64 IV
+2001发布，代号为：Istar，SStar
+第一款支持硬件多线程的商用处理器，比以前同系列的CPU更快，更小。600-750MHz的主频，硬件多线程技术（HMT）使得此CPU具有不错的市场表现。另外每个CPU仅消耗15W的功率也使得用此CPU装配的服务器无需特别的电源、散热系统。
+
+由于市场对于商业和计算环境的混合需求，使得IBM重新整合了POWER系列和Power PC系列处理器，最终设计了POWER 4处理器。Star系列也最后完成了历史使命。
+
+
+Power PC系列，是从POWER架构发展出来的一个分支，最早在1993年发布，用于从单板机、电池电源管理到超级计算机和Mainframe主机。Power PC最早登上主角的地位是从作为Power Macintosh 6100的CPU开始的。
+
+众所周知，Power PC开始与苹果、摩托罗拉和IBM联盟（被称为AIM联盟），是源自于POWER架构的设计，但进行了大量的改动。例如，Power PC是open-endian设计，即同时支持大尾段（big-endian）和小尾段（little-endian）内存模式，而POWER 是大尾段设计；Power PC希望提供更强的浮点处理能力和多线程处理能力。所以这两种类型的CPU并没有太大的差别，Power PC保留了绝大部分POWER指令，许多应用只要重新编译，就可以分别在两个平台上运行。
+
+当IBM和摩托罗拉分别自己设计芯片的时候，依然遵循统一的标准。在2000年，大家使用的是Book E spec，这个设计实现使Power PC能更专注于嵌入式处理系统，例如网络、存储和家用设施的处理器。
+
+除了兼容之外，Power PC的架构的另一个亮点是开放，它公开了指令集，允许任何厂商设计Power PC的兼容处理器、Power PC的一些软件的源代码也可以下载到，Power PC的内核也非常小，可以在同一芯片上安置许多其他的辅助电路，例如缓存、协处理器，大大增加了芯片的灵活性。
+
+IBM四条服务器产品线中有两条都与Power PC架构有关，另外苹果公司的台式机和服务器、任天堂的GameCube，IBM自己的蓝色基因超级计算机都使用了PowerPC芯片。
+
+今天，Power PC家族有三条产品线，分别是嵌入式的Power PC 400系列，Power PC 700和Power PC 900系列。从历史上看，还有一款Power PC 600系列最值得关注，因为它具有非常好的性能。
+1．Power PC 600系列
+
+Power PC 601是Power PC 600系列中的第一款，它综合了POWER和Power PC架构的特点，并且尽量保持与POWER 1和随后的其他Power PC芯片的兼容性（即使是同一系列的芯片，也存在兼容性问题），甚至与摩托罗拉的88110兼容。苹果公司用Power PC 601在1994年制造了Power Mac 6100，66 MHz CPU主频。此系列下一个芯片是603，低端、低功耗的处理器，大量使用在汽车上。与Power PC 603®同日登场的还有PowerPC 604®，是更强大的处理器，随之的是“加强版”的603e和604e。在此之后，第一款64位Power PC——Power PC 620®在1995年被发布。
+2．Power PC 700系列
+
+在1998年，出现了Power PC 740和Power PC 750，与604e非常相像，甚至一些人说600/700两个系列根本就是一回事。Power PC 750是第一款铜导线处理器，苹果公司用它生产了G3，但很快就被G4所取代，使用的是摩托罗拉7400。在2002年发布的32位的Power PC 750FX曾经震惊业界，因为它是第一款达到1GHz主频的处理器，IBM在2003年紧跟着推出了750GX，集成了1MB片上二级缓存，也是1GHz 主频，大约7瓦功耗。
+3．Power PC 900系列
+
+64位的Power PC 970，实际上是单处理器内核的POWER 4，可以同时执行200条指令，最高达到2 GHz以上的主频，而仅仅消耗十数瓦的电力。低功耗使它被大量用于笔记本电脑和手持设备上，还有一些高密度的存储、服务器（例如刀片中心）也在使用它。 64位处理能力，单指令多数据流设计使它更适合于多媒体、图形处理。苹果公司的台式机、Xserve服务器，以及其他一些图形、网络设备，都在使用这款处理器。例如苹果Xserve G5就使用了Power PC 970FX，也是第一款同时使用了应变硅、硅绝缘两项技术的芯片。
+4．Power PC 400 系列
+
+这一款芯片主要用于嵌入式系统，但Power PC灵活的架构使它可以被用于从机顶盒这样的小设备到蓝色基因超级计算机。在产品线的一端，Power PC 405EP在200MHz主频仅消耗1瓦的电力，而铜导线的Power PC 440在800 MHz主频可以提供同类型嵌入式芯片中最高的性能。这款芯片也有许多旁支，例如利用Power PC 440GX的双Gigabit Ethernet和TCP/IP加速功能可以降低网络应用程序50%以上的负载。围绕Power PC 400内核，有许多具体实现，用于建造蓝色基因超级计算机的处理芯片就是包含了两个Power PC 440处理器内核和两个浮点处理内核。
+Power PC 400系列被IBM转让给AMCC，发展成为PowerPC 405 Family、PowerPC 440 Family、PowerPC 460 Family 3大系列。
+
+
+Freescale PowerPC系列
+
+Freescale公司提供了数量众多的含集成化外设的PowerPC处理器，目前在网络设备市场取得了非常可观的成功。目前Freescale公司已经调整其PowerPC产品策略，将其划分成3个主要市场：网络设备、汽车电子(MPC5xx系列)和工业控制。
+
+Freescale PowerPC在通讯领域的成功，很可能要归功于PowerQUICC，这也是IBM的PowerPC和Freescale 的PowerPC的最重要的区别。1993年，摩托罗拉半导体事业部(飞思卡尔半导体前身)在充分理解通信系统应用的基础上，生产了第一颗包含QUICC(Quad Integrated Communications Controller)的芯片--MC68360。此时，QUICC实际上是一颗独立的处理器。1994年，摩托罗拉半导体事业部的工程师开始把MC68360的QUICC和PowerPC内核结合，将集成了QUICC的PowerPC处理器称为PowerQUICC，并将其中的QUICC处理模块称为CPM。
+1995年，MPC860芯片面市，标志着一个通信处理器时代的开始。这颗芯片实现了作为控制中心的PowerPC处理器和作为数据处理中心的CPM的分离，采用了数据通路和控制通路分开的思想。
+
+此后PowerQUICC系列芯片也一路升级，从PowerQUICC I到PowerQUICC II，再到PowerQUICC III和PowerQUICC II pro。目前，Freescale 将CPM升级为QE(QUICC Engine)。
+
+伴随PowerQUICC的升级，Freescale  PowerPC内核也在升级。
+
+的
+603内核系列：MPC850、MPC860、MPC875、MPC885等，目前是最低端的Freescale PowerPC处理器。这类PowerPC处理器没有包含SDRAM接口，用户必须使用MPC860提供的UPM（USER Programmable Machines）配置成SDRAM接口。603内核配合PowerQUICC I。
+
+603E内核系列：MPC8250、MPC8260、MPC8272等。从PowerPC内核的角度看，603到603E的升级不大，主要是MMU上，此外包含了SDRAM控制器。603E内核配合PowerQUICC II。
+
+E300内核系列：MPC8349、MPC8347、MPC8360等。E300系列与603E系列结构基本一致，在处理器内核上的修改不多。QE最先在MPC8360上实现，此外支持DDR SDRAM接口。E300内核配合PowerQUICC II pro。
+
+E500内核系列：包括MPC8540、MPC8560、MPC8548等。E500内核共有V1 、V2两个版本。V1版本和V2版本的最大区别在于MMU。基于E500内核的PowerPC处理器是Freescale高端处理器的发展方向。E500内核和603E有很大的不同，只有指令系统是兼容的，其他内核组件都不相同。E500内核支持DDR SDRAM，RapidIO和千兆以太网接口。E500内核配合PowerQUICC III。
+
+E600内核系列：也称为G4，包括MPC7410，MPC7447，MPC7448，MPC8641等。与IBM的Power 700系列的最大不同在于G4系列支持AltiVec结构。这类处理器也是Apple用于MAC机的芯片。
+
+E700系列：支持64位的PowerPC结构，开发中(最新消息不明，怀疑被放弃).
+
+飞思卡尔 QorIQ通信平台是飞思卡尔的 PowerQUICC通信处理器的下一代演进产品，包含一个或者更多个核，一共有5个不同的产品平台。按照功能和性能，分为 P1, P2, P3, P4 和P5,同老的PowerPC产品保持软件兼容，例如PowerQUICC平台。
+
+QorIQ 商标和P1、P2、P4产品家族在2008年6月被公布，P3和P5平台的细节尚未公开。所有的QorIQ处理器基于 e500 or e5500 核心。P10xx 和 P20xx 系列基于e500v2 核心，P340xx 和P40xx 系列基于 e500mc 核心，P50xx 则基于e5500 核心。
+
+P1系列
+P1系列被设计用于网关、以太网交换机、无线局域网接入点和通用控制目的。P1系列属于入门级，运行在400到800MHz，用于替代PowerQUICC II Pro 和PowerQUICC III平台。P1系列封装成689个引脚，同P2系列兼容。
+
+P1011 -包含一个800MHze500核心，256 kB L2 cache,4个SerDes lanes，3个吉比特以太网控制器，以及一个用于老实电话的时分复用引擎(TDM engine) 。
+P1020 –包含2个800 MHz e500 核心，256 kB shared L2 cache, 4个SerDes lanes,3个吉比特以太网控制器，一个 TDM engine.
+
+P2系列
+P2系列设计用于网络、电信、军工的广泛应用。能运行在-40 到 125 °C，特别适合苛刻条件下的应用。P2系列属于中端产品，运行在800Mhz到1.2GHz，用于替代PowerQUICC II Pro 和PowerQUICC III平台。
+P2010 – 包含1个 1.2 GHz 核心
+P2020 – 包含2个 1.2 GHz 核心, shared L2 cache
+
+P3系列
+P3系列设计属于中端产品，用于交换机和路由器。P3系列提供了一个多核平台，支持4个e500mc核心，每个核心频率能达到1.5 GHz。P3系列拥有1.3 GHz 64-bit DDR3内存控制器，18个SerDes lanes，以及用于数据包操作和调度、正则表达式、RAID、安全、加密和RapidIO的硬件加速器。
+P3系列的多个核心能够运行在对称模式和非对称模式，意味着多个核心可以一起或者非别引导运行操作系统。
+P3041 - 4个1.5 GHz 核心，每个核心128 kB L2 cache ，1个1.3 GHz 64-bit DDR3 内存控制器，45纳米技术和仅有12w的功率。
+
+
+
+P4系列
+P4系列属于高端产品，用于核心网或者企业级交换机、路由器。提供极限多核平台，支持8个e500mc核心 ，每一个核达到1.5 GHz。
+P4080 –包含8个e500mc核心，每个核心有32/32kB instruction/data L1 caches以及1个a 128 kB L2 cache。包含2个1 MB L3 caches，每一个连接到64-bit DDR2/DDR3 内存控制器。
+
+P5系列
+P5系列基于高性能64-bit e5500 核心，频率提高到2.5 GHz 。2010年6月介绍，可能2010年底可有样片，2011年可批量生产。
+P5010 - 一个e5500 2.2 GHz核心, 1 MB L3 cache, 1个DDR3 controller,45 nm 工艺，功率30W.
+P5020 - 两个e5500 2.2 GHz核心, 2个1 MB L3 caches, 2个DDR3 controllers, 45 nm 工艺，功率30W.

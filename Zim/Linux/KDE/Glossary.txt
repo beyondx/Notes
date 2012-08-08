@@ -1,0 +1,289 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-16T16:44:38+08:00
+
+====== Glossary ======
+Created Wednesday 16 November 2011
+
+http://userbase.kde.org/Glossary
+
+目录
+
+    1 A General Overview
+        1.1 Activities
+        1.2 Akonadi
+        1.3 aRts
+        1.4 Containment
+        1.5 D-Bus
+        1.6 Dolphin
+        1.7 Extender
+        1.8 Flake
+        1.9 Get Hot New Stuff
+        1.10 Home Directory
+        1.11 KControl
+        1.12 KDOM
+        1.13 KHTML
+        1.14 Kicker
+        1.15 Kickoff
+        1.16 KJS
+        1.17 KInfoCenter
+        1.18 KIO
+        1.19 Kiosk
+        1.20 KPart
+        1.21 Kross
+        1.22 KRunner
+        1.23 KSVG
+        1.24 KWin
+        1.25 Mini-CLI
+        1.26 Nepomuk
+        1.27 Oxygen
+        1.28 Pager
+        1.29 Panel
+        1.30 Phonon
+        1.31 Plasma
+        1.32 Qt
+        1.33 Solid
+        1.34 Soprano
+        1.35 Strigi
+        1.36 System Settings
+        1.37 Threadweaver
+        1.38 Virtual Desktops
+        1.39 WebKit
+        1.40 Widget
+        1.41 X-Server
+        1.42 XMLGUI
+        1.43 ZUI
+
+===== A General Overview =====
+
+A KDE 4.0 Visual Guide: and a 4.1 screencast gives an excellent overview of KDE Software Compilation 4 in the early days.
+
+The following glossary is intended to help you find your way through the mists of new names and new concepts. In some cases you can find a link from a KDE 3 component to its equivalent in the context of KDE SC 4 software.
+
+=== Activities ===
+
+    Activities are **sets of Plasma widgets **that have their own wallpaper. A bit like Virtual Desktops, but not quite. 
+
+    For example you have a "work activity" with commit rss feeds, a note with your TODO, a Folder View with your work related files, and a subtle wallpaper. 
+
+    Next to it, you have your "freetime activity", with previews of family photos and dogs, rss feeds from your favourite blogs, a Folder View showing your movie collection, a twitter applet and of course that Iron Maiden wallpaper you have been loving since the early 80s. 
+
+    At 1700 hours sharp you switch from the "work activity" to your "freetime activity". 
+
+
+=== Akonadi ===
+
+    The **data storage access mechanism** for all PIM (Personal Information Manager) data in KDE SC 4. One single storage and retrieval system allows efficiency and extensibility not possible under KDE 3, where each PIM component had its own system. Note that use of Akonadi does not change data storage formats (vcard, iCalendar, mbox, maildir etc.) - it just provides a new way of accessing and updating the data. 
+
+    The main reasons for design and development of Akonadi are of technical nature, e.g. having a unique way to access PIM-data (contacts, calendars, emails..) from different applications (e.g. kmail, kword..), thus eliminating the need to write similar code here and there. 
+
+    Another goal is to de-couple GUI applications like kmail from the direct access to external resources like mail-servers - which was a major reason for bug-reports/wishes with regard to performance/responsiveness in the past. 
+
+
+
+=== aRts ===
+
+    The sound framework in KDE 2 and 3. Its single-tasking nature caused problems when two sources of sound were encountered. In the Plasma workspace it is replaced by 
+
+=== Phonon  ===
+
+
+=== Containment ===
+
+    A Containment is a **top level grouping **of widgets. Each Containment manages the __layout and configuration data__ of its set of widgets independently from other Containments. 
+
+    The end result is that you can group widgets within a Containment according to the significance to your working pattern, rather than by directory grouping. 
+
+
+=== D-Bus ===
+
+    An inter-service messaging system. Developed by Red Hat®, it was heavily influenced by KDE3's DCOP, which it supersedes. 
+
+=== Dolphin ===
+
+    The default **file manager** in KDE SC 4. It has a side panel (Places), but navigation is mainly by the breadcrumb trail above the main window. Split windows are possible, and views can be applied to individual windows. Mounting and umounting USB devices can be done in the side-panel. Other directories can be added to the Places panel. A Tree view is also possible. 
+
+
+=== Extender ===
+
+    Extenders are a special kind of **popup **that can grow out of a Plasma panel for example. Extenders have detachable parts. Extenders are a new concept that arrived in Plasma for KDE 4.2. Notifications already use this system. This enables, for example, a user to drag a notification of a download or file copy job, onto his or her desktop and keep track of it there. The same can be done for other kinds of notifications, too. 
+
+
+=== Flake ===
+
+    Flake is a programming library to be used in KOffice2. Functionally, it provides **Shapes** to display content and Tools to manipulate content. Shapes can be zoomed or rotated and can be grouped to work as a single Shape, around which text flow is possible. 
+
+
+=== Get Hot New Stuff ===
+
+    Get Hot New Stuff (GHNS) is an** open standard** that makes it easy for users to download and install **various extensions** for their applications. Our implementation of GHNS is used by Plasma (for example to get new desktop themes), and by many applications and widgets. 
+
+
+=== Home Directory ===
+
+    That's the place in your system where all your files are kept. You can write your files outside of this folder, but all applications are configured to propose this folder as place to write your files to. It is easier when you keep your things here. 
+
+
+=== KControl ===
+
+    KDE Control Center, for setting global preferences in KDE 3. Replaced by the **System Settings** interface in KDE SC 4. 
+
+=== KDOM ===
+
+    A KPart module making KHTML DOM (Document Object Model) rendering capabilities available to all applications. **KSVG2** is built on KDOM for KDE SC 4. 
+
+=== KHTML ===
+
+    KHTML is the HTML **rendering engine** for the KDE Plasma desktop, as used by the Konqueror browser. It also provides a KPart that enables all KDE applications to display web content. A new introduction,__ Qt WebKit__ is also for Plasma and other application development. 
+
+=== Kicker ===
+
+    In KDE 3, the** relocatable bar**, usually at the bottom of the screen (sometimes called the Panel), on which application launchers, the Pager, and buttons for running applications reside. See Panel 
+
+=== Kickoff ===
+
+    In KDE SC 4 (and some late versions of KDE 3), a** launch menu** in which apps are sorted by **functional group**. "Favorites" replaces the "Most used applications" in Classic Menu, and applications can be added to it. Right-click also offers the possibility of adding applications to the desktop or panel. Rapid access to a less-used application is made possible with the search box. Other menus are being worked on, since KDE SC 4 can be used with more than one launcher, should that be required. 
+
+
+=== KJS ===
+
+    KDE platform's **JavaScript engine**. 
+
+=== KInfoCenter ===
+
+    Kinfocenter originated as part of KControl standing alone from KDE 3.1. In KDE SC 4 up until 4.4 it is replaced by modules configured in System Settings, notably Solid, and is being reintroduced as an application in KDE SC 4.5. 
+
+=== KIO ===
+
+    KDE Input/Output framework provides a single API for operating on files, whether local or on a remote server. Additionally, KIO Slaves provide support for individual protocols. Some particularly useful ones are http, ftp, sftp, smb, nfs, ssh (fish), man, tar and zip. 
+
+
+=== Kiosk ===
+
+    Kiosk is a framework for restricting user capabilities on a KDE platform system, ideal for use in __locked-down environments__ such as Internet cafés. It is present in KDE 3 and KDE 4, but the administration tool, Kiosktool is KDE 3 only. It can be used to configure KDE 4 apps, or kiosk configurations can be maintained by editing config files manually. 
+
+=== KPart ===
+
+    A KPart is an individual component of the KDE Plasma desktop and allows applications to** share their services** with other applications. KParts allow KMail and KOrganizer to integrate (as plugins) into the Kontact suite, or KHTML to display sites in Akregator. 
+
+=== Kross ===
+
+    Kross is a scripting framework, enabling support for multiple scripting languages. A plugin system allows for the support of further languages in the future. 
+
+=== KRunner ===
+
+    The mini-command-line that is accessed from the Classic menu, the keyboard shortcut Alt+F2, or a right-click on the desktop. In KDE SC 4 a partial name will display all possible matches 
+
+
+=== KSVG ===
+
+    KSVG enables support for **scalable vector graphics **in a KHTML browser. KSVG2 extends this for KDE SC 4. 
+
+=== KWin ===
+
+    KWin is the **window manager**. This is where **window decorations **can be changed and **themes** applied. KDE SC 4 extends KWin to provide support for **3D Compositing** effects on the desktop. 
+
+
+=== Mini-CLI ===
+
+    See KRunner 
+
+=== Nepomuk ===
+
+    "Networked Environment for Personalized, Ontology-based Management of Unified Knowledge", Nepomuk aims to remove __artificial barriers between information__ to allow dynamic classification, organisation and presentation of data to the user. Whether downloaded from the internet, received in an email or scribbled in a note, information is __globally__ searchable and tagged with intelligent data. See The** Semantic Desktop** for further discussion of this concept. 
+
+More info:
+
+    Wikipedia - Semantic Desktop 
+    Wikipedia - NEPOMUK Framework 
+    NEPOMUK website 
+    NEPOMUK KDE 
+    Userbase Nepomuk page 
+
+
+=== Oxygen ===
+
+    Oxygen is the **default theme** of KDE SC 4. Designed to bring "**a breath of fresh air**" to the desktop by removing the simplistic, cartoonish icons, and replacing them with a clean theme and **photo-realistic** icons. Oxygen uses a desaturated palette to avoid the icons becoming a distraction and uses detailed scalable graphics (SVG). 
+
+More info:
+
+    Wikipedia - Oxygen Project 
+    Oxygen Icons 
+
+=== Pager ===
+
+    A pager is a small program or panel applet which shows the **position** of windows on your desktop and usually, if you have several Virtual Desktops, gives an overview over all. 
+
+=== Panel ===
+
+    See Kicker. In KDE SC 4 the name **"kicker" is dropped**, and the name "panel" is the norm. "Applets"; are largely replaced by Widgets 
+
+=== Phonon ===
+
+    A cross-platform **multimedia API**, interfacing with existing frameworks, such as **gstreamer** and **xine** engines. KDE 2 and 3 depended on aRts for sound. Phonon replaces it. 
+
+More info:
+
+    Wikipedia - Phonon (KDE) 
+    Phonon website 
+
+=== Plasma ===
+
+    In KDE SC 4 the Plasma Desktop replaces **KDesktop**, **kicker **and the **superkaramba** widget engine. The applets are called __Plasmoids__, and range from informational widgets to mini-apps such as a calculator or dictionary. Widgets from other sources, such as SuperKaramba widgets or Google Gadgets are also supported. 
+
+=== Qt ===
+
+    (Pronounced "cute") A framework/toolkit for writing cross-platform applications. It is used by many cross-platform applications such as Opera browser, GoogleEarth and Skype. Qt is developed by Trolltech, who are now part of the Nokia company. Qt forms the underlying library KDE software is built on. 
+
+
+=== Solid ===
+
+    Solid provides a single API for __hardware management__. Hardware is grouped into "domains". The initial domains relate to HAL, NetworkManager and the Bluetooth stack. Since the backends for Solid are pluggable, Solid helps application developers write less code, and have it platform independent. 
+
+
+=== Soprano ===
+
+    Soprano is a sub-project of Nepomuk, providing a **repository** for gathered information such as tags, ratings, etc.. This makes the information available to Strigi 
+
+
+=== Strigi ===
+
+    A deep-indexed **search daemon**, Strigi aims to be fast and light-weight. It also uses SHA-1 hash which will help in the identification of duplicate files. 
+
+
+=== System Settings ===
+
+    KDE SC 4 replacement for KControl (Control Center) providing **modular control **over the KDE platform. 
+
+
+
+=== Threadweaver ===
+
+    This **thread programming library** spreads work among multiple-core processors where available, prioritising them before queueing them for execution. ThreadWeaver provides a high-level job interface for multithreaded programming. 
+
+
+=== Virtual Desktops ===
+
+    A popular concept of Unix based **window managers **is the one of virtual desktops. This means you have not only one screen where you can place your windows on but several. When you switch to a different desktop (usually with a **pager**) you will only see the windows which you started on your new desktop or moved to it. A window can also be made "sticky" which means it appears on all virtual desktops. 
+
+=== WebKit ===
+
+    **HTML rendering engine**, originating from a fork of KHTML. Adopted by Apple and developed for Safari. Webkit brings the whole functionality back to KDE SC 4, where it is available through Qt. 
+
+
+=== Widget ===
+
+    Collins English Dictionary: "Any small mechanism or device the name of which is unknown or temporarily forgotten." In KDE software terms, a widget is a single component on the canvas(**画布**). Other common names that are analogous are "**applet**" or "**gadget**". Superkaramba Themes, Apple's Dashboard, Google Gadgets, Yahoo Widgets, Vista Sidebar Widgets, Opera Widgets are all examples of other widget systems (some of which are supported by Plasma as well). 
+
+=== X-Server ===
+
+    The X-Server represents** a basic layer **upon which the various GUIs like the KDE Plasma desktop are built. It manages the** basic mouse and keyboard input **(from the local host as well as from remote hosts) and provides elementary graphic routines to draw rectangles and other primitives. 
+
+=== XMLGUI ===
+
+    A programmers' framework for designing the user interface. It is extensively used by KParts 
+
+
+=== ZUI ===
+
+    The "Zooming User Interface". "By zooming out, users can get an overview of all the object groupings that they have made. These groupings may reflect the projects they are working on, be ways to keep different sets of files organized, etc. By hovering or clicking on one of these groups when zoomed out, users can either get a preview/snapshot of what is in the grouping, or zoom in on that grouping so that it is displayed full size on the physical screen." aseigo. 

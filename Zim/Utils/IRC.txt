@@ -1,0 +1,28 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-23T18:49:32+08:00
+
+====== IRC ======
+Created Wednesday 23 November 2011
+
+The official Arch Linux IRC channel is** #archlinux **on the Freenode network. 
+#archlinux-cn 	Discussion (Chinese)
+#arch-cn 	Discussion (Chinese), on irc.oftc.net
+ #fedora-cn　
+#python
+#pylocal on Freenode is for Python user groups.
+#python-dev on Freenode is for CPython developers, where they can coordinate their work or discuss problems.
+#distutils on Freenode is for Python packaging discussion.
+#ubuntu　　　Ubuntu help channel
+#ubuntu+1　　　Help channel for development versions
+#ubuntuforums　　Ubuntu Forums: support & community chat 
+#ubuntu-beginners  Ubuntu Beginners Team
+#ubuntu-cn　　　Mainland China
+
+#qt 
+#linux
+#gento
+#git
+#c++
+#bash
+#emacs

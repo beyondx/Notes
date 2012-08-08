@@ -1,0 +1,145 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-19T14:10:27+08:00
+
+====== grub-boot from ISO ======
+Created Monday 19 December 2011
+http://superuser.com/questions/154133/grub-boot-from-iso
+
+The biggest problem with booting an ISO file is that ISOs that are designed to be booted are almost always designed to be booted from a CD. As explained on Marco's blog regarding __Grub 2__ (emphasis mine):
+
+    GRUB can read ISO9660 (”iso”) images. It can for example load the first few sectors and boot it. But most people do not realize is “what then?”. What would the loaded operating system do? It will most likely look for a** CDROM**, which it won’t find, and fail.
+
+So the **dead-simple-est** way to boot from some random ISO file is to load it into a virtual machine (VirtualBox, VMware, or Virtual PC) as a virtual CD and boot it there. That should almost always work, because to the VM, it's not an ISO file -- it's a __real__ CD on real CD hardware.
+
+Booting from an ISO file on bare metal is much harder. How you do this depends on which __version of Grub__ you're using, and results can differ depending on what ISO you're using and how it was configured to boot. This is why most boot-ISO-from-USB tools (Unetbootin, WinToFlash, etc) usually __extract__ the ISO contents to the drive -- because that way they can be **accessed directly**, without confusing the OS being booted.
+
+===== Grub 1 =====
+
+... not sure. If possible, menu entries will probably look a lot like **Grub4DOS**, though I think the "map --hook" command is a Grub4DOS enhancement. On the plus side, Grub has wider filesystem support than Grub4DOS.
+
+A note on Grub with reiserfs (unconfirmed) indicates you "have to mount your partition with notail for it to work".
+
+Memdisk is an option; see below.
+
+===== Grub4DOS =====
+
+Grub4DOS offers some experimental "**CD emulation**" that works with some ISOs. Unfortunately, Grub4DOS only reads **FAT32/NTFS** filesystems. Download Grub4DOS.
+
+Here's a sample entry (source):
+
+title fdfullcd.iso (0xFF)
+  find --set-root /fdfullcd.iso
+  map /fdfullcd.iso (0xFF)
+  map --hook
+  root (0xFF)
+  kernel /isolinux/data/memdisk
+  initrd /isolinux/data/fdboot.img
+
+Supposedly the Win7 ISO can be booted with this entry:
+
+title Windows 7
+  map (hd0,0)/win7.iso (hd32)
+  map --hook
+  chainloader (hd32)
+
+Other ISOs can be booted with__ Memdisk__:
+
+title Boot Hardware Detection Tool from iso image (with 'iso' parameter)
+  kernel /memdisk iso
+  initrd /hdt.iso
+
+You can also use a menu configurator like MultiBootISOs.exe from PenDriveLinux. Place ISOs on the flash drive, and run the utility to install the bootloader and configure the boot menu.
+
+Here's a Hak5 episode on installing Grub4DOS.
+
+===== Grub 2 =====
+
+Here's a couple of example Grub2 entries. chainloader doesn't work to boot an ISO at present, so these entries must (1) use **loopback** to "mount" the ISO, and (2) add something like **iso-scan** or **findiso** to the linux line that specifies the ISO file.
+
+Unfortunately, there's no generic way to do this. Each different boot entry must be customized to the **target ISO's contents**. Most Linux LiveCDs use __ISOLINUX__ as a bootloader; find the **isolinux.cfg** and examine that boot entry to see what it usually boots.
+
+Example entries (source):
+
+menuentry "Ubuntu Live 9.10 32bit" {
+__ loopback __loop /boot/iso/ubuntu-9.10-desktop-i386.iso
+ linux (loop)/casper/vmlinuz **boot=casper iso-scan/filename=/boot/iso/ubuntu-9.10-desktop-i386.iso noeject noprompt --**
+ initrd (loop)/casper/initrd.lz
+}
+
+menuentry "Grml small 2009.10" {
+  loopback loop /boot/iso/grml-small_2009.10.iso
+  linux (loop)/boot/grmlsmall/linux26** findiso=/boot/iso/grml-small_2009.10.iso** apm=power-off lang=us vga=791 boot=live nomce noeject noprompt --
+  initrd (loop)/boot/grmlsmall/initrd.gz
+}
+
+If you're trying to boot a non-Linux LiveCD, you may be out of luck. Again, Memdisk may help:
+
+menuentry "Boot Hardware Detection Tool from iso" {
+  linux16 /memdisk iso
+  initrd16 /hdt.iso
+}
+	
+@albert: are you asking in reference to your earlier question? i believe your best bet is to use the__ extraction method__; the Windows installer is one of those ISOs that have problems when they aren't booted from hardware. you can try memtest, but i don't know much about it. you probably want to get a flash drive and use that; see superuser.com/questions/66948/… or superuser.com/questions/62193/install-win7-from-usb – quack quixote Jun 18 '10 at 20:06
+show 4 more comments
+
+
+
+== ============================================== ==
+
+
+See my answer on your boot-from-ISO-files question. Using that as a starting point, I ran some tests with an old hard-drive. I've previously configured **Grub2 **to boot a multi-ISO flash drive, so what I did was:
+
+* Create a couple of partitions on an old hard drive. This was done using a USB-to-IDE adapter, so the drive appears as /dev/sdb.
+        Partition 1: FAT32, ~2GB in size
+        Partition 2: unformatted
+ 
+* Mounted the first partition to /mnt and installed a copy of Grub from my system onto the drive:
+
+    sudo grub-install --no-floppy __--root-directory__=/mnt /dev/**sdb**
+
+* "Burned" an ISO to the second partition:
+
+    sudo dd if=avg.iso /dev/sdb2
+
+
+* This is an AVG virus-scanner ISO; on my multi-ISO flash drive, I use this to boot the ISO directly:
+
+    menuentry "AVG Rescue CD" {
+      ** loopback** **loop** /iso/avg.iso
+       linux (loop)/isolinux/vmlinuz max_loop=255 vga=791 init=linuxrc** iso-scan/filename=/iso/avg.iso**
+       initrd (loop)/isolinux/initrd.lzm
+    }
+
+    In order to make this work from a hard drive partition, we need to nix the loopback command and set the root device and such.
+ My attempts to have Grub2 discover the root device automagically all failed, so I pointed it at the partition directly. This works, but watch out for __Grub's device enumeration__; the drive you're trying to boot from may not be (hd0). Here's a working entry for the ISO partition:
+
+    menuentry "AVG Rescue CD" {
+       linux (hd0,2)/isolinux/vmlinuz max_loop=255 vga=791 init=linuxrc
+       initrd (hd0,2)/isolinux/initrd.lzm
+    }
+
+    This results in a bootable ISO-on-partition.
+
+This works because __Grub2 can read ISO9660__ filesystems, because this particular ISO is loading an OS that can cope with an ISO on a partition, and because practically everything the kernel loads is in the initrd.
+
+If you're using **Grub4DOS or Grub 1**, you may be able to pull a similar trick with the **chainloader**. Presuming that this works to boot the Win7 ISO directly (source):
+
+title Windows 7
+  map (hd0,0)/win7.iso (hd32)
+  map --hook
+  chainloader (hd32)
+
+You may have luck with this modification (assuming you "burned" the ISO to the second primary partition, (hd0,1); otherwise substitute the proper partition):
+
+title Windows 7
+  map (hd0,1) (hd32)
+  map --hook
+  chainloader (hd32)
+
+You may also get away with this:
+
+title Windows 7
+  chainloader (hd0,1)
+
+However, the ISO isn't really configured to boot from a drive, so you may run into other problems.

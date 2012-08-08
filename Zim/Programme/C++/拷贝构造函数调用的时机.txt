@@ -1,0 +1,63 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-01T16:31:06+08:00
+
+====== 拷贝构造函数调用的时机 ======
+Created Tuesday 01 November 2011
+http://www.4ucode.com/Study/Topic/1404959
+
+拷贝函数何时会被调用呢？
+
+===== (1)   =====
+最明显的就是用一个类对象初始化另外一个对象的时候。
+比如X a=X(); 这句语义上就是先创建X()**临时对象**，再调用X的拷贝构造函数“初始化”a，
+这只是__语义__上的，编译器完全__可能优化掉__临时对象 。注意区分初始化和赋值（调用赋值运算符：assignment operator）
+
+===== (2) =====
+第二种情况是函数按值传参数的时候，包括指针在内都是对原有的值的拷贝 。
+
+===== (3) =====
+第三种情况是一个对象以__值传递__的方式从函数返回。
+
+为什么要这个时候会调用拷贝构造函数呢？因为在函数内， 所有的变量都是在函数的栈上的，包括那个参数，等函数完了以后都会销毁所以就必须给它**拷贝一份传回**。 以下面代码为例，我们看看编译器是如何将对象以值传递方式从函数返回的。
+
+Given a function that returns a class object by value, such as the Matrix addition operator:
+ Matrix operator+( const Matrix &m1, const Matrix &m2)
+ { 
+	Matrix sum; 
+	// default Matrix constructor applied 
+	// do the math
+	 return sum;
+ } 
+the function is generally transformed internally into 
+// Psuedo C++ Code: 
+// internal transformation of function
+ void operator+( **Matrix & _retvalue**, const Matrix &m1, const Matrix &m2)
+ { 
+	Matrix sum; 
+	// invoke default constructor 
+	sum.Matrix::Matrix();
+	 // do the math 
+	// copy construct sum into return value 
+	_retvalue.Matrix::Matrix( sum ); 
+}
+
+1.首先声明一个__额外的参数__，类型上类对象的引用，用来存放返回结果，本例中为&_retvalue, 注意，该参数位于调用函数的栈中。
+2.对这个参数利用返回值进行__拷贝初始化__。过程类似于参数传递，也是要定义一个临时对象sum，用来保存返回值，然后在函数内部调用拷贝构造函数将_retvalue初始化。
+
+有时编译器为了减少构造析构的次数，会把事先创建好的对象的引用传进来，然后对其修改，这就是所谓的__NRV__（Named Return Value (NRV) optimization，具名返回值优化)。仍以上面代码为例，上述代码可能转换为
+ void operator+( Matrix &_retvalue, const Matrix &m1, const Matrix &m2) 
+{ 
+	//default constructor invocation
+	 __retvalue.Matrix ::Matrix (); 
+	// ... process in __retvaluedirectly 
+	return; 
+}
+
+ NRV优化的本质是__优化掉拷贝构造函数__，去掉它不是生成它。当然了，因为为了优化掉它，前提就是它存在，这个也就是nrv优化需要有拷贝构造函数存在的原因。 nrv优化会带来副作用，不用它的确造成很大的性能损失，知道这个情况就可以了。 
+
+===== (4) =====
+情况是非空顺序容器类型的定义，例如vector<string> svec(5);   string缺省构造函数创建一个临时对象，然后通过string拷贝构造函数将该临时对象被一次拷贝到vector的五个元素中。
+
+===== (5) =====
+情况是将一个类对象插入到容器类型中，例如svec.push_back(string("sfsd"));

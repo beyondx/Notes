@@ -1,0 +1,162 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-22T14:06:03+08:00
+
+====== 条件测试与命令替换 ======
+Created Thursday 22 December 2011
+
+===== 条件测试命令： =====
+* test 和[ 是**等价**的条件测试命令，都可以单独执行但__无输出值，只有退出状态，0表示测试为真，非0表示测试为假。__
+
+* 和 为**关键字**而非命令，是[ ]的**增强版本**，里面还可以用&&、||、<、>等逻辑和关系运算符（但__不能有算术运算符__），类似Ｃ语言的语法，~~因此返回值0表示测试为假，返回值1表示测试为真，这与test和[的返回状态值意义恰好相反，~~一般只用在条件测试中。
+
+* __((...))：比较特殊，先对__**算术、关系、逻辑表达式**__计算(求值)，如果结果非空或非零，则返回状态为真(0)，否则返回假(1)；注意：没有输出值,只有退出状态值。__
+
+* __$((...))：shell自动对括号中的__算术、关系、逻辑表达式__计算，用计算后的值替换$((...))(而不是表示测试状态结果的真假，所以一般不用于测试)，shell在分析命令行时会将$((...))进行命令行替换，然后执行后续流程。__
+
+
+==== 注意： ====
+* 前三个是__专门用来做条件测试__的(因为它们作为命令执行时，没有输出值)，而最后一个是shell用于__命令替换的语法__。
+* 前两个__只能对__数值、字符串、文件做测试，而第三个__只能对__算术、关系、逻辑表达式做条件测试。
+
+[geekard@geekard ~]$ **((0))**; echo $?
+1
+[geekard@geekard ~]$ ((1)); echo $?
+0
+[geekard@geekard ~]$ unset haha; **(($haha))**; echo $?   #  非初始化变量(不存在的变量)，返回假
+1
+[geekard@geekard ~]$ unset haha; haha= ; **(($haha))**; echo $?  # 初始化变量，但为空NULL，返回假
+1
+[geekard@geekard ~]$** ((3<2))**; echo $?   # 返回假
+1
+[geekard@geekard ~]$ ((3>2)); echo $?    # 返回真
+0
+[geekard@geekard ~]$ **((0&1))**; echo $?; ((1&2)); echo $?
+1
+1
+[geekard@geekard ~]$ 
+[geekard@geekard ~]$ __((i=2+3))__; echo i=$i, $?   # 对表达式求值，将结果5赋给变量i,__ 5非0__故双括号返回真。
+i=5, 0
+[geekard@geekard ~]$ 
+[geekard@geekard ~]$ unset i; __$((i=2+3))__; echo i=$i,$?   #__ shell__对$((...))中的表达式进行计算，把__执行计算结果当作命令来运行__。
+bash: 5: command not found
+i=5,127
+[geekard@geekard ~]$ 
+[geekard@geekard ~]$ unset i; ((i=__i+3__)); echo i=$i, $?   #括号中的变量如果不存在或初始化为NULL，则计算时用0值或NULL值代入，也可以前不加$符号。
+i=3, 0
+[geekard@geekard ~]$ 
+[geekard@geekard ~]$ unset i; ((i=__$i+3__)); echo i=$i, $?  #双括号中__变量替换的$符号可选__
+i=3, 0
+[geekard@geekard ~]$ unset i;  ((i > 3)); echo i=$i, $?   #i不存在，以0值带入
+i=, 1
+[geekard@geekard ~]$
+[geekard@geekard ~]$ unset i; ((__$i__=$i+3)); echo i=$i, $?  #表达式中的等号__左边必须是变量名__
+bash: ((: =+3: syntax error: operand expected (error token is "=+3")
+i=, 1
+[geekard@geekard ~]$ 
+[geekard@geekard ~]$ echo $((2+3)); echo __$((2-3))__; echo $?; echo ((i+3))
+5
+-1
+0
+3
+[geekard@geekard ~]$ 
+
+[geekard@geekard ~]$ $((2+3)); echo $?; echo $((2+3)); echo $((2-2)); echo $?
+bash: 5: command not found
+127
+5
+0
+0
+[geekard@geekard ~]$ ((2+3)); echo $?; __echo ((2+3))__**  #shell不会自动对((..))求值替换**
+bash: syntax error near unexpected token `('
+[geekard@geekard ~]$ 
+[geekard@geekard ~]$ echo `((2+3))`   #双括号没有输出，只有退出状态，故echo命令输出一空行
+
+[geekard@geekard ~]$ 
+
+
+之间的所有的字符都不会被文件名扩展或是标记分割，但是会有变量替换和命令替换。
+
+===== test和[基础： =====
+1)test命令或[]用于检查某个条件是否成立(如果使用[],则在表达式的__前后__需要留有空格),它可以进行__数值,字符和文件__3个方面的测试,具体如下:
+(1)数值测试
+    -eq  等于
+    -ne  不等于
+    -gt  大于
+    -ge  大于等于
+    -lt  小于
+    -le  小于等于
+
+(2)字符串测试
+    =  等于
+    != 不相等
+    -z字符串  字符串长度伪则为真
+    -n字符串  字符串长度不伪则为真
+(3)文件测试
+    -e文件名   文件存在为真
+    -r文件名   文件存在且为只读时为真
+    -w文件名   文件存在且可写时为真
+    -x文件名   文件存在且可执行为真
+    -s文件名   如果文件存在且长度不了0
+    -d文件名   文件存在且为目录时为真
+    -f文件名   文件存在且为普通文件为真
+    -c文件名   文件存在且为字符类型特殊文件为真
+    -b文件名   文件存在且为块特殊文件为真
+(4)混合比较
+    -a       逻辑与
+    -o       逻辑或
+
+ 除了支持这些语法外，还支持**关系和逻辑运算**(不支持算术运算)，而且其返回状态值意义与test和[__正好相反__。(这主要是因为i，[[借鉴的是__C语言的规则__，即0和空表示假，非0和非空表示真)
+[geekard@geekard ~]$ echo  2 > 3    #[[除了支持[的语法，还支持__关系和逻辑__运算符，没有输出值，只有退出状态。
+[geekard@geekard ~]$ 
+[geekard@geekard ~]$ echo  2 + 3    #[[__不支持算术运算和位运算__。
+ 2 + 3 
+[geekard@geekard ~]$ echo 2 > 3     # 由于为关键字而非命令，因此，__[[后，前无需空格__。
+[geekard@geekard ~]$ echo 2>3
+[geekard@geekard ~]$ 
+geekard@geekard ~]$  2 + 3             #不支持算术运算。
+bash: conditional binary operator expected
+bash: syntax error near `+'
+[geekard@geekard ~]$ i=3
+[geekard@geekard ~]$ __[ i > 2 ]__; echo $?  
+0
+[geekard@geekard ~]$ __ i > 2 __; echo $?
+0
+[geekard@geekard ~]$ __(( i > 2 ))__; echo $?
+0
+[geekard@geekard ~]$__ (( 2 - 2 ))__; echo $?   #表达式结果为0，返回1（假）
+**1**
+[geekard@geekard ~]$ 
+[geekard@geekard ~]$ __$(( 2 + 3 ))__; echo $?  # [  ((...)) [[...]]可以单独执行，但是shell对$((...))进行命令行替换后执行它。
+bash: 5: command not found
+127
+[geekard@geekard ~]$
+
+((..))只支持**算术、关系、逻辑表达式**计算(求值)，根据结果返回真或假，__不支持字符串和文件的测试__。
+
+===== 小技巧： =====
+双括号还有妙用
+for ((i=1;i<=num;i++))
+
+shell里面是不允许if [ $a != 1 __||__ $b = 2 ]出现的(可以用**-a, -o**来做逻辑运算)，要用
+if [ $a != 1 ] || [ $b = 2 ]]
+
+用双括号可以解决
+if __
+
+if [ "$a" -lt "$b" ]也可以改成双括号的形式
+((“$a” < “$b”))
+
+
+((...))不用于测试的情形是__为变量赋值__，即将计算计算结果作为等号左边变量的值。
+[geekard@geekard ~]$ __((k=2+3))__; echo k=$k, $?
+k=5, 0
+[geekard@geekard ~]$ 
+
+[geekard@geekard ~]$ echo $((2+3))
+5
+[geekard@geekard ~]$ echo $((i=2+3))   
+5
+[geekard@geekard ~]$ 
+
+

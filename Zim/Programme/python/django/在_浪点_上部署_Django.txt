@@ -1,0 +1,76 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-22T20:23:51+08:00
+
+====== 在 浪点 上部署 Django ======
+Created Saturday 22 October 2011
+
+http://hi.baidu.com/uniqcmt/blog/item/c32e641bbf0995f2af51338d.html
+
+今天早上问浪点的客服拿来了SSH的帐号，正式开始在上面部署Django了。
+
+玩转SSH
+
+浪点虚拟主机的SSH另指定了2222作端口
+ssh username@hostname -p 2222
+突然发现终端有问题，怎么跟平常的不一样，原来是SH，而非Bash，于是输入bash切换到Bash，但是如何让终端默认就是Bash呢？ 即在登录时就指定命令，把.profile的内容给清空了。Shell还能这样玩！今天学到了很多。
+
+实在没办法了，就暂时把默认Shell这个问题搁置一下了，到时找客服。
+
+测试Django
+
+我在服务器上运行Python，import django，查看了一下django.VERSION，发现服务器是0.96.0版的，不会吧！至少得应该是0.96.2啊，那个版本还有Bug和安全漏洞呢！看来下次联系客服同志时，要跟他们说一声。
+
+先测试一下Django吧！
+
+来到public_html目录，然后django-admin.py startproject onlytest，建立一个Django工程，然后再建立.htaccess文件：
+
+.htaccess
+AddHandler fcgid-script .fcgi
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^(.*)$ django.fcgi/$1 [QSA,L]
+
+再在同目录建立django.fcgi文件：
+
+#!/usr/bin/python
+#-*-coding:UTF-8-*-#
+import sys, os
+
+projectName = ‘onlytest’      #项目名称 “py”
+pathAdd = os.path.dirname(os.path.abspath(__file__))    #项目所在目 /var/www/
+projectPath = pathAdd + ‘/%s/’ % (projectName)          #项目路径 /var/www/py/
+sys.path.insert(0, pathAdd);
+os.chdir(projectPath)
+
+os.environ["DJANGO_SETTINGS_MODULE"] = ‘%s.settings’ % (projectName)
+
+from django.core.servers.fastcgi import runfastcgi
+runfastcgi(method=”threaded”, daemonize=”false”)
+
+然后访问主页，一切正常。
+
+好了，下一步，使用新的Django。
+
+使用SVN版的Django
+
+服务器上没有svn命令，所以只好自己打个包，用scp传了上去，以下命令格式：
+
+scp -P 2222 django-0.97.zip usename@hostname:/path/anotherpath/
+
+传好以后，把django解压到~/python下，然后编辑.profile文件，加入下面两行，如果默认是bash，加到.bashrc也可以：
+
+export PATH=$PATH:$HOME/python/django
+export __PYTHONPATH__=$PYTHONPATH:$HOME/python
+
+然后source ~/.profile，这样运行Python的导入django的就是SVN版了，导出PATH是为了运行最新版的django-admin.py。
+
+但是已经运行的fastcgi和Python实例似乎没接受这个新变量，当时没找到重启的方法，好在还有另外的办法，在django.fcgi这个文件的form django前，再插入一句：
+
+sys.path.insert(0, “PATH_TO_HOME/python”)
+
+**因为修改了django.fcgi，所以系统会自动重新运行这个实例**，因为新的PYTHONPATH已经导入，所以import django时就是最新版本的了。
+=======
+开始的时候 用mysql 怎么也连接不上去，django里面也提示有错误，自己尝试了很久
+不行了，打电话问：结果原因是浪点的mysqld不支持用“localhost”来连接，只能用IP也就是127.0.0.1来连接。
+呵呵，以后不懂还是要多问。

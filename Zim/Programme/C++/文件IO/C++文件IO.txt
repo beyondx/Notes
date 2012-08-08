@@ -1,0 +1,766 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-17T16:14:48+08:00
+
+====== C++文件IO ======
+Created Friday 17 February 2012
+
+http://blog.cfan.com.cn/html/49/302849-1729970.html
+
+虽然C＋＋的I/O方法形成了一个完整的系统，但文件I／O（特别是磁盘文件I/O）由于
+受到本身的限制和特性，因而被当作一种特殊情况专门讲述。因为最普通的文件是磁盘文
+件，而磁盘文件具有其它设备不具有的性能和特征。但要记住，__磁盘文件I／O只是一般I／O__
+__系统的一个特例__，且本章讨论的大多数材料也适用于与其它类型的设备相连的流。
+
+===== 18．1  fstream.h  和文件类 =====
+      要处理文件I／O，程序中必须包含首标文件fstream.h。它定义了的类包括**ifstream、of-**
+**stream和fstream**。这些类分别从istream和ostream派生而来。记注，istream和ostream是从
+ios派生来的，所以ifstream、ofstream和fstream也存取ios定义的所有运算。
+
+===== 18．2 打开和关闭文件 =====
+    在C＋＋里，用户__通过把文件和流联系起来打开文件__。打开文件之前，必须首先获得一个
+流。流分为三类：**输入、输出和输入／输出**。要创建一个输入流，必须说明它为类ifstream；要
+创建一个输出流，必须说明它为类ofstream。执行输入和输出操作的流必须说明为类
+fstream。例如，下面的程序段创建了一个输入流、一个输出流和一个输入／输出流。
+
+ifstream in； // input
+ofstream out； // output
+__fstream__ io；// input and output
+
+    一旦创建了一个流，把流和文件联系起来的一种方法就是使用函数**open（）**。该函数是
+这三个类中每个类的成员。其原型为：
+        void open（__const char ＊__ filename， int mode， int access=filebuf::openprot）；
+其中，filename为文件名，它可以包含路径说明符。mode值决定文件打开的方式，它必须是
+下列值中的一个（或多个）：
+                ios::app
+                ios::ate
+                ios::binary
+                ios::in
+                ios::nocreate
+                ios::noreplace
+                ios::out
+                ios::trunc
+
+    用户可以把两个或两个以上的值__或在__一起得到它们的复合值。下面看看这些值的含义。
+* 包含ios：：app 导致把所有文件的输出添加在**文件尾**。它只能用于输出文件。包含ios：：
+ate导致文件打开时定位于文件尾。虽然如此，在文件的任何位置都可以进行I/O操作。
+* 缺省时，文件以__文本方式打开__。使用ios::binary值可以使文件以二进制方式打开。文件
+以文本方式打开时，会产生不同的字符转换。如**回车／换行转换为换行**。但当文件以二进制方
+式打开时，__不发生字符转换__。任何文件，不管是包含格式化的文本还是包含原始的二进制数
+据，均可以文件方式或二进制方式打开，唯一不同的是是否进行字符转换。
+* ios::in值说明文件有输入能力，ios::out值说明文件有输出能力。用ifstream创建的流
+隐含为输入，用ofstream创建的流**隐含为输出**。在这些情况下，没有必要提供这些值。
+* 包含ios::nocreate导致函数open（）在文件不存在时失败。ios::noreplace值导致函数
+open（）在文件存在时失败。
+* ios::trunc值导致已存在的同名文件的内容被破坏且长度被截断为0。
+    注：建议的ANSI C＋＋标准规定方式参数类型为openmode，通常为整型。现在大多数工
+具简单地将方式参数定义为整型数。
+
+access值决定**存取文件的方式**，其缺省值为filebuf::openprot，指定为通常文件（filebuf
+是由streambuf派生的类）。大多数时候允许access缺省。参阅编译程序手册，找出自己所用
+操作环境中该参数的其它选项。例如，文件共享选项一般定义为在网络环境下使用的access
+参数。
+
+下面的程序段打开一个普通输出文件：
+ofstream out;
+out．open（“test”， ios::out）；
+由于一般情况下使用的是mode缺省值，所以很少象上面这样调用open（）。对于ifstream，
+mode的缺省值是ios：：in；对于ofstream它是ios：：out。所以，上面的语句通常表现如下：
+out．open（"test"）； // defaults to output and normal file
+
+如下例所示，要打开一个**供输入和输出的流**，就必须指定mode的值为ios：：in和ios：：
+out（无缺省值）：
+fstream mystream；
+mystream.open（"test"，__ios::in | ios::out__）；
+
+如果open（）失败，则**mystream为0**。所以在使用一个文件之前，应使用如下语句进行测
+试，以__确保打开操作成功__。
+if（!mystream）｛
+cout＜＜"Cannot open file.\N"；
+／／ handle error
+}
+
+虽然使用函数open（）打开一个文件完全合适，但在大多数情况下，由于ifstream、of-
+stream和fstream类包含**自动打开文件的构造函数**，所以没有必要调用open（）。构造函数有
+和open（）相同的参数和缺省值。最常见的打开文件的方法是：
+
+     ifstream mystream（"myfile"）；// open file for input
+如前所述，如果由于某种原因不能打开文件，则关于流的变量的值是0。所以，不管用构造函
+数还是显式地调用open（）打开文件，都要测试流的值以保证真正打开了文件。
+
+要关闭一个文件，使用成员函数close（）。例如，用下面的语句关闭关于流mystream的
+文件：
+    mystream. close（）；
+函数close（）不带任何参数且无返回值。
+
+==== 18．3读和写文本文件 ====
+
+从文本文件读或向文本文件写都非常容易，只要使用在处理控制台I／O时使用的运算
+符__<<和>>__，并用和文件相关的流代替cin和cout即可。例如，下面的程序建立了一个帐
+单，它包括每个项目的名称和开支情况。
+    ＃include＜iostream.h＞
+    ＃include＜fstream.h＞
+    main()
+    ｛
+    ofstream out（"INVNTRY"）；// output， normal file
+    if（!out）｛
+      cout＜＜"Cannot open INVENTORY file.\n"；
+        return 1；
+      ｝
+      out＜＜"Radios" ＜＜**39．95**＜＜endl;
+      out＜＜"Toasters"＜＜19．95 ＜＜endl；
+      out＜＜"Mixers" ＜＜24．80<< endl;
+      out．close()；
+      return 0；
+    }
+      下面的程序读上面的程序中创建的帐目文件并在屏幕上显示其内容：
+    ＃include＜iostream.h＞
+    ＃include＜fstream.h＞
+    main()
+    ｛
+    ifstream in（"INVNTRY"）；// input
+    if（!in）｛
+      cout＜＜"Cannot open INVENTORY file.\n";
+        return 1；
+      ｝
+    __char __item[20]；
+    float cost；
+
+    in>>item＞＞cost；
+    cout＜＜item＜＜" "＜＜cost＜＜"\n"；
+    in>>item＞＞cost；
+    cout<<item＜＜" "＜＜cost＜＜"\n";
+    in>> item＞＞cost；
+    cout＜＜item＜＜" "＜＜cost＜＜"\n";
+    in.close()；
+    return 0；
+    }
+
+从某种意义上讲，使用＞＞和＜＜读写文件类似于使用C的函数fprintf（）和fscanf()。
+所有的信息都按屏幕显示的格式存入文件。
+
+下面是磁盘文件I／O的又一个例子。该程序读取从键盘输入的字符串并写入磁盘。程序
+在用户输入空行时结束。使用该程序时，要在命令行中指定输出文件名。
+＃include＜iostream.h＞
+ #include＜fstream.h＞
+＃include＜stdio.h＞
+main（int argc，char * argv[]）
+{
+    if（argc!=2）{
+      cout ＜＜"Usage： output＜filename＞\n"；
+      return 1；
+    ｝
+    ofstream out（argv[C]）；// output， normal file
+    if（!out）｛
+      cout＜＜"Cannot open output file.\n"；
+      return 1；
+    ｝
+    char str[80];
+    cout＜＜"Write strings to disk， RETURN to stop.\n"；
+    do{
+        cout ＜＜"："；
+        gets（str）；
+        out＜＜str<<endl；
+    ｝while(*str)；
+    out．close（）；
+    return 0；
+}
+用运算符>>读文本文件时，将发生__某些字符转换__，如省略空格等。如果要防止任何字
+符转换，就必须使用C＋＋的二进制I/O函数，我们将在下一节讨论它。输入时如果遇到文件尾，
+和文件关联的流则为0。
+
+
+===== 18．4二进制I／O =====
+      向一个文件写和从一个文件读有两种方法，下面就介绍这两种方法。
+      记住：如果要对一个文件进行二进制操作，则必须使用ios::binary方式说明符打开文
+件。虽然二进制文件函数可以对以文本方式打开的文件进行操作，但可能发生一些字符转
+换，字符转换会违背二进制文件操作的目的。
+
+==== 18．4．1 put（）和get（） ====
+读写二进制文件的一种方法使用成员函数get（）和put（）。这些函数以__字节为单位__进行
+操作。也就是说，get（）可以读一个字节数据，put（）可以写一字节数据。函数get（）有很多形
+式，但最常用的形式和与之伴随的put（）如下所示：
+        istream＆get(char ＆ch);
+        ostream＆put(char ch)；
+      函数get（）从相关的流读一个字符并放入ch，返回对流的引用。函数put（）将＊写入流
+并返回流的引用。
+
+下面的程序在屏幕上显示任何文件的内容，它用到了函数get（）。
+    ＃include ＜iostream.h＞
+    ＃include＜fstream.h＞
+main(int argc， char * argv[])
+    ｛
+      __char__ ch;
+      if（argc!=2）
+        cout＜＜"Usage：PR<filename>\n";
+        return 1；
+      ｝
+    ifstream in（argv[1]）；
+    if（!in）｛
+      cout ＜＜"Cannot open file.\n"；
+        return 1；
+                  }
+      while（in）｛／／in will be 0 when __eof__ is reached
+        in.get(ch);
+        cout＜＜ch;
+      ｝
+      return 0；
+        }
+前面提到过，当到达文件尾时，和文件相关的流变为0。所以，当in到达文件尾时它是0，从而终止while循环。
+下面给出的这种编码方法使读和显示文件的循环的编码更短：
+while（in.get（ch））
+    cout ＜＜ ch；
+由于get（）返回流in的引用，且在遇到文件尾时in为0，所以上述语句能正常工作。
+
+下面的程序用put（）向文件CHARS写入从0到255的所有字符。ASCII字符只占char所
+容纳的值的一半，其余值一般称为扩展字符值，包括一些外来语和数学符号（并非所有的系
+统都支持扩展字符集）。
+＃include＜iostream.h＞
+#include ＜fstream. h＞
+main()
+｛
+      int i；
+    ofstream out（"CHARS"，ios：：out |  ios：：binary）；
+    if（!out）｛
+      cout ＜＜ "Cannot open output file.\n"；
+      return 1；
+    ｝
+    // write all characters to disk
+    for(i=0； i＜256； i＋＋）out．put(char(i));
+    out．close()；
+    return 0；
+}
+检查一下文件CHARS的内容，看一看自己的计算机有什么扩展字符，是一件很有趣的
+事情。
+
+==== 18．4．2 read（）和write（） ====
+    第二种方法是使用C＋＋的函数read()和write（）读写__二进制数据块__，其原型为：
+        istream ＆read（unsigned char *buf， int num）；
+        ostream ＆write（const unsigned char *buf， int num）；
+    函数read() 从相关的流读num个字节并放入buf所指的缓冲区。函数write（）把buf所
+指的缓冲区中的num个字节写入相关的流。
+    注：建议的ANSI C＋＋标准用__streamsize__ 说明num参数的类型，streamsize是整数类型
+的typedef。如前面的原型所示，大多数C＋＋编译程序简单地将num定义为整型。一般情况
+下，建议的ANSI C＋＋标准用streamsize作为对象的类型，这些对象说明在输入／输出操作
+中传送的字节数。
+
+下面的程序先把一个结构写入磁盘，然后读回：
+
+      #include＜iostream.h＞
+      ＃include＜fstream.h＞
+    ＃include＜string.h＞
+    struct status｛
+      char name[80]；
+      float balance；
+      unsigned long account_num；
+    };
+      main()
+      ｛
+        struct  status acc；
+        __strcpy__（acc.name，"Ralph Trantor"）；
+        acc.balance=1123．23；
+        acc.account_num=34235678；
+      ofstream outbal（"balance"，ios：：out |  ios：： binary）；
+        if（!outbal）{
+          cout ＜＜"Cannot open file.\n"；
+          return 1；
+        ｝
+      outbal.write（__（unsigned char*）__&acc， sizeof(struct status)）；
+      outbal．close()；
+        ／／ now， readback
+      ifstream inbal（"balancen",ios：： |  ios:: binary）；
+      if（!inbal）｛
+          cout ＜＜"Cannot open file.\n";
+          return 1；
+        ｝
+      inbal．read（__（unsigned char*）__＆acc， sizeof（struct status））；
+      cout ＜＜acc.name ＜＜endl；
+      cout＜＜"Account ＃ "， ＜＜acc.account_num；
+      cout.__precision__（2）；
+      cout. __setf__（ios：：fixed）；
+      cout＜＜ena＜＜" Balance ：＄" ＜＜acc.balance；
+      inbal.close（）；
+      return 0；
+        }
+      可以看出，读写整个结构只需调用一次read()和write（），而不必分别读写结构中的每
+    个域。如本例所示，缓冲区可以是任何类型的对象。
+
+注：当对不是定义为字符数组的缓冲区进行操作时，在调用read（）和write（）中进行类
+型强制转换是必要的。由于C＋＋有很强的类型检查能力，所以一种类型的指针不能自动转
+换成另一种类型的指针。如果还未读到num个字符就到达了文件尾，read()便终止，缓冲区包含了能获得的那
+些字符。用成员函数gcount（）可以得到读取的字符的个数，其原型为：
+       __ int gcount（）__；
+它返回**最后一次**二进制输入操作的字符个数。
+下面的程序是使用read()和write（）的另一个例子，它说明了gcount（）的用法。
+＃include <iostream.h>
+＃include<fstream.h>
+main（void）
+｛
+float fnum[4] ＝{99．75，－34．4， 1776．0，200．1};
+    int i；
+ofstream out（"numbers"，ios：：out |  ios：： binary）；
+    if（!out）｛
+      cout ＜＜ "Cannot open file.";
+      return 1；
+    ｝
+    out．write（（unsigned char * ）＆fnum， sizeof（fnum）；
+    Out．close（）；
+    for（i=0； i＜4;i＋＋）// clear array
+      fnum[i]＝0．0；
+ifstream in（"numbers"，ios::in |  ios：：binary）;
+in. read((unsigned char*)＆fnum， sizeof fnum)；
+// see how many bytes have been read
+**cout ＜＜ in. gcount（）**＜＜ "bytes read\n"；
+    for(i＝0； i＜4； i＋＋) // show values read from file
+      cout ＜＜ fnum[i] ＜＜" ";
+    in.close();
+    return 0；
+}
+    上面的程序向磁盘写一个浮点值数组然后读回。调用read()之后，用gcount（）确定刚才
+读回多少个字节。
+
+==== 18．5另外的get（）成员函数 ====
+除了前面所示的形式，还可以用几种不同的方法重载get（）。最常见的两种重载形式为：
+     istream＆get（char*buf， int num， char delim=’\n’）；
+     int get（）；
+
+ 第一种重载形式读取字符并放到buf所指的数组中，直到读满num-1个字符或遇到delim所指定的字符为止。
+get（）使buf所指的数组__以空结束__。如果没指定delim参数，缺省的定界符就是换行符。__在输入流中碰到定界字符时，并不读取它__，而是继续留在流中直到下次读入
+操作。 get（）的第二种重载形式返回流中的下一个字符，到达文件尾时返回EOF。这种形式的get（）类似于C的函数getc（）。
+
+==== 18．6 getline（）成员函数 ====
+执行输入的另一个成员函数是getline（），其原型为：
+          istream＆getline（char *  buf， int num， char delim=’\n’）；
+可以看出，这个函数实质上和get（）的get（buf、num、delim）形式是一样的。它从输入流中读取字符到buf所指的数组中，直到读满num个字符或遇到delim所指定的字符为止。如果没指定delim，其缺省值就是换行符。buf所指的数组__以空结束__。get（buf、num、delim）和getline（）的区别在于getline（）__从输入流中读入并移去定界符__。
+
+下面的程序介绍了函数getline（），它逐行读并显示一个文本文件。
+    // Read and display a text file line by line.
+    ＃include ＜iostream. h＞
+    ＃include＜fstream.h＞
+    main(int argc， char *  argv[])
+            {
+      if（argc!=2）｛
+        cout ＜＜"Usage： Display＜filename＞\n"；
+          return 1；
+        ｝
+      ifstream in（argv[1]）；// input
+      if（!in）{
+      cout ＜＜"Cannot open input file.\n";
+        return 1；｝
+      char str[255]；
+      while（in）｛
+        in. getline（str， 255）；// delim defaults to’\n’
+        cout ＜＜ str＜＜endl;
+      }
+      in.close()；
+
+return 0；
+｝
+
+===== 18.7跟踪EOF =====
+使用成员函数eof()可以跟踪何时到达文件尾，其原型为：
+          int eof()；
+当到达文件尾时，eof()的返回值__不为0__，否则为0。
+注：建议的ANSI C＋＋标准规定eof（）返回值类型为布尔型。但目前大多数C＋＋编译程
+序还不支持布尔数据类型。实际上，将eof（）返回值说明为布尔类型还是整型无关紧要，因为
+在任何表达式中的布尔型可以自动转换为整型。
+
+下面的程序以十六进制的ASCII形式显示一个文件的内容。
+／*  Display contents of specified file
+        in both ASCII and in hex.
+    *／
+＃include<iostream.h>
+＃include<fstream.h>
+＃include<ctype.h>
+＃include ＜__iomanip.h__＞
+#include＜stdio.h＞
+main（int argc，char * argv[]）
+{
+    if（argc!=2）{
+      cout ＜＜ "Usage： Display ＜filename＞\n"；
+        return 1；
+      ｝
+    ifstream in（argv[1]， ios：：in |  ios：：binary）；
+    if（!in）{
+      cout ＜＜ "Cannot open input file.\n"；
+      return 1；
+    ｝
+register int i， j；
+int count=0；
+char c[16];
+cout. __setf__（ios: : uppercase）；
+    while（!in. eof()）｛
+      for（i＝0； i＜16&&!in.eof()； i＋＋）｛
+      in. get（c[i]）；
+      ｝
+      if（i＜16） i－－；// get rid of eof
+      for（j＝0；j＜i;j＋＋）
+        cout ＜＜ setw（3） ＜＜ __hex__ ＜＜（int）c[j];
+      for(;j<16；j＋＋) cout＜＜" " ；
+
+    cout＜＜"\t";
+    for（j=0；j＜i;j＋＋）
+      if(**isprint**(c[j])) cout＜＜c[j];
+        else __cout ＜＜"."__；
+    cout ＜＜endl；
+    count＋＋；
+    if（count＝＝16）｛
+      count＝0；
+      cout＜＜"Press __ENTER__ to continue："；
+      cin.get（）；
+      cout＜＜endl；
+      ｝
+    }
+    in.close()；
+    return 0；
+}
+    如果用这个程序显示它自己的话，则第一屏内容为：
+        2F 2A 20 44 69 73 70 6C 61 79 20 63 6F 6E 74 65 / *  Display conte
+        6E 74 73 20 6F 66 20 73 70 65 63 69 66 69 65 64 nts of specified
+        20 66 69 6C 65 D A 20 20 20 69 6E 20 62 6F 74 file. .  in bot
+        68 20 41 53 43 49 49 20 616E 64 20 69 6E 20 68 h ASCII and in h
+        65 78 2E D A 2A 2F D A 23 69 6E 63 6C 75 64 ex. . */ . .  ＃ includ
+        65 20 3C 69 6F 73 74 72 65 61 6D 2E 68 3E D A e ＜iostream.  h＞. .
+        23 69 6E 63 6C 75 64 65 20 3C 66 73 74 72 65 61 ＃ Include＜fstrea
+        6D 2E 68 3E D A 23 69 6E 63 6C 75 64 65 20 3C m.  h＞. .  # include＜
+        63 74 79 70 65 2E 68 3E D A 23 69 6E 63 6C 75 ctype. h＞. .  ＃ inclu
+        64 65 20 3C 69 6F 6D 61 6E 69 70 2E 68 3E D A de ＜iomanip． h＞. .
+        23 69 6E 63 6C 75 64 65 20 3C 73 74 64 69 6F 2E ＃ include＜stdio.
+        68 3E D A D A 6D 6l 69 6E 28 69 6E 74 20 61 h＞. . . .  main(int a
+        72 67 63 2C 206368 61 72 20 2A 61 72 67 76 5B rsc， char *  argv[
+        5D 29 D A 780A20 20 69 66 28 61 72 67 63]).{..     if(argc
+        21 3D 32 29 20 78DA20 20 20 20 63 6F 75 74 1＝2）｛. .  cout
+        20 3C 3C 20 22 55 73 6167 65 3A 2044 69 73 70 ＜＜"Usage： Disp
+          Press ENTER to continue:
+
+===== 18．8ignore（）函数 =====
+使用成员函数ignore（）可以从输入流中读取并丢弃字符，其原型为：
+        istream ＆ignore（int num＝1， int delim=EOF）；
+它读取并丢弃字符直到忽略num个（缺省为一个）字符或遇到由delim指定的字符（缺省为EOF）为止。如果遇到了定界字符，__不从输入流中移去它__。
+下面的程序读文件TEST。它忽略字符直到遇到空格或读完10个字符，然后显示文件的 剩余部分。
+＃include ＜iostream. h＞
+＃include＜fstream.h＞
+main()
+｛
+    ifstream in("test");
+    if（!in）｛
+      cout ＜＜ "Cannot open file.\n"；
+      return 1；
+      ｝
+    ／*  Ignore up to 10 characters or until first
+        space is found. *／
+    in.ignore（10，’’）；
+    char c；
+    while（in）｛
+        in.get（c）；
+        cout＜＜c;
+              }
+    in.close()；
+    return 0；
+｝
+
+===== 18．9 peek（）和putback（） =====
+使用peek()可以从输入流中获取下一个字符，但不移去它，其原型为：
+      int peek()；
+它返回流中的下一个字符或者到达文件尾时返回EOF。
+使用putback()可以获得从一个流中读取的最后一个字符，其原型为：
+        istream＆putback(char c)；
+其中，c为读取的最后一个字符。
+
+===== 18．10 flush（） =====
+在执行输出时，并不立即将数据写入和流相关的物理设备，而是把它们存储在内部缓冲
+区里，直到缓冲区满为止时才将内容写入磁盘。如果使用flush()就可以在缓冲区装满之前
+强行地将其内容写入磁盘，其原型为：
+          ostream＆flush（）；
+当在恶劣的环境下使用程序时（如在经常掉电的地方），调用flush()是很必要的。
+注：关闭文件或程序正常终止均清除所有的缓冲区。
+
+===== 18．11随机存取 =====
+在C＋＋的I／O系统中，用户使用函数seekg（）和seekp（）执行随机存取。它们的一般形
+式为：
+          istream ＆seekg（streamoff offset， seek_dir origin）；
+          ostream ＆seekp（streamoff offset， seek_dir origin）；
+其中，streamoff是在iostream.h中定义的一种类型，它能包含offset所能容纳的最大有效
+值。同时，seek_dir是具有下列值的一个枚举：
+              ios: :beg
+              ios::cur
+              ios::end
+C＋＋的I/O系统管理和文件相关的两类指针。一类是__取指针__（get pointer），它指出在文
+件中进行下次**输入**操作的位置；另一类是__送指针__（put pointer），它指出在文件中进行下次**输**
+**出**操作的位置。每进行一次输入和输出操作，相应的指针就自动顺序前进。使用函数seekg（）
+和seekp（）可以按非顺序方式存取文件。
+
+函数seekg（）把文件的当前取指针移动到距指定的origin offset个字节的位置。origin必
+须是下列值之一：
+            ios：：beg    文件首
+            ios：：cur   当前位置
+            ios：：end   文件尾
+函数seekp（）把相关文件的当前送指针定位到距指定的origin offset个字节的位置。ori-
+gin也必须是上述值之一。
+
+下面的程序介绍了函数seekp（）。它可以__改变一个文件中的特定字符__。命令行参数为文
+件名、要改变的文件中的第几个字节和新的字符值。注意，文件打开为读／写操作。   
+   
+    ＃include＜iostream.h＞
+    ＃include＜fstream.h＞
+    ＃include＜stdio．h＞
+    main(int argc， char * argv[])
+    {
+      if（argc!=4）｛
+        cout＜＜"Usage：CHANGE＜mename＞<byte> <char>\n"
+        return 1；
+      ｝
+    fstream out(argv[1]， **ios::in |  ios::out** |  ios: :binary)；
+      if(!out)｛
+        cout ＜＜ "Cannot open file.\n"；
+        return 1；
+
+out．seekp（__atoi__（argv[2]）， ios：：beg）；
+out. put（* argv[3]）；
+out．close（）；
+return 0；}
+列如，用这个程序把文件TEST中的第12个字节换成Z，行命令为：
+      change test 12 Z
+
+下面的程序使用了seekg（），它显示指定文件从指定位置开始的内容。
+#include＜iostream.h＞
+#include＜fstream.h＞
+#include＜stdlib.h＞
+main(int argc，char * argv[]){
+Char ch;
+if（argc!=3）｛
+cout ＜＜"Usage： SHOW ＜filename＞＜starting location＞\n"；
+    return 1；
+    }
+ifstream in(argv[1]， ios：：in| ios：：binary)；
+if(!in) ｛
+    cout ＜＜"Cannot open file.\n"；
+    return 1；
+}
+in.seekg（atoi（argv[2]， ios：：beg）；
+while(in， get(ch))
+    cout ＜＜ ch；
+return 0;
+}
+
+下面的程序用seekp（）和seekg（）反转一个文件中的前（num＞个字符：
+＃include＜iostream.h＞
+＃include＜fstream.h＞
+＃include＜stdlib.h＞
+main（int argc， char*argv[]）
+｛
+if(argc!=3) ｛
+    cout ＜＜ "Usage： Reverse＜filename＞ ＜num＞\n"；
+    return 1；
+}
+
+ifstream inout （argv[1]，ios：：in|ios：：out |  ios：：binary）；
+      if（!inout）｛
+        cout＜＜"Cannot open input file.\n"；
+        return 1；
+      ｝
+      long e，i,j；
+      char c1，c2；
+      e＝atol(arg[2]);
+      for（i=0，j=0；i＜1； i＋＋，j－－）｛
+          inout．seekg（i， ios：：beg）；
+          inout．get（c1）；
+          inout．seekg(j, ios：：beg)；
+          inout．get（c2）；
+          inout．seekp（i， ios：：beg）；
+          inout．put（c2）；
+          inout．seekp（j ， ios：：beg）；
+          inout．put（c1）；
+      ｝
+      inout．close（）；
+      return 0；
+    }
+
+使用这个程序的时侯，必须指定要反转的文件名和字符个数。例如，要反转文件TEST
+的头10个字符，行命令为：
+              reverse test 10
+假设文件包含如下内容：
+              This is a test.
+      执行程序后，文件的内容变为：
+              a si sihTtest.
+
+===== 18．11．1得到当前文件的位置 =====
+      使用下列函数可以确定每个文件指针的当前位置：
+        streampos tellg（）；
+        streampos tellp（）；
+其中，__streampos__是在iostream.h中定义的一种类型，它能容纳每个函数返回的最大值。
+可以用tellg（）和tellp()返回值作为下面形式的seekg（）和seekp（）的变元：
+      istream ＆seekg（streampos pos）；
+      ostream＆seekp（streampos pos）；
+这些函数提供用户保存当前文件的位置，转而执行其它文件操作，然后可__将文件重设到__
+__先前保存的位置__。
+
+===== 18．12 I/O状态 =====
+      C＋＋I／O系统维护每次I／O操作结果的状态信息。I／O系统的当前状态放在一个整数
+中，其中有下列标志及编码：
+              名称            含义
+              eofbit           1：到达文件尾     0：否则
+              failbit          1：非致命I／O错    0：否则
+              badbit      1：致命I／O错           0：否则
+      这些标志一一列举在ios中。定义在ios中的goodbit值为0。
+
+获取I／O状态信息有两种方法。第一种是调用成员函数rdstate（），其原型为：
+          int rdstate（）；
+它返回一个反映错误标志状态的整数。根据前面的标志表，可以料到在不出现错误时rdstate
+（）返回值是0，否则就有标志位被置位。
+      注：建议的ANSI C＋＋标准将rdstate（）的返回值类型说明为iostate，即一个整型值的
+typedef。当前，大多数C＋＋编译程序将rdstate（）的返回值类型说明为整型。
+
+下面的程序介绍了rdstate（），它显示一个文本文件的内容。如果出现错误，则用check-
+status（）报警。
+＃include＜iostream.h＞
+＃include＜fstream.h＞
+void checkstatus（ifstream＆in）；
+main(int argc， char *argv[])
+｛
+    if（argc！＝2）｛
+      cout ＜＜ "Usage： Display ＜filename＞\n"；
+      return 1；
+      ｝
+    ifstream in（argv[1]）；
+    if（!in）｛
+      cout ＜＜ "Cannot open input file.\n"；
+      return 1；
+    ｝
+
+char c；
+      while(in.get(c))｛
+        cout＜＜c；
+        __checkstatus（in）__；
+                      }
+      CheCkstatus（in）；／／Check final status
+      in.close()；
+      return 0；
+    ｝
+    void Checkstatus（ifstream＆in）
+    {
+        int i；
+      i=**in.rdstate**（）；
+      if(i＆__ios::eofbit__)
+          cout＜＜"EOF encountered＼n"；
+      else if(i＆ios：：failbit)
+          cout＜＜" Non－Fatal I／O error\n"；
+      else if（i＆ios：:badbit）
+          cout＜＜"Fatal I／O error\n"；
+    }
+该程序总要报一个“错误”。while循环结束后，还调用了一次checkstatus（），正如所期望
+的，程序报告遇到了EOF。以后读者会发现在编写程序时函数checkstatus的用途很大。
+
+确定出错的另一种方法是使用下列函数中的一个或几个：
+          int bad()；
+          int eof()；
+          int fail（）；
+          int good（）；
+
+前面已经讨论过eof()，这里不再赘述。badhit置位时函数bad()返回真。failbit置位时函
+数fail（）返回真。无错误发生时，函数good（）返回真，否则返回假。
+ 注：建议的ANSI C＋＋标准规定，bad（）、eof()、fail（）和good()函数的返回值类型为布
+尔型。但现在大多数C＋＋编译程序将它们的返回值类型说明为整型。从实际的观点看，这种
+差别是无关紧要的，因为在任何表达式中布尔类型自动转换为整型。
+
+一旦有错误发生，在程序继续运行之前有必要__使用函数clear（）清除错误标志__，其原型
+为：
+          void clear（int flags＝0）；
+如果flags为0（缺省值），则清除所有的错误标志位（复位为0），否则将flags设置为所需
+的清除值。
+
+
+===== 18．13定制的I/O和文件 =====
+
+    在第十六章里，我们学习了如何重载关于自定义的类的插入和提取运算符。第十六章只
+介绍了控制台I/O.但是，由于所有c＋＋的流都是一样的，所以无需做任何改变就可以用同
+样的重载插入函数向屏幕或文件输出。下面的例子再现了第十六章中那个电话簿的例子，不
+过这里把表存到了磁盘上。这个程序非常简单，它可以向表中添加名字或在屏幕上显示表的
+内容。作为一个练习，把程序做一些改进，使它能寻找指定的成员和删除不要的成员。
+＃include＜iostream.h＞
+#include ＜fstream.h＞
+#include＜string．h＞
+class phonebook｛
+    char name[80];
+    char areacode[4]；
+    char prefix[4];
+    char num[5];
+public：
+    phonebook（）{};
+    phonebook（char * n，char * a，char * p， char * nm）
+    ｛
+      __strcpy__(name，n)；
+      strcpy（areacode，a）；
+      strcpy(prefix，p)；
+      strcpy（num ， nm）；
+        }
+friend ostream＆operator＜＜（ostream＆stream，phonebook o）；
+friend istream ＆Operator＞＞（ostream ＆stream， phonebook ＆o）；
+};
+// Display name and phone number.
+__ostream&operator＜＜__（ostream ＆stream， phonebook o）
+｛
+    stream ＜＜o.name ＜＜" ";
+    stream＜＜"（" ＜＜o.areacode＜＜")";
+    stream＜＜o.prefix＜＜"-";
+    stream＜＜o.num＜＜"\n";
+    return stream ;// must return  stream
+｝
+// Input name and telephone number.
+istream ＆operator＞＞（istream ＆stream， phonebook ＆o）
+｛
+    cout ＜＜ "Enter name：";
+    stream ＞＞ o. name；
+    cout ＜＜"Enter area code：";
+    stream ＞＞ o. areacode;
+    cout ＜＜"Enter prefix ："；
+    stream ＞＞ o.prefix；
+    cout ＜＜"Enter number ：";
+
+    stream＞＞o. num；
+    cout＜＜"\n";                                                                                                        
+    return stream；
+    }
+main（）
+｛
+    phonebook a;
+    char c；
+fstream pb（"phone”， ios：：in|ios：：out |  ios：：app）；
+    if（!pb）｛
+      cout ＜＜ "Cannot open phonebook file.\n"；
+      return 1；
+          }
+    for （；；）{
+      char c；
+      do{
+          cout<<"1．Enter numbers\n";
+          cout << "2． Display numbers\n"；
+          cout<<"3．Quit\n"；
+          cout ＜＜"\nEnter a choice："；
+          cin>>c;
+      ｝while（c<’1’||c＞’3’）；
+        switch（c）｛
+          case’1’：
+              cin＞＞a；
+              cout＜＜"Entry is："；
+              cout ＜＜ a；／／show on screen
+              pb ＜＜a；// write to disk
+              break;
+          case’2’：
+              Char ch;
+              pb.seekg（0， ios：：beg）；
+              while（!pb.eof（））｛
+                pb．get（ch）；
+                cout ＜＜ch；
+              ｝
+              pb．clear（）；// reset eof
+              cout＜＜end；
+              break;
+          case’3’：
+              pb．close()；
+              return 0；
+        ｝
+    ｝
+}
+注意，重载的运算符（（不用做任何改变就可用于写磁盘文件，也可用于写屏幕。这是
+C＋＋I／O方法的最重要也是最有用的特征之一。

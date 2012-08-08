@@ -1,0 +1,112 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-04T19:29:18+08:00
+
+====== X剪贴板和选择、剪切、粘贴的原理 ======
+Created Sunday 04 March 2012
+
+http://www.jwz.org/doc/x-cut-and-paste.html
+
+© 1997, 2002 by Jamie Zawinski <jwz@jwz.org>
+
+This document began as a description of how Emacs and XEmacs deal with copying and pasting text under X11. However, I've noticed that a lot of people are being referred here to answer more general questions of **how copying and pasting work under X**, or, more specifically, how they should implement copying and pasting in their own X applications. So allow me to summarize...
+
+===== Selections: =====
+
+X11 has these things called** ``selections.''** They have names. There are really only two you need to know about: the__ Primary selection__ and the __Clipboard selection__. An application is said to __``own''__ a selection when it raises its hand and says, ``I have the Primary selection now.'' O**nly one application can own a selection at a time**, so when one app asserts selection ownership, the previous owner loses it.
+
+Asserting **ownership of a selection** doesn't actually transfer data. When you want to copy text from application A to application B, it goes like this:
+
+* Copy text in program A: program__ A asserts selection ownership__.
+* Paste text in program B: program B notes that program A owns the selection.
+* program B **asks **A for the text.
+* program A responds, and sends the text to program B.
+* program B pastes the response. 
+
+X10 had these things called __``Cut Buffers''__ that were a more limited and wasteful predecessor to selections. They are __obsolete__; don't use them. Some applications (like xterm) still have legacy support for them, but ignore that.
+
+* __Clipboard: __		for when the user has** explicitly** copied something (e.g., the ``Edit/Copy'' menu item.)
+* Primary: 	        **more** ephemeral and implicit: it is for when the user has **highlighted or selected** something (e.g., dragging the mouse over some text.)
+* Cut Buffers: 	__Obsolete.__ Never, ever, ever use them. Ever.
+
+===== Copy and Paste: =====
+
+Contrary to what you may have come to believe, copying and pasting text under X11 works pretty much __exactly the same way__ it does under MacOS and Windows. Really. It works like this:
+
+* Select the text to copy;
+* Pull down the ``Edit'' menu and select ``Copy.''
+* **This causes the text to become the Clipboard Selection.**
+* In another window, pull down the ``Edit'' menu and select ``Paste.''
+* This causes the** current value **of the Clipboard selection to be inserted. 
+
+But what about the __middle mouse__ button?
+
+It happens that X11 programs have **a second way** of copying and pasting text that is orthogonal to the Edit/Copy way described above. This causes confusion, because some people mix the two up. Here's how the other way works:
+
+* **Select the text** to copy.
+* This causes the text to become the __Primary Selection__.
+* In another window, click the **middle mouse** button.
+* This causes the current value of the Primary selection to be inserted. 
+
+===== So how do I implement this? =====
+
+=== Event: 										Action: ===
+    text **highlighted** with mouse 					Assert __PRIMARY__ selection ownership.
+    Edit / Copy 									Make an internal copy of the highlighted text.
+														    Assert __CLIPBOARD __selection ownership.
+    Edit / Paste 									Retrieve and insert **CLIPBOARD** selection.
+    middle button paste, if implemented 				Retrieve and insert __PRIMARY__ selection.
+
+    another app asks for PRIMARY 					Send currently-**highlighted **text, if any.
+    another app asks for CLIPBOARD 				Send saved copy of **last-copied** text, if any.
+    another app becomes PRIMARY owner 			De-highlight text.
+    another app becomes CLIPBOARD owner 			**Discard** text copy.
+
+===== And now, about Emacs: =====
+
+
+Message-ID: 		<3373165D.511EF610@netscape.com>
+Date: 	Fri, 09 May 1997 05:19:41 -0700
+From: 	Jamie Zawinski <jwz@netscape.com>
+Newsgroups: 	comp.emacs
+Subject: 	Re: x-selection / kill-ring interaction
+
+    > Emacs: (car kill-ring) is always the same as the __primary__ x selection,
+    >        therefore mouse2 and C-y pastes the same. mouse1 sets the
+    >        kill-ring as well as the primary selection.
+
+Unless things have changed since the last time I checked, I don't believe this is true: (car kill-ring) is the same as the __primary X __selection only if a kill has been made in FSFmacs more recently than text has been selected in another (non-FSFmacs) X application.
+
+    > My question is: did the XEmacs people conduct a poll to determine
+    > which behavior is preferred by the masses? (Actually, RMS asked me
+    > this question).
+
+No, I didn't do any surveys, but I did have a reason (in fact, the FSF behavior existed before the FSFmacs/Lucid Emacs schism occurred, and I changed it in our branch.)
+
+The traditional X model of selection usage is that the __primary selection__ is highly ephemeral: it is what is **currently highlighted**, and that tends not to stay highlighted for long (as other activity tends to dehighlight it.) For __longer-lived data__, the **clipboard selection** is used: this is what is generally associated with the __Cut/Paste__ commands (while the primary selection is associated with **click-and-drag**, and in some applications, **middle-click**, which is not the same command as ``paste''.)
+
+In a traditional X app, __mouse-drag will own the primary selection__, and the Cut/Copy commands will __move the primary selection to the clipboard__.
+
+Therefore, in the emacs world, the **primary selection** would more logically correspond to the** region between point and mark**, when it is in the highlighted state (assuming one is using zmacs-regions, another of my earliest additions to the Lucid Emacs branch.) The clipboard selection would more logically correspond to the topmost element on the kill ring.
+
+I added hooks to make it possible to do this -- when you select a region, it becomes the primary selection -- however, it turned out to not be such a good idea to do this (by default) for the kill-ring (and clipboard selection) for a couple of reasons.
+
+The first reason was bandwidth.
+
+Cut buffers, while officially obsolete, are still used, because there are still old programs (and more importantly, old .Xdefaults files) which cause CUT_BUFFER0 to be pasted in other apps in preference to the primary selection. So Lucid Emacs would update both. Now the problem with cut buffers is that at the time one writes a string into the cut buffer, all that data is transferred to the server immediately (selections don't work that way, with selections, the data is transferred as needed.) So this means that if you killed a lot of text (C-SPC M-> C-w, for example) you'd be sending lots and lots of bits over the wire which you likely didn't need to -- and this was a big deal when on slow connections to X servers. Hardcore emacs users kill large bodies of text all the time.
+
+Granted, such slow server connections aren't very common nowadays, but they were then, when X terminals were still very popular (until 1994 or so, I was still doing a lot of my development on an X terminal that only had a 38.4kbps connection to the host machine.)
+
+But that's just cut buffers, and they're ``obsolete,'' right? But then there's the XClipboard program -- basically, this is a program that sits around and makes it easier to deal with your clipboard (it keeps a history of them, among other things) but one side effect of it is that the clipboard data tends to be transferred from the selecting app to the XClipfnord app right away (with the X server as the middleman) so again, you've got the ``cut buffer'' bandwidth problem again.
+
+The second reason was the Principle of Least Astonishment.
+
+X's notion of clipboards (and selections in general) is binary: there is a selection or there is not; there is something on the clipboard or there is not. Whereas emacs has a kill ring, a history of past kills.
+
+So if you decide that you want the emacs kill ring and the X clipboard selection to be unified, what does that mean? Does it mean that the top element on the ring should always be asserted as the clipboard? Ok, you can make emacs do that easily enough. But then what happens when some other app asks for ownership of the clipboard? Does that mean that that text should automatically be added to the front of emacs's kill ring as well? That would make emacs behave like XClipboard, and thus ``race'' with it for ownership (actually the two would probably get into a tug-of-war with each other.) That's not so good, and pretty tricky to make fail gracefully.
+
+Well anyway, that's not what had been implemented in FSFmacs at the time (it did the kill-ring->selection part, but not the selection->kill-ring part) so I would have had to fix that, but also... even if it was fixed to behave consistently, it would still have the bandwidth problem.
+
+So, I somewhat separated the kill/yank commands and the Cut/Paste commands, in that both kill and Cut write to both the kill-ring and the clipboard; but yank looks only at the kill-ring, while Paste looks only at the clipboard. This means that a naive mouse-using user, who would presumably only be using the Cut/Paste commands, would have everything do what they mean (the clipboard and kill ring would stay in sync, and since the user was mouse-oriented, they wouldn't tend to select truly huge areas semi-inadvertantly, sidestepping the bandwidth issue); but a real emacs user, driving it with the keyboard, would tend to live in the emacs ``space'' until they want to go out to the inter-X-client space by using a different gesture (either the Cut command, or selecting a region). (The region/selection interaction being less problematic since both emacs and X think there either is one or their isn't.)
+
+So that's why. 

@@ -1,0 +1,258 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-22T21:56:45+08:00
+
+====== 3 ======
+Created Sunday 22 May 2011
+http://www.g-loaded.eu/2005/11/10/be-your-own-ca/
+I declare from the beginning that I am no authority on digital certificates.
+This document is a summary of all the articles I have read about openssl. It describes in short how to become your own Certificate Authority (CA) and how to create and sign your own certificate requests. Make no mistake, these certificates are good only for personal use or for use in your intranet in order to provide a secure way to login or communicate with your services, so that passwords or other data is not transmitted in the clear. Noone else will or should trust these certificates.
+Prerequisites
+
+The package openssl should be installed in the machine you will use to manage your certificates or create the certificate requests.
+First things first…
+
+The openssl package comes with some scripts that can help you create your server certificates fast, but here I will describe how to set things up from scratch in a new directory, so that you can customize things later if you like or delete everything without touching openssl’s or the system’s default files. This article is based on a Fedora installation, but will do for all distributions.
+Creating the necessary directories
+
+First of all we will create a directory tree where all certificate stuff will be kept. Fedora’s default directory is /etc/pki/tls/. So, as root, we create our own directories:
+
+# mkdir -m 0755 /etc/pki_jungle
+
+And then we create our CA’s directory tree:
+
+# mkdir -m 0755 \
+     /etc/pki_jungle/myCA \
+     /etc/pki_jungle/myCA/private \
+     /etc/pki_jungle/myCA/certs \
+     /etc/pki_jungle/myCA/newcerts \
+     /etc/pki_jungle/myCA/crl
+
+    myCA is our Certificate Authority’s directory.
+    myCA/certs directory is where our server certificates will be placed.
+    myCA/newcerts directory is where openssl puts the created certificates in PEM (unencrypted) format and in the form cert_serial_number.pem (eg 07.pem). Openssl needs this directory, so we create it.
+    myCA/crl is where our certificate revokation list is placed.
+    myCA/private is the directory where our private keys are placed. Be sure that you set restrictive permissions to all your private keys so that they can be read only by root, or the user with whose priviledges a server runs. If anyone steals your private keys, then things get really bad.
+
+Initial openssl configuration
+
+We are going to copy the default openssl configuration file (openssl.cnf) to our CA’s directory. In Fedora, this file exists in /etc/pki/tls. So, we copy it to our CA’s dir and name it openssl.my.cnf. As root:
+
+# cp /etc/pki/tls/openssl.cnf /etc/pki_jungle/myCA/openssl.my.cnf
+
+This file does not need to be world readable, so we change its attributes:
+
+# chmod 0600 /etc/pki_jungle/myCA/openssl.my.cnf
+
+We also need to create two other files. This file serves as a database for openssl:
+
+# touch /etc/pki_jungle/myCA/index.txt
+
+The following file contains the next certificate’s serial number. Since we have not created any certificates yet, we set it to "01":
+
+# echo '01' > /etc/pki_jungle/myCA/serial
+
+Things to remember
+
+Here is a small legend with file extensions we will use for the created files and their meaning. All files that will be created will have one of these extensions:
+
+    KEY – Private key (Restrictive permissions should be set on this)
+    CSR – Certificate Request (This will be signed by our CA in order to create the server certificates. Afterwards it is not needed and can be deleted)
+    CRT – Certificate (This can be publicly distributed)
+    PEM – We will use this extension for files that contain both the Key and the server Certificate (Some servers need this). Permissions should be restrictive on these files.
+    CRL – Certificate Revokation List (This can be publicly distributed)
+
+Create the CA Certificate and Key
+
+Now, that all initial configuration is done, we may create a self-signed certificate, that will be used as our CA’s certificate. In other words, we will use this to sign other certificate requests.
+
+Change to our CA’s directory. This is where we should issue all the openssl commands because here is our openssl’s configuration file (openssl.my.cnf). As root:
+
+# cd /etc/pki_jungle/myCA/
+
+And then create your CA’s Certificate and Private Key. As root:
+
+# openssl req -config openssl.my.cnf -new -x509 -extensions v3_ca -keyout private/myca.key -out certs/myca.crt -days 1825
+
+This creates a self-signed certificate with the default CA extensions which is valid for 5 years. You will be prompted for a passphrase for your CA’s private key. Be sure that you set a strong passphrase. Then you will need to provide some info about your CA. Fill in whatever you like. Here is an example:
+
+Country Name (2 letter code) [GB]:GR
+State or Province Name (full name) [Berkshire]:Greece
+Locality Name (eg, city) [Newbury]:Thessaloniki
+Organization Name (eg, company) [My Company Ltd]:My Network
+Organizational Unit Name (eg, section) []:My Certificate Authority
+Common Name (eg, your name or your server's hostname) []:server.example.com
+Email Address []:whatever@server.example.com
+
+Two files are created:
+
+    certs/myca.crt – This is your CA’s certificate and can be publicly available and of course world readable.
+    private/myca.key – This is your CA’s private key. Although it is protected with a passphrase you should restrict access to it, so that only root can read it:
+
+    # chmod 0400 /etc/pki_jungle/myCA/private/myca.key
+
+More openssl configuration (mandatory)
+
+Because we use a custom directory for our certificates’ management, some modifications to /etc/pki_jungle/myCA/openssl.my.cnf are necessary. Open it in your favourite text editor as root and find the following part (around line 35):
+
+[ CA_default ]
+
+dir     = ../../CA      # Where everything is kept
+certs       = $dir/certs        # Where the issued certs are kept
+crl_dir     = $dir/crl      # Where the issued crl are kept
+database    = $dir/index.txt    # database index file.
+#unique_subject = no            # Set to 'no' to allow creation of
+                    # several ctificates with same subject.
+new_certs_dir   = $dir/newcerts     # default place for new certs.
+
+certificate = $dir/cacert.pem   # The CA certificate
+serial      = $dir/serial       # The current serial number
+#crlnumber  = $dir/crlnumber    # the current crl number must be
+                    # commented out to leave a V1 CRL
+crl     = $dir/crl.pem      # The current CRL
+private_key = $dir/private/cakey.pem    # The private key
+RANDFILE    = $dir/private/.rand    # private random number file
+
+x509_extensions = usr_cert      # The extentions to add to the cert
+
+You should modify the following settings in order to coform to our custom directory and our custom CA key and certificate:
+
+[ CA_default ]
+
+dir     = .                # <--CHANGE THIS
+certs       = $dir/certs
+crl_dir     = $dir/crl
+database    = $dir/index.txt
+#unique_subject = no
+
+new_certs_dir   = $dir/newcerts
+
+certificate = $dir/certs/myca.crt   # <--CHANGE THIS
+serial      = $dir/serial
+#crlnumber  = $dir/crlnumber
+
+crl     = $dir/crl.pem
+private_key = $dir/private/myca.key    # <--CHANGE THIS
+RANDFILE    = $dir/private/.rand
+
+x509_extensions = usr_cert
+
+Create a Server certificate
+
+Further openssl.my.cnf file’s customization is possible, so that we define our policy for certificate creation and signing or define our desired extensions for the new certificates. I may add this info to a future version of this document. It’s easy though, just try to familiarize yourself with the openssl.cnf’s structure and you’ll figure it out.
+
+Anyway, the certificates we are going to create, without customizing openssl.my.cnf any further, are general purpose certificates and their usage in not restricted to server authentication only. One thing that you should take a note of is that the private keys will not be protected by a passphrase, so that when the services are restarted they do not ask for a passphrase. This means that you should set restrictive permissions on the private keys, so that only root or the user under whose priviledges a server runs can read these files.
+Generate a Certificate Request
+
+First, we change to our CA’s directory:
+
+# cd /etc/pki_jungle/myCA/
+
+Then we create the certificate request:
+
+# openssl req -config openssl.my.cnf -new -nodes -keyout private/server.key -out server.csr -days 365
+
+The -nodes option is needed so that the private key is not protected with a passphrase. If you do not intend to use the certificate for server authentication, you should not include it in the above command.
+You can customize the number of days you want this certificate to be valid for.
+
+You will be prompted for the certificate’s info. Here is an example:
+
+Country Name (2 letter code) [GB]:GR
+State or Province Name (full name) [Berkshire]:Greece
+Locality Name (eg, city) [Newbury]:Thessaloniki
+Organization Name (eg, company) [My Company Ltd]:My Network
+Organizational Unit Name (eg, section) []:My Web Server
+Common Name (eg, your name or your server's hostname) []:www.server.example.com
+Email Address []:whatever@server.example.com
+
+The Common Name (CN) is the info that uniquely distinguishes your service, so be sure that you type it correctly.
+When prompted for some extra attributes (challenge password, optional company name) just hit the [Enter] key.
+
+Two files are created:
+
+    server.csr – this is the certificate request.
+    private/server.key – this is the private key, which is not protected with a passphrase.
+
+Set restrictive permissions on the private key. Only root or the user that is used to run the server should be able to read it. For example:
+
+# chown root.root /etc/pki_jungle/myCA/private/server.key
+# chmod 0400 /etc/pki_jungle/myCA/private/server.key
+
+Or:
+
+# chown root.apache /etc/pki_jungle/myCA/private/server.key
+# chmod 0440 /etc/pki_jungle/myCA/private/server.key
+
+Sign the Certificate Request
+
+Now we are going to sign the certificate request and generate the server’s certificate.
+
+First, we change to our CA’s directory:
+
+# cd /etc/pki_jungle/myCA/
+
+Then we sign the certificate request:
+
+# openssl ca -config openssl.my.cnf -policy policy_anything -out certs/server.crt -infiles server.csr
+
+You will need to supply the CA’s private key in order to sign the request. You can check the openssl.my.cnf file about what policy_anything means. In short, the fields about the Country, State or City is not required to match those of your CA’s certificate.
+
+After all this is done two new files are created:
+
+    certs/server.crt – this is the server’s certificate, which can be made available publicly.
+    newcerts/01.pem – This is exactly the same certificate, but with the certificate’s serial number as a filename. It is not needed.
+
+You can now delete the certificate request (server.csr). It’s no longer needed:
+
+# rm -f /etc/pki_jungle/myCA/server.csr
+
+Verify the certificate
+
+You can see the certificate’s info with the following:
+
+# openssl x509 -subject -issuer -enddate -noout -in /etc/pki_jungle/myCA/certs/server.crt
+
+Or the following:
+
+# openssl x509 -in certs/server.crt -noout -text
+
+And verify that the certificate is valid for server authentication with the following:
+
+# openssl verify -purpose sslserver -CAfile /etc/pki_jungle/myCA/certs/myca.crt /etc/pki_jungle/myCA/certs/server.crt
+
+Server certificate and key in one file
+
+Some servers, for example vsftpd, require that both the private key and the certificate exist in the same file. In a situation like that just do the following:
+
+# cat certs/server.crt private/server.key > private/server-key-cert.pem
+
+You should restrict access to the final file and delete server.crt and server.key since thay are no longer needed.
+
+# chown root.root private/server-key-cert.pem
+# chmod 0400 private/server-key-cert.pem
+# rm -f certs/server.crt
+# rm -f private/server.key
+
+Revoke a Server Certificate
+
+If you do not want a certificate to be valid any more, you have to revoke it. This is done with the command:
+
+# openssl ca -config openssl.my.cnf -revoke certs/server.crt
+
+Then you should generate a new CRL (Certificate Revokation List):
+
+# openssl ca -config openssl.my.cnf -gencrl -out crl/myca.crl
+
+The CRL file is crl/myca.crl.
+Distribute your certificates and CRL
+
+Your CA’s certificate and your servers’ certificates should be distributed to those who trust you so they can import them in their client software (web browsers, ftp clients, email clients etc). The CRL should also be published.
+Further Reading
+
+As I have said from the beginning, this document is just a summary of what I have read. Here are some useful links that will get you started:
+
+    The SSL Certificates HOWTO
+    The OpenSSL Documentation
+    The openssl.cnf documentation
+    OpenSSL Certificate Authority Setup
+

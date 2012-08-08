@@ -1,0 +1,78 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T19:55:49+08:00
+
+====== openvswitch ======
+Created Sunday 27 March 2011
+
+       有两种不同的 OpenFlow v1.0 switch 实现，一种是 Stanford's software reference design，另一种是penVswitch (http://openvswitch.org/) 实现。
+两者的区别是，前者是user-space 实现，后者是kernel-space实现；因此后者的性能要比前者好，但是在用户空间的实现较易添加新功能。
+
+一、[[../openflow(Stanford).txt|Stanford Software Reference 的安装(略)]]
+
+1、运行OpenFlow switch
+
+./udatapath/ofdatapath --detach punix:/var/run/dp0 -d 004E46324304 -i eth1,eth2
+
+2、添加交换机与控制器的连接通道
+./secchan/ofprotocol unix:/var/run/dp0 tcp:192.168.0.100:6633
+
+注意：.代表当前openflow编译后的目录，对于编译后安装的openflow交换机可以直接指定命令，而不需前加路径
+
+二、OpenVswitch Implementation
+
+1、下载相关软件包
+
+$ wget http://openvswitch.org/releases/openvswitch-1.1.0pre2.tar.gz
+ $ tar zxvf openvswitch-1.1.0pre2.tar.gz
+ $ cd  openvswitch-1.1.0pre2
+
+2、配置并编译
+
+$ ./boot.sh
+ $ ./configure --with-l26=/lib/modules/`uname -r`
+ $ make
+
+
+注意 ：
+             1、系统上要有内核源代码，没有的话可用下面语句安装一个：
+
+             sudo apt-get install linux-source-2.6.35
+             cd [[/usr/src/linux-source-2.6.35]]
+             sudo  tar xjvf linux-source-2.6.35.tar.bz2
+
+            2、在配置时执行下条语句：
+
+             sudo ./configure --with-l26=/lib/modules/`uname -r`/build  --with-l26-source=/usr/src/linux-source-2.6.35/linux-source-2.6.35
+
+3、安装
+ 
+sudo make install 
+
+默认安装到/usr/local目录下
+
+4、运行OpenFlow switch
+ 
+ 
+ #sudo  [[/sbin/insmod]]    ~/openvswitch-1.1.0pre2[[/datapath/linux-2.6/openvswitch_mod.ko]]
+
+
+5、交换机的 Pipeline 缺省是空的，生成交换datapath
+
+# ./utilities/ovs-dpctl add-dp dp0
+
+
+6、添加交换机控制的接口接口
+
+ # ./utilities/ovs-dpctl add-if nl:0 eth2
+
+
+7、添加交换机与控制器的连接通道
+
+./utilities/ovs-openflowd dp0 --datapath-id=0000004E46324304 tcp:192.168.0.100 port 6633 --out-of-band
+
+命令行解释：
+          --datapath-id   用于唯一的指定与同一个控制器相连的不同交换机，可以用交换机的MAC地址指定
+         tcp:192.168.0.100 port 6633      指定控制器的IP和监听端口号
+
+          

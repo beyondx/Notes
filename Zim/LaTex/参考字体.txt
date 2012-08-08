@@ -1,0 +1,47 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-09-24T11:02:50+08:00
+
+====== 参考字体 ======
+Created Saturday 24 September 2011
+
+中文：
+衬线字体(用于正文):
+Regular:		Adobe Song Std
+Bold:		Adobe Heiti Std   //有的字体提供了加粗的类型，但是Adobe Song Std没有。
+Italic:		Adobe Kaiti Std    //中文根本没有斜体字型(一般都字体渲染引擎是把正常字体倾斜获得的)。
+无衬线字体(用于章节标题)
+Regular		Adobe Heiti Std
+等宽字体(用于代码等原文输出)
+WenQuanYi ZenHei Mono
+英文：
+衬线字体：
+Apple Garamond (有各种样式输出)
+无衬线字体：
+Arial
+等宽字体：
+Consolas
+
+#yaourt -Ql __ttf-mac-fonts__
+ttf-mac-fonts /usr/share/fonts/TTF/
+ttf-mac-fonts /usr/share/fonts/TTF/AppleGaramond-Bold.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/AppleGaramond-BoldItalic.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/AppleGaramond-Italic.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/AppleGaramond-Light.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/AppleGaramond-LightItalic.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/AppleGaramond.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/HardGothicNormal.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/Lucida Console.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/Lucida Grande Bold.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/Lucida Grande.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/Lucida MAC.ttf
+ttf-mac-fonts /usr/share/fonts/TTF/Lucida Sans Unicode.ttf
+ttf-mac-fonts /usr/share/fonts/Type1/
+ttf-mac-fonts /usr/share/fonts/Type1/Lucida G.pfb
+ttf-mac-fonts /usr/share/fonts/Type1/Lucida Gr Regular.pfb
+ttf-mac-fonts /usr/share/fonts/Type1/Lucida MAC Bold.pfb
+ttf-mac-fonts /usr/share/fonts/Type1/Lucida MAC.pfb
+ttf-mac-fonts /usr/share/fonts/Type1/MACGrande.pfb
+ttf-mac-fonts /usr/share/licenses/
+ttf-mac-fonts /usr/share/licenses/ttf-mac-fonts/
+ttf-mac-fonts /usr/share/licenses/ttf-mac-fonts/SafariWindows.pdf

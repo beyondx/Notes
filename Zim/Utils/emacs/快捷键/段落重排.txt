@@ -1,0 +1,20 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-05T15:35:38+08:00
+
+====== 段落重排 ======
+Created Thursday 05 May 2011
+
+需先先开启auto-fill-mode
+
+C-x f							设置每行的字符数，当一行的字符超过他时会自动换行
+M-q		fill-paragraph				重排当前段落
+M-x	fill-region					对某个文本块中的段落进行重排
+
+M-x	fill-individal-paragraph			重排区域中各段落，这里的段落依靠各个行的缩进量，相同的缩进量为一个段落
+
+
+Ctrl+Alt+\						格式化当前段落(用在源代码编辑时)
+
+在minibuffer 中可以用M-n  M-p  命令来查看历史记录。
+

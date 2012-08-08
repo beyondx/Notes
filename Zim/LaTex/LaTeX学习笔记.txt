@@ -1,0 +1,176 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-09-26T20:44:39+08:00
+
+====== LaTeX学习笔记 ======
+Created Monday 26 September 2011
+
+===== 安装 =====
+
+参考：http://www.nsknet.or.jp/~tony/TeX/install/win/tex.htm
+
+===== 最简单的例子 =====
+
+\documentclass[11pt]{jarticle}
+\textwidth=50mm
+\begin{document}
+あああああああああああああ
+\end{document}
+
+如何将tex文件转化为pdf文档（日语）：
+
+platex xyz.tex
+dvipdfmx xyz.dvi
+
+如何将dvi文件转化为gif/png：
+
+dvipng --gif -T tight -D 200 xyz.dvi
+dvipng -T tight -D 200 xyz.dvi
+
+省略 --gif 参数则输出为png格式。-D为放大百分比。
+
+\documentclass: 文档类型；[11pt]：文档类型参数；{jarticle}：文档类型的值。两列分栏显示，则指定文档类型参数为[twocolumn,11pt]。
+
+===== 页面布局 =====
+{{~/sync/notes/zim/LaTex/LaTeX学习笔记/pageFormating.png}}
+**页面基准点**：从纸的左上角算起，向右向下各移动 1inch(2.54cm) 处的点。通过该点的水平线称为**上基准线**，垂直线称为**左基准线**。
+
+各种布局参数（参见the not so short of Latex）
+\topmargin	页眉上端到上基准线的距离。
+\headheight	页眉高度。
+\headsep	页眉下端到正文上端的距离。
+\topskip	正文上端到正文第一行的距离。
+**\textheight	正文的高度。**
+**\textwidth		正文的宽度。**
+\evensidemargin	偶数页（左页）中，正文的左端到左基准线的距离。
+\oddsidemargin	奇数页（右页）中，正文的左端到左基准线的距离。
+\footskip	正文下端到页脚下端的距离。
+\marginparwidth	页面右侧脚注的宽度。
+\marginparpush	页面右侧脚注之间的距离。
+\marginparsep	页面右侧脚注到正文的距离。
+\columnsep	二分栏时左右栏之间的距离。
+\columnseprule	二分栏时左右栏之间分隔线的宽度。
+
+===== 页码 =====
+
+==== 页码格式 ====
+
+通过 \pagestyle{格式} 来指定页码格式。格式有以下几种：
+	empty		空白页眉、页脚
+	plain		空白页眉，但是在页脚的中央输出页码
+	headings	空白页脚，但是在页眉输出页码、章节编号以及标题
+	myheadings	自定义
+	
+通过 \renewcommand{**\thepage**}{\roman{page}}命令可以改变页码的格式。其中蓝色部分为定义颜色的命令，包括如下几种：
+\arabic	阿拉伯数字	1, 2, 3, ...
+\roman	罗马数字（小写）	i, ii, iii, ...
+\Roman	罗马数字（大写）	I, II, III, ...
+\alph	英文字母（小写）	a, b, c, ...
+\Alph	英文字母（大写）	A, B, C, ...
+
+通过 \setcounter{page}{10} 可以将页码设置为10。
+
+===== 多个文档的结合 =====
+
+通过 \input{文档名} 命令可以结合多个文档。文档名不用带扩展名.tex。
+
+===== 命令 =====
+
+==== 命令的分类 ====
+
+命令包括单独命令(命令单独使用)、环境命令(成对使用， 如begin{..}和end{..})，以及宏命令。
+
+==== 命令的参数 ====
+
+documentclass[11pt]{jbook}，{}表 示必须参数，[]表示可选参数。
+
+==== 命令的作用范围 ====
+
+某些命令一旦声明，则对其后的所有文字均有效，称为__声明型命令__，例如斜体itshape，字号增大 Large等。将这一类命令用{}括起来可以规定其__作用范围__，例如
+
+aaaa{\itshape bbbb{\Large ijkl}bbbb}aaaa
+
+将显示为 aaaabbbbijklbbbbaaaa。
+
+===== 其他 =====
+
+**由文字结束的命令之后的空白将被忽视。**
+一些命令
+	\itshape 	斜体
+	\normalfont 	正常字体
+	\sffamily 	黑体？
+	\Large 	字号增大
+	\LaTeXe 	显示LaTeX2e的logo
+	\\ 	换行
+
+===== 宏命令 =====
+
+定义方法：newcommand{cmd}[arg]{def} 其中cmd为命令名，以开头，区分大小写，可 以使用汉字；arg为参数个数，最大为9；def为命令内容，其中可以使用#1、#2...#9的方式使用参数。
+
+newcommand{mytest}[4]{$#1#4^2+#2#4+#3=0$} mytest{a}{b}{c}{x}
+
+使用 renewcommand{cmd}[arg]{def} 可以重新定义命令。
+
+===== 包 =====
+
+包相当于外挂插件。用下面的命令调用：usepackage{包名}
+
+===== 章节 =====
+
+定义章节的命令
+部 		part 	Level -1(书籍、报告)，Level 0(论文)
+章 		chapter 	Level 0
+节 		section 	Level 1
+小节 	subsection 	Level 2
+小小节 	subsubsection 	Level 3
+段落 	paragraph 	Level 4，标题之后不换行
+小段落 	subparagraph 	Level 5，标题之后不换行
+
+另外，用 setcounter{secnumdepth}{数字} 来设置**自动编号的深度**（即编号到哪一级别）。
+
+===== 附录 =====
+
+用 appendix 命令开始定义附录。附录内至少要有一个 chapter。
+
+===== 目录 =====
+
+用 tableofcontents 插入目录。一般在 tableofcontents 之后使用一个 __clearpage __以便在新的一页开始正文。 用 setcounter{tocdepth}{数字} 设置目录的显示级别。
+
+===== 首行缩进 =====
+
+使用 parindent=数字 可以定义该命令之后所有段落的首行缩进值。使用 noindent 可以暂时取消该命令之后的一个段落的首行缩进。
+
+===== 换行、分段、换页 =====
+段内换行 			\\
+设定行间距 		\baselineskip=数字
+临时改变行间距 	\\[增加值]，例如\\[8mm]将使得该 行的行间距增加8mm。增加值可以为负数
+
+分段 		\par
+设定段间距 	\parskip=数字
+换页 		\clearpage
+
+===== 空格 =====
+
+空格包括句间空格和词间空格两种。句间空格要比词间空格稍大一些。
+
+==== 句间空格 ====
+
+__小写__字母后面跟标点符号时，该标点符号之后的空格被认为是句间空格。大写字母后面接标点符号，标点符号后的空格会被误认作是词间空格，此时需要在标 点符号之前插入 \@ 命令来强制LaTeX将后面的空格作为句间空格处理。例如
+
+as well as I\@. Hence, ...
+
+==== 词间空格 ====
+
+书写缩写、省略号等情况下，点 . 之后的空格会被误认为是句间空格。使用 (空格) 代替普通的半角空格可以强制该空格为词间空格。例如
+
+Yamada et al. wrote the report.
+
+==== 不可分断空格 ====
+
+**用 ~ 代替空格**，可使得排版时不会在此处换行。例如 Mr.~Lamport。也可以使用 mbox命令，例如 mbox{Minoru Sakaguchi}。
+
+===== 对齐 =====
+
+一行对齐：leftline{左对齐} centerline{居中} rightline{右对齐}
+多行对齐：begin{flushleft}...end{flushleft}，begin{center}... end{center}，begin{flushright}...end{flushright}
+

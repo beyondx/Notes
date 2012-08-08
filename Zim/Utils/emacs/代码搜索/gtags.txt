@@ -1,0 +1,17 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-18T09:29:28+08:00
+
+====== gtags ======
+Created Monday 18 April 2011
+
+你可能会遇到这样的情况：有一个函数myfunction，在工程的源代码里被调用了十几次，你想把 它们都找出来，这时候，**etags只能找到它的定义，并不能找到它的调用**。而使用gtags就能够实现这样的功能（当然，还有很多的办法）。
+要使用gtags，首先要装global包：
+apt-get install global
+接着在project是目录下执行：
+gtags
+你会发现在当前目录多了几个文件：GPATH、GRTAGS、GSYMS，它们就是用于在源文件之间快速跳转。
+在emacs里进入到gtags模式，执行“M-x gtags-mode”。
+这样就可以使用“gtags-find-pattern”和“gtags-find-symbol”来查找**函数调用**和**声明**以及**符号声明**。
+
+

@@ -1,0 +1,99 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-02T22:16:14+08:00
+
+====== iw ======
+Created Friday 02 March 2012
+http://lists.gnu.org/archive/html/ltib/2009-10/msg00009.html
+
+iw依赖于libnl，需要先安装libnl(__同时部署到目标板根文件系统中)__。
+
+__一、LTIB安装方法：__
+LTIB中加入iw支持的方法：
+1.获得源代码 iw-3.3.tar.bz2 , 计算其md5值存入iw-3.3.tar.bz2.md5文件中。
+#md5sumiw-3.3.tar.bz2  >iw-3.3.tar.bz2.md5
+
+2.将源文件和md5值拷贝到/opt/freescale/pkgs
+  #cp iw* [[/opt/freescale/pkgs]]
+
+3.向~/ppc/ltib-mpc8315/dist/lfs-5.1/中添加spec文件（可**以在template/template.spec的基础上修改**）
+# cd [[~/ppc/ltib-mpc8315/dist/lfs-5.1]]
+# mkdir iw
+# cd iw
+__# cat iw.spec__
+%define pfx /opt/freescale/rootfs/%{_target_cpu}
+
+Summary         : iw 
+Name            : iw 
+Version         : 3.3
+Release         : 1
+License         : gpl
+Vendor          : Freescale
+Packager        : geekard
+Group           : Development/Tools
+URL             : http://uestc.edu.cn
+Source          : %{name}-%{version}.tar.bz2
+BuildRoot       : %{_tmppath}/%{name}
+Prefix          : %{pfx}
+
+%Description
+%{summary}
+
+%Prep
+%setup 
+
+%Build
+#./configure --prefix=%{_prefix} --host=$CFGHOST --build=%{_build} __  #iw不需配置，直接编译__
+
+make
+
+%Install
+rm -rf $RPM_BUILD_ROOT
+make install DESTDIR=$RPM_BUILD_ROOT/%{pfx}
+
+%Clean
+rm -rf $RPM_BUILD_ROOT
+
+%Files
+%defattr(-,root,root)
+%{pfx}/*
+
+4. iw在编译的过程中需要生成version.c, 但是LTIB在编译过程中生成不了，提示错误。
+
+version.c中的内容与体系结构无关，因此可以先在iw代码目录中运行make，将生成的version.c复制到ltib的目录中。
+
+5. 配置，编译，安装
+# cp [[/opt/freescale/pkgs/iw-3.3.tar.bz2]] [[/tmp]]
+#cd [[/tmp;]]  tar xvf iw-3.3.tar.bz2
+# cd iw-3.3
+#
+#make                             #非交叉编译，这个过程中生成version.c
+
+#cat version.c
+#include "iw.h"
+const char iw_version[] = "3.3-3-g135e65d";
+
+
+
+#cd [[~/ppc/ltib-mpc8315/]]
+#cp dist/lfs-1.5/iw/iw.spec .
+#./ltib -m prep -p iw.spec     #解压源代码到rpm/BUILD目录中
+
+#cp [[/tmp/iw-3.3/version.c]] rpm/BUILD/iw-3.3   #将上一步生成的version.c复制到目录中
+#./ltib -m scbuild -p iw.spec    #编译
+#./ltib -m scdeploy -p iw.spec  #部署到根文件系统中
+
+==== 二、使用交叉编译工具链的方法 ====
+1.解压源代码：
+	$tar xvf   iw-3.3.tar.bz2
+	$cd iw-3.3
+
+2.在当前shell中导入交叉编译工具链的环境变量脚本：
+	$source [[~/PPC/script/env.h]]  
+
+3.交叉编译libnl
+	$CC=powerpc-e300c3-linux-gnu-gcc make  
+
+4. 安装到目标板的根文件系统中
+      $make DESTDIR=/path-to-target-root-dir install
+iw.tar.bz2见attachment dir。

@@ -1,0 +1,152 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-01T16:01:52+08:00
+
+====== 15设备花名册 ======
+Created Sunday 01 July 2012
+
+storage_probe这个函数挺有意思的,总长度不足100行,但是干了许多事情,这就像足球场上的后腰,比如切尔西的马克莱莱,在场上并不起眼,但是却为整个团队做出了卓越的贡献.也有很多评论家说银河战舰皇家马德里这几年的衰落正是从赶走这个不起眼的马克莱莱开始的.
+在讲id_index之前,我们继续贴storage_probe的代码:
+    943         init_MUTEX(&(us->dev_semaphore));
+    944         init_MUTEX_LOCKED(&(us->sema));
+    945         init_completion(&(us->notify));
+    946         init_waitqueue_head(&us->dev_reset_wait);
+    947         init_waitqueue_head(&us->scsi_scan_wait);
+    948         init_completion(&us->scsi_scan_done);
+    949
+    950         /* Associate the us_data structure with the USB device */
+    951         result = __associate_dev__(us, intf);
+    952         if (result)
+    953                 goto BadDevice;
+    954
+    955         /*
+    956          * Get the unusual_devs entries and the descriptors
+    957          *
+    958          * id_index is calculated in the declaration to be the index number
+    959          * of the match from the usb_device_id table, so we can find the
+    960          * corresponding entry in the private table.
+    961          */
+    962         get_device_info(us, id_index);
+
+storage_probe这个函数之所以短小,是因为它调用了大量的函数.所以,看起来短短一段代码,实际上却要花费我们读代码的人好几个小时,想想真是觉得不划算,
+
+其实我们不知道id_index也不影响对后面问题的理解,甚至某种意义上来说,花太多笔墨去讲这个id_index有一点喧宾夺主的感觉,但是,有时候,有些事情,你明知它是无奈的事,无奈的心情,却还要无奈的面对,无奈的去选择,有时想无奈的逃避都不可能,因为我们都被无奈禁锢了.比如这里,注意到962行出现了一个get_device_info的函数,它的一个参数就是id_index,所以,我们别无选择,只能看看这个id_index究竟是干嘛的.
+
+上节我们注意到id_index=id-storage_usb_ids, id我们知道,storage_probe函数的两个形参之一,而storage_usb_ids,不是别人,正是我们曾经赋给usb_storage_driver的成员id_table的值.忘记了id_table的可以回去看.它实际上就是一张表格,告诉全世界我这个driver支持怎样的一些设备.storage_usb_ids同样来自drivers/usb/storage/usb.c中,
+    111 /* The entries in this table, except for final ones here
+    112  * (USB_MASS_STORAGE_CLASS and the empty entry), correspond,
+    113  * line for line with the entries of us_unsuaul_dev_list[].
+    114  */
+    115
+    116 #define UNUSUAL_DEV(id_vendor, id_product, bcdDeviceMin, bcdDeviceMax, /
+    117                     vendorName, productName,useProtocol, useTransport, /
+    118                     initFunction, flags) /
+    119 { USB_DEVICE_VER(id_vendor, id_product, bcdDeviceMin,bcdDeviceMax) }
+    120
+    121 static __struct usb_device_id__ __storage_usb_ids__ [] = {
+    122
+    123 #       include "unusual_devs.h"
+    124 #undef UNUSUAL_DEV
+    125         /* Control/Bulk transport for all SubClass values */
+    126         { USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_RBC, US_PR_CB) },
+    127         { USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_8020, US_PR_CB) },
+    128         { USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_QIC, US_PR_CB) },
+    129         { USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_UFI, US_PR_CB) },
+    130         { USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_8070, US_PR_CB) },
+    131         { USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_SCSI, US_PR_CB) },
+    132
+    133         /* Control/Bulk/Interrupt transport for all SubClass values */
+    134         { USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_RBC, US_PR_CBI) },
+    135         { USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_8020, US_PR_CBI) },
+    136         { USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_QIC, US_PR_CBI) },
+    137         { USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_UFI, US_PR_CBI) },
+    138         { USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_8070, US_PR_CBI) },
+    139         { USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_SCSI, US_PR_CBI) },
+    140
+    141         /* Bulk-only transport for all SubClass values */
+    142         { USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_RBC, US_PR_BULK) },
+    143         { USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_8020, US_PR_BULK) },
+    144         { USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_QIC, US_PR_BULK) },
+    145         { USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_UFI, US_PR_BULK) },
+    146         { USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_8070, US_PR_BULK) },
+    147 #if !defined(CONFIG_BLK_DEV_UB) && !defined(CONFIG_BLK_DEV_UB_MODULE)
+    148         { USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_SCSI, US_PR_BULK) },
+    149 #endif
+    150
+    151         /* Terminating entry */
+    152         { }
+    153 };
+
+注意到这是一个struct usb_device_id结构体的数组,所以即使我们用下半身思考也能知道,其中每一项必然是一个__struct usb_device_id__的结构体变量.我们先来看USB_INTERFACE_INFO这个咚咚,很显然这是一个宏,来自include/linux/usb.h,
+
+    473 /**
+    474  * USB_INTERFACE_INFO - macro used to __describe a class of usb interfaces__
+    475  * @cl: bInterfaceClass value
+    476  * @sc: bInterfaceSubClass value
+    477  * @pr: bInterfaceProtocol value
+    478  *
+    479  * This macro is used to create a struct usb_device_id that matches a
+    480  * specific class of interfaces.
+    481  */
+    482 #define USB_INTERFACE_INFO(cl,sc,pr) /
+    483         __.match_flags__ = USB_DEVICE_ID_MATCH_INT_INFO, .bInterfaceClass = (cl), .bInterfaceSubClass = (sc), .bInterfaceProtocol = (pr)
+
+每一个USB_INTERFACE_INFO就是构造一个struct usb_device_id的结构体变量,回顾一下我们之前给出的struct usb_device_id的定义,这里实际上就是为其中的四个元素赋了值,它们是match_flags,bInterfaceClass,bInterfaceSubClass,bInterfaceProtocol.
+
+这里不得不说的是,这个世界上有许许多多的usb设备,它们各有各的特点,为了区分它们,usb规范,或者说usb协议,__把usb设备分成了很多类__,然而每个类又分成__子类__,这很好理解,我们一个大学也是如此,先是分成很多个学院,比如我们复旦大学,信息学院,经济学院,管理学院,外文学院,等等.然后每个学院又被分为很多个系,比如信息学院,下面分了电子工程系,微电子系,计算机系,通信工程系,然后可能每个系下边又分了各个专业,
+
+usb协议也是这样干的,首先__每个Interface属于一个Class__,(为什么是把Interface分类,而不把Device分类?前面讲过了,在usb设备驱动中,不用再提Device,因为每个设备驱动对应的是一种Interface,而不是一种Device),然后Class下面又分了__SubClass__,完了SubClass下面又按各种设备所遵循的不同的__通信协议__继续细分.
+
+usb协议里边为每一种Class,每一种SubClass,每一种Protocol定义一个数值,比如mass storage的Class就是0x08,而这里USB_CLASS_MASS_STORAGE这个宏在include/linux/usb_ch9.h中定义,其值正是8. 我们拿第126行来举例,
+
+  { USB_INTERFACE_INFO(USB_CLASS_MASS_STORAGE, US_SC_RBC, US_PR_CB) },
+
+把这个宏展开,就是说定义了这么一个usb_device_id结构体变量,其match_flags=USB_DEVICE_ID_MATCH_INT_INFO,而bInterfaceClass=USB_CLASS_MASS_STORAGE,bInterfaceSubClass=US_SC_RBC,而bInterfaceProtocol=US_PR_CB.
+
+USB_CLASS_MASS_STORAGE就不用再说了,咱们这个驱动程序所支持的每一种设备都是属于这个类,或者说这个Class.但是这个Class里边包含不同的SubClass,比如subclass 02为CD-ROM设备,04为软盘驱动器,06为通用SCSI类设备.而通信协议则主要有CBI协议和Bulk-Only协议.
+
+像US_SC_RBC这些关于sub class的宏的定义是在文件drivers/usb/storage/protocol.h中:
+     47 /* Sub Classes */
+     48
+     49 #define US_SC_RBC       0x01            /* Typically, flash devices */
+     50 #define US_SC_8020      0x02            /* CD-ROM */
+     51 #define US_SC_QIC       0x03            /* QIC-157 Tapes */
+     52 #define US_SC_UFI       0x04            /* Floppy */
+     53 #define US_SC_8070      0x05            /* Removable media */
+     54 #define US_SC_SCSI      0x06            /* Transparent */
+     55 #define US_SC_ISD200    0x07            /* ISD200 ATA */
+
+而像US_PR_CB这些关于传输协议的宏则在另一个文件中,drivers/usb/storage/transport.h
+  /* Protocols */
+#define US_PR_CBI       0x00            /* Control/Bulk/Interrupt */
+#define US_PR_CB        0x01            /* Control/Bulk w/o interrupt */
+#define US_PR_BULK      0x50            /* bulk only */
+
+这个文件中还定义了更多的协议,不过我们暂时只需要知道这三种,因为其她协议都是专门针对一些特殊设备的,在storage_usb_ids数组中使用宏USB_INTERFACE_INFO定义的usb_device_id都只是用的这三种协议.(US_PR_CBI和US_PR_CB这两种协议在usb协议中都唤作CBI,不过之间有点差别.)而对于一些特殊的设备,则还在unusual_devs.h文件中有专门的一些变量定义,我们暂且不去关注它们.
+
+说了这许多,U盘属于其中的哪一种呢?usb协议中规定,U盘的Subclass是属于US_SC_SCSI的.而其通信协议使用的是Bulk-Only的.显然这些东西我们后来都会用得上.那么这里还有一个match_flag,它又是表示什么意思?USB_INTERFACE_INFO这个宏貌似把所有的设备的match_flag都给设成了__USB_DEVICE_ID_MATCH_INT_INFO__,这是为啥?这个宏来自include/linux/usb.h,
+
+    435 #define USB_DEVICE_ID_MATCH_INT_INFO /
+    436         (USB_DEVICE_ID_MATCH_INT_CLASS | USB_DEVICE_ID_MATCH_INT_SUBCLASS | USB_DEVICE_ID_MATCH_INT_PROTOCOL)
+
+match_flag这个咚咚是给usb core去用的,__usb core负责给设备寻找适合她的driver,负责给driver寻找适合他的device__,它所比较的就是struct usb_device_id的变量,而struct usb_device_id结构体中有许多成员,那么是不是一定要把每一个成员都给比较一下呢,其实没有必要那么细,差不多就行了,比如咱们这里,就是告诉usb core,你__只要比较bInterfaceClass,bInterfaceSubClass,bInterfaceProtocol__即可
+
+.include/linux/mod_devicetable.h中针对struct usb_device_id中的每一个要比较的项定义了一个宏:
+    121 /* Some useful macros to use to create struct usb_device_id */
+    122 #define USB_DEVICE_ID_MATCH_VENDOR              0x0001
+    123 #define USB_DEVICE_ID_MATCH_PRODUCT             0x0002
+    124 #define USB_DEVICE_ID_MATCH_DEV_LO              0x0004
+    125 #define USB_DEVICE_ID_MATCH_DEV_HI              0x0008
+    126 #define USB_DEVICE_ID_MATCH_DEV_CLASS           0x0010
+    127 #define USB_DEVICE_ID_MATCH_DEV_SUBCLASS        0x0020
+    128 #define USB_DEVICE_ID_MATCH_DEV_PROTOCOL        0x0040
+    129 #define USB_DEVICE_ID_MATCH_INT_CLASS           0x0080
+    130 #define USB_DEVICE_ID_MATCH_INT_SUBCLASS        0x0100
+    131 #define USB_DEVICE_ID_MATCH_INT_PROTOCOL        0x0200
+回去对比一下struct usb_device_id就知道这些宏是什么意思了.
+
+然后我们再看storage_usb_ids中那个#include "unusual_devs.h",实际上这个文件也是在我们这个drivers/usb/storage/目录下面,它里边定义了一些特殊的设备,也是以struct usb_device_id结构体变量的形式,这些设备或者是有一些别的设备不具备的特性,或者是他们遵循的通信协议有些与众不同,比如,它既不是Bulk-Only也不是CBI,像这些不按常理出牌的设备,写代码的同志们把他们单独给列了出来.整理在这个文件中.当然,从大的类来分,它们依然是属于usb mass storage这个类别的,否则也没必要放在这个目录下面了.
+
+至此,我们可以知道storage_usb_ids这个表是怎么回事了.__usb core为每个设备在这张表里查找,如果找到了某一行和这个设备相匹配,那么该行就是我们前面提到的那个storage_probe()的参数id.__所以id_index=id-storage_usb_ids就是如其字面意义那样,在表中的编号.至于这个编号有什么用,那我们骑驴看唱本.总之,费这么大劲干了这么一件事,总是有它的意义的.
+
+最后,总结陈词,这个所谓的花名册,就好比我们大学生申请国外学校,每个人都会事先搜集一大批学校名单,然后结合各方面,比如师资力量,是否牛的导师够多,比如经济实力,是否能给够多的奖学金,比如教授本人资历,是否获得过重大奖项,取得过何种成绩,比如学校声望, 是否是名校,综合这些来看最终确定一份名单,就是自己真正心仪的学校花名册.

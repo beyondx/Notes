@@ -1,0 +1,264 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-01T16:49:44+08:00
+
+====== 我是PCI(1)PCI，我们来了 ======
+Created Sunday 01 July 2012
+
+还是看看前面的那张图，第一项，“PCI support”，只有选上它，咱们的故事才能够继续得下去，所以说为公为私，为你为我，这一项都必须得选上。
+选上了第一项，才有第二项“PCI access mode”的存在，它是一个单项选择题，有四个答案，分别是BIOS、MMConfig、Direct、Any。这里“PCI access mode”的四个选项也不能这么搞，你是__只能选上一个__的，其实你也不用这么搞，Any选项本身就表示了你告诉内核说前面三个答案随便一个都可以，你只要选上了它，就相当于所有的四个答案都给选上了，可惜啊可惜，为啥咱们考试时咋就没有这么一个选项捏？
+
+祭出咱们早已很娴熟的猜题大法，可以很快的就从名字里就猜到PCI access mode是说PCI的访问方式的，访问什么？当然是访问PCI设备，那么几个答案的意思也就是，你可以通过BIOS去访问，也可以抛开BIOS，直接（Direct）去访问，或者通过一个叫MMConfig的东东去访问，Any就是表示你如果拿不准的话可以让内核去选择一种访问方式，当然，内核一向都是很严谨刻板的，绝不会真的抓阄儿抓到哪个就使用哪种方式，它会__按照一定的优先级__，首先尝试MMConfig，然后是Direct，如果这两种方式都不起效，最后再使用BIOS。
+
+那现在你可能会感到疑惑的是，这里所谓的access到底是怎么回事，为啥还搞出这么多名堂来。说起来话长，俺在讲usb core的时候就提到了，每个PCI设备都有那么一张表，就是传说中的__配置寄存器__，有了它，写PCI驱动的身体甭儿好，吃饭甭儿香，中断号什么的也不用再去申请了，直接从表里拿出来就是，这就少了很多冗长的步骤手续和推诿扯皮，省事又省心。关于这张表，现在还不是详细去讲它的最佳时机，咱们虽然是在开门见山，但视力范围毕竟有限还看不了那么远。目前来说，俺只想问的一个问题是，它的内容都从哪儿来的？其中一部分，包括设备ID，厂商ID等等自然都是厂商固化在设备里边儿的，它们的内容咱们不需要去改变也改变不了，而还有一部分则是需要咱们的__内核去酌情修改设置__的，具体在什么时候去设置，就牵涉到了另外一个无比重要的概念——__总线枚举__。
+
+随着剧情的深入发展，人物总是会越来越多，为了今后能够更好的理清他们之间的关系，在讲总线枚举之前有必要先窥探一下PCI系统的全貌。引用一下LDD3里的一张图
+{{./pci02.JPG}}
+其实这张图是非常偷工减料的，并不足以揭示整个 PCI 系统的细节，但说明问题还是足够了。里面的几个 Bridge ，也就是桥，是用来将多个 PCI 总线，或者 PCI 总线与 ISA 等其它总线连接起来的东东。各种桥里比较特殊的一个是 __Host Bridge__ ，它连接的是 CPU 和 PCI 总线 0 ，说 Host Bridge 你可能丈二摸不着头脑，但是说__北桥__你就明白了，不然你都不好意思说你会玩儿电脑，更别说会玩儿 linux 了，有北桥自然就有__南桥__，大名鼎鼎的南北桥谁都知道，就像在江湖上行走的都得知道南北少林一样。而南北桥合起来就叫做__芯片组__，芯片组里距 CPU 最近的一个就是北桥，它是位于天子脚下呼风唤雨的重臣。北桥里通常还集成着__内存控制器__，所以 CPU 和内存之间的交流也要依靠它来完成，如果是那种集成显卡的板子，__显示芯片__也要呆在它里边儿。
+
+CPU 和北桥之间的连接靠的是 FSB ，就是俗称__前端总线__的那个， FSB 的速度即是咱们通常所说的__外频__，外频的高低直接影响了 CPU 对内存的存取。基于北桥的这种显赫的江湖地位，江湖里一般尊称它为 Host Bridge ，也就是主桥。实际上，**芯片组的名称就是以北桥的名称来命名的**，像 intel 875P 芯片组的北桥芯片是 82875P 等等。那么上边儿图里的哪个桥对应着南桥那？左瞅瞅右看看，还就 ISA Bridge 有点像，一般来说， __PCI-ISA 桥就称为南桥__，但它并不是仅仅是为了连接 PCI 总线和 ISA 总线这么简单，它里边儿会集成很多东东，比如中断控制器、 IDE 控制器、 DMA 控制器等，咱们在 USB 那块大书特书的 USB 控制器一般也集成在它里边儿。
+
+明白了 Host Bridge ，再看看 PCI bus0 ，也就是 primary PCI bus ，主 PCI 总线。至于有没有 PCI bus1 ， PCI bus2 等等俺不好说，但是只要你的系统里有 PCI 总线，这个 PCI bus0 总是得存在的。一个系统自然是可以拥有多个 PCI 总线的，这多个 PCI 总线之间的连接要靠另外一种桥， PCI-PCI 桥。通过 PCI-PCI 桥，整个 PCI 系统就构成了__一个层次的、树状的结构__，类似的树咱们在讲 USB Core 时就遇到过了，不过不同的是 USB 那棵大树是靠 HUB 搭建的，而这里的 PCI 树是靠 PCI-PCI 桥搭建的，日后再有人问你“这是什么树？”，你就不能仅仅回答“大树”了，要拍拍胸脯慷慨激昂的回答“ USB 树”或者“ PCI 树”。就像 HUB 同时也是 USB 设备一样， PCI-PCI 桥、 CardBus 桥等等这些五花八门的桥也都是 PCI 设备，当然，不用我说你也知道， PCI 设备不仅仅是指这些桥。每个 PCI 总线上都可以支持 __32 个__ PCI 设备，每个设备又可以支持 __8 种功能__，不要被设备和功能这两个词儿给绕晕了，这里所谓的设备一般指那种 PCI 接口卡，更确切的说是指 PCI 总线的接口芯片，每块 PCI 接口卡上可以有若干个功能模块，它们共用了同一个 PCI 接口芯片，这样可以降低成本，满足节约型社会的要求。从逻辑的角度说，每个功能模块都是一个__逻辑设备__，既然都说是逻辑了，自然就只能意会不能言传了。江湖上将只拥有一个功能模块（逻辑设备）的设备称为单功能设备，拥有多个的就称为多功能设备，当然再多不能多过 8 个。
+
+这么多的 PCI 设备，不管它是桥，还是其它的，都必须得有那张表示配置寄存器的表，表当然是要拿来用的，要想将它给拿出来，就得去访问设备，可事实是系统一开始只有那条 PCI bus0 能够访问，其它的 PCI 总线和设备一切都还是未知，那么如何才能使未知变成已知？这就又回归到前面的问题__“总线枚举”__了。系统引导时，对于 PCI 子系统来说，会首先有个总线枚举的阶段，从 PCI bus0 开始扫描，遇到一个设备是 PCI-PCI 桥，就指定一个**新的总线号**，比如 1 ，这样 PCI bus1 就有了，也就可以访问了，如果遇到一个其它 PCI 设备，也要将它记录在案，直到将所有的 PCI-PCI 桥和 PCI 设备给晾出来，组成一棵 PCI 树，不过现在这个树是软件意义上的，前面刚提到的那棵 PCI 树是硬件意义上的。
+
+经过这么一个漫长曲折的总线枚举过程， PCI 树就从只有 PCI bus0 这么一个小牙儿长成了枝枝丫丫的参天大树，树里__每个设备的配置寄存器__的内容也明明白白的晾在那里了，而且，里面的一些内容，比如中断线什么的也给__酌情设置好了__，该__映射的地址__也都给映射了，总之，往白了说，**总线枚举的过程就是内核里的 PCI 树成长的过程**。大树底下好乘凉，有了这么一棵大树，写 PCI 驱动的才能吃的香睡的沉。
+
+已经绕了大老远的了，也该绕回去了，这个总线枚举和 PCI access mode 又有嘛关系？这还要再说说 PCI BIOS 。基于 PCI 总线在整个计算机世界里特殊的江湖地位， __BIOS 中也专门提供了针对 PCI 总线的操作__，这些操作里就包括了__总线枚举__的整个过程。在系统加电以后自检时，就会完成对 PCI 总线的枚举，之后__对 PCI 设备的访问就都是通过 BIOS 调用的形式进行__，提供有这些功能和服务的 BIOS 就称之为 **PCI BIOS** 。其实这就是 PCI access mode 里的那个 BIOS 选项所表达的意思，但是，一些旧的主板上， BIOS 并不买 PCI 的账，不支持这么做，还有一些嵌入式系统里甚至于根本就没有 BIOS 的存在，为了适应各种革命形式的需要， linux 就__自己实现__了包括总线枚举在内的一整套 PCI 总线操作，而__不再去依赖 BIOS__ ，这就是那个 Direct 选项的由来（其实就是内核自己实现了PCI BIOS规范的相关接口）。
+
+当然在 64 位的平台上，是没有什么 PCI BIOS 的，采用的总是 Direct 方式，你使用 make menuconfig 配置内核的时候也就根本看不到有 PCI access mode 这么一项给你选。提到这里，顺便说一下，俺的机子还不是 64 位的，所以最开始使用 make menuconfig 得到的那张图，还有以后会讲到的与架构有关的代码都是针对 32 位平台的，但是里面的道道儿都是一样的。
+
+至于 MMConfig 方式，是 __PCI Express__ 才用得上的。关于 PCI Express ，俺这里的原则是，会提到，但不会过多的去关注它。不过这个 MMConfig 因为与 Direct 有着千丝万缕的关系，俺会在日后遇到合适的机会时去详细的说一下，这里暂时留下个悬念吧。
+
+回到开篇的那张图，第三项是“ PCI Express support ”，它还有它下边儿紧接着的三项都是有关 PCI Express 的，选不选看你了，它们的细节就飘过了，但是 PCI 的进化历程还是有必要了解一下的。先看一看从 PCI 的老巢 PCI SIG 的主页上抓下来的一张图
+{{./pci03.JPG}}
+这张图够**婀娜多姿**的，看来 PCI SIG 的那帮家伙和俺一样的媚俗，不过它到是很能形象的表示从 PCI 到 PCI-X 再到 PCI Express 这么一个 PCI 的发展历程，至于中间的那个 IOV ，即 I/O VIRTUALIZATION ，也就是江湖人称的那个 **I/O 虚拟化技术**，离咱们的主题差个十万八千里，我不用说，你也不用问，让它随风而去吧。至于这里所谓的 PCI ，往狭义里讲就是最初的传统的 PCI 规范，每种事物都有它存在的目的和意义， __PCI 就是为了替代 ISA 而生的__，上世纪 90 年代初，在咱们这些人还在情窦初开暗恋小女生的时候， PCI 一出现就统一了 VESA 、 ISA 等当时并存的多种 I/O 总线，来势不可谓不凶，它能够得到江湖老大的地位，当然有它的独到之处，它使用了比 ISA 更高的时钟频率，可以达到 33MHz 或 66MHz ，优势是显而易见的。但是随着历史车轮的向前推进，随着咱们从一个嘴上没毛的小屁孩儿长成一个嘴上有毛的小混混，仅仅暗恋已经不能满足内心的需求，这样的时钟频率也已经不能满足某些应用的需要，于是就衍生出来了 **PCI-X 和 AGP** 等这样的东东，但是 PCI-X 带来的复杂度和高成本并不符合节约型经济型社会的要求，所以 PCI Express 就顺应时代潮流，登上了历史舞台，至于 PCI Express 是靠什么上位的，八卦记者才会去关心这个，俺这里就飘过了。
+
+接下来就是第四项，“ Message Signaled Interrupts (MSI and MSI-X) ”。了解 MSI 之前，先普及一下中断。狭义的说，内核就是用来管理各种设备的，要管理就得需要交流，就得明白点儿管理的艺术掌握点儿管理的技巧，这个技巧有两种，一是__轮询__，定期的去探访设备，体恤设备的民情，看有没有什么需要处理的，就像逢年过节时要给低保户孤寡老人送温暖，不逢年过节时要给另外某些人送温暖一样。二是__中断__，设备需要的时候主动向内核发信号，通知内核说自己有需要了，快来满足我。对内核来说，这两种方式两种技巧，哪一种为优哪一种为劣？很明显，你说那么多孤苦伶仃的人要一个个定时定期的去嘘寒问暖，公仆们累不累，公仆也是人啊，而且这样也够低效，每次只能解决暂时的问题，局部的问题，同时也占用了公仆们大量的时间。而第二种方式就不一样了，哪个设备有需要了向上报告一声，内核就会明白设备的心声就会安排酌情处理。
+
+上边儿是从世俗的角度说的，现在再从物理的角度上看一看，中断就是一种电信号，设备在希望获得处理器关注的时候就可以发送这么一个信号，并直接送入__中断控制器__（如 8259A ）的输入引脚上，然后再由中断控制器向处理器发送相应的信号。处理器一经检测到该信号，便中断自己手头儿的工作，转而去处理中断。此后，处理器会通知内核已经产生中断了，这样，内核就可以对这个中断进行适当的处理。内核要处理一个中断，也不是说只要这个中断产生就可以了，还需要一个对应的__中断处理函数__，不然就会像你的很多呼声一样石沉大海了。这个所谓的中断处理函数是需要__提前注册__好放在内核里边儿的，和特定的__中断信号线__绑定在一起，中断信号线就是标识每个中断的一个值，是比较稀缺的资源，属于重点保护对象。那么究竟稀缺到什么程度？这要看使用的是什么中断控制器。
+
+俺只说 X86 上面儿的，常见的中断控制器一个是 __PIC__ ，一个是 APIC ， PIC 就是 Programmable Interrupt Controller ，可编程中断控制器的意思，那 APIC 就是高级可编程中断控制器，这种文字游戏咱们见得多了。 PIC 是由两片 8259A 级联在一起组成的，每个可以处理 8 个不同的 IRQ ，两个加一块儿 8 加 8 等于几？答 16 就错了，是 __15__ 个，因为级联时还要去掉用于连接的那个。这么多设备嗷嗷待哺的总共才有 15 个中断请求线，你说稀缺不稀缺？
+
+APIC 就要好一点儿了，不然怎么敢称高级。 PIC 只能用于一个处理器的系统，在多处理器系统上，处理器之间也可能会产生中断，这种情况 PIC 就不能应对了。而 __APIC 就能够用在多处理器的系统__上，解决多个处理器之间的互相需要，同时它支持的中断请求线的数目也有了很大幅度的提高，可以达到 255 个，不过，即使这样，中断请求线仍然还是属于稀缺的需要保护的资源。当然，单处理器系统也是可以使用 APIC 的了，这个时候它虽然没有了处理器之间互相需要的情况，但对中断请求线总是多多益善的。不过，这样就产生了一个兼容性的问题，就像经济的发展离不开房地产，计算机的发展也离不开兼容， APIC 就可以兼容 PIC ，按照标准的 8259A 的工作方式来工作，这要归咎于 APIC 的组织结构。
+
+对于 APIC 来说，能够**将中断传递给系统中的每个 CPU** 至关重要，所以它通常都要包含两个部分， __Local APIC 和 I/O APIC__ 。系统中的每个 CPU 都会有一个 Local APIC （那种超线程的 CPU 是不止包括一个 Local APIC 的），负责将中断信号传递到指定的处理器。而 I/O APIC 则负责收集中断信号并将它们转发给各个 Local APIC ，它也可以有多个。 APIC 就是这么__一个多级的体系结构__，如果要模拟 8259A ，只需要将 Local APIC 给禁止掉，再进行适当的配置， I/O APIC 就可以按照 PIC 的工作方式工作了。你可以通过查看 /proc/interrupts 文件来获悉系统有没有在使用 I/O APIC ，
+
+localhost:/usr/src/linux/ # cat /proc/interrupts
+              CPU0      
+  0:   20565961    IO-APIC-edge  timer
+  1:         3763    IO-APIC-edge  i8042
+  6:              4    IO-APIC-edge  floppy
+  7:              0    IO-APIC-edge  parport0
+  8:              1    IO-APIC-edge  rtc
+  9:              0    IO-APIC-level  acpi
+  12:         3095    IO-APIC-edge  i8042
+  15:     737432    IO-APIC-edge  ide1
+169:      11066    IO-APIC-level  eth0
+177:            0     IO-APIC-level  uhci_hcd:usb1, es1371
+185:      19441    IO-APIC-level   ioc0
+NMI:            0
+LOC:  19332194
+ERR:            0
+MIS:            0
+
+如果你在上面的结果里瞅见了 IO-APIC 这样的字眼，就说明你的系统正在使用 APIC 。
+
+PCI Spec v2.2 开始提出一种全新的中断方式，也就是前面看到的 Message Signaled Interrupts ，翻成中文咋看咋别扭，所以就原汁原味儿的使用英文名称了，还好它有个简短的简称 MSI 。 __MSI__ 通过**向一个预定义的内存地址写入一个已经预定义好的 Message 来提出中断请求**，这个 Message 到达主桥时，主桥会将它转换为**具体的中断**，发送到处理器。对 PCI 设备来说，这就消除了对**中断引脚电路**的需要，但是 PCI Spec 里还是要求支持 MSI 的设备最好同时也要具有中断引脚。另外再友情提醒一下，你如果选上 MSI ，还得同时选上 //CONFIG_X86_LOCAL_APIC// 才能正常工作，如果你的 CPU 的 datasheet 上已经写明了没有实现 APIC ，那你也就不用再操心 MSI 了。至于 MSI-X 则是 MSI 的增强型，不予关心，飘过。
+
+在 MSI 之后，紧接着的一项是“ PCI Debugging ”，调试用的。
+
+下面一项，“ Interrupts on hypertransport devices ”， hypertransport 是 AMD 在 99 年提出的一种总线技术，细节就不说了，飘过。接下来与咱们讲的主题有关的就是最后一项的那个 __PCI Hotplug__ 支持，道儿上混的都知道热插拔是嘛意思，那么 PCI 热插拔的意思也就是明摆着的。
+
+每个 menuconfig 的背后都有无数个 Kconfig ，按照习俗，开篇那张图背后的那些个 Kconfig 应该到 drivers/pci 目录下去找，
+
+1 #
+2 # PCI configuration
+3 #
+4 config ARCH_SUPPORTS_MSI
+5          bool
+6          default n
+7
+8 config PCI_MSI
+9          bool "**Message Signaled Interrupts** (MSI and MSI-X)"
+10          depends on PCI
+11          depends on ARCH_SUPPORTS_MSI
+12          help
+13             This allows __device drivers__ to enable MSI (Message Signaled
+14             Interrupts).  Message Signaled Interrupts enable a device to
+15             generate an interrupt using an **inbound Memory Write** on its
+16             PCI bus instead of asserting a device IRQ pin.
+17
+18             Use of PCI MSI interrupts can be disabled at kernel boot time
+19             by using the 'pci=nomsi' option.  This disables MSI for the
+20             entire system.
+21
+22             If you don't know what to do here, say N.
+23
+24 config PCI_DEBUG
+25          bool "PCI Debugging"
+26          depends on PCI && DEBUG_KERNEL
+27          help
+28             Say Y here if you want the PCI core to produce a bunch of debug
+29            messages to the system log.  Select this if you are having a
+30            problem with PCI support and want to see more of what is going on.
+31
+32            When in doubt, say N.
+33
+34 config HT_IRQ
+35          bool "Interrupts on hypertransport devices"
+36          default y
+37          depends on PCI && X86_LOCAL_APIC && X86_IO_APIC
+38          help
+39             This allows native hypertransport devices to use interrupts.
+40
+41             If unsure say Y.
+
+这么短短数十行就是 drivers/pci/Kconfig 文件的全部内容，它只包括了寥寥几项，远远不能涵盖那张图里的内容，像 PCI access mode 等项都没在这里边儿提到。咋办？到 arch/i386/Kconfig 文件里找，当然，如果你的平台不是 X86 32 位的，就要到 arch 目录下对应的子目录里找了。下面就看下它里边儿与前面所讲有关系的那些内容
+
+1058 menu "Bus options (PCI, PCMCIA, EISA, MCA, ISA)"
+1059
+1060 config PCI
+1061          bool "PCI support" if !X86_VISWS
+1062          depends on !X86_VOYAGER
+1063          default y if X86_VISWS
+1064          select ARCH_SUPPORTS_MSI if (X86_LOCAL_APIC && X86_IO_APIC)
+1065          help
+1066            Find out whether you have a PCI motherboard. PCI is the name of a
+1067            bus system, i.e. the way the CPU talks to the other stuff inside
+1068            your box. Other bus systems are ISA, EISA, MicroChannel (MCA) or
+1069            VESA. If you have PCI, say Y, otherwise N.
+1070
+1071            The PCI-HOWTO, available from
+1072            < http://www.tldp.org/docs.html#howto>, contains valuable
+1073            information about which PCI hardware does work under Linux and which
+1074            doesn't.
+1075
+1076 choice
+1077          prompt "PCI access mode"
+1078          depends on PCI && !X86_VISWS
+1079          default PCI_GOANY
+1080          ---help---
+1081            On PCI systems, **the BIOS can be used to **__detect__** the PCI devices and**
+1082**            determine their **__configuration__**.** However, some old PCI motherboards
+1083            have BIOS bugs and may crash if this is done. Also, some embedded
+1084            PCI-based systems don't have any BIOS at all. __Linux can also try to__
+1085            __detect the PCI hardware directly without using the BIOS.__
+1086
+1087            With this option, you can specify how Linux should detect the
+1088            PCI devices. If you choose "BIOS", the BIOS will be used,
+1089            if you choose "Direct", the BIOS won't be used, and if you
+1090            choose "MMConfig", then __PCI Express MMCONFIG__ will be used.
+1091            If you choose "Any", the kernel will try MMCONFIG, then the
+1092            direct access method and falls back to the BIOS if that doesn't
+1093            work. If unsure, go with the default, which is "Any".
+1094
+1095 config PCI_GOBIOS
+1096          bool "BIOS"
+1097
+1098 config PCI_GOMMCONFIG
+1099          bool "MMConfig"
+1100
+1101 config PCI_GODIRECT
+1102          bool "Direct"
+1103
+1104 config PCI_GOANY
+1105          bool "Any"
+1106
+1107 endchoice
+1108
+1109 config PCI_BIOS
+1110          bool
+1111          depends on !X86_VISWS && PCI && (PCI_GOBIOS || PCI_GOANY)
+1112          default y
+1113
+1114 config PCI_DIRECT
+1115          bool
+1116          depends on PCI && ((PCI_GODIRECT || PCI_GOANY) || X86_VISWS)
+1117          default y
+1118
+1119 config PCI_MMCONFIG
+1120          bool
+1121          depends on PCI && ACPI && (PCI_GOMMCONFIG || PCI_GOANY)
+1122          default y
+1123
+1124 source "drivers/pci/pcie/Kconfig"
+1125
+1126 source "drivers/pci/Kconfig"
+1127
+1128 config ISA_DMA_API
+1129          bool
+1130          default y
+1131
+1132 config ISA
+1133          bool "ISA support"
+1134          depends on !(X86_VOYAGER || X86_VISWS)
+1135          help
+1136            Find out whether you have ISA slots on your motherboard.  ISA is the
+1137            name of a bus system, i.e. the way the CPU talks to the other stuff
+1138            inside your box.  Other bus systems are PCI, EISA, MicroChannel
+1139            (MCA) or VESA.  ISA is an older system, now being displaced by PCI;
+1140           newer boards don't support it.  If you have ISA, say Y, otherwise N.
+1141
+1142 config EISA
+1143          bool "EISA support"
+1144          depends on ISA
+1145          ---help---
+1146            The Extended Industry Standard Architecture (EISA) bus was
+1147            developed as an open alternative to the IBM MicroChannel bus.
+1148
+1149            The EISA bus provided some of the features of the IBM MicroChannel
+1150            bus while maintaining backward compatibility with cards made for
+1151            the older ISA bus.  The EISA bus saw limited use between 1988 and
+1152            1995 when it was made obsolete by the PCI bus.
+1153
+1154            Say Y here if you are building a kernel for an EISA-based machine.
+1155
+1156            Otherwise, say N.
+1157
+1158 source "drivers/eisa/Kconfig"
+1159
+1160 config MCA
+1161          bool "MCA support" if !(X86_VISWS || X86_VOYAGER)
+1162          default y if X86_VOYAGER
+1163          help
+1164            MicroChannel Architecture is found in some IBM PS/2 machines and
+1165            laptops.  It is a bus system similar to PCI or ISA. See
+1166            <file:Documentation/mca.txt> (and especially the web page given
+1167            there) before attempting to build an MCA bus kernel.
+1168
+1169 source "drivers/mca/Kconfig"
+1170
+1171 config SCx200
+1172          tristate "NatSemi SCx200 support"
+1173          depends on !X86_VOYAGER
+1174          help
+1175            This provides basic support for National Semiconductor's
+1176            (now AMD's) Geode processors.  The driver probes for the
+1177            PCI-IDs of several on-chip devices, so its a good dependency
+1178            for other scx200_* drivers.
+1179
+1180            If compiled as a module, the driver is named scx200.
+1181
+1182 config SCx200HR_TIMER
+1183          tristate "NatSemi SCx200 27MHz High-Resolution Timer Support"
+1184          depends on SCx200 && GENERIC_TIME
+1185          default y
+1186          help
+1187            This driver provides a clocksource built upon the on-chip
+1188            27MHz high-resolution timer.  Its also a workaround for
+1189            NSC Geode SC-1100's buggy TSC, which loses time when the
+1190            processor goes idle (as is done by the scheduler).  The
+1191            other workaround is idle=poll boot option.
+1192
+1193 config K8_NB
+1194          def_bool y
+1195          depends on AGP_AMD64
+1196
+1197 source "drivers/pcmcia/Kconfig"
+1198
+1199 source "drivers/pci/hotplug/Kconfig"
+1200
+1201 endmenu
+
+Kconfig 的语法在 Documentation/kbuild/kconfig-language.txt 里，挺直白挺简单，也挺有意思的， 1058 行的 menu 就表示生成一个下级菜单，这个菜单的内容直到 1201 行的 endmenu 结束。 1076 的 choice 到 1107 的 endchoice 就生成了一个“ PCI access mode ”的单项选择题。每个 config 都生成一个菜单项。 1126 行的 source 就将前面的 drivers/pci/Kconfig 文件内容导入到这里边儿。

@@ -1,0 +1,47 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-24T20:04:49+08:00
+
+====== Django static media ======
+Created Monday 24 October 2011
+
+I spent too long tonight figuring out a weird problem.
+
+On a dev server, I was using **django.views.static.serve** to serve media files. But it was returning 404 (not found) for any file.
+
+The requests for media files weren’t even showing up in Django’s **built-in server’s** output. That had me baffled until I dug deep enough in Django’s code to figure it out.
+
+The **ADMIN_MEDIA_PREFIX** was the same as **MEDIA_URL.** That was it.
+
+Django’s built-in server doesn’t log requests for **admin media**, so that’s why there was no log output.
+
+The built-in server also **handles admin media separately**, so when I tried to request a media file, it intercepted and looked for it in the admin media.
+
+-------------------------------------------------------
+
+    The term “media” always struck me as a poor choice, as it means both everything and nothing and is guaranteed to confuse a Django newcomer (as it once did confuse me). Which is why my Django deployments are set up with what I consider less confusing terminology:
+
+    /upload – the stuff that users uploaded to the server, i.e. what Django refers to as media (served under MEDIA_URL and stored in MEDIA_ROOT on the filesystem).
+
+Django将用户上传的文件称为media
+
+    /static – the static part of my project/site, such as icons, Javascript files, CSS, etc. (I keep this well separate from /upload, as it is truly static and lives in version control, unlike /upload) 
+
+被项目或APP中不变的文件称为static
+
+    /adminmedia – the static parts of Django’s admin interface, which is served under ADMIN_MEDIA_PREFIX and part of Django. Arguably this should live under __/static/admin__, but I prefer the clean separation in case I need to more one or the other to a separate host for whatever reason (performance, CDN, …)
+
+Django admin 界面的静态文件称为ADMIN_MEDIA，它的位置在 ADMIN_MEDIA_PREFIX 变量中指定，默认值为/static/admin, 一旦改变该值
+则相应目录中一定要有admin media文件。
+
+> MEDIA_ROOT
+
+the directory where you upload media
+
+> MEDIA_URL
+
+the url where your site media - css, js, icons etc live
+
+> ADMIN_MEDIA_PREFIX
+
+the alias to where the admin media lives - django/contrib/admin/media

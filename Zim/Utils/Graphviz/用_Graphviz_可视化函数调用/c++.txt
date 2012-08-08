@@ -1,0 +1,116 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-20T17:18:17+08:00
+
+====== c++ ======
+Created Monday 20 February 2012
+
+I can see the same behavior with gcc 3.4.1.
+
+At least an obvious way to prevent that problem is
+to extract the __cyg_profile_func* stuff into a separated
+source file that is **compiled in C.**
+This object is then__ linked__ at the end with the C++ -compiled
+objects you can have to build the final binary.
+It works at least for my gcc 3.4.1.
+
+
+You can also tell g++ that t__his part of the code is C __by adding
+
+注意：以上步骤都需加上-g __-finstrument-functions参数__
+extern "C"
+{
+/* the __cyg_profile_func... functions */
+
+
+}
+
+Also tested with 3.4.1.
+
+Regards,
+--
+Yannick Perret
+
+
+=======================================
+Dmitry Antipov wrote:
+
+    (This letter was being previously posted to gcc-help list, which is probably the
+    better place to ask such questions. But since it wasn't answered there, I posted it here).
+
+    The following program
+
+    #include <stdio.h>
+
+    void __cyg_profile_func_enter (void *, void *) __attribute__((no_instrument_function));
+    void __cyg_profile_func_exit (void *, void *) __attribute__((no_instrument_function));
+
+    int depth = -1;
+
+    void __cyg_profile_func_enter (void *func,  void *caller)
+    {
+     int n;
+
+
+     depth++;
+     for (n = 0; n < depth; n++)
+       printf (" ");
+     printf ("-> %p\n", func);
+    }
+
+
+    void __cyg_profile_func_exit (void *func, void *caller)
+    {
+     int n;
+
+
+     for (n = 0; n < depth; n++)
+       printf (" ");
+     printf ("<- %p\n", func);
+     depth--;
+    }
+
+
+    void bar(void)
+    {
+    }
+
+
+    void foo (void)
+    {
+     int x;
+     for (x = 0; x < 4; x++)
+       bar ();
+    }
+
+
+    int main (int argc, char *argv[])
+    {
+     foo ();
+     bar ();
+     return 0;
+    }
+
+
+    works as expected if it's compiled as a C program ('gcc -finstrument-functions self.c').
+    But __cyg_* functions doesn't called if the program is compiled as C++ program
+    ('g++ -finstrument-fnctions self.cpp').
+
+    Looking through generated assembly shows that the calls of __cyg_* functions
+    are emitted, but these functions itself are generated__ with mangled names.__
+    Here is a piece of 'nm' output:
+
+            U __cyg_profile_func_enter
+            U __cyg_profile_func_exit
+    ...
+    00000050 T _Z23__cyg_profile_func_exitPvS_
+    00000000 T _Z24__cyg_profile_func_enterPvS_
+    ...
+
+
+    The documentation around '-finstrument-functions' says nothing about C vs. C++
+    differences, so I'm confused why it doesn't work for C++ also.
+
+    GCC version is 3.4.3.
+
+    Thanks,

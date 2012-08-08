@@ -1,0 +1,659 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-20T10:35:59+08:00
+
+====== Installing---GCC--Configuration ======
+Created Tuesday 20 December 2011
+http://gcc.gnu.org/install/configure.html
+
+Like most GNU software, GCC must be **configured before it can be built**. This document describes the recommended configuration procedure for both native and cross targets.这里的native是原生目标，也就是说编译后生成的二进制文件运行的主机环境和编译的主机一样；cross是交叉编译目标，编译后生成的二进制文件的运行环境和编译主机不一样，如编译主机是i686-gun-linux环境，而目标文件的运行环境是powerpc-gun-linux。配置时，如果--build == --host则是native target， 否则是cross target。
+
+We use** srcdir** to refer to the toplevel source directory for GCC; we use **objdir** to refer to the toplevel build/object directory.
+
+If you obtained the sources via SVN, srcdir must refer to the top gcc directory, the one where the MAINTAINERS file can be found, and not its gcc subdirectory, otherwise the build will fail.
+
+If either srcdir or objdir is located on an automounted NFS file system, the shell's built-in** pwd** command will return temporary pathnames. Using these can lead to various sorts of build problems. To avoid this issue, set the PWDCMD environment variable to an automounter-aware pwd command, e.g., pawd or `amq -w', during the configuration and build phases.
+
+First, we highly recommend that GCC be __built into a separate directory__ from the sources which does not reside within the source tree. This is how we generally build GCC; building where srcdir == objdir should still work, but doesn't get extensive testing; building where objdir is a// subdirectory// of srcdir is unsupported.
+
+If you have previously built GCC in the same directory for a **different target** machine, do `__make distclean__' to delete all files that might be invalid. One of the files this deletes is //Makefile//; if `make distclean' complains that Makefile does not exist or issues a message like “don't know how to make distclean” it probably means that the directory is already suitably clean. However, with the recommended method of building in a separate objdir, you should** simply use a different objdir** for each target.
+
+Second, when configuring a native system, either **cc or gcc** must be in your path or you must set **CC** in your environment before running configure. Otherwise the configuration scripts may fail. 
+如果是cross target，则一定要指定环境变量CC为能产生--host主机环境二进制代码的compiler,例如在编译运行于powerpc-gun-linux上的glibc时，CC=/path/to/powerpc-gnu-linux-gcc。
+
+To configure GCC:
+
+     % mkdir objdir
+     % cd objdir
+     % srcdir/configure [options] [target]
+
+===== Distributor options =====
+
+If you will be **distributing binary versions** of GCC, with modifications to the source code, you should use the options described in this section to make clear that your version contains modifications.
+
+**--with-pkgversion=version**
+    Specify a string that identifies your package. You may wish to include a build number or build date. This version string will be included in the output of// gcc --version//. This** suffix** does not replace the default version string, only the `GCC' part.
+
+    The default value is `GCC'.
+**--with-bugurl=url**
+    Specify the URL that users should visit if they wish to report a bug. You are of course welcome to forward bugs reported to you to the FSF, if you determine that they are not bugs in your modifications.
+
+    The default value refers to the FSF's GCC bug tracker. 
+
+===== Target specification =====
+
+    GCC has code to correctly determine the correct value for target for nearly all **native** systems. Therefore, we highly recommend you __do not provide a configure target when configuring a native compiler__.
+    target must be specified as **--target=target** when configuring a __cross compiler__; examples of valid targets would be m68k-elf, sh-elf, etc.
+    Specifying just target instead of --target=target implies that the host defaults to target. 
+
+===== Options specification =====
+
+Use options to override several //configure time// options for GCC. A list of supported options follows; `configure --help' may list other options, but those not listed below may not work and should not normally be used.
+
+Note that each --enable option has a corresponding --disable option and that each --with option has a corresponding --without option.
+
+__--prefix__**=dirname**
+    Specify the__ toplevel installation__// directory.// This is the recommended way to install the tools into a directory other than the default. The toplevel installation directory defaults to **/usr/local**.
+
+    We highly recommend against dirname being the same or a subdirectory of objdir or vice versa. If specifying a directory beneath a user's home directory tree, some shells will not expand dirname correctly if it contains the `~' metacharacter; use $HOME instead.
+
+    The following standard **autoconf** options are supported. Normally you should **not need** to use these options.
+
+		    --__exec-prefix__=dirname
+		        Specify the__ toplevel installation directory__ for** architecture-dependent** files. The default is **prefix**.
+		    --bindir=dirname
+		        Specify the installation directory for the **executables** called by users (such as gcc and g++). The default is **exec-prefix/bin**.
+		    --libdir=dirname
+		        Specify the installation directory for **object code libraries and internal data files **of GCC. The default is **exec-prefix/lib**.
+		    --libexecdir=dirname
+		        Specify the installation directory for **internal executables** of GCC. The default is **exec-prefix/libexec**.
+		    --with-slibdir=dirname
+		        Specify the installation directory for the **shared libgcc library**. The default is libdir.
+		    --__datarootdir__=dirname
+		        Specify the root of the directory tree for** read-only architecture-independent data files** referenced by GCC. The default is **prefix/share**.
+		    --infodir=dirname
+		        Specify the installation directory for documentation in info format. The default is datarootdir/info.
+		    --datadir=dirname
+		        Specify the installation directory for **some architecture-independent data files** referenced by GCC. The default is datarootdir.
+		    --docdir=dirname
+		        Specify the installation directory for documentation files (other than Info) for GCC. The default is **datarootdir/doc**.
+		    --htmldir=dirname
+		        Specify the installation directory for HTML documentation files. The default is docdir.
+		    --pdfdir=dirname
+		        Specify the installation directory for PDF documentation files. The default is docdir.
+		    --mandir=dirname
+		        Specify the installation directory for manual pages. The default is datarootdir/man. (Note that the manual pages are only extracts from the full GCC manuals, which are provided in //Texinfo //format. The manpages are derived by an automatic conversion process from parts of the full manual.)
+		    **--with-gxx-include-dir=dirname**
+		        Specify the installation directory for** G++ header** files. The default depends on other configuration options, and differs between cross and native configurations.
+		    **--with-specs=specs**
+		        Specify additional command line driver SPECS. This can be useful if you need to turn on a non-standard feature by default without modifying the compiler's source code, for instance --with-specs=%{!fcommon:%{!fno-common:-fno-common}}. See “Spec Files” in the main manual 
+		
+1.// toplevel installation directory : 程序文件的顶级安装目录，各个程序一般会在其下建立以//**程序名命名的单独目录。**
+2.Installation directories:
+  --prefix=PREFIX         install **architecture-independent** files in PREFIX   		 [/usr/local]
+  --exec-prefix=EPREFIX   install **architecture-dependent** files in EPREFIX                  [PREFIX]
+--prefix指定程序被安装到的顶级目录，如果只有该选项而没有指定其它安装目录选项(如下所示)，一般编译后的程序的所有文件都会放在--prefix下的目录结构中。
+3.Fine tuning of the installation directories:
+  --bindir=DIR            **user **executables [EPREFIX/bin]    #普通、管理员用户可执行的程序文件。
+  --sbindir=DIR           **system admin** executables [EPREFIX/sbin]  #管理员可执行的程序文件
+  --libdir=DIR             object code libraries [EPREFIX/lib]  #程序输出的库文件，库中存放的二进制对象文件可以供其它程序使用。
+  --libexecdir=DIR      __program__ executables [EPREFIX/libexec]   #供__程序(本程序或其它)调用__的可执行文件(用户一般__不会直接__调用它们)
+以上四个选项控制与体系结构相关的二进制文件的存放位置，不同类型的二进制文件是用于不同目的的。
+  --sysconfdir=DIR       ** read-only** single-machine data [__PREFIX/etc__]
+  --localstatedir=DIR     **modifiable** single-machine data [PREFIX/var]
+以上两个目录是程序执行时**读取配置文件，保存运行数据文件**的地方。
+  --includedir=DIR        C header files [PREFIX/include]
+~~  --oldincludedir=DIR   C header files for non-gcc [/usr/include]~~
+  --datarootdir=DIR     read-only arch.-independent data root [PREFIX/share]
+  --datadir=DIR           read-only architecture-independent data [DATAROOTDIR]
+  --infodir=DIR           info documentation [DATAROOTDIR/info]
+  --localedir=DIR         locale-dependent data [DATAROOTDIR/locale]
+  --mandir=DIR            man documentation [DATAROOTDIR/man]
+  --docdir=DIR            documentation root [DATAROOTDIR/doc/PACKAGE]
+  --htmldir=DIR           html documentation [DOCDIR]
+  --dvidir=DIR            dvi documentation [DOCDIR]
+  --pdfdir=DIR            pdf documentation [DOCDIR]
+  --psdir=DIR             ps documentation [DOCDIR]
+以上选项是程序的体系结构无关的数据文件，程序不依赖它们运行。
+一般情况下，以上所有选项的值都被__硬编码__到生成的可执行二进制文件中，所以程序在运行时可以到相关目录找到所需的文件。如果想增强程序的可移动性(位置无关性)，如将程序的安装目录移动到另一个位置后，程序还能够正常运行(如读取配置文件，存放临时数据)的话，相关选项需要使用__相对路径__。
+
+
+
+**--program-prefix=prefix**
+    GCC supports some transformations of the names of its programs when installing them. This option prepends prefix to the names of programs to install in **bindir** (see above). For example, specifying //--program-prefix=//__foo-__ would result in `gcc' being installed as /usr/local/bin/foo-gcc.
+**--program-suffix=suffix**
+    Appends suffix to the names of programs to install in bindir (see above). For example, specifying// --program-suffix=-3.1// would result in `gcc' being installed as [[/usr/local/bin/gcc-3.1.]]
+注意，无论是前缀还是后缀，最好载字符串后加一个**短横线**，另外如果字符串中没有空格，可以不加引号。
+**--program-transform-name=pattern**
+    Applies the `sed' script pattern to be applied to the names of programs to install in bindir (see above). pattern has to consist of one or more basic// `sed' editing commands//, separated by semicolons. For example, if you want the `gcc' program name to be transformed to the installed program /usr/local/bin/myowngcc and the `g++' program name to be transformed to /usr/local/bin/gspecial++ without changing other program names, you could use the pattern **--program-transform-name='s/^gcc$/myowngcc/; s/^g++$/gspecial++/'** to achieve this effect.
+    All three options can be //combined and used together//, resulting in more complex conversion patterns. As a basic rule, prefix (and suffix) are prepended (appended) __before__ further transformations can happen with a special transformation script pattern.
+    As currently implemented, this option __only takes effect for native builds(生成的程序的运行环境和当前一致)__; cross compiler binaries' names are not transformed even when a transformation is explicitly asked for by one of these options.
+    For native builds, some of the installed programs are __also installed with the target alias in front of their name__, as in `i686-pc-linux-gnu-gcc'. All of the above transformations happen __before__ the target alias is prepended to the name—so, specifying --program-prefix=foo- and program-suffix=-3.1, the resulting binary would be installed as /usr/local/bin///i686-pc-linux-gnu-foo-gcc-3.1//.
+以上三个选项只适合native target(build), 对于cross build（target）无效，这是由于
+ 
+
+
+**--with-local-prefix=dirname**
+    Specify the installation directory for //local include files//. The default is /usr/local. Specify this option if you want the compiler to search directory **dirname/include** for locally installed header files instead of /usr/local/include.
+
+    You should specify --with-local-prefix__ only if__ your site has a different convention (not /usr/local) for where to put //site-specific files//.
+
+    The default value for__ --with-local-prefix is /usr/local regardless of the value of --prefix__. Specifying --prefix has no effect on which directory GCC searches for local header files. (指的是本机的gcc在编译这个gcc源代码时，回到local-prefix指定的目录下的include目录下寻找header文件。)This may seem counterintuitive, but actually it is logical.
+
+    The purpose of --prefix is to specify **where to install GCC**. The local header files in /usr/local/include—if you put any in that directory—are **not part of GCC(即将编译安装的GCC)**. They are part of other programs—perhaps many others. (GCC installs **its own header files** in another directory which is based on the --prefix value.)
+
+    Both the local-prefix include directory and the GCC-prefix include directory are part of __GCC's “system include” directories__. Although these two directories are not fixed, they need to be searched in the proper order for the correct processing of the include_next directive. The local-prefix include directory is searched before the GCC-prefix include directory. Another characteristic of system include directories is that pedantic warnings are turned off for headers in these directories.
+
+    Some autoconf macros add **-I directory **options to the compiler command line, to ensure that directories containing installed packages' headers are searched. When directory is one of GCC's system include directories, GCC will** ignore** the option so that system directories continue to be processed in the correct order. This may result in a search order different from what was specified but the directory will still be searched.
+
+    GCC automatically searches for ordinary libraries using __GCC_EXEC_PREFIX__. Thus, when the same installation prefix is used for both GCC and packages, GCC will automatically search for both headers and libraries. This provides a configuration that is easy to use. GCC behaves in a manner similar to that when it is installed as a system compiler in /usr.
+
+    Sites that need to install **multiple versions** of GCC may not want to use the above simple configuration. It is possible to use the --program-prefix, --program-suffix and --program-transform-name options to install multiple versions into a single directory, but it may be simpler to use different prefixes and the --with-local-prefix option to specify the location of the site-specific files// for each version//. It will then be necessary for users to specify explicitly the location of local site libraries (e.g., with LIBRARY_PATH).
+
+    The same value can be used for both --with-local-prefix and --prefix provided it is not /usr. This can be used to avoid the default search of /usr/local/include.
+
+  __  Do not specify /usr as the --with-local-prefix!__ The directory you use for --with-local-prefix must not contain any of the **system's** standard header files. If it did contain them, certain programs would be miscompiled (including GNU Emacs, on certain targets), because this would override and nullify the header file corrections made by the __fixincludes script__.
+
+    Indications are that people who use this option use it based on **mistaken ideas** of what it is for. People use it as if it specified where to install part of GCC. Perhaps they make this assumption because installing GCC creates the directory.
+**--with-native-system-header-dir=dirname**
+    Specifies that dirname is the directory that contains native system header files, **rather than /usr/include**. This option is most useful if you are creating a compiler that should be __isolated__ from the system as much as possible. It is most commonly used with the **--with-sysroot **option and will cause GCC to search dirname inside the system root specified by that option.
+**--enable-shared[=package[,...]]**
+    Build shared versions of libraries, if shared libraries are supported on the target platform. Unlike GCC 2.95.x and earlier, shared libraries are__ enabled by default__ on all platforms that support shared libraries.
+
+    If a list of packages is given as an argument, build shared libraries **only for** the listed packages. For other packages, only static libraries will be built. Package names currently recognized in the **GCC tree **are `libgcc' (also known as `gcc'), `libstdc++' (not `libstdc++-v3'), `libffi', `zlib', `boehm-gc', `ada', `libada', `libjava', `libgo', and `libobjc'. Note `libiberty' does not support shared libraries at all.
+
+    Use **--disable-shared** to build only static libraries. Note that --disable-shared does not accept a list of package names as argument, only --enable-shared does.
+**--with-gnu-as**
+    Specify that the compiler should assume that the assembler it finds is the GNU assembler. However, this does not modify the rules to find an assembler and will result in confusion if the assembler found is not actually the GNU assembler. (Confusion may also result if the compiler finds the GNU assembler but has not been configured with --with-gnu-as.) If you have **more than one assembler** installed on your system, you may want to use this option in connection with **--with-as=pathname** or **--with-build-time-tools=pathname**.
+
+    The following systems are the only ones where it makes a difference whether you use the GNU assembler. On any other system, --with-gnu-as has** no effect**.
+
+        `hppa1.0-any-any'
+        `hppa1.1-any-any'
+        `sparc-sun-solaris2.any'
+        `sparc64-any-solaris2.any' 
+
+
+**--with-as=pathname**
+    Specify that the compiler(主机编译后**生成**的编译器) should use the assembler pointed to by pathname, rather than the one found by the standard rules to find an assembler, which are:
+
+* Unless GCC is being built with a cross compiler, check the **libexec/gcc/target/version** directory. libexec defaults to exec-prefix/libexec; exec-prefix defaults to prefix, which defaults to /usr/local unless overridden by the --prefix=pathname switch described above. target is the __target system triple__, such as `sparc-sun-solaris2.7', and version denotes the GCC version, such as 3.0.
+* If the target system is the same that you are building on, check operating system specific directories (e.g. /usr/ccs/bin on Sun Solaris 2).
+* Check in the PATH for a tool whose name is **prefixed by the target system triple**.
+* Check in the PATH for a tool whose name is **not prefixed** by the target system triple, if the host and target system triple are the same (in other words, we use a host tool if it can be used for the target as well). 
+
+    You may want to use --with-as if no assembler is installed in the directories listed above, or if you have multiple assemblers installed and want to choose one that is not found by the above rules.
+**--with-gnu-ld**
+    Same as --with-gnu-as but for the linker.
+**--with-ld=pathname**
+    Same as --with-as but for the linker.
+-**-with-stabs**
+    Specify that stabs debugging information should be used instead of whatever format the host normally uses. Normally GCC uses the same debug format as the host system.
+
+    On MIPS based systems and on Alphas, you must specify whether you want GCC to create the normal ECOFF debugging format, or to use BSD-style stabs passed through the ECOFF symbol table. The normal ECOFF debug format cannot fully handle languages other than C. BSD stabs format can handle other languages, but it only works with the GNU debugger GDB.
+
+    Normally, GCC uses the ECOFF debugging format by default; if you prefer BSD stabs, specify --with-stabs when you configure GCC.
+
+    No matter which default you choose when you configure GCC, the user can use the -gcoff and -gstabs+ options to specify explicitly the debug format for a particular compilation.
+
+    --with-stabs is meaningful on the ISC system on the 386, also, if --with-gas is used. It selects use of stabs debugging information embedded in COFF output. This kind of debugging information supports C++ well; ordinary COFF debugging information does not.
+
+    --with-stabs is also meaningful on 386 systems running SVR4. It selects use of stabs debugging information embedded in ELF output. The C++ compiler currently (2.6.0) does not support the DWARF debugging information normally used on 386 SVR4 platforms; stabs provide a workable alternative. This requires gas and gdb, as the normal SVR4 tools can not generate or interpret stabs.
+--with-tls=dialect
+    Specify the default TLS dialect, for systems were there is a choice. For ARM targets, possible values for dialect are gnu or gnu2, which select between the original GNU dialect and the GNU TLS descriptor-based dialect.
+**--disable-multilib**
+    Specify that **multiple target libraries** to support different target variants, calling conventions, etc. __should not__ be built. The default is to build a predefined set of them.
+
+    Some targets provide finer-grained control over which multilibs are built (e.g., --disable-softfloat):
+
+    arm-*-*
+        fpu, 26bit, underscore, interwork, biendian, nofmult.
+    m68*-*-*
+        softfloat, m68881, m68000, m68020.
+    mips*-*-*
+        single-float, biendian, softfloat.
+    powerpc*-*-*, rs6000*-*-*
+        aix64, pthread, softfloat, powercpu, powerpccpu, powerpcos, biendian, sysv, aix. 
+
+
+**--with-multilib-list=list**
+**--without-multilib-list**
+    Specify what multilibs to build. Currently only implemented for sh*-*-* and x86-64-*-linux*.
+
+    sh*-*-*
+        list is a comma separated **list of CPU** names. These must be of the form sh* or m* (in which case they match the compiler option for that processor). The list should not contain any endian options - these are handled by --with-endian.
+
+        If list is empty, then there will be no multilibs for extra processors. The multilib for the secondary endian remains enabled.
+
+        As a special case, if an entry in the list starts with a ! (exclamation point), then it is added to the list of excluded multilibs. Entries of this sort should be compatible with `MULTILIB_EXCLUDES' (once the leading ! has been stripped).
+
+        If --with-multilib-list is not given, then a default set of multilibs is selected based on the value of --target. This is usually the complete set of libraries, but some targets imply a more specialized subset.
+
+        Example 1: to configure a compiler for SH4A only, but supporting both endians, with little endian being the default:
+
+                       --with-cpu=sh4a --with-endian=little,big --with-multilib-list=
+                  
+
+        Example 2: to configure a compiler for both SH4A and SH4AL-DSP, but with only little endian SH4AL:
+
+                       --with-cpu=sh4a --with-endian=little,big \
+                       --with-multilib-list=sh4al,!mb/m4al
+                  
+
+
+    x86-64-*-linux*
+        list is a comma separated list of m32, m64 and mx32 to enable 32-bit, 64-bit and x32 run-time libraries, respectively. If list is empty, then there will be no multilibs and only the default run-time library will be enabled.
+
+        If --with-multilib-list is not given, then only 32-bit and 64-bit run-time libraries will be enabled. 
+
+
+**--with-endian=endians**
+    Specify what endians to use. Currently only implemented for sh*-*-*.
+
+    endians may be one of the following:
+
+    big
+        Use big endian exclusively.
+    little
+        Use little endian exclusively.
+    big,little
+        Use big endian by default. Provide a multilib for little endian.
+    little,big
+        Use little endian by default. Provide a multilib for big endian. 
+
+
+**--enable-threads**
+    Specify that the target supports threads. This affects the Objective-C compiler and runtime library, and **exception handling** for other languages like C++ and Java. On some systems, this is the default.
+
+    In general, the best (and, in many cases, the only known) threading model available will be configured for use. Beware that on some systems, GCC has not been taught what threading models are generally available for the system. In this case, --enable-threads is an alias for __--enable-threads=single__.
+**--disable-threads**
+    Specify that threading support should be disabled for the system. This is an alias for --enable-threads=single.
+**--enable-threads=lib**
+    Specify that lib is the thread support library. This affects the Objective-C compiler and runtime library, and exception handling for other languages like C++ and Java. The possibilities for lib are:
+
+    aix
+        AIX thread support.
+    dce
+        DCE thread support.
+    lynx
+        LynxOS thread support.
+    mipssde
+        MIPS SDE thread support.
+    no
+        This is an alias for `single'.
+    posix
+        Generic POSIX/Unix98 thread support.
+    rtems
+        RTEMS thread support.
+    single
+        **Disable** thread support, should work for all platforms.
+    tpf
+        TPF thread support.
+    vxworks
+        VxWorks thread support.
+    win32
+        Microsoft Win32 API thread support. 
+
+
+**--enable-tls**
+    Specify that the target supports__ TLS (Thread Local Storage)__. Usually configure can correctly determine if TLS is supported. In cases where it guesses incorrectly, TLS can be explicitly enabled or disabled with --enable-tls or --disable-tls. This can happen if the assembler supports TLS but the C library does not, or if the assumptions made by the configure test are incorrect.
+**--disable-tls**
+    Specify that the target does not support TLS. This is an alias for --enable-tls=no.
+--with-cpu=cpu
+--with-cpu-32=cpu
+--with-cpu-64=cpu
+    Specify which cpu variant the compiler should generate code for by default. cpu will be used as the default value of the -mcpu= switch. This option is only supported on some targets, including ARM, i386, M68k, PowerPC, and SPARC. The --with-cpu-32 and --with-cpu-64 options specify separate default CPUs for 32-bit and 64-bit modes; these options are only supported for i386, x86-64 and PowerPC.
+--with-schedule=cpu
+--with-arch=cpu
+--with-arch-32=cpu
+--with-arch-64=cpu
+--with-tune=cpu
+--with-tune-32=cpu
+--with-tune-64=cpu
+--with-abi=abi
+--with-fpu=type
+--with-float=type
+    These configure options provide default values for the -mschedule=, -march=, -mtune=, -mabi=, and -mfpu= options and for -mhard-float or -msoft-float. As with --with-cpu, which switches will be accepted and acceptable values of the arguments depend on the target.
+--with-mode=mode
+    Specify if the compiler should default to -marm or -mthumb. This option is only supported on ARM targets.
+--with-stack-offset=num
+    This option sets the default for the -mstack-offset=num option, and will thus generally also control the setting of this option for libraries. This option is only supported on Epiphany targets.
+--with-fpmath=isa
+    This options sets -mfpmath=sse by default and specifies the default ISA for floating-point arithmetics. You can select either `sse' which enables -msse2 or `avx' which enables -mavx by default. This option is only supported on i386 and x86-64 targets.
+--with-divide=type
+    Specify how the compiler should generate code for checking for division by zero. This option is only supported on the MIPS target. The possibilities for type are:
+
+    traps
+        Division by zero checks use conditional traps (this is the default on systems that support conditional traps).
+    breaks
+        Division by zero checks use the break instruction. 
+
+
+--with-llsc
+    On MIPS targets, make -mllsc the default when no -mno-lsc option is passed. This is the default for Linux-based targets, as the kernel will emulate them if the ISA does not provide them.
+--without-llsc
+    On MIPS targets, make -mno-llsc the default when no -mllsc option is passed.
+--with-synci
+    On MIPS targets, make -msynci the default when no -mno-synci option is passed.
+--without-synci
+    On MIPS targets, make -mno-synci the default when no -msynci option is passed. This is the default.
+--with-mips-plt
+    On MIPS targets, make use of copy relocations and PLTs. These features are extensions to the traditional SVR4-based MIPS ABIs and require support from GNU binutils and the runtime C library.
+--enable-__cxa_atexit
+    Define if you want to use __cxa_atexit, rather than atexit, to register C++ destructors for local statics and global objects. This is essential for fully standards-compliant handling of destructors, but requires __cxa_atexit in libc. This option is currently only available on systems with GNU libc. When enabled, this will cause -fuse-cxa-atexit to be passed by default.
+--enable-gnu-indirect-function
+    Define if you want to enable the ifunc attribute. This option is currently only available on systems with GNU libc on certain targets.
+--enable-target-optspace
+    Specify that target libraries should be optimized for code space instead of code speed. This is the default for the m32r platform.
+--with-cpp-install-dir=dirname
+    Specify that the user visible cpp program should be installed in prefix/dirname/cpp, in addition to bindir.
+--enable-comdat
+    Enable COMDAT group support. This is primarily used to override the automatically detected value.
+--enable-initfini-array
+    Force the use of sections .init_array and .fini_array (instead of .init and .fini) for constructors and destructors. Option --disable-initfini-array has the opposite effect. If neither option is specified, the configure script will try to guess whether the .init_array and .fini_array sections are supported and, if they are, use them.
+**--enable-build-with-cxx**
+    Build GCC using a C++ compiler rather than a C compiler. This is an __experimental option__ which may become the default in a later release.
+--enable-build-poststage1-with-cxx
+    When __bootstrapping__, build stages 2 and 3 of GCC using a C++ compiler rather than a C compiler. Stage 1 is still built with a C compiler. This is **enabled by default** and may be disabled using --disable-build-poststage1-with-cxx.
+--enable-maintainer-mode
+    The build rules that regenerate the Autoconf and Automake output files as well as the GCC master message catalog gcc.pot are normally disabled. This is because it can only be rebuilt if the complete source tree is present. If you have changed the sources and want to rebuild the catalog, configuring with --enable-maintainer-mode will enable this. Note that you need a recent version of the gettext tools to do so.
+**--disable-bootstrap**
+    For a native build, the default configuration is to __perform a 3-stage bootstrap of the compiler__ when `make' is invoked, __testing that GCC can compile itself correctly__. If you want to disable this process, you can configure with --disable-bootstrap.
+--enable-bootstrap
+    In special cases, you may want to perform a 3-stage build even if the target and host triplets are different. This is possible when the host can run code compiled for the target (e.g. host is i686-linux, target is i486-linux). Starting from GCC 4.2, to do this you have to configure explicitly with --enable-bootstrap.
+**--enable-generated-files-in-srcdir**
+    Neither the .c and .h files that are generated from Bison and flex nor the info manuals and man pages that are built from the .texi files are present in the SVN development tree. When building GCC from that development tree, or from one of our snapshots, those generated files are placed in your build directory, which allows for the source to be in a readonly directory.
+
+    If you configure with --enable-generated-files-in-srcdir then those generated files will go into the source directory. This is mainly intended for generating release or prerelease tarballs of the GCC sources, since it is not a requirement that the users of source releases to have flex, Bison, or makeinfo.
+--enable-version-specific-runtime-libs
+    Specify that runtime libraries should be installed in the compiler specific subdirectory (libdir/gcc) rather than the usual places. In addition, `libstdc++''s include files will be installed into libdir unless you overruled it by using --with-gxx-include-dir=dirname. Using this option is particularly useful if you intend to use several versions of GCC in parallel. This is currently supported by `libgfortran', `libjava', `libmudflap', `libstdc++', and `libobjc'.
+__--enable-languages=lang1,lang2,...__
+    Specify that only a particular subset of compilers and their runtime libraries should be built. For a list of valid values for langN you can issue the following command in the gcc directory of your GCC source tree:
+
+              grep language= */config-lang.in
+         
+
+    Currently, you can use any of the following: all, ada, c, c++, fortran, go, java, objc, obj-c++. Building the Ada compiler has special requirements, see below. If you do not pass this flag, or specify the option all, then all default languages available in the gcc sub-tree will be configured. Ada, Go and Objective-C++ are not default languages; the rest are.
+--enable-stage1-languages=lang1,lang2,...
+    Specify that a particular subset of compilers and their runtime libraries should be built with the system C compiler during stage 1 of the bootstrap process, rather than only in later stages with the bootstrapped C compiler. The list of valid values is the same as for --enable-languages, and the option all will select all of the languages enabled by --enable-languages. This option is primarily useful for GCC development; for instance, when a development version of the compiler cannot bootstrap due to compiler bugs, or when one is debugging front ends other than the C front end. When this option is used, one can then build the target libraries for the specified languages with the stage-1 compiler by using make stage1-bubble all-target, or run the testsuite on the stage-1 compiler for the specified languages using make stage1-start check-gcc.
+**--disable-libada**
+    Specify that the__ run-time libraries__ and tools used by GNAT should not be built. This can be useful for debugging, or for compatibility with previous Ada build procedures, when it was required to explicitly do a `make -C gcc gnatlib_and_tools'.
+--disable-libssp
+    Specify that the run-time libraries for __stack smashing protection__ should not be built.
+--disable-libquadmath
+    Specify that the GCC __quad-precision math library__ should not be built. On some systems, the library is required to be linkable when building the Fortran front end, unless --disable-libquadmath-support is used.
+--disable-libquadmath-support
+    Specify that the Fortran front end and libgfortran do not add support for libquadmath on systems supporting it.
+--disable-libgomp
+    Specify that the run-time libraries used by GOMP should not be built.
+--with-dwarf2
+    Specify that the compiler should use DWARF 2 debugging information as the default.
+**--enable-targets=all**
+--enable-targets=target_list
+    Some GCC targets, e.g. powerpc64-linux, build __bi-arch__ compilers. These are compilers that are able to generate either 64-bit or 32-bit code. Typically, the corresponding 32-bit target, e.g. powerpc-linux for powerpc64-linux, only generates 32-bit code. This option enables the 32-bit target to be a bi-arch compiler, which is useful when you want a bi-arch compiler that defaults to 32-bit, and you are building a bi-arch or multi-arch binutils in a combined tree. On mips-linux, this will build a tri-arch compiler (ABI o32/n32/64), defaulted to o32. Currently, this option only affects **sparc-linux, powerpc-linux, x86-linux, mips-linux and s390-linux**.
+--enable-secureplt
+    This option enables -msecure-plt by default for powerpc-linux. See “RS/6000 and PowerPC Options” in the main manual
+--enable-cld
+    This option enables -mcld by default for 32-bit x86 targets. See “i386 and x86-64 Options” in the main manual
+--enable-win32-registry
+--enable-win32-registry=key
+--disable-win32-registry
+    The --enable-win32-registry option enables Microsoft Windows-hosted GCC to look up installations paths in the registry using the following key:
+
+              HKEY_LOCAL_MACHINE\SOFTWARE\Free Software Foundation\key
+         
+
+    key defaults to GCC version number, and can be overridden by the --enable-win32-registry=key option. Vendors and distributors who use custom installers are encouraged to provide a different key, perhaps one comprised of vendor name and GCC version number, to avoid conflict with existing installations. This feature is enabled by default, and can be disabled by --disable-win32-registry option. This option has no effect on the other hosts.
+--nfp
+    Specify that the machine does not have a floating point unit. This option only applies to `m68k-sun-sunosn'. On any other system, --nfp has no effect.
+--enable-werror
+--disable-werror
+--enable-werror=yes
+--enable-werror=no
+    When you specify this option, it controls whether certain files in the compiler are built with -Werror in bootstrap stage2 and later. If you don't specify it, -Werror is turned on for the main development trunk. However it defaults to off for release branches and final releases. The specific files which get -Werror are controlled by the Makefiles.
+**--enable-checking**
+--enable-checking=list
+    When you specify this option, the compiler is built to perform internal consistency checks of the requested complexity. This does not change the generated code, but adds error checking within the compiler. This will slow down the compiler and may only work properly if you are building the compiler with GCC. This is `yes' by default when building from SVN or snapshots, but `release' for releases. The default for building the stage1 compiler is `yes'. More control over the checks may be had by specifying list. The categories of checks available are `yes' (most common checks `assert,misc,tree,gc,rtlflag,runtime'), `no' (no checks at all), `all' (all but `valgrind'), `release' (cheapest checks `assert,runtime') or `none' (same as `no'). Individual checks can be enabled with these flags `assert', `df', `fold', `gc', `gcac' `misc', `rtl', `rtlflag', `runtime', `tree', and `valgrind'.
+
+    The `valgrind' check requires the external valgrind simulator, available from http://valgrind.org/. The `df', `rtl', `gcac' and `valgrind' checks are very expensive. To disable all checking, `--disable-checking' or `--enable-checking=none' must be explicitly requested. Disabling assertions will make the compiler and runtime slightly faster but increase the risk of undetected internal errors causing wrong code to be generated.
+--disable-stage1-checking
+--enable-stage1-checking
+--enable-stage1-checking=list
+    If no --enable-checking option is specified the stage1 compiler will be built with `yes' checking enabled, otherwise the stage1 checking flags are the same as specified by --enable-checking. To build the stage1 compiler with different checking options use --enable-stage1-checking. The list of checking options is the same as for --enable-checking. If your system is too slow or too small to bootstrap a released compiler with checking for stage1 enabled, you can use `--disable-stage1-checking' to disable checking for the stage1 compiler.
+--enable-coverage
+--enable-coverage=level
+    With this option, the compiler is built to collect self coverage information, every time it is run. This is for internal development purposes, and only works when the compiler is being built with gcc. The level argument controls whether the compiler is built optimized or not, values are `opt' and `noopt'. For coverage analysis you want to disable optimization, for performance analysis you want to enable optimization. When coverage is enabled, the default level is without optimization.
+--enable-gather-detailed-mem-stats
+    When this option is specified more detailed information on memory allocation is gathered. This information is printed when using -fmem-report.
+--with-gc
+--with-gc=choice
+    With this option you can specify the **garbage collector** implementation used during the compilation process. choice can be one of `page' and `zone', where `page' is the default.
+--enable-nls
+--disable-nls
+    The --enable-nls option enables__ Native Language Support (NLS)__, which lets GCC output diagnostics in languages other than American English. Native Language Support is enabled by default if not doing a canadian cross build. The --disable-nls option disables NLS.
+--with-included-gettext
+    If NLS is enabled, the --with-included-gettext option causes the build procedure to prefer its copy of GNU gettext.
+--with-catgets
+    If NLS is enabled, and if the host lacks gettext but has the inferior catgets interface, the GCC build procedure normally ignores catgets and instead uses GCC's copy of the GNU gettext library. The --with-catgets option causes the build procedure to use the host's catgets in this situation.
+--with-libiconv-prefix=dir
+    Search for libiconv header files in dir/include and libiconv library files in dir/lib.
+--enable-obsolete
+    Enable configuration for an obsoleted system. If you attempt to configure GCC for a system (build, host, or target) which has been obsoleted, and you do not specify this flag, configure will halt with an error message.
+
+    All support for systems which have been obsoleted in one release of GCC is removed entirely in the next major release, unless someone steps forward to maintain the port.
+--enable-decimal-float
+--enable-decimal-float=yes
+--enable-decimal-float=no
+--enable-decimal-float=bid
+--enable-decimal-float=dpd
+--disable-decimal-float
+    Enable (or disable) support for the C decimal floating point extension that is in the IEEE 754-2008 standard. This is enabled by default only on PowerPC, i386, and x86_64 GNU/Linux systems. Other systems may also support it, but require the user to specifically enable it. You can optionally control which decimal floating point format is used (either `bid' or `dpd'). The `bid' (binary integer decimal) format is default on i386 and x86_64 systems, and the `dpd' (densely packed decimal) format is default on PowerPC systems.
+--enable-fixed-point
+--disable-fixed-point
+    Enable (or disable) support for C fixed-point arithmetic. This option is enabled by default for some targets (such as MIPS) which have hardware-support for fixed-point operations. On other targets, you may enable this option manually.
+--with-long-double-128
+    Specify if long double type should be 128-bit by default on selected GNU/Linux architectures. If using --without-long-double-128, long double will be by default 64-bit, the same as double type. When neither of these configure options are used, the default will be 128-bit long double when built against GNU C Library 2.4 and later, 64-bit long double otherwise.
+--with-gmp=pathname
+--with-gmp-include=pathname
+--with-gmp-lib=pathname
+--with-mpfr=pathname
+--with-mpfr-include=pathname
+--with-mpfr-lib=pathname
+--with-mpc=pathname
+--with-mpc-include=pathname
+--with-mpc-lib=pathname
+    If you do not have GMP (the GNU Multiple Precision library), the MPFR library and/or the MPC library installed in a __standard location__ and you want to build GCC, you can explicitly specify the directory where they are installed (`--with-gmp=gmpinstalldir', `--with-mpfr=mpfrinstalldir', `--with-mpc=mpcinstalldir'). The --with-gmp=gmpinstalldir option is shorthand for --with-gmp-lib=gmpinstalldir/lib and --with-gmp-include=gmpinstalldir/include. Likewise the --with-mpfr=mpfrinstalldir option is shorthand for --with-mpfr-lib=mpfrinstalldir/lib and --with-mpfr-include=mpfrinstalldir/include, also the --with-mpc=mpcinstalldir option is shorthand for --with-mpc-lib=mpcinstalldir/lib and --with-mpc-include=mpcinstalldir/include. If these shorthand assumptions are not correct, you can use the explicit include and lib options directly. You might also need to ensure the shared libraries can be found by the dynamic linker when building and using GCC, for example by setting the runtime shared library path variable (LD_LIBRARY_PATH on GNU/Linux and Solaris systems).
+
+    These flags are applicable to the host platform only. When building a cross compiler, they will not be used to configure target libraries.
+--with-ppl=pathname
+--with-ppl-include=pathname
+--with-ppl-lib=pathname
+--with-cloog=pathname
+--with-cloog-include=pathname
+--with-cloog-lib=pathname
+    If you do not have PPL (the Parma Polyhedra Library) and the CLooG libraries installed in a standard location and you want to build GCC, you can explicitly specify the directory where they are installed (`--with-ppl=pplinstalldir', `--with-cloog=clooginstalldir'). The --with-ppl=pplinstalldir option is shorthand for --with-ppl-lib=pplinstalldir/lib and --with-ppl-include=pplinstalldir/include. Likewise the --with-cloog=clooginstalldir option is shorthand for --with-cloog-lib=clooginstalldir/lib and --with-cloog-include=clooginstalldir/include. If these shorthand assumptions are not correct, you can use the explicit include and lib options directly.
+
+    These flags are applicable to the host platform only. When building a cross compiler, they will not be used to configure target libraries.
+**--with-host-libstdcxx=linker-args**
+    If you are linking with a static copy of PPL, you can use this option to specify how the linker should find the standard C++ library used internally by PPL. Typical values of linker-args might be `-lstdc++' or `-Wl,-Bstatic,-lstdc++,-Bdynamic -lm'. If you are linking with a shared copy of PPL, you probably do not need this option; shared library dependencies will cause the linker to search for the standard C++ library automatically.
+--with-stage1-ldflags=flags
+    This option may be used to set linker flags to be used when linking stage 1 of GCC. These are also used when linking GCC if configured with --disable-bootstrap. By default no special flags are used.
+--with-stage1-libs=libs
+    This option may be used to set libraries to be used when linking stage 1 of GCC. These are also used when linking GCC if configured with --disable-bootstrap. The default is the argument to --with-host-libstdcxx, if specified.
+--with-boot-ldflags=flags
+    This option may be used to set linker flags to be used when linking stage 2 and later when bootstrapping GCC. If neither –with-boot-libs nor –with-host-libstdcxx is set to a value, then the default is `-static-libstdc++ -static-libgcc'.
+--with-boot-libs=libs
+    This option may be used to set libraries to be used when linking stage 2 and later when bootstrapping GCC. The default is the argument to --with-host-libstdcxx, if specified.
+--with-debug-prefix-map=map
+    Convert source directory names using -fdebug-prefix-map when building runtime libraries. `map' is a space-separated list of maps of the form `old=new'.
+--enable-linker-build-id
+    Tells GCC to pass --build-id option to the linker for all final links (links performed without the -r or --relocatable option), if the linker supports it. If you specify --enable-linker-build-id, but your linker does not support --build-id option, a warning is issued and the --enable-linker-build-id option is ignored. The default is off.
+--with-linker-hash-style=choice
+    Tells GCC to pass --hash-style=choice option to the linker for all final links. choice can be one of `sysv', `gnu', and `both' where `sysv' is the default.
+--enable-gnu-unique-object
+--disable-gnu-unique-object
+    Tells GCC to use the gnu_unique_object relocation for C++ template static data members and inline function local statics. Enabled by default for a native toolchain with an assembler that accepts it and GLIBC 2.11 or above, otherwise disabled.
+--enable-lto
+--disable-lto
+    Enable support for__ link-time optimization (LTO)__. This is enabled by default, and may be disabled using --disable-lto.
+--with-plugin-ld=pathname
+    Enable an alternate linker to be used at link-time optimization (LTO) link time when -fuse-linker-plugin is enabled. This linker should have plugin support such as gold starting with version 2.20 or GNU ld starting with version 2.21. See -fuse-linker-plugin for details. 
+
+===== Cross-Compiler-Specific Options =====
+
+The following options only apply to building cross compilers.
+
+**--with-sysroot**
+**--with-sysroot=dir（生成的编译器，会把dir当作其运行的根目录，只会在其中搜索编译程序时需要的头文件、库文件，但是编译器自生运行所需的库文件、头文件不受这限制）**
+    Tells GCC to consider dir as the root of a tree that contains (a subset of) the** root filesystem of the target operating system**.__ Target system__ headers, libraries and run-time object files will__ be searched in there__. More specifically, this acts as if __--sysroot=dir__ was added to the default options of the built compiler(用编译好的编译器编译源文件时指定--sysroot=dir选项). The specified directory is __not copied__ into the install tree, unlike the options --with-headers and --with-libs that this option obsoletes. The default value, in case --with-sysroot is not given an argument, is ${gcc_tooldir}/sys-root. If the specified directory is a__ subdirectory of ${exec_prefix}, then it will be found relative to the GCC binaries if the installation tree is moved__.
+
+    This option affects the system root for the compiler used to build **target libraries** (which runs on the build system) and the compiler **newly **installed with make install; it does **not affect** the compiler which is used to build GCC itself.(这个选项只会对生成的编译器有影响，不会影响正在编译编译器代码的主机编译器)
+
+    If you specify the --with-native-system-header-dir=dirname option then the compiler(编译后生成的编译器) will search that directory within dirname **for native system headers**__ rather than__ the default /usr/include.(生成的编译器只会在dir中搜索头文件)
+
+**--with-build-sysroot**
+**--with-build-sysroot=dir(当--prefix和实际安装的位置不一致时，可以使用这个选项)**
+    Tells GCC to consider dir as the system root (see --with-sysroot) while building target libraries, instead of the directory specified with --with-sysroot. This option is only useful __when you are already using --with-sysroot__. You can use --with-build-sysroot when you are configuring with --prefix set to a directory that is __different__ from the one in which you are installing GCC and your target libraries.
+
+    This option affects the system root for the compiler used to build target libraries (which runs on the build system); it does not affect the compiler which is used to build GCC itself.
+
+    If you specify the --with-native-system-header-dir=dirname option then the compiler will search that directory within dirname for native system headers rather than the default /usr/include.
+**--with-headers**
+**--with-headers=dir(供编译编译器的主机编译器使用，然后复制到生成的编译器的安装目录中)**
+    Deprecated in favor of --with-sysroot. Specifies that __target headers__ are available when building a cross compiler. The dir argument specifies a directory which has the **target include files**. These include files will be __copied__ into the gcc install directory. This option with the dir argument is required when building a cross compiler, if **prefix/target/sys-include** doesn't pre-exist. If prefix/target/sys-include does pre-exist, the dir argument may be omitted. fixincludes will be run on these files to make them compatible with GCC.
+**--without-headers**
+    Tells GCC** not use any target headers from a libc** when building a cross compiler. When crossing to GNU/Linux, you need the headers so GCC can build the **exception handling** for libgcc.
+**--with-libs**
+**--with-libs="dir1 dir2 ... dirN"**
+    Deprecated in favor of --with-sysroot. Specifies a list of directories which contain the __target runtime libraries__. These libraries will be **copied** into the gcc install directory. If the directory list is omitted, this option has no effect.
+**--with-newlib**
+    Specifies that `newlib' is being used as the target C library. This causes __eprintf to be omitted from libgcc.a on the assumption that it will be provided by `newlib'.
+**--with-build-time-tools=dir**
+    Specifies where to find the set of __target tools__ (assembler, linker, etc.) that will be used while building GCC itself. This option can be useful if the directory layouts are different between the system you are building GCC on, and the system where you will deploy it.
+
+    For example, on an `ia64-hp-hpux' system, you may have the GNU assembler and linker in /usr/bin, and the native tools in a different path, and build a toolchain that expects to find the native tools in /usr/bin.
+
+    When you use this option, you should ensure that dir includes **ar, as, ld, nm, ranlib and strip **if necessary, and possibly objdump. Otherwise, GCC may use an inconsistent set of tools. 
+
+===== Java-Specific Options =====
+
+The following option applies to the build of the Java front end.
+
+--disable-libgcj
+    Specify that the run-time libraries used by GCJ should not be built. This is useful in case you intend to use GCJ with some other run-time, or you're going to install it separately, or it just happens not to build on your particular machine. In general, if the Java front end is enabled, the GCJ libraries will be enabled too, unless they're known to not work on the target platform. If GCJ is enabled but `libgcj' isn't built, you may need to port it; in this case, before modifying the top-level configure.in so that `libgcj' is enabled by default on this platform, you may use --enable-libgcj to override the default. 
+
+The following options apply to building `libgcj'.
+General Options
+
+--enable-java-maintainer-mode
+    By default the `libjava' build will not attempt to compile the .java source files to .class. Instead, it will use the .class files from the source tree. If you use this option you must have executables named ecj1 and gjavah in your path for use by the build. You must use this option if you intend to modify any .java files in libjava.
+--with-java-home=dirname
+    This `libjava' option overrides the default value of the `java.home' system property. It is also used to set `sun.boot.class.path' to dirname/lib/rt.jar. By default `java.home' is set to prefix and `sun.boot.class.path' to datadir/java/libgcj-version.jar.
+--with-ecj-jar=filename
+    This option can be used to specify the location of an external jar file containing the Eclipse Java compiler. A specially modified version of this compiler is used by gcj to parse .java source files. If this option is given, the `libjava' build will create and install an ecj1 executable which uses this jar file at runtime.
+
+    If this option is not given, but an ecj.jar file is found in the topmost source tree at configure time, then the `libgcj' build will create and install ecj1, and will also install the discovered ecj.jar into a suitable place in the install tree.
+
+    If ecj1 is not installed, then the user will have to supply one on his path in order for gcj to properly parse .java source files. A suitable jar is available from ftp://sourceware.org/pub/java/.
+--disable-getenv-properties
+    Don't set system properties from GCJ_PROPERTIES.
+--enable-hash-synchronization
+    Use a global hash table for monitor locks. Ordinarily, `libgcj''s `configure' script automatically makes the correct choice for this option for your platform. Only use this if you know you need the library to be configured differently.
+--enable-interpreter
+    Enable the Java interpreter. The interpreter is automatically enabled by default on all platforms that support it. This option is really only useful if you want to disable the interpreter (using --disable-interpreter).
+--disable-java-net
+    Disable java.net. This disables the native part of java.net only, using non-functional stubs for native method implementations.
+--disable-jvmpi
+    Disable JVMPI support.
+--disable-libgcj-bc
+    Disable BC ABI compilation of certain parts of libgcj. By default, some portions of libgcj are compiled with -findirect-dispatch and -fno-indirect-classes, allowing them to be overridden at run-time.
+
+    If --disable-libgcj-bc is specified, libgcj is built without these options. This allows the compile-time linker to resolve dependencies when statically linking to libgcj. However it makes it impossible to override the affected portions of libgcj at run-time.
+--enable-reduced-reflection
+    Build most of libgcj with -freduced-reflection. This reduces the size of libgcj at the expense of not being able to do accurate reflection on the classes it contains. This option is safe if you know that code using libgcj will never use reflection on the standard runtime classes in libgcj (including using serialization, RMI or CORBA).
+--with-ecos
+    Enable runtime eCos target support.
+--without-libffi
+    Don't use `libffi'. This will disable the interpreter and JNI support as well, as these require `libffi' to work.
+--enable-libgcj-debug
+    Enable runtime debugging code.
+--enable-libgcj-multifile
+    If specified, causes all .java source files to be compiled into .class files in one invocation of `gcj'. This can speed up build time, but is more resource-intensive. If this option is unspecified or disabled, `gcj' is invoked once for each .java file to compile into a .class file.
+--with-libiconv-prefix=DIR
+    Search for libiconv in DIR/include and DIR/lib.
+--enable-sjlj-exceptions
+    Force use of the setjmp/longjmp-based scheme for exceptions. `configure' ordinarily picks the correct value based on the platform. Only use this option if you are sure you need a different setting.
+--with-system-zlib
+    Use installed `zlib' rather than that included with GCC.
+--with-win32-nlsapi=ansi, unicows or unicode
+    Indicates how MinGW `libgcj' translates between UNICODE characters and the Win32 API.
+--enable-java-home
+    If enabled, this creates a JPackage compatible SDK environment during install. Note that if –enable-java-home is used, –with-arch-directory=ARCH must also be specified.
+--with-arch-directory=ARCH
+    Specifies the name to use for the jre/lib/ARCH directory in the SDK environment created when –enable-java-home is passed. Typical names for this directory include i386, amd64, ia64, etc.
+--with-os-directory=DIR
+    Specifies the OS directory for the SDK include directory. This is set to auto detect, and is typically 'linux'.
+--with-origin-name=NAME
+    Specifies the JPackage origin name. This defaults to the 'gcj' in java-1.5.0-gcj.
+--with-arch-suffix=SUFFIX
+    Specifies the suffix for the sdk directory. Defaults to the empty string. Examples include '.x86_64' in 'java-1.5.0-gcj-1.5.0.0.x86_64'.
+--with-jvm-root-dir=DIR
+    Specifies where to install the SDK. Default is $(prefix)/lib/jvm.
+--with-jvm-jar-dir=DIR
+    Specifies where to install jars. Default is $(prefix)/lib/jvm-exports.
+--with-python-dir=DIR
+    Specifies where to install the Python modules used for aot-compile. DIR should not include the prefix used in installation. For example, if the Python modules are to be installed in /usr/lib/python2.5/site-packages, then –with-python-dir=/lib/python2.5/site-packages should be passed. If this is not specified, then the Python modules are installed in $(prefix)/share/python.
+--enable-aot-compile-rpm
+    Adds aot-compile-rpm to the list of installed scripts.
+--enable-browser-plugin
+    Build the gcjwebplugin web browser plugin.
+--enable-static-libjava
+    Build static libraries in libjava. The default is to only build shared libraries.
+
+    ansi
+        Use the single-byte char and the Win32 A functions natively, translating to and from UNICODE when using these functions. If unspecified, this is the default.
+    unicows
+        Use the WCHAR and Win32 W functions natively. Adds -lunicows to libgcj.spec to link with `libunicows'. unicows.dll needs to be deployed on Microsoft Windows 9X machines running built executables. libunicows.a, an open-source import library around Microsoft's unicows.dll, is obtained from http://libunicows.sourceforge.net/, which also gives details on getting unicows.dll from Microsoft.
+    unicode
+        Use the WCHAR and Win32 W functions natively. Does not add -lunicows to libgcj.spec. The built executables will only run on Microsoft Windows NT and above. 
+
+===== AWT-Specific Options =====
+
+--with-x
+    Use the X Window System.
+--enable-java-awt=PEER(S)
+    Specifies the AWT peer library or libraries to build alongside `libgcj'. If this option is unspecified or disabled, AWT will be non-functional. Current valid values are gtk and xlib. Multiple libraries should be separated by a comma (i.e. --enable-java-awt=gtk,xlib).
+--enable-gtk-cairo
+    Build the cairo Graphics2D implementation on GTK.
+--enable-java-gc=TYPE
+    Choose garbage collector. Defaults to boehm if unspecified.
+--disable-gtktest
+    Do not try to compile and run a test GTK+ program.
+--disable-glibtest
+    Do not try to compile and run a test GLIB program.
+--with-libart-prefix=PFX
+    Prefix where libart is installed (optional).
+--with-libart-exec-prefix=PFX
+    Exec prefix where libart is installed (optional).
+--disable-libarttest
+    Do not try to compile and run a test libart program. 
+
+===== Overriding configure test results =====
+
+Sometimes, it might be necessary to override the result of some configure test, for example in order to ease porting to a new system or work around a bug in a test. The toplevel configure script provides three variables for this:
+
+build_configargs
+    The contents of this variable is passed to all build configure scripts.
+host_configargs
+    The contents of this variable is passed to all host configure scripts.
+target_configargs
+    The contents of this variable is passed to all target configure scripts. 
+
+In order to avoid shell and make quoting issues for complex overrides, you can pass a setting for CONFIG_SITE and set variables in the site file.
+
+Return to the GCC Installation page
+For questions related to the use of GCC, please consult these web pages and the GCC manuals. If that fails, the gcc-help@gcc.gnu.org mailing list might help. Comments on these web pages and the development of GCC are welcome on our developer list at gcc@gcc.gnu.org. All of our lists have public archives.
+
+Copyright (C) Free Software Foundation, Inc. Verbatim copying and distribution of this entire article is permitted in any medium, provided this notice is preserved.
+
+These pages are maintained by the GCC team. Last modified 2011-11-23.

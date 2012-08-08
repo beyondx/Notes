@@ -1,0 +1,8 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-15T21:58:42+08:00
+
+====== 常用工具 ======
+Created Sunday 15 May 2011
+1.菜单制作
+http://www.opencube.com/download.asp    基于web界面

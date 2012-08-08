@@ -1,0 +1,74 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-05T17:00:01+08:00
+
+====== Separation of concerns ======
+Created Friday 05 August 2011
+
+In computer science, __separation of concerns (SoC) is the process of separating a computer program into distinct features that overlap in functionality as little as possible.__ A concern is any piece of **interest or focus** in a program. Typically, __concerns are synonymous with features or behaviors__. Progress towards SoC is traditionally achieved through **modularity of programming and encapsulation** (or "transparency" of operation), with the help of information hiding. Layered designs in information systems are also often based on separation of concerns (e.g., presentation layer, business logic layer, data access layer, database layer).
+
+===== Contents =====
+
+    1 Implementation
+    2 Origin
+    3 Examples
+    4 See also
+    5 References
+    6 External references
+
+===== Implementation =====
+
+All programming paradigms **aid developers in the process of improving SoC**. For example, object-oriented programming languages such as Delphi, C++, Java, and C# can **separate concerns into objects**, and a design pattern like **MVC can separate content from presentation and data-processing** (model) from content. Service-oriented design can separate concerns into services. __Procedural programming languages__ such as C and Pascal can separate concerns into procedures. Aspect-oriented programming languages can separate concerns into aspects and objects.
+
+Separation of concerns is** an important design principle** in many other areas as well, such as urban planning, architecture and information design. The goal is to design systems so that **functions can be optimized independently of other functions**, so that failure of one function does not cause other functions to fail, and in general to make it easier to understand, design and manage complex interdependent systems. Common examples include using corridors to connect rooms rather than having rooms open directly into each other, and keeping the stove on one circuit and the lights on another.
+
+==== Origin ====
+
+The term separation of concerns was probably coined by __Edsger W. Dijkstra __in his 1974 paper "On the role of scientific thought".[1]
+
+    Let me try to explain to you, what to my taste is characteristic for all intelligent thinking. It is, that one is willing to study in depth an aspect of one's subject matter in isolation for the sake of its own consistency, all the time knowing that one is occupying oneself only with one of the aspects. We know that a program must be correct and we can study it from that viewpoint only; we also know that it should be efficient and we can study its efficiency on another day, so to speak. In another mood we may ask ourselves whether, and if so: why, the program is desirable. But nothing is gained --on the contrary!-- by tackling these various aspects simultaneously. It is what I sometimes have called "the separation of concerns", which, even if not perfectly possible, is yet the only available technique for effective ordering of one's thoughts, that I know of. This is what I mean by "focusing one's attention upon some aspect": it does not mean ignoring the other aspects, it is just doing justice to the fact that from this aspect's point of view, the other is irrelevant. It is being one- and multiple-track minded simultaneously.
+
+Fifteen years later, it was evident the term Separation of Concerns was becoming an accepted idea. In 1989, Chris Reade wrote a book titled "E__lements of Functional Programming__" [2] that describes separation of concerns:
+
+    The programmer is having to do several things at the same time, namely, 1. describe what is to be computed; 2. organise the computation sequencing into small steps; 3. organise memory management during the computation.
+
+Reade continues to say,
+
+    Ideally, the programmer should be able to concentrate on the first of the three tasks (describing what is to be computed) without being distracted by the other two, more administrative, tasks. Clearly, administration is important but by separating it from the main task we are likely to get more reliable results and we can ease the programming problem by automating much of the administration. The separation of concerns has other advantages as well. For example, program proving becomes much more feasible when details of sequencing and memory management are absent from the program. Furthermore, descriptions of what is to be computed should be free of such detailed step-by-step descriptions of how to do it if they are to be evaluated with different machine architectures. Sequences of small changes to a data object held in a store may be an inappropriate description of how to compute something when a highly parallel machine is being used with thousands of processors distributed throughout the machine and local rather than global storage facilities. Automating the administrative aspects means that the language implementor has to deal with them, but he/she has far more opportunity to make use of very different computation mechanisms with different machine architectures.
+
+==== Examples ====
+
+Separation of concerns is crucial to the design of the** Internet**. In the Internet Protocol Suite, great efforts have been made to separate concerns into __well-defined layers.__ This allows protocol designers to focus on the concerns in one layer, and ignore the other layers. The Application Layer protocol SMTP, for example, is concerned about all the details of conducting an email session over a reliable transport service (usually TCP), but not the least concerned about how the transport service makes that service reliable. Similarly, TCP is not concerned about the routing of data packets, which is handled at the Internet Layer.
+
+HyperText Markup Language (HTML) and cascading style sheets (CSS) are languages intended to __separate style from content.__ Where HTML elements define the __abstract structure of a document__, CSS directives are interpreted by the web browser to render those elements in visual form. In practice, one must sometimes alter HTML in order to obtain the desired result with CSS because CSS does not allow one to remap the document tree. This particular problem can be avoided by using XML and XSLT to produce the HTML, in addition to CSS -- XSL does allow remapping the XML tree in arbitrary ways.
+
+Subject-oriented programming allows separate concerns to be addressed as separate software constructs, each on an equal footing with the others. Each concern provides its own class-structure into which the objects in common are organized, and contributes state and methods to the composite result where they cut across one another. Correspondence rules describe how the classes and methods in the various concerns are related to each other at points where they interact, allowing composite behavior for a method to be derived from several concerns. Multi-dimensional Separation of Concerns allows the analysis and composition of concerns to be manipulated as a multi-dimensional "matrix" in which each concern provides a dimension in which different points of choice are enumerated, with the cells of the matrix occupied by the appropriate software artifacts.
+
+Aspect-oriented programming allows cross-cutting concerns to be addressed as secondary concerns. For example, most programs require some form of security and logging. Security and logging are often secondary concerns, whereas the primary concern is often on accomplishing business goals.
+
+Most project organization tasks are seen as secondary tasks. For example, build automation is an approach to automating the process of compiling source code into binary code. The primary goals in build automation are reducing the risk of human error and saving time.
+[edit] See also
+
+    Abstraction principle (programming)
+    Aspect-oriented software development
+    Concern (computer science)
+    Core concern
+    Cross-cutting concern
+    Holism
+    Modular design
+    Modular programming
+    Separation of presentation and content
+    Coupling (computer science)
+
+[edit] References
+
+    ^ Dijkstra, Edsger W. (1982). "On the role of scientific thought". In Dijkstra, Edsger W.. Selected writings on Computing: A Personal Perspective. New York, NY, USA: Springer-Verlag New York, Inc.. pp. 60–66. ISBN 0-387-90652-5
+    ^ Reade, Chris (1989). Elements of Functional Programming. Boston, MA, USA: Addison-Wesley Longman Publishing Co., Inc.. pp. 600 pages. ISBN 0201129159.
+
+[edit] External references
+
+    The Art of Separation of Concerns
+    Multi-Dimensional Separation of Concerns
+    TAOSAD
+    Tutorial and Workshop on Aspect-Oriented Programming and Separation of Concerns
+

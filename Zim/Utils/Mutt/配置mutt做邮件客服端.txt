@@ -1,0 +1,450 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-28T20:41:25+08:00
+
+====== 配置mutt做邮件客服端 ======
+Created Wednesday 28 December 2011
+
+http://home.ustc.edu.cn/~lixuebai/GNU/MuttConfig.html
+
+我用的操作系统是Debian或者Ubuntu GNU/linux
+这里的组合是__mutt+msmtp+getmail+procmail__
+
+mutt是作为客户端mua，msmtp是邮件发送mta，getmail收取邮件，procmail过滤邮件mda。
+
+在Debian中默认安装的mta是**exim4**,在Ubuntu中默认安装的mta是**postfix**, 它们当然可以用，但是足够用于邮件服务器了，如果你是个人电脑使用，就不需要用这么好的mta了，况且exim4或者postfix占用系统资源很大，没有必要开机自动运行。
+
+msmtp是为mutt写的，很简单轻便的. 另外，还有些人用esmtp等都可以。
+
+收取邮件，从前大家都使用比较著名的fetchmail. fetchmail是收取信件，但不是直接放在本地硬盘中，而是需要本地mta投递，所以需要procmail
+
+看到有人建议不用fetchmail,而是用getmail, 据说fetchmail问题太多，而getmail则没有那些问题，你可以在aptitude中看getmail4 包的介绍,就说是为了替代fetchmail的
+
+作者为什么要写getmail的说明在 http://pyropus.ca/software/getmail/faq.html#faq-about-why
+
+当然可能有人喜欢exim或者postfix，喜欢fetchmail,我会放在后面讲述。分别是MuttConfig:exim MuttConfig:postfix MuttConfig:fetchmailrc
+
+现在我来说怎么配置
+mutt+msmtp+getmail+procmail
+
+首先aptitude
+
+可以先卸载exim4或者postfix,这时候会遇到其他包的关联问题，因为不存在mta了嘛，所以选中msmtp-mta
+
+再选中msmtp,mutt,getmail4,procmail
+
+再选中lynx（这是一个文本话浏览网页的工具），wv (wvware是用于把MS doc文档转化为html或者tex文档的工具), 这两个在后面配置mutt中用的着。
+建立文件箱
+
+$ mkdir ~/Mail
+$ cd ~/Mail
+
+新建三个文件
+
+$ vim inbox
+$ vim sent
+$ vim postponed
+
+空文件，存盘退出就可以了。
+配置mutt
+
+新建~/.muttrc
+
+# lixuebai
+
+#编辑器 直接在 Mutt 的终端里使用非图形界面的 Emacs (emacs -nw)
+set editor="emacs -nw"
+
+#设置邮件发送程序
+set sendmail="/usr/bin/msmtp"
+
+#建立信箱
+set folder="~/Mail"
+set mbox="~/Mail/inbox"
+#set mbox_type=maildir
+set spoolfile="~/Mail/inbox"
+set postponed="~/Mail/postponed"
+set record="~/Mail/sent"
+
+# 让mutt监视下面几个邮箱，并随时报告新邮件
+mailboxes "=inbox"
+mailboxes "=USTCstudent"
+mailboxes "=USTCteacher"
+mailboxes "=ustcbbs
+mailboxes "=Gmail"
+
+set check_new = yes
+set timeout = 600
+
+#set alternates="xxx@mail.ustc.edu.cn" 
+#这是一个格式字符串，用来控制你的index的列表显示。它的缺省定义是
+
+set index_format="%4C %Z %{%b %d} %-15.15L (%4l) %s"
+#指定你有那些信箱文件。当你按 "c" 切换信箱时，再按 Tab 键，这些信箱就可供你选择
+mailboxes Mailbox sent-mail 
+#这是一个 bool 型变量。它表明你在回信时引用原文是否加入原文的邮件头。
+set header=no 
+#可以设置为 yes, no, ask-yes, 或者 ask-no. 这是说，当你按q退出时，是否提示你(ask-yes,ask-no)，
+#还是直接就退出了(yes)，还是根本不理你(no)。
+set quit=ask-yes
+#html类型的附件是允许直接通过 .mailcap 浏览的？
+#doc类型的附件通过wvware转成html 浏览
+auto_view text/html application/msword
+
+#这也是一个提示性变量。它是确定当你退出时，是否提示你把信件从 spool 移动到的 mbox 文件。
+set move=no
+#当 Mutt 用 thread 方式显示时，是否用纯 ascii 表示树状列表。
+set ascii_chars=yes
+#回信时是否包含原文。
+set include
+#回信的引文之前插入那个符号？
+set indent_str="> "
+#设置你自己的邮件头。
+my_hdr From: xxx@mail.ustc.edu.cn
+#打分
+#新信件+4分,主题包含“通知”的+2，主题包含 “Circulation” +3, 已经标记删除的 -5，上次没有读的 +1，包含 “believe”的 -10(垃圾广告！)。
+score "~N" +4
+score "~s 通知" +2
+score "~s Circulation" +3
+score "~D" -5
+score "~O" +1
+score "~s believe" -10
+#排序方式。
+set sort=score
+#当用 thread 排序方式时，我们对各个 thread 的相对排序顺序。
+set sort_aux=date
+#如果翻到最后，再按往下翻也不会翻到下一封信件
+set pager_stop
+#如果设置，当你按 "r" 回信时，就不会再提示你输入回信地址和主题，直接进入编辑模式。
+set fast_reply
+#当你按 "t" 或者 "D" 之类的标记操作时，是否自动把光标移动到下一封信件。
+set resolve=yes
+#地址簿
+source ~/.mutt.alias
+#当你在 index 里按 "a" 为来信者取别名时，使用哪一个别名文件保存这个别名。
+set alias_file=/home/lixuebai/.mutt.alias
+#你发出的邮件保存到那个信箱文件？比如可以像我这样每个月发出的信件放在不同的文件里。
+set record="~/Mail/=sent-mail-`date +%Y-%m`"
+#你的终端支持哪一种编码的显示？这个必须和你的终端编码一样。推荐用utf8
+set charset="utf8"
+#send_charset
+set send_charset="us-ascii:iso-8859-1:gb2312:utf-8"
+#外部程序退出时，是否要求用户按一个键才返回。这在察看某些shell命令输出时是比要的，
+#否则它们一下就消失了。
+set wait_key=yes
+#当你要把信件存到另一个信箱，而这个信箱已经存在时，是否提示附加？
+set noconfirmappend
+#是否把邮件头也放在编辑器里可以修改？
+set edit_headers=no
+#当你在用 pager 看信件时，在 index 留出多少行显示邮件列表？
+set pager_index_lines=4
+#告诉 Mutt 你已经订阅了那些邮件列表(mailing-list).
+#subscribe fvwm@fvwm.org
+
+#mutt显示日期为中文
+set locale="zh_CN"
+#有些没有设置字符编码时
+charset-hook ^us-ascii$ gb2312
+#Chinaren 等服务器发出来的信件使用了 quoted-printable 的 subject，
+#而且设置编码为 "iso8859-1"，这显然是错误的。
+#对付这个错误的办法是把 iso-8859-1 变成 gb2312 的别名
+charset-hook ^iso-8859-1$ gb2312
+# evolution 发过来的 subject 为 utf-8 编码的邮件标题乱码！
+#那就把不是 utf-8 的编码都映射到 gb2312
+charset-hook !utf-8 gb2312
+
+# mutt进行pop3收信，当然之前要查看$ mutt -v 编辑情况的确编辑了pop3了。
+# 以后进入mutt按G就可以收信了。
+#set pop_user=xxx@mail.ustc.edu.cn
+#set pop_pass="xxxxxx"
+#set pop_host=202.38.64.8
+#现在不用mutt直接收信了。
+
+#把mutt发送的from域作为sendmail发送邮件的sender(否则会用user@localdomian)
+set envelope_from=yes
+
+macro index G "!getmail\n" "Invoke getmail"
+macro pager G "!getmail\n" "Invoke getmail"
+
+配置msmtp
+
+新建~/.msmtprc
+
+# xxx@mail.ustc.edu.cn
+account xxx@mail.ustc.edu.cn
+host 202.38.64.8
+from xxx@mail.ustc.edu.cn
+auth plain
+user xxx@mail.ustc.edu.cn
+password xxxxxx
+
+科大邮件服务器是采用明码密码的，所以有auth plain
+
+注意一点，~/.msmtprc权限不能过高，
+
+$ chmod -v 600 ~/.msmtprc
+
+就可以了。
+配置getmail
+
+新建文件夹~/.getmail/ 并在这个文件夹中新建文件getmailrc
+
+$ mkdir ~/.getmail
+$ cd ~/.getmail/
+$ vim getmailrc
+
+[options]
+verbose = 1
+read_all = false
+message_log = ~/.getmail/log
+
+[retriever]
+type = SimplePOP3Retriever
+server = 202.38.64.8
+username = xxx@mail.ustc.edu.cn
+password = xxxxxx
+
+[destination]
+type = MDA_external
+path = /usr/bin/procmail
+unixfrom = true
+
+使用crontab定时自动收信
+
+$ crontab -e
+
+每隔10分钟收一次信，只收未读的信件。
+
+0,10,20,30,40,50 * * * * getmail -n
+
+配置procmail
+
+新建文件~/.procmailrc
+
+PATH=/bin:/sbin:/usr/bin:/usr/sbin
+SHELL=/bin/bash
+MAILDIR=$HOME/Mail
+DEFAULT=$MAILDIR/inbox
+LOGFILE=$MAILDIR/.procmaillog
+
+:0 
+* ^From.*@mail.ustc.edu.cn 
+USTCstudent
+
+:0
+* ^From.*@ustc.edu.cn 
+USTCteacher
+
+:0
+* ^From.*@bbs.ustc.edu.cn
+ustcbbs
+
+:0 
+* ^From.*@gmail.com 
+Gmail
+
+:0   #最后的这个配置就是指如果上面分类剩下的信件全扔到inbox里
+* .* inbox
+
+# 黑名单（垃圾邮件）
+:0:
+* ^From.*badguy
+/dev/null
+
+下面说几个mutt其他方面的问题
+mutt使用地址簿
+
+用 alias 来实现一个地址簿。alias 命令的形式是这样的，举个例子：
+
+alias ab Xx X <xxx@mail.ustc.edu.cn>
+
+alias 是命令，ab 是别名，Xx X <xxx@mail.ustc.edu.cn> 是一个标准的 email 地址。这样，如果你在 index 里按 "m"，在 To: 的提示下输入 "ab"，就可以发信给 Xx X <xxx@mail.ustc.edu.cn>。
+
+在 To: 的提示下按 Tab 就可以显示联系人列表，然后你可以移动光标选择联系人。
+
+如果你有很多 alias 要写，最好把它们写到另外一个文件，比如叫 .mutt.alias. 然后在 .muttrc 里加上:
+
+source ~/.mutt.alias
+
+在里面写诸如
+
+alias music Music <music@ustc.edu.cn>
+alias video 科大影视 <video@ustc.edu.cn>
+.........
+
+你还可以设置一个变量：
+
+set alias_file=~/.mutt.alias
+
+这样你在 index 里按 "a"，就可以把来信人加入到这个 alias 文件了。
+mutt附件格式问题
+
+mutt(和gnus一样)默认的附件格式是rfc2231，但实际上大多数邮件客户端却是rfc2047。据说rfc2231才是标准的。为了迎合其他人，需要改变mutt的附件格式，要打补丁，详见 brep的主页，可以使用brep打的包。
+
+然后在.muttrc中增加
+
+set rfc2047 parameter=yes
+
+mutt处理 HTML 附件
+
+mutt 可以处理任何类型的附件。因为它可以调用合适的程序来处理它们。为了直接在 mutt 的窗口里显示 HTML，先aptitude安装lynx, 你需要在 ~/.mailcap 文件加入：
+
+text/html; lynx --dump %s; nametemplate=%s.html; copiousoutput
+
+在 ~/.muttrc 加入：
+
+auto_view text/html
+
+mutt处理doc附件问题
+
+许多人喜欢发送微软的doc文档作为附件，使用wvware可以转化成为html文档或者 latex文档。mutt窗口可以显示html，先aptitude安装wv,然后在~/.mailcap中加入
+
+application/msword; wvHtml --charset=gb2312 %s - | lynx --dump -stdin; nametemplate=%s.html; copiousoutput
+
+在~/.muttrc中加入
+
+auto_view text/html application/msword
+
+OK,mutt已经配置好了，运行试试吧，
+
+$ mutt
+
+下面是说明配置exim4的配置和postfix的配置(MuttConfig:postfix), 还有fetcmail的使用(MuttConfig:fetchmailrc)。喜欢它们的人可以看。
+配置exim4
+
+$ su
+# dpkg-reconfigure exim4-config
+
+根据你的信箱的情况，如果你的信箱是要求smtp认证的，(不需要smtp认证的跳过MuttConfig:nosmtp1)
+
+按照如下的流程，比如科大信箱mail.ustc.edu.cn现在就是要smtp认证的，那么就要按照下面所示.
+
+(1)将配置文档拆分成小文件么？ 否
+(2)选择“用smarthost发信；通过smtp或fetchmail接受邮件”
+(3)系统邮件名称，随意；（可以写xxx@mail.ustc.edu.cn)
+(4)要监听的入站 SMTP 连接的 IP 地址：127.0.0.1 (这样，就只有本机可以利用exim4)
+(5)其它可接受的邮件目的地址：(empty)
+(6)为这些主机进行邮件转发：(empty)
+(7)负责处理从本机寄出的邮件的机器(smarthost): 202.38.64.8
+(8)要在寄出的邮件中隐藏本地邮件名称吗？ 是
+(9)本地用户的可视域名：同3）
+(10)保持最小 DNS 查询量吗(按需拔号 Dial-on-Demand)？ 否
+
+还要修改几个配置文件：
+
+(1) /etc/exim4/passwd.client，smtp的帐号密码设置，加入：
+
+        202.38.64.8:用户名:密码
+
+    对于学生要用 用户名@mail.ustc.edu.cn
+
+(2) /etc/exim4/exim4.conf.template，exim4配置文件,找到下面的文字
+
+# Because AUTH PLAIN and AUTH LOGIN send the password in clear, we
+# only allow these mechanisms over encrypted connections by default.
+# You can set AUTH_CLIENT_ALLOW_NOTLS_PASSWORDS to allow unencrypted
+# clear text password authentication on all connections.
+
+看懂了就知道了，因为email服务器的授权方式是明文方式验证的，所以要加入：
+
+    AUTH_CLIENT_ALLOW_NOTLS_PASSWORDS = 1
+
+对于没有smtp认证的邮箱，在dpkg-reconfigure exim4-config的第二步时候选择
+
+互联网站；直接通过 SMTP 发送或接收信件
+
+其他的基本上默认或者参考上面的列表就可以了,也不需要配置上面的两个文件。
+
+配置之后重新启动exim4
+
+# /etc/init.d/exim4 restart
+
+配置postfix
+
+根据你的信箱的情况，如果你的信箱是要求smtp认证的，(不需要smtp认证的跳过MuttConfig:nosmtp2)
+
+$ sudo dpkg-reconfigure postfix
+
+按照提示一步一步做，修改配置类型为internet with smarthost
+
+relayhost 设置为202.38.64.8
+
+配置修改几个文件
+
+1./etc/postfix/master.cf 修改
+
+smtp      inet  n       -       -       -       -       smptd
+
+为
+
+smtp      inet  n       -       n       -       -       smtpd -v
+#可以在/var/log/message中找到错误信息
+
+2, /etc/postfix/main.cf中增加
+
+smtpd_sasl_auth_enable = yes
+# 允许明文
+smtpd_delay_reject=yes
+smtpd_recipient_restrictions = permit_mynetworks permit_sasl_authenticated
+permit_auth_destination reject
+smtpd_client_restrictions = permit_sasl_authenticated
+broken_sasl_auth_clients =yes
+smtpd_sasl_security_options = noanonymous
+smtp_sasl_password_maps = hash:/etc/postfix/saslpass
+# smtp认证的密码文件
+
+3,编辑/etc/postfix/saslpass
+
+202.38.64.8 user:password
+# user应该是xxx@mail.ustc.edu.cn
+
+为了加速,用postmap生成数据库:
+
+postmap hash:/etc/postfix/saslpass
+
+为了安全
+
+chown -v root:root /etc/postfix/saslpass*
+chmod -v 600 /etc/postfix/saslpass*
+
+若是不认证的，也是选择
+
+互联网站；直接通过 SMTP 发送或接收信件
+
+配置fetchmail
+
+新建~/.fetchmailrc
+
+在里面写类似
+
+defaults
+mda "/usr/bin/procmail -d user"
+set daemon 60
+poll 202.38.64.8
+uidl
+protocol POP3
+user "xxx@mail.ustc.edu.cn"
+password "xxxxxx"
+keep
+poll bbs.ustc.edu.cn
+....
+....
+
+上面user 表示你自己的用户名，
+
+uidl表示只收取新的信件，
+
+keep表示不删服务器上的邮件。
+
+注意~/.fetchmailrc 的属性设为 600 若太高比如超过710, fetchmail 不予启动（处于安全的考虑）。
+参考文献
+
+1,王垠主页的mutt配置的说明，
+
+2,jamescsy, [指南]Exim4+fetchmail+mutt在debian下收发电子邮件
+
+3,lo0ol, postfix+mutt+tsocks配置成功.可以通过代理认证smtp server发信
+
+4,冷风, 带smtp认证的postfix配置
+
+5,yixiu, 使用msmpt+mutt+getmail4+procmail处理ustcmail

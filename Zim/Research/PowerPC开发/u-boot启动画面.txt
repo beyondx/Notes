@@ -1,0 +1,185 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-07T19:21:09+08:00
+
+====== u-boot启动画面 ======
+Created Wednesday 07 December 2011
+http://www.kaoru-home.com/wp/archives/917
+
+    U-Boot 2010.06-dirty (Oct 13 2011 – 11:04:22) MPC83XX
+
+    Reset Status:
+
+    CPU:   e300c3, MPC8309E, Rev: 1.1 at 400 MHz, CSB: 133.333 MHz, QE: 200 MHz
+    Board: Freescale MPC8309SOM
+    I2C:   ready
+    DRAM:  128 MiB
+    FLASH: 8 MiB
+    Firmware ‘Microcode version 0.0.0 for MPC8309 r1.0′ for 8309 V1.0
+    QE: uploading microcode ‘Microcode for MPC8309 r1.0′
+    NAND:  64 MiB
+    *** Warning – bad CRC, using default environment
+
+    In:    serial
+    Out:   serial
+    Err:   serial
+    MMC:  FSL_ESDHC: 0
+    Net:   FSL UEC0, FSL UEC1, FSL UEC2
+    Hit any key to stop autoboot:  0
+    ## Booting kernel from Legacy Image at fe100000 …
+       Image Name:   Linux-2.6.34-g4ee8913-dirty
+       Image Type:   PowerPC Linux Kernel Image (gzip compressed)
+       Data Size:    1791799 Bytes = 1.7 MiB
+       Load Address: 00000000
+       Entry Point:  00000000
+       Verifying Checksum … OK
+    ## Loading init Ramdisk from Legacy Image at fe300000 …
+       Image Name:   uboot ext2 ramdisk rootfs
+       Image Type:   PowerPC Linux RAMDisk Image (gzip compressed)
+       Data Size:    4903644 Bytes = 4.7 MiB
+       Load Address: 00000000
+       Entry Point:  00000000
+       Verifying Checksum … OK
+    ## Flattened Device Tree blob at fe0e0000
+       Booting using the fdt blob at 0xfe0e0000
+       Uncompressing Kernel Image … OK
+       Loading Ramdisk to 07a33000, end 07ee02dc … OK
+       Loading Device Tree to 007fb000, end 007fff8b … OK
+    Using MPC8309 SOM machine description
+    Linux version 2.6.34-g4ee8913-dirty (kaoru@dev) (gcc version 4.1.2) #7 Thu Oct 13 12:00:52 CST 2011
+    Found initrd at 0xc7a33000:0xc7ee02dc
+    bootconsole [udbg0] enabled
+
+    setup_arch: bootmem
+    mpc8309_som_setup_arch()
+    Found FSL PCI host bridge at 0x00000000e0008500. Firmware bus number: 0->0
+    PCI host bridge /pci@e0008500 (primary) ranges:
+    MEM 0×0000000080000000..0x000000008fffffff -> 0×0000000080000000 Prefetch
+    MEM 0×0000000090000000..0x000000009fffffff -> 0×0000000090000000
+      IO 0x00000000d0000000..0x00000000d3ffffff -> 0x00000000d0000000
+    arch: exit
+    Zone PFN ranges:
+      DMA      0×00000000 -> 0×00008000
+      Normal   empty
+    Movable zone start PFN for each node
+    early_node_map[1] active PFN ranges
+        0: 0×00000000 -> 0×00008000
+    Built 1 zonelists in Zone order, mobility grouping on.  Total pages: 32512
+    Kernel command line: root=/dev/ram rw panic=15 mem=128m console=ttyS0,115200
+    PID hash table entries: 512 (order: -1, 2048 bytes)
+    Dentry cache hash table entries: 16384 (order: 4, 65536 bytes)
+    Inode-cache hash table entries: 8192 (order: 3, 32768 bytes)
+    Memory: 121348k/131072k available (3500k kernel code, 9724k reserved, 164k data, 92k bss, 164k init)
+    Kernel virtual memory layout:
+      * 0xfffdf000..0xfffff000  : fixmap
+      * 0xfcef7000..0xfe000000  : early ioremap
+      * 0xc9000000..0xfcef7000  : vmalloc & ioremap
+    Hierarchical RCU implementation.
+    NR_IRQS:512 nr_irqs:512
+    IPIC (128 IRQ sources) at c9000700
+    clocksource: timebase mult[7800001] shift[22] registered
+    Mount-cache hash table entries: 512
+    NET: Registered protocol family 16
+    PCI: Probing PCI hardware
+    bio: create slab <bio-0> at 0
+    vgaarb: loaded
+    SCSI subsystem initialized
+    usbcore: registered new interface driver usbfs
+    usbcore: registered new interface driver hub
+    usbcore: registered new device driver usb
+    Switching to clocksource timebase
+    NET: Registered protocol family 2
+    IP route cache hash table entries: 1024 (order: 0, 4096 bytes)
+    TCP established hash table entries: 4096 (order: 3, 32768 bytes)
+    TCP bind hash table entries: 4096 (order: 2, 16384 bytes)
+    TCP: Hash tables configured (established 4096 bind 4096)
+    TCP reno registered
+    UDP hash table entries: 256 (order: 0, 4096 bytes)
+    UDP-Lite hash table entries: 256 (order: 0, 4096 bytes)
+    NET: Registered protocol family 1
+    RPC: Registered udp transport module.
+    RPC: Registered tcp transport module.
+    RPC: Registered tcp NFSv4.1 backchannel transport module.
+    Trying to unpack rootfs image as initramfs…
+    rootfs image is not initramfs (no cpio magic); looks like an initrd
+    Freeing initrd memory: 4788k freed
+    JFFS2 version 2.2. (NAND) ? 2001-2006 Red Hat, Inc.
+    msgmni has been set to 246
+    alg: No test for stdrng (krng)
+    io scheduler noop registered
+    io scheduler deadline registered
+    io scheduler cfq registered (default)
+    Serial: 8250/16550 driver, 4 ports, IRQ sharing disabled
+    serial8250.0: ttyS0 at MMIO 0xe0004500 (irq = 16) is a 16550A
+    console [ttyS0] enabled, bootconsole disabled
+    console [ttyS0] enabled, bootconsole disabled
+    serial8250.0: ttyS1 at MMIO 0xe0004600 (irq = 16) is a 16550A
+    brd: module loaded
+    loop: module loaded
+    fe000000.flash: Found 2 x8 devices at 0×0 in 16-bit bank
+    NOR chip too large to fit in mapping. Attempting to cope…
+    Support for command set 0001 not present
+    gen_probe: No supported Vendor Command Set found
+    of-flash fe000000.flash: do_map_probe() failed
+    NAND device: Manufacturer ID: 0xec, Chip ID: 0×76 (Samsung NAND 64MiB 3,3V 8-bit)
+    RedBoot partition parsing not available
+    Creating 6 MTD partitions on "fff00000.flash":
+    0×000000000000-0×000000100000 : "U-Boot-NAND"
+    0×000000100000-0×000000200000 : "DTB-NAND"
+    0×000000200000-0×000000600000 : "Ramdisk-NAND"
+    0×000000600000-0x000000c00000 : "Reserved-NAND"
+    0x000000c00000-0×000002200000 : "Kernel-NAND"
+    0×000002200000-0x000003a00000 : "JFFS2-NAND"
+    eLBC NAND device at 0xfff00000, bank 1
+    mem->start=0xe0007000, irq=17
+    mpc8xxx_spi mpc8xxx_spi.0: at 0xc9078000 (irq = 17), CPU mode
+    Fixed MDIO Bus: probed
+    ucc_geth: QE UCC Gigabit Ethernet Controller
+    ucc_geth: UCC1 at 0xe0102000 (irq = 18)
+    ucc_geth: UCC2 at 0xe0103000 (irq = 19)
+    ucc_geth: UCC3 at 0xe0102200 (irq = 34)
+    step3
+    Freescale PowerQUICC MII Bus: probed
+    usbmon: debugfs is not available
+    ehci_hcd: USB 2.0 ‘Enhanced’ Host Controller (EHCI) Driver
+    fsl-ehci fsl-ehci.0: Freescale On-Chip EHCI Host Controller
+    fsl-ehci fsl-ehci.0: new USB bus registered, assigned bus number 1
+    fsl-ehci fsl-ehci.0: irq 38, io base 0xe0023000
+    fsl-ehci fsl-ehci.0: USB 2.0 started, EHCI 0.00
+    hub 1-0:1.0: USB hub found
+    hub 1-0:1.0: 1 port detected
+    Initializing USB Mass Storage driver…
+    usbcore: registered new interface driver usb-storage
+    USB Mass Storage support registered.
+    i2c /dev entries driver
+    sdhci: Secure Digital Host Controller Interface driver
+    sdhci: Copyright(c) Pierre Ossman
+    mmc0: SDHCI controller on e002e000.sdhci [e002e000.sdhci] using DMA
+    TCP cubic registered
+    NET: Registered protocol family 17
+    RAMDISK: gzip image found at block 0
+    RAMDISK: incomplete write (18852 != 32768)
+    write error
+    VFS: Mounted root (ext2 filesystem) on device 1:0.
+    Freeing unused kernel memory: 164k init
+    Mounting /proc and /sys
+    Starting the hotplug events dispatcher udevd
+    Synthesizing initial hotplug events
+    Setting the hostname to mpc8306som
+    Mounting filesystems
+    mount: mounting usbfs on /proc/bus/usb failed: No such file or directory
+    Running sysctl
+    Setting up networking on loopback device:
+    Setting up networking on eth0:
+    Setting up networking on eth1:
+    Starting inetd:
+
+            Welcome to the LTIB Embedded Linux Environment
+
+    !!!!! WARNING !!!!!!!
+
+    The default password for the root account is: root
+    please change this password using the ‘passwd’ command
+    and then edit this message (/etc/issue) to remove this message
+
+    mpc8306som login:

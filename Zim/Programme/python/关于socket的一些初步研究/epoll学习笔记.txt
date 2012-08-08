@@ -1,0 +1,275 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-21T13:35:16+08:00
+
+====== epoll学习笔记 ======
+Created Friday 21 October 2011
+http://www.cppblog.com/converse/archive/2008/04/29/48482.html
+
+epoll有两种模式,Edge Triggered(简称ET) 和 Level Triggered(简称LT).在采用这两种模式时要注意的是,如果采用ET模式,那么__仅当状态发生变化__时才会得到通知,而采用LT模式类似于原来的select/poll操作,只要还有没有处理或处理完的事件就会一直通知.
+
+以代码来说明问题:
+首先给出server的代码,需要说明的是每次accept的连接,加入可读集的时候采用的都是ET模式,而且接收缓冲区是5字节的,也就是每次只接收5字节的数据:
+#include <iostream>
+#include <sys/socket.h>
+#include <sys/epoll.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <errno.h>
+
+using namespace std;
+
+#define MAXLINE 5
+#define OPEN_MAX 100
+#define LISTENQ 20
+#define SERV_PORT 5000
+#define INFTIM 1000
+
+void setnonblocking(int sock)
+{
+    int opts;
+    opts=fcntl(sock,F_GETFL);
+    if(opts<0)
+    {
+        perror("fcntl(sock,GETFL)");
+        exit(1);
+    }
+    opts = opts|O_NONBLOCK;
+    if(fcntl(sock,F_SETFL,opts)<0)
+    {
+        perror("fcntl(sock,SETFL,opts)");
+        exit(1);
+    }   
+}
+
+int main()
+{
+    int i, maxi, listenfd, connfd, sockfd,epfd,nfds;
+    ssize_t n;
+    char line[MAXLINE];
+    socklen_t clilen;
+    //声明epoll_event结构体的变量,ev用于注册事件,数组用于回传要处理的事件
+    struct epoll_event ev,events[20];
+    //生成用于处理accept的epoll专用的文件描述符
+    epfd=epoll_create(256);
+    struct sockaddr_in clientaddr;
+    struct sockaddr_in serveraddr;
+    listenfd = socket(AF_INET, SOCK_STREAM, 0);
+    //把socket设置为非阻塞方式
+    //setnonblocking(listenfd);
+    //设置与要处理的事件相关的文件描述符
+    ev.data.fd=listenfd;
+    //设置要处理的事件类型
+    ev.events=EPOLLIN|EPOLLET;
+    //ev.events=EPOLLIN;
+    //注册epoll事件
+   ** epoll_ctl(**epfd,EPOLL_CTL_ADD,listenfd,&ev);
+    bzero(&serveraddr, sizeof(serveraddr));
+    serveraddr.sin_family = AF_INET;
+    char *local_addr="127.0.0.1";
+    inet_aton(local_addr,&(serveraddr.sin_addr));//htons(SERV_PORT);
+    serveraddr.sin_port=htons(SERV_PORT);
+    bind(listenfd,(sockaddr *)&serveraddr, sizeof(serveraddr));
+    listen(listenfd, LISTENQ);
+    maxi = 0;
+    for ( ; ; ) {
+        //等待epoll事件的发生
+        nfds=epoll_wait(epfd,events,20,500);
+        //处理所发生的所有事件     
+        for(i=0;i<nfds;++i)
+        {
+            if(events[i].data.fd==listenfd)
+            {
+                connfd = accept(listenfd,(sockaddr *)&clientaddr, &clilen);
+                if(connfd<0){
+                    perror("connfd<0");
+                    exit(1);
+                }
+                //setnonblocking(connfd);
+                char *str = inet_ntoa(clientaddr.sin_addr);
+                cout << "accapt a connection from " << str << endl;
+                //设置用于读操作的文件描述符
+                ev.data.fd=connfd;
+                //设置用于注测的读操作事件
+                ev.events=EPOLLIN|EPOLLET;
+                //ev.events=EPOLLIN;
+                //注册ev
+                epoll_ctl(epfd,EPOLL_CTL_ADD,connfd,&ev);
+            }
+            else if(events[i].events&EPOLLIN)
+            {
+                cout << "EPOLLIN" << endl;
+                if ( (sockfd = events[i].data.fd) < 0) 
+                    continue;
+                if ( (n = read(sockfd, line, MAXLINE)) < 0) {
+                    if (errno == ECONNRESET) {
+                        close(sockfd);
+                        events[i].data.fd = -1;
+                    } else
+                        std::cout<<"readline error"<<std::endl;
+                } else if (n == 0) {
+                    close(sockfd);
+                    events[i].data.fd = -1;
+                }
+                line[n] = '\0';
+                cout << "read " << line << endl;
+                //设置用于写操作的文件描述符
+                ev.data.fd=sockfd;
+                //设置用于注测的写操作事件
+                ev.events=EPOLLOUT|EPOLLET;
+                //修改sockfd上要处理的事件为EPOLLOUT
+                //epoll_ctl(epfd,EPOLL_CTL_MOD,sockfd,&ev);
+            }
+            else if(events[i].events&EPOLLOUT)
+            {   
+                sockfd = events[i].data.fd;
+                write(sockfd, line, n);
+                //设置用于读操作的文件描述符
+                ev.data.fd=sockfd;
+                //设置用于注测的读操作事件
+                ev.events=EPOLLIN|EPOLLET;
+                //修改sockfd上要处理的事件为EPOLIN
+                epoll_ctl(epfd,EPOLL_CTL_MOD,sockfd,&ev);
+            }
+        }
+    }
+    return 0;
+}
+
+
+下面给出测试所用的Perl写的client端,在client中发送10字节的数据,同时让client在发送完数据之后进入死循环, 也就是在发送完之后连接的状态不发生改变--既不再发送数据, 也不关闭连接,这样才能观察出server的状态:
+#!/usr/bin/perl
+
+use IO::Socket;
+
+my $host = "127.0.0.1";
+my $port = 5000;
+
+my $socket = IO::Socket::INET->new("$host:$port") or die "create socket error $@";
+my $msg_out = "1234567890";
+print $socket $msg_out;
+print "now send over, go to sleep\n";
+
+while (1)
+{
+    sleep(1);
+}
+
+运行server和client发现,server仅仅读取了__5字节__的数据,而client其实发送了10字节的数据,也就是说,server仅当**第一次监听到了EPOLLIN事件**,由于没有读取完数据,而且**采用的是ET模式,状态在此之后不发生变**化,因此server再也接收不到EPOLLIN事件了.
+
+(友情提示:上面的这个测试客户端,当你__关闭它的__时候会再次出发IO可读事件给server,此时server就会去读取剩下的5字节数据了,但是这一事件与前面描述的ET性质并不矛盾.)
+
+如果我们把client改为这样:
+#!/usr/bin/perl
+
+use IO::Socket;
+
+my $host = "127.0.0.1";
+my $port = 5000;
+
+my $socket = IO::Socket::INET->new("$host:$port") or die "create socket error $@";
+my $msg_out = "1234567890";
+print $socket $msg_out;
+print "now send over, go to sleep\n";
+sleep(5);
+print "5 second gonesend another line\n";
+print $socket $msg_out;
+
+while (1)
+{
+    sleep(1);
+}
+
+可以发现,在server接收完5字节的数据之后一直**监听不到client的事件**,而当client休眠5秒之后重新发送数据,server再次监听到了变化,只不过因为只是读取了5个字节(**第一次剩余的5字节**),仍然有10个字节的数据(client第二次发送的数据)没有接收完.
+
+如果上面的实验中,对accept的socket都采用的是__LT模式,那么只要还有数据留在buffer中,server就会继续得到通知__,读者可以自行改动代码进行实验.
+
+===== 基于这两个实验,可以得出这样的结论: =====
+**ET模式仅当状态发生变化的时候才获得通知,这里所谓的状态的变化并不包括缓冲区中还有未处理的数据,也就是说,如果要采用ET模式,需要一直read/write直到出错为止,很多人反映为什么采用ET模式只接收了一部分数据就再也得不到通知了,大多因为这样;而LT模式是只要有数据没有处理就会一直通知下去的.**
+
+===== 补充说明一下这里一直强调的"状态变化"是什么: =====
+
+1)对于监听可读事件时,如果是socket是监听socket,那么当有新的主动连接到来为状态发生变化;对一般的socket而言,协议栈中相应的缓冲区有**新的数据(不包括上一次未读完的数据)**为状态发生变化.但是,如果在一个时间**同时接收了N个连接**(N>1),但是监听socket只accept了一个连接,那么其它未 accept的连接将不会在ET模式下给监听socket发出通知,此时状态不发生变化;对于一般的socket,就如例子中而言,如果对应的缓冲区本身已经有了N字节的数据,而只取出了小于N字节的数据,那么残存的数据不会造成状态发生变化.
+
+2)对于监听可写事件时,同理可推,不再详述.
+
+而不论是监听可读还是可写,__对方关闭socket连接都将造成状态发生变化__,比如在例子中,如果强行中断client脚本,也就是主动中断了socket连接,那么都将造成server端发生状态的变化,从而server得到通知,将已经在本方缓冲区中的数据读出.
+
+==== 把前面的描述可以总结如下 ====
+:**仅当对方的动作(发出数据,关闭连接等)造成的事件才能导致状态发生变化**,而本方协议栈中已经处理的事件(包括接收了对方的数据,接收了对方的主动连接请求)并不是造成状态发生变化的必要条件__,状态变化一定是对方造成的__.所以在ET模式下的,__必须一直处理到出错或者完全处理完毕,才能进行下一个动作,否则可能会发生错误.__
+
+另外,从这个例子中,也可以阐述一些基本的网络编程概念.首先,连接的两端中,一端发送成功并不代表着对方上层应用程序接收成功, 就拿上面的client测试程序来说,10字节的数据已经发送成功,但是上层的server并没有调用read读取数据,因此**发送成功仅仅说明了数据被对方的协议栈接收存放在了相应的buffer中,**而上层的应用程序是否接收了这部分数据不得而知;同样的,读取数据时也只代表着本方协议栈的对应buffer中有数据可读,而此时时候在对端是否在发送数据也不得而知.
+
+
+
+# re: epoll学习笔记  回复  更多评论   
+你可以把这个改进成一个epoll+线程池
+这样子单线程效率...............
+
+listenfd 在accept一个clt后不用mod它的event吗？
+2008-10-27 13:05 | coolll
+# re: epoll学习笔记  回复  更多评论   
+但是,如果在一个时间同时接收了N个连接(N>1),但是监听socket只accept了一个连接,那么其它未 accept的连接将不会在ET模式下给监听socket发出通知,此时状态不发生变化;
+那对于listenfd是不是应该采用LT模式？
+-----------------------------------
+哥们说的很好，其中的要点，我大致领会了
+你的意思是说，是不是倾向于使用LT尽量不使用ET，这样的话就可以避免繁杂的操作，
+但是我要是还想使用ET的话，在接收数据的时候我好处理，大不了我一直读数据。知道所有的数据read完成，但是我发送数据的话该如何处理哪》
+一次没有发送完成的就一直发送(有一旦必须说明ET只支持非堵塞的socket)
+这个该如何实现那？？？？
+----------------------------------
+写的处理跟读应该差不多吧,我想你只要理解了ET模式的要点就可以理解了--__ET仅在所关注的事件状态发生变化,也就是从无到有或者从有到无的时候才会有通知,而从多到少或者从少到多不会有通知.__
+------------------------------------
+我想问问，使用epoll维护的socket上如何实现TCP/IP的上行和下行同步的问题，
+因为epoll的epoll_wait返回后是这样处理的
+if(EPOLLIN)
+{
+recv(...)
+}
+else if(EPOLLOUT)
+{
+send(....)
+}
+这两个事件是分别报告的，也就是说，同一个socket上只能是recv或者send，不可能实现在同一个socket上同时recv和send
+听听你 的高见
+2009-05-11 16:08 | qq957863054
+# re: epoll学习笔记  回复  更多评论   
+@qq957863054
+实际上同一个socket上是可以既recv又send的,因为这是全双工的服务,只不过这样的情况在逻辑上错误.比如你可以想象两个人对话,一个人一边说话一边听别人说话吗?
+2009-05-11 18:36 | 那谁
+# re: epoll学习笔记  回复  更多评论   
+你大的比方非常不恰当，你的例子就否定的了你前面说的实际上是可以的.退一步讲，这个逻辑错误是不是影响了实际的使用.
+就是说，两个socket建立连接后，在任意一端只能是在接收数据或者在发送数据，而两者不能同时进行，这样不但违背了你说的双工服务，还影响效率
+举例来说，假若我俩建立连接后想互相发送5G的文件，作为你或者是我，只能是接收或者发送信息的话，要传送完文件的话，实际上就是单向传递了10G的文件的时间，要是我们实行双工的话，就是传送5G文件时间或者多一点，是不是应该考虑这个问题
+还有一个问题就是在开始我注册了EPOLLIN时间后，假若我epoll_wait后有EPOLLIN事件，我处理后，用不用再次将服对应socket的EPOLLIN 事件重新注册一把或者MOD一下
+你用epoll吗？萨用的
+2009-05-13 11:02 | qq957863054
+# re: epoll学习笔记  回复  更多评论   
+按照代码执行，并不能得到想要的结果，LT和ET模式得到的都是同样的结果为啥呢？
+2009-10-12 17:57 | lxjeanse
+# re: epoll学习笔记  回复  更多评论   
+博主的代码能运行成功吗?我用你的代码跑了一下，在ET模式下，仍然会读取后面的67890这是什么原因呢？我改用LT模式结果也是一样的，而且你的第二个客户端程序在睡眠5秒之后根本不会输出"5 second gonesend another line"这句话，麻烦你告诉我怎么回事呢，谢谢了！
+2009-10-13 10:06 | lxjeanse
+# re: epoll学习笔记  回复  更多评论   
+@lxjeanse
+LZ,你用ET写的server在关闭客户端的时候才收到的后面几个数据吧?那是因为客户端关闭的时候,server也会收到io消息,这时就会去接收剩下的数据了.
+2009-10-13 21:04 | 那谁
+# re: epoll学习笔记  回复  更多评论   
+@那谁
+不是的，我会收到两次67890
+2009-10-13 23:16 | lxjeanse
+# re: epoll学习笔记  回复  更多评论   
+楼主的这段代码是水平模式的,呵呵,边缘模式你还有几句话没补上!!
+2009-12-24 09:04 | stronger
+# re: epoll学习笔记  回复  更多评论   
+server为什么设置成非阻塞的？设置成阻塞的对epoll有什么影响？
+2010-02-05 10:03 | coder`
+# re: epoll学习笔记  回复  更多评论   
+qq:769155709
+写的还可以，学习，做个网友交流。
+2010-11-07 18:51 | 769155709
+# re: epoll学习笔记  回复  更多评论   
+说白了就是水平触发和边沿触发，学过数字电子技术的人都很容易理解，就像那个触发器波形。 

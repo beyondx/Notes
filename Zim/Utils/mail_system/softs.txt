@@ -1,0 +1,16 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-23T13:23:22+08:00
+
+====== softs ======
+Created Monday 23 May 2011
+
+What other properties are you looking for in your email server? For my domains(osdev.org [osdev.org] and variants) here's the combination I use:
+
+    **Courier IMAP** - Supports **Maildir**, works well with most IMAP webmail setups, easy to setup, support Secure IMAP
+   ** Postfix **for SMTP - Can offload mail delivery to another program like Procmail, replaces Sendmail
+    **Procmail **for Delivery - The Great thing about IMAP is that you have message folders on the server, procmail will allow you to sort incoming mail as it arrives.
+   ** Spamassassin** - Integrates with Procmail to sort spam into a folder or /dev/null
+    **SquirrelMail** - Seems to be one of the best web based IMAP clients around, done in PHP
+
+The reasons I picked the above: Free, Wanted IMAP for server-side folders, needed Maildir support because I didn't want to use mbox because of performance and locking issues, and I needed webmail and an IMAP server known to work well with webmail.

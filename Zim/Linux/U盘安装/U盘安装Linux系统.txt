@@ -1,0 +1,104 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-19T22:33:37+08:00
+
+====== U盘安装Linux系统 ======
+Created Monday 19 December 2011
+http://bbs.stuhome.net/read.php?tid=1034944
+
+以前习惯用UltraISO软件把下载的ISO文件刻录到U盘安装，很简单、方便。但悲剧的是自ubuntu10.04、fedora14、archlinux-2011-08-19以后的版本好像都不支持这种方法了。
+这里分享一下我使用的两种从U盘安装系统的新方法，方法一最为简单，但是执行后会破坏U盘中保存的数据，而且一次只能安装一个系统；方法二复杂些，但是不用格式化U盘中已有数据，而且支持安装多个系统。这里假设你的U盘设备是/dev/sdb，它的一个分区为/dev/sdb1.(你需要根据自己的情况修改这两个参数)。
+
+方法一：“简单的要死”：
+先确保U盘没有被挂载到系统中(可以用不带参数的mount命令查看)，然后执行：
+#   dd if=<path to iso file> of=/dev/sdb bs=4M
+OK，重启，设置BIOS先从USB设备启动即可。
+注意：
+1.在使用dd前要备份U盘中的数据，否者执行后这些数据会丢失。
+2.确保ISO文件小于U盘的容量。
+3.of=/dev/sdb 这里是sdb而不是sdb1, sdb2....，使用sdbn是一个常见的错误。
+4.bs=4M参数可选，使用它可以加快复制速度。
+
+
+方法二：“复杂的要命”：
+方法二需要五步完成：
+1.下载各安装文件，包括系统的ISO文件，以及特殊安装所需的vmlinuz和initrd文件(后文解释)。
+2.挂载U盘，将以上三个文件拷贝到U盘目录中。
+3.安装GRUB到U盘中。
+4.重启，设置BIOS先从USB设备启动。
+5.不出意外的话，会进入Grub命令行界面(这是因为我们载第三步中没有创建Grub配置文件)，这时我们手动指定vmlinuz和initrd文件。然后输入boot回车，启动系统安装过程。
+
+在使用方法二时要区分安装的类型：网络安装和本地安装，前者不需要下载ISO文件，后者需要下载。(这是因为本地安装不需联网环境，安装所需的各软件包都在ISO文件中。)
+下面分别以ubutu和fedora为例，介绍方法二的安装步骤。
+
+1.下载各安装文件，并复制到U盘中：
+1) ubuntu：
+ + 若网络安装ubuntu，只需下载对应版本的mini.iso文件即可。例如，安装ubuntu12.04时该文件在源服务器的下面路径中：
+         http://ubuntu.uestc.edu.cn/ubuntu/dists/oneiric/main/installer-i386/current/images/netboot/
+     - 提取mini.iso中的linux和initrd.gz文件，保存到U盘的ubuntu目录中：
+       #mount  -o loop   <path to mini.iso>  /mnt   
+       #mkdir /mnt/ubuntu-netboot
+       # cp /mnt/linux           /mnt/ubuntu-netboot/vmlinuz   #重命名(可选，为了统一)
+       # cp /mnt/initrd.gz     /mnt/ubuntu-netboot/initrd.gz
+  +若本地安装ubuntu，需要下载三个文件，系统ISO文件，支持硬盘安装的vmlinuz和initrd文件，它们载服务器上的路径为：
+        http://ubuntu.uestc.edu.cn/ubuntu/dists/oneiric/main/installer-i386/current/images/hd-media/     #目录下有vmlinuz和initrd.gz文件
+        http://cdimage.ubuntu.com/releases/11.10/release/  #目录下有要下载的ISO系统文件(三个文件的版本号一定好相符，这里为11.10与oneiric)。
+     - 下载上面三个文件，复制到U盘中(下面以ubuntu11.10为例)：
+       # mkdir /mnt/ubunt-hardisk
+       # wget http://ubuntu.uestc.edu.cn//ubuntu/dists/oneiric/main/installer-i386/current/images/hd-media/{vmlinuz,initrd.gz}    /mnt/ubuntu-hardisk/
+       # wget http://cdimage.ubuntu.com/releases/11.10/release/ubuntu-11.10-dvd-i386.iso  /mnt/
+
+2) fedora：
+     fedora的网络安装和本地安装使用的vmlinuz和initrd文件相同，只是后则还需要下载一个ISO系统文件。
+   + 下载vmlinuz和initrd文件，它们在服务器上的路径为：
+       http://mirrors.ustc.edu.cn/fedora/linux/releases/16/Fedora/i386/os/isolinux/
+     -下载这两个文件，保存到U盘中：
+       #mkdir /mnt/fedora-netboot
+       # wget http://mirrors.ustc.edu.cn/fedora/linux/releases/16/Fedora/i386/os/isolinux/{vmlinuz,initrd.img}  /mnt/fedora-boot
+   + 若本地安装，还需下载对应的ISO文件：
+       #wget http://mirrors.ustc.edu.cn/fedora/linux/releases/16/Fedora/i386/iso/Fedora-16-i386-DVD.iso     /mnt/
+
+2.安装GRUB到U盘中：
+    #sysnc
+    #grub-install  --root-directory=/mnt  /dev/sdb
+注意：
+1.GRUB会将bootloader安装到U盘的MBR中，所以一定要指定的是U盘设备文件而不是它的某个分区设备文件。
+2.GRUB会在/mnt下建立boot目录，其中包含引导时需要的stage1、stage等文件。
+
+3.重启，设置BIOS从U盘启动。
+
+4.GRUB启动到stage2时，会查找其配置文件。由于我们在第二步中没有编辑GRUB启动所需的配置文件，所以GRUB会给出命令行界面，等待我们输入参数：
+    grub> kernel /<path to vmlinuz>/vmlinuz
+    grub> initrd  /<path to initrd.gz>/initrd.gz
+    grub> boot
+注意：
+        1.由于设置BIOS从U盘启动，所以grub会自动设置root参数。
+        2./<path to vmlinuz>, /<path to initrd.gz> 中的根“/”是U盘设备，<path to ....>是我们在步骤一中建立的目录，如ubuntu-netboot、ubuntu-hardisk、fedora-boot
+5.现在你已经进入到系统安装界面了：
++ 如果安装的是ubuntu，你不需任何特殊操作(本地安装时ubuntu安装程序会自动搜索到该ISO文件，网络安装时会自动联网)。
++ 如果安装的是fedora，你需要在安装过程中选择安装介质为URL(网络安装)，或定位到U盘中的ISO文件(本地安装)。
+
+
+
+
+
+archlinx比较特殊，它和ubuntu server一样，是将CDROM安装方式硬编码到ISO文件中，而且官方没有提供硬盘安装的vmlinx和initrd文件，但提供了网络安装的这两个文件。所以，你可以用第一种方法，或者用网络方式安装。如果用第二种方法，需要稍微修改一下。
+
++网络安装：到 http://mirrors.stuhome.net/archlinux/iso/archboot/latest/boot/%E4%B8%8B%E8%BD%BDvmlinuz%E5%92%8Cinitrd.img%E6%96%87%E4%BB%B6%EF%BC%8C%E7%84%B6%E5%90%8E%E6%94%BE%E5%88%B0U%E7%9B%98%E4%B8%AD%EF%BC%8C%E8%AE%BE%E7%BD%AEgrub%E5%90%AF%E5%8A%A8%E8%BF%99%E4%B8%A4%E4%B8%AA%E6%96%87%E4%BB%B6%E5%8D%B3%E5%8F%AF。
+(这种方式其实也支持本地ISO的读取，所以同时适合ISO安装和网络安装)。
+  注意：从官方的netinstall ISO提取的这两个文件不支持U盘安装。
++本地安装：下载core或netinstall ISO文件，假如你的U盘设备为/dev/sdb，分区为/dev/sdb1
+  #mkdir   ~/tmp
+  # mount <path to iso> ~/tmp       #将下载的ISO挂载
+  #mount /dev/sdb1 /mnt/
+  #mkdir /mnt/archlinux
+  #cp -Rf   ~/tmp/arch /mnt/archlinux   #提取出其中arch目录下的文件到U盘
+  #grub-install --root-directory=/mnt   /dev/sdb  #将GRUB安装到U盘，如果已安装则省略
+  # e2label /dev/sdb1 archlinux-usb                    #将arch所在的分区设置卷标，这步是关键，也是上面所说的硬编码。
+  #cat /mnt/boot/grub/menu.lst                             #载grub配置文件里添加一启动项
+  # title archlinux
+  #linux /arch/boot/i686/vmlinuz  archisobasedir=arch archisolabel=archlinux-usb       #后面两个参数也是硬编码，注意卷标为上一步设定的值。
+  #initrd /arch/boot/i686/archiso.img
+  #
+  
+  重启，即可。

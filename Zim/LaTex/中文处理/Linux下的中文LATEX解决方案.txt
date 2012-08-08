@@ -1,0 +1,160 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-01T12:12:59+08:00
+
+====== Linux下的中文LATEX解决方案 ======
+Created Sunday 01 January 2012
+http://www.cnblogs.com/rockcode/archive/2011/08/06/2129561.html
+
+真正的Linux下的中文LATEX解决方案:** CTeX + xeCJK + XeTEX**
+
+lins05
+mysnowls@163.com
+August 6, 2011
+
+===== 摘要 =====
+
+Linux下用LaTeX很方便，但是要解决中文的问题就不怎么方便，因 为TeX的字体系统很难自己解决。
+Windows下可以使用配置好的CTeX套装1 ， 现在本文中就简介如何在Linux下配置CTeX，以方便写中文文档。
+
+===== 目录 =====
+
+1 老的方法
+1.1 缺乏可用的字体
+1.2 默认的格式不符合中文排版要求
+1.3 不能满足中文的其他要求
+2 CTeX和xeCJK
+2.1 字体
+2.2 中文版式
+2.3 CTeX和xeCJK的关系
+3 简单的例子
+4 注意事项
+4.1 如何安装
+4.2 推荐字体
+4.3 其他设置
+1 老的方法
+
+LATEX的**CJK宏包**，经过实践证明，确实是一个可行且实用的中文LATEX解决方 案。但是它有几点不足：
+
+1.1 缺乏可用的字体
+
+LATEX下的中文字体很少，Linux下的字体更少。因为TEX的字体系统比较复杂，使得用户想自己生成字体非难困难，门槛很高，并且管理不方便。
+
+1.2 默认的格式不符合中文排版要求
+
+CJK宏包__仅仅解决了中文字体的问题__，但是它默认的格式是__英文的排版方式__（CJK的 作者是德国人）。
+因此，一般用户都需要自己设置种种版式：首行缩进，行距和段距。中英文混排时的字距，等等。
+
+1.3 不能满足中文的其他要求
+
+比如生成目录时，中文文档应该叫“目录”，而不是”CONTENTS”。类似的还有“ 附录”、“表格索引”等等。
+CTeX宏包和xeCJK宏包的__组合__相当完美的解决了这些问题。
+
+====== 2 CTeX和xeCJK ======
+
+2.1 字体
+
+xeCJK宏包所使用的XeTeX引擎，是从MacOS移植到Linux和Windows上的。它最大的特点是__从底层就具备对unicode的支持__，以及可以**直接调用系统中已有的字体**。
+这意味着将LaTeX用户从和字体相关的一大推问题中解决出来了。只要系统中安装了中文字体，那么使用XeTeX就能使用这些字体。
+xeCJK是必须__使用XeTeX引擎__的，这也是为什么标题叫做CTeX + xeCJK + XeTeX的原因。
+
+2.2 中文版式
+
+CTeX的开发者们是值得所有的LaTeX用户感激的。__使用CTeX的各个documentclass__， 我们就无须再手动地设置版式，因为CTeX的默认设置就是__最适合中文文档__的：行首缩进两个汉字; 行距和段距的适当调整，中英文的混排时的字距，都是适合中文版式 的。
+此外，CTeX将其他应该为中文文档考虑的地方大都包括了进去：”CONTENTS”改为 了“目录”,”Index”改为了”索引“，等等。
+
+2.3 CTeX和xeCJK的关系
+
+二者都是宏包，但是，CTeX是一个__上层的中文LaTeX宏包__。它的**下层是可选**的，可 以__支持xeCJK、CJK__，甚至更老的CCT宏包。对于不同的下层宏包它进行不同的设置。xeCJK完全可以脱离CTeX使用，但是这样你虽然不用担心字体，同样也**不能享受到CTeX的中文版式**。
+
+总的来说，__xeCJK完美地解决了中英文字体的问题，而CTeX完美地解决了中文版式的问题__，因此两者结合起来就可以完美地解决用TeX写作、排版中文文档的问题。
+
+====== 3 简单的例子 ======
+
+例子总是最直观的。我们以一个最简单的例子来说明。
+
+%---------------------------------------  
+\documentclass[a4paper]{article}  
+\usepackage[**adobefonts**]{ctex}  
+\setCJKmainfont{SimSun}  
+%---------------------------------------  
+\author{小明}  
+\title{记一次春游}  
+\date{\today}  
+%---------------------------------------  
+\begin{document}  
+\pagestyle{plain}  
+\maketitle  
+%---------------------------------------  
+
+昨天，老师带我们三年级二班的小朋友们全体去郊外春游。我非常高兴。
+我们在郊外看到了\textbf{老虎、狮子和熊猫}。
+我长大了要\textsl{保护动物}。  
+
+那天，老师要教我们学习\LaTeX 了，大家都非常激动。  
+\end{document}  
+
+====== 4 注意事项 ======
+
+4.1 如何安装
+
+Linux下安装这三者的最方便的方法是安装__texlive系列__。texlive是一整套TEX__工具和引擎的集合__，包括了LaTeX等种种工具和一些相关的程序、宏包，不同的发行版里会把整个texlive分为**不同的软件包**，诸如__texlive-xetex、texlive-xecjk、texlive-ctex__。用包管理软件进行搜索，不难找到应该安装的软件包。
+
+当然另一种方式是使用texlive的安装DVD或者在线安装 工具。笔者使用的slackware发行版里没有提供texlive的软件包2 ，因此是从中科大的CTAN镜像3 下 载的texlive2011DVD进行安装的。具体的安装过程可以读光盘里的README文 件。
+
+由于texlive是一个TeX软件的大集合。因此它有一个__专门的包管理程序：tlmgr__。 这个程序类似debian下的apt-get，提供了搜索、查询、安装、卸载、升级各个tex软件包的功能。在DVD安装版中有这个软件，一般的发行版应该不会提供这个程序4 。
+
+4.2 推荐字体
+
+一般使用的字体有三套。
+
+* 一是在Linux下常用的文泉驿字体，但它__不适合__写正式的文档。
+* 二是在网上下载__Adobe的四套字体__，分别是宋体、仿宋、黑体和楷体。
+* 三是可以拷贝Window下的字体。但是这涉及到版权问题。如果确实想用，可以在百度上搜索**“方正楷体”、“方正宋体”**，等等。
+
+使用字体的方法如下：
+
+先拷贝字体到**/usr/share/fonts/**下的相应的子目录中，然后运行__"fc-cache"__更新系统的字体缓存。
+在xeCJK中，设置主字体是使用\setCJKmainfont命令（因为我们的CTeX会调 用xeCJK，因此可以使用xeCJK中的命令)。
+具体的字体名字可以用__"fc-list :zh-cn"__命令来查看。
+
+4.3 其他设置
+
+1 如果你的系统中**没有CTeX要求的全套六种字体**5 ， 那么，一定要在\usepackage{ctex}的选项中加上__adobefonts__这一条。
+
+这样一来CTeX会用相应的Adobe字体去代替它要求的六套字体。不然有时会出现 找不到字体的现象，尤其是使用特殊字体的时候，比如在verbtim环境中。
+
+2 一般情况下，**中文文档中是不使用斜体**的。因此在CTeX调用xeCJK时，__默认是不使用斜体__的，所以你就算在文档中使用\textsl{}，最终也不会产生任何斜体效 果。
+
+如果你真的要用，就要修 改/ctex/engine/__ctex-xecjk-engine__.def6 中 的一行：
+
+\RequirePackage[BoldFont,normalindentfirst]{xeCJK}
+
+改为：
+
+\RequirePackage[BoldFont,slantfont,normalindentfirst]{xeCJK}
+
+====== 5 使用CTeX的两种方法 ======
+
+第一种是__直接使用CTeX的文档类，CTex自动调用底层的xeCJK宏包设置中英文字体和中文文档格式__。
+
+\documentclass[adobefonts]{ctexart}
+
+第二种是__使用CTeX包__。这时可以手动导入xeCJK宏包，设置中文。
+
+\usepackage[adobefonts]{ctex}
+
+二者的区别是：当通过\usepackage来使用CTeX包时，产生的仍然 是”CONTENTS”、”INDEX”，而不是“目录”、“索引”。
+
+当然，如果要用__其他类__作为文档类，就必须使用第二种方式了，最典型就是 用beamer类做幻灯片的时候了。
+
+这时，如果要使用中文的“目录”、“摘要”等样式，可以使用这两条命 令：
+
+**\renewcommand*\contentsname{目录}  **
+**\renewcommand*\abstractname{摘要}**
+
+还有一个更折腾的方法。修改一下ctex/ctex.sty文件，在其中添加一 句
+
+\input{ctex-caption.def}
+
+这样就一直保持中文的名称了。

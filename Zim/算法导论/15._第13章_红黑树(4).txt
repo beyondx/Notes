@@ -1,0 +1,834 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-30T13:52:17+08:00
+
+====== 15. 第13章 红黑树(4) ======
+Created Saturday 30 July 2011
+
+这一章把前面三篇的代码总结起来，然后推荐一些网上红黑树的优秀讲解资源。
+
+代码：
+
+1
+            2
+            3
+            4
+            5
+            6
+            7
+            8
+            9
+            10
+            11
+            12
+            13
+            14
+            15
+            16
+            17
+            18
+            19
+            20
+            21
+            22
+            23
+            24
+            25
+            26
+            27
+            28
+            29
+            30
+            31
+            32
+            33
+            34
+            35
+            36
+            37
+            38
+            39
+            40
+            41
+            42
+            43
+            44
+            45
+            46
+            47
+            48
+            49
+            50
+            51
+            52
+            53
+            54
+            55
+            56
+            57
+            58
+            59
+            60
+            61
+            62
+            63
+            64
+            65
+            66
+            67
+            68
+            69
+            70
+            71
+            72
+            73
+            74
+            75
+            76
+            77
+            78
+            79
+            80
+            81
+            82
+            83
+            84
+            85
+            86
+            87
+            88
+            89
+            90
+            91
+            92
+            93
+            94
+            95
+            96
+            97
+            98
+            99
+            100
+            101
+            102
+            103
+            104
+            105
+            106
+            107
+            108
+            109
+            110
+            111
+            112
+            113
+            114
+            115
+            116
+            117
+            118
+            119
+            120
+            121
+            122
+            123
+            124
+            125
+            126
+            127
+            128
+            129
+            130
+            131
+            132
+            133
+            134
+            135
+            136
+            137
+            138
+            139
+            140
+            141
+            142
+            143
+            144
+            145
+            146
+            147
+            148
+            149
+            150
+            151
+            152
+            153
+            154
+            155
+            156
+            157
+            158
+            159
+            160
+            161
+            162
+            163
+            164
+            165
+            166
+            167
+            168
+            169
+            170
+            171
+            172
+            173
+            174
+            175
+            176
+            177
+            178
+            179
+            180
+            181
+            182
+            183
+            184
+            185
+            186
+            187
+            188
+            189
+            190
+            191
+            192
+            193
+            194
+            195
+            196
+            197
+            198
+            199
+            200
+            201
+            202
+            203
+            204
+            205
+            206
+            207
+            208
+            209
+            210
+            211
+            212
+            213
+            214
+            215
+            216
+            217
+            218
+            219
+            220
+            221
+            222
+            223
+            224
+            225
+            226
+            227
+            228
+            229
+            230
+            231
+            232
+            233
+            234
+            235
+            236
+            237
+            238
+            239
+            240
+            241
+            242
+            243
+            244
+            245
+            246
+            247
+            248
+            249
+            250
+            251
+            252
+            253
+            254
+            255
+            256
+            257
+            258
+            259
+            260
+            261
+            262
+            263
+            264
+            265
+            266
+            267
+            268
+            269
+            270
+            271
+            272
+            273
+            274
+            275
+            276
+            277
+            278
+            279
+            280
+            281
+            282
+            283
+            284
+            285
+            286
+            287
+            288
+            289
+            290
+            291
+            292
+            293
+            294
+            295
+            296
+            297
+            298
+            299
+            300
+            301
+            302
+            303
+            304
+            305
+            306
+            307
+            308
+            309
+            310
+            311
+            312
+            313
+            314
+            315
+            316
+            317
+            318
+            319
+            320
+            321
+            322
+            323
+            324
+            325
+            326
+            327
+            328
+            329
+            330
+            331
+            332
+            333
+            334
+            335
+            336
+            337
+            338
+            339
+            340
+            341
+            342
+            343
+            344
+            345
+            346
+            347
+            348
+            349
+            350
+            351
+            352
+            353
+            354
+            355
+            356
+            357
+            358
+            359
+            360
+            361
+            362
+            363
+            364
+            365
+            366
+            367
+            368
+            369
+            370
+            371
+            372
+            373
+            374
+            375
+            376
+            377
+            378
+            379
+            380
+            381
+            382
+            383
+            384
+            385
+            386
+            387
+            388
+            389
+            390
+            391
+            392
+            393
+            
+
+	
+
+/*
+            * Author: Tanky Woo
+            * Blog:   www.WuTianQi.com
+            * Description: 《算法导论》第13章 Red Black Tree
+            */
+            #include <iostream>
+            //#define NULL 0
+            using namespace std;
+             
+            const int RED = 0;
+            const int BLACK = 1;
+             
+            // ①
+            typedef struct Node{
+            int color;
+            int key;
+            Node *lchild, *rchild, *parent;
+            }Node, *RBTree;
+             
+            static Node NIL = {BLACK, 0, 0, 0, 0};
+             
+            #define NULL (&NIL)
+             
+            // ②
+            Node * RBTreeSearch(RBTree T, int k)
+            {
+            if(T == NULL || k == T->key)
+            return T;
+            if(k < T->key)
+            return RBTreeSearch(T->lchild, k);
+            else
+            return RBTreeSearch(T->rchild, k);
+            }
+             
+            /*
+             
+            BSNode * IterativeRBTreeSearch(RBTree T, int k)
+            {
+            while(T != NULL && k != T->key)
+            {
+            if(k < T->lchild->key);
+            x = T->lchild;
+            else
+            x = T->rchild;
+            }
+            return x;
+            }
+            */
+             
+            // ③
+            Node * RBTreeMinimum(RBTree T)
+            {
+            while(T->lchild != NULL)
+            T = T->lchild;
+            return T;
+            }
+             
+            Node * RBTreeMaximum(RBTree T)
+            {
+            while(T->rchild != NULL)
+            T = T->rchild;
+            return T;
+            }
+             
+            // ④
+            Node *RBTreeSuccessor(Node *x)
+            {
+            if(x->rchild != NULL)
+            return RBTreeMinimum(x->rchild);
+            Node *y = x->parent;
+            while(y != NULL && x == y->rchild)
+            {
+            x = y;
+            y = y->parent;
+            }
+            return y;
+            }
+             
+            void LeftRotate(RBTree &T, Node *x)
+            {
+            Node *y = x->rchild;
+            x->rchild = y->lchild;
+            if(y->lchild != NULL)
+            y->lchild->parent = x;
+            y->parent = x->parent;
+            if(x->parent == NULL)
+            T = y;
+            else
+            {
+            if(x == x->parent->lchild)
+            x->parent->lchild = y;
+            else
+            x->parent->rchild = y;
+            }
+            y->lchild = x;
+            x->parent = y;
+            }
+             
+            void RightRotate(RBTree &T, Node *x)
+            {
+            Node *y = x->rchild;
+            x->rchild = y->lchild;
+            if(y->lchild != NULL)
+            y->lchild->parent = x;
+            y->parent = x->parent;
+            if(x->parent == NULL)
+            T = y;
+            else
+            {
+            if(x == x->parent->lchild)
+            x->parent->lchild = y;
+            else
+            x->parent->rchild = y;
+            }
+            y->lchild = x;
+            x->parent = y;
+            }
+             
+            // ⑤
+            void RBInsertFixup(RBTree &T, Node *z)
+            {
+            while(z->parent->color == RED)
+            {
+            if(z->parent == z->parent->parent->lchild)
+            {
+            Node *y = z->parent->parent->rchild;
+            //////////// Case1 //////////////
+            if(y->color == RED)
+            {
+            z->parent->color = BLACK;
+            y->color = BLACK;
+            z->parent->parent->color = RED;
+            z = z->parent->parent;
+            }
+            else
+            {
+            ////////////// Case 2 //////////////
+            if(z == z->parent->rchild)
+            {
+            z = z->parent;
+            LeftRotate(T, z);
+            }
+            ////////////// Case 3 //////////////
+            z->parent->color = BLACK;
+            z->parent->parent->color = RED;
+            RightRotate(T, z->parent->parent);
+            }
+            }
+            else
+            {
+            Node *y = z->parent->parent->lchild;
+            if(y->color == RED)
+            {
+            z->parent->color = BLACK;
+            y->color = BLACK;
+            z->parent->parent->color = RED;
+            z = z->parent->parent;
+            }
+            else
+            {
+            if(z == z->parent->lchild)
+            {
+            z = z->parent;
+            RightRotate(T, z);
+            }
+            z->parent->color = BLACK;
+            z->parent->parent->color = RED;
+            LeftRotate(T, z->parent->parent);
+            }
+            }
+            }
+            T->color = BLACK;
+            }
+             
+            void RBTreeInsert(RBTree &T, int k)
+            {
+            //T->parent->color = BLACK;
+            Node *y = NULL;
+            Node *x = T;
+            Node *z = new Node;
+            z->key = k;
+            z->lchild = z->parent = z->rchild = NULL;
+             
+            while(x != NULL)
+            {
+            y = x;
+             
+            if(k < x->key)
+            x = x->lchild;
+            else
+            x = x->rchild;
+            }
+             
+            z->parent = y;
+            if(y == NULL)
+            {
+            T = z;
+            T->parent = NULL;
+            T->parent->color = BLACK;
+            }
+            else
+            if(k < y->key)
+            y->lchild = z;
+            else
+            y->rchild = z;
+            z->lchild = NULL;
+            z->rchild = NULL;
+            z->color = RED;
+            RBInsertFixup(T, z);
+            }
+             
+             
+             
+            // ⑤
+            void RBDeleteFixup(RBTree &T, Node *x)
+            {
+            while(x != T && x->color == BLACK)
+            {
+            if(x == x->parent->lchild)
+            {
+            Node *w = x->parent->rchild;
+            ///////////// Case 1 /////////////
+            if(w->color == RED)
+            {
+            w->color = BLACK;
+            x->parent->color = RED;
+            LeftRotate(T, x->parent);
+            w = x->parent->rchild;
+            }
+            ///////////// Case 2 /////////////
+            if(w->lchild->color == BLACK && w->rchild->color == BLACK)
+            {
+            w->color = RED;
+            x = x->parent;
+            }
+            else
+            {
+            ///////////// Case 3 /////////////
+            if(w->rchild->color == BLACK)
+            {
+            w->lchild->color = BLACK;
+            w->color = RED;
+            RightRotate(T, w);
+            w = x->parent->rchild;
+            }
+            ///////////// Case 4 /////////////
+            w->color = x->parent->color;
+            x->parent->color = BLACK;
+            w->rchild->color = BLACK;
+            LeftRotate(T, x->parent);
+            x = T;
+            }
+            }
+            else
+            {
+            Node *w = x->parent->lchild;
+            if(w->color == RED)
+            {
+            w->color = BLACK;
+            x->parent->color = RED;
+            RightRotate(T, x->parent);
+            w = x->parent->lchild;
+            }
+            if(w->lchild->color == BLACK && w->rchild->color == BLACK)
+            {
+            w->color = RED;
+            x = x->parent;
+            }
+            else
+            {
+            if(w->lchild->color == BLACK)
+            {
+            w->rchild->color = BLACK;
+            w->color = RED;
+            LeftRotate(T, w);
+            w = x->parent->lchild;
+            }
+            w->color = x->parent->color;
+            x->parent->color = BLACK;
+            w->lchild->color = BLACK;
+            RightRotate(T, x->parent);
+            x = T;
+            }
+            }
+            }
+            x->color = BLACK;
+            }
+             
+            Node* RBTreeDelete(RBTree T, Node *z)
+            {
+            Node *x, *y;
+            // z是要删除的节点,而y是要替换z的节点
+            if(z->lchild == NULL || z->rchild == NULL)
+            y = z;   // 当要删除的z至多有一个子树，则y=z；
+            else
+            y = RBTreeSuccessor(z);  // y是z的后继
+            if(y->lchild != NULL)
+            x = y->lchild;
+            else
+            x = y->rchild;
+            // 无条件执行p[x] = p[y]
+            x->parent = y->parent;  //如果y至多只有一个子树，则使y的子树成为y的父亲节点的子树
+            if(y->parent == NULL)   // 如果y没有父亲节点，则表示y是根节点，词典其子树x为根节点
+            T = x;
+            else if(y == y->parent->lchild)
+            // 如果y是其父亲节点的左子树，则y的子树x成为其父亲节点的左子树，
+            // 否则成为右子树
+            y->parent->lchild = x;
+            else
+            y->parent->rchild = x;
+            if(y != z)
+            z->key = y->key;
+            if(y->color == BLACK)
+            RBDeleteFixup(T, x);
+            return y;
+            }
+             
+            void InRBTree(RBTree T)
+            {
+            if(T != NULL)
+            {
+            InRBTree(T->lchild);
+            cout << T->key << " ";
+            InRBTree(T->rchild);
+            }
+            }
+             
+            void PrintRBTree(RBTree T)
+            {
+            if(T != NULL)
+            {
+            PrintRBTree(T->lchild);
+            cout << T->key << ": ";
+            // 自身的颜色
+            if(T->color == 0)
+            cout << " Color: RED ";
+            else
+            cout << " Color: BLACK ";
+             
+            // 父亲结点的颜色
+            if(T == NULL)
+            cout << " Parent: BLACK ";
+            else
+            {
+            if(T->color == 0)
+            cout << " Parent: RED ";
+            else
+            cout << " Parent: BLACK ";
+            }
+             
+            // 左儿子结点的颜色
+            if(T->lchild == NULL)
+            cout << " Lchild: BLACK ";
+            else
+            {
+            if(T->lchild->color == 0)
+            cout << " Lchild: RED ";
+            else
+            cout << " Lchild: BLACK ";
+            }
+             
+            // 右儿子结点的颜色
+            if(T->rchild == NULL)
+            cout << " Rchild: BLACK ";
+            else
+            {
+            if(T->rchild->color == 0)
+            cout << " Rchild: RED ";
+            else
+            cout << " Rchild: BLACK ";
+            }
+            cout << endl;
+            PrintRBTree(T->rchild);
+            }
+            }
+             
+            int main()
+            {
+            int m;
+            RBTree T = NULL;
+            for(int i=0; i<9; ++i)
+            {
+            cin >> m;
+            RBTreeInsert(T, m);
+            cout << "在红黑树中序查找：";
+            InRBTree(T);
+            cout << endl;
+            }
+            PrintRBTree(T);
+            cout << "删除根节点后：";
+            RBTreeDelete(T, T);
+            InRBTree(T);
+            }
+
+截图如图：
+{{./rbt4_thumb.png}}
+rbt4
+
+如图显示,这里用到了书上图13-4.可以看到,结点1, 5, 7, 8, 14是黑结点.和图13-4显示一样.
+
+另外,我在学习红黑树的过程中,在网上发现了几个不错的资料,这里给大家推荐下:
+
+天枰座的唐风朋友的：
+
+http://liyiwen.iteye.com/blog/345800
+
+http://liyiwen.iteye.com/blog/345799
+
+wangdei的红黑树算法，附AVL树的比较：
+
+http://wangdei.iteye.com/blog/236157
+
+July的红黑树算法层层剖析与逐步实现：
+    1、教你透彻了解红黑树
+    2、红黑树算法的实现与剖析
+    3、红黑树的c源码实现与剖析
+    4、一步一图一代码，R-B Tree
+    5、红黑树插入和删除结点的全程演示
+    6、红黑树的c++完整实现源码
+
+
+感谢上面的朋友写的这么好的分析文章。
+
+在我独立博客上的原文：http://www.wutianqi.com/?p=2473
+
+欢迎大家互相学习，互相进步！

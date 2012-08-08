@@ -1,0 +1,148 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-06T13:47:03+08:00
+
+====== virtualenvwrapper ======
+Created Friday 06 January 2012
+http://mathematism.com/2009/07/30/presentation-pip-and-virtualenv/
+
+Jul 30
+Presentation: pip and virtualenv
+
+I put together a walkthrough of __pip__ and __virtualenv __for the django-district July meeting. It was a slide-less presentation, focusing mostly on talking points and command-line walkthroughs. This post provides a recap of what I covered.
+
+===== virtualenv =====
+virtualenv is a tool to create** isolated Python environments**. It was created by Ian Bicking to provide a solution to a consistent problem.
+
+===== The Problem =====
+To illustrate the problem let’s pretend you have a Web server with two Web sites on it: mysite.com and anothersite.com. Each of your Web sites are sharing the **global site-packages** directory in /usr/lib/python2.x/site-packages.
+{{./1.jpg}}
+The global site-packages directory has Django 1.0.2, Pinax 0.5 and PIL 1.1.6 among other things. The sites are purring along, living in complete harmony.
+
+One day, the client for anothersite.com decides they’d like to take advantage of some of the new features in Django 1.1. Now we have a problem. How do we upgrade anothersite.com’s dependencies without affecting mysite.com?
+
+===== The Solution =====
+anothersite.com and mysite.com need the ability to have __their own set of dependencies__. The way to achieve this is to create isolated Python environments using __virtualenv__.
+{{./2.jpg}}
+virtualenv creates an environment that has__ its own installation directories__ and isolates itself from other virtual environments. The environment contains** a site-packages directory**, installs__ setuptools__ and a Python interpreter that is **aware of its environment**.
+
+This allows us to install a different set of dependencies for each of our sites. Now anothersite.com can upgrade to Django 1.1 and Pinax trunk without affecting mysite.com at all.
+
+===== Installation =====
+virtualenv is available on **PyPI**. Run the following command to install:
+
+//easy_install virtualenv//
+
+===== Working with virtualenv =====
+While I could go into detail about the commands available with virtualenv, I honestly never use the virtualenv commands directly. I use suite of conveniences for virtualenv called __virtualenvwrapper__.
+
+===== virtualenvwrapper =====
+Doug Hellmann was kind enough to create virtualenvwrapper, which is best described on PyPI:
+
+    virtualenvwrapper is **a set of extensions** to Ian Bicking’s virtualenv tool. The extensions include wrappers for creating and deleting virtual environments and otherwise managing your development workflow, making it easier to work on more than one project at a time without introducing conflicts in their dependencies.
+
+===== Screencast =====
+I put together a quick screencast to go over the wrappers and hooks that virtualenvwrapper provides as stated below. You can also view the source code on Bitbucket. Doug’s code is well commented and I found out about several of these wrappers only after taking a look at the source.
+
+===== Wrappers =====
+The wrappers provided by **virtualenvwrapper** (that I know of) are:
+下面的封装函数只有当用source /path/to/virtualenvwrapper.sh后才有效。
+* mkvirtualenv (create a new virtualenv)
+* rmvirtualenv (remove an existing virtualenv)
+* workon (change the current virtualenv)
+* add2virtualenv (add __external packages__ in a .pth file to current virtualenv)
+* cdsitepackages (cd into the site-packages directory of **current** virtualenv)
+* cdvirtualenv (cd into the__ root__ of the current virtualenv)
+* deactivate (deactivate virtualenv, which calls several hooks)
+
+===== Hooks =====
+One of the coolest things about virtualenvwrapper is the ability to provide hooks __when an event occurs__. Hook files can be placed in ENV/bin/ and are simply plain-text files with __shell commands__. virtualenvwrapper provides the following hooks:
+
+* postmkvirtualenv
+* prermvirtualenv
+* postrmvirtualenv
+* postactivate
+* predeactivate
+* postdeactivate
+
+===== Installation =====
+virtualenvwrapper is available on __PyPI__. Run the following command to install:
+
+//easy_install virtualenvwrapper//
+
+Add two lines to your__ .bashrc__ to set the location where the virtual environments should live and the location of the script installed with this package:
+
+		//export WORKON_HOME=$HOME/.virtualenvs//
+		//source /usr/local/bin/virtualenvwrapper_bashrc//
+
+You should also take a look at Doug’s blog post on virtualenvwrapper, which provides a great overview of why he created virtualenvwrapper and provides detailed setup instructions.
+
+===== pip(easy_install的替代者，提供自动搜索、安装、移除，以及依赖文件) =====
+Another tool created by Ian Bicking, __pip stands for pip installs Python packages.__ It is a replacement for easy_install that provides some great improvements including requirements files and support for version control systems.
+
+==== Requirements files ====
+Requirements files are plain text files that contain **a list of packages to be installed**. These text files allow you to create __repeatable installations__. As illustrated in this example file, there are several ways to specify a required package.
+
+Package name with version requirements:
+
+Django>=1.1
+Pinax==0.5
+
+Direct URL to a tarball containing a setup.py script:
+
+http://effbot.org/downloads/Imaging-1.1.6.tar.gz
+
+Editable checkouts from VCS repositories:
+
+-e svn+http://svn.myproject.org/svn/MyProject/trunk#egg=MyProject
+-e git+http://git.myproject.org/MyProject/#egg=MyProject
+-e hg+ssh://hg@myproject.org/MyProject/#egg=MyProject
+-e bzr+https://bzr.myproject.org/MyProject/trunk#egg=MyProject
+
+Editable checkouts from VCS repositories with revision information:
+
+-e svn+http://svn.myproject.org/svn/MyProject/trunk@2019#egg=MyProject
+-e git://git.myproject.org/MyProject.git@da39a3ee5e6b4b0d3255bfef95601890afd80709#egg=MyProject 
+-e hg+http://hg.myproject.org/MyProject/@2019#egg=MyProject
+-e bzr+https://bzr.myproject.org/MyProject/trunk/@2019#egg=MyProject
+
+View my sample requirements file for more examples of checking out with revision information including branches, tags and dates.
+
+===== Usage =====
+Once you have a requirements file, Installing a package using **pip** is as simple as the following command:
+
+__pip install -r /path/to/requirements.txt__
+
+I should note that you don’t have to create a requirements file. You can simply issue any of the commands listed in the requirements file directly from the command line like so:
+
+__pip install Django>=1.1__
+pip install http://effbot.org/downloads/Imaging-1.1.6.tar.gz
+pip install -e svn+http://myrepo/svn/MyApp#egg=MyApp
+
+===== pip freeze =====
+打印出**当前环境中所有非标准package名称及其版本号**，非常方便与复制当前环境。
+
+pip doesn’t just install packages. It also provides a few other commands, including freeze:
+
+pip freeze > /path/to/requirements.txt
+
+This will __inspect the current environment and generate a requirements files that contains explicit version number__ for each of the installed packages. I generally use this as a starting point for creating a stable requirements file.
+
+There are other commands as well. I’d encourage you to take a look at the documentation for pip to learn more about the various options.
+
+===== Installation =====
+
+pip is available on PyPI. Run the following command to install:
+
+**easy_install pip**
+
+You can also check out a copy from bitbucket. Run one of the following commands:
+wget http://bitbucket.org/ianb/pip/raw/0.4/pip.py
+
+OR
+
+hg clone http://bitbucket.org/ianb/pip/
+
+===== Conclusion =====
+
+Using __virtualenv, virtualenvwrapper and pip__ together can help you create__ isolated, repeatable environments __with ease. We use these tools on a daily basis at Discovery Creative and it has saved us countless hours in addition to providing documentation for requirements for our applications and sites.

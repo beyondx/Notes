@@ -1,0 +1,54 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-15T14:36:56+08:00
+
+
+
+===== Using IDO =====
+
+    ;;in the .emacs
+    (require ‘ido)
+    (ido-mode t)
+
+===== 1. =====
+To switch between buffers, press “__C-x b__”, then:
+    type some characters appearing in the buffer name(只要name中包含输入的字符即可), RET to visit the buffer in the front the list.
+    use __C-s __(next) or__ C-r __(previous) to move through the list.
+    __[Tab]__ display possible completion in a buffer (or visit the buffer if there is only one possible completion).
+    use __C-f __to fall back to find file (without ido-mode) or __C-b__ to fall back to switch to buffer (without ido-mode).
+
+===== 2. =====
+To find a file, press “__C-x C-f__”.
+
+    type some characters appearing in the file name, RET to choose the file or directory in the front of the list.
+    C-s (next) or C-r (previous) to move through the list.
+    [Tab] - display possible completion in a buffer (or open the file or go down the directory if there is only one possible completion).
+    **RET - type to go down inside the directory in front of the list.**
+**    [backspace] - go up to the parent directory.**
+    // - go to the root directory.** 可以用在文件路径的任何地方**
+    ~/ - go to the home directory.
+    C-f - to go back temporarily to the normal find-file.
+    C-d - enter Dired for this directory (used to be C-x C-d in older versions)
+   __ C-j __- create a new file named with the text you entered (note: this is needed if the text you entered matches an existing file, because RET would open the existing one)
+
+===== 3. =====
+To restrict the list after a first filtering:(缩小检索范围)
+
+    type some characters appearing in the buffer/file name(say .cpp)
+    type **C-SPC (C-@)**
+    continue as normal with a list containing only the filtered names
+
+===== 4. =====
+Recently visited directories:
+
+    type__ M-p__ and __M-n__ to change to previous/next directories from the history
+    __M-s __to search for a file matching your input
+   __ M-k__ to remove the current directory from the history
+    directories are added to the history by navigating inside them via RET 
+
+===== 5. =====
+The documentation for these keys is available via
+
+    M-x describe-function RET ido-find-file RET
+    C-h f ido-find-file RET
+

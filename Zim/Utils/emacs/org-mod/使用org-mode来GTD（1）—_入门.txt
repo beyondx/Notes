@@ -1,0 +1,247 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-09-22T19:59:38+08:00
+
+====== 使用org-mode来GTD（1）— 入门 ======
+Created Thursday 22 September 2011
+
+http://www.yifeiyang.net/using-the-org-mode-for-gtd-1-getting-started/
+
+使用org-mode来GTD（1）— 入门
+GTD，org-mode概要
+
+GTD（Getting Things Done）是美国的商业顾问David Allen提倡的一种提高生产效率的时间管理系统。利用GTD可以缓解压力，专心地工作，学习。详细可以参考他的两部书《尽管去做：无压工作的艺术》，《结果第一：平衡工作和生活的52条原则》。
+
+Org-Mode是为Emacs编写的个人信息管理以及编写大纲的工具。因为Emacs强大的特性，用其来实践GTD系统是再方便不过的了。这里我将介绍一些org-mode的特性。需要深入了解的可以看这里。
+操作方法
+
+收集
+
+    调用 remember-mode (C-c r)
+    选择 Todo（GTD）或者是 notes
+        选择情境标签（OFFICE, HOME, READING, DVD, etc...）
+        选择Todo的状态（TODO, STARTED, WAITING, etc...）
+        设置任务结束时间（C-c C-d）
+        设置任务的开始时间（C-c C-s）
+
+每天的操作
+
+    首先确认当天的任务
+        确认当天所有的任务 (C-c a d)
+        利用情境确认当天的预定任务 (C-c a h)
+        在时间轴上确认任务 (C-c a L)
+    任务由 TODO 状态转换为 DONE 状态 (C-c C-t 或者 shift+左右)
+    如果有新的预定使用 remember-mode (F8) 来添加任务
+
+周回顾
+
+    打开 org 文件 （C-c g）
+    检查 INBOX 中积攒的任务
+    选择合适的项目分类 （C-c C-w）
+    设置任务的结束时间 （C-c C-d）
+    设置任务的开始时间（C-c C-s）
+
+org-mode 的设置
+
+org-mode的设置可以在 .emacs 中设置，也可以在 org 文件中设置。
+
+先看看 org-mode 所需要的文件。
+
+
+
+~/.emacs
+~/elisp/org-mode.el
+~/org/gtd.org
+~/org/notes.grg
+~/org/someday.org
+~/org/birthday.org
+
+首先是在 ~/.emacs 文件中加载 org-mode.el。其中文件位于 ~/elisp/org-mode.el。
+
+(load "org-mode")
+
+(custom-set-variables
+  ;; custom-set-variables was added by Custom.
+  ;; If you edit it by hand, you could mess it up, so be careful.
+  ;; Your init file should contain only one such instance.
+  ;; If there is more than one, they won't work right.
+ '(auto-raise-tool-bar-buttons t t)
+ '(auto-resize-tool-bars t t)
+ '(calendar-week-start-day 1)
+ '(case-fold-search t)
+ '(org-agenda-files (quote ("~/org/birthday.org" "~/org/gtd.org")))
+ '(org-agenda-ndays 7)
+ '(org-agenda-repeating-timestamp-show-all nil)
+ '(org-agenda-restore-windows-after-quit t)
+ '(org-agenda-show-all-dates t)
+ '(org-agenda-skip-deadline-if-done t)
+ '(org-agenda-skip-scheduled-if-done t)
+ '(org-agenda-sorting-strategy (quote ((agenda time-up priority-down tag-up) (todo tag-up))))
+ '(org-agenda-start-on-weekday nil)
+;;  '(org-agenda-todo-ignore-deadlines t)
+;;  '(org-agenda-todo-ignore-scheduled t)
+;;  '(org-agenda-todo-ignore-with-date t)
+ '(org-agenda-window-setup (quote other-window))
+ '(org-deadline-warning-days 7)
+ '(org-export-html-style "<link rel=\"stylesheet\" type=\"text/css\" href=\"mystyles.css\">")
+ '(org-fast-tag-selection-single-key nil)
+ '(org-log-done (quote (done)))
+ '(org-refile-targets (quote (("gtd.org" :maxlevel . 1) ("someday.org" :level . 1))))
+ '(org-reverse-note-order nil)
+ '(org-tags-column -78)
+ '(org-tags-match-list-sublevels nil)
+ '(org-time-stamp-rounding-minutes 5)
+ '(org-use-fast-todo-selection t)
+ '(org-use-tag-inheritance nil)
+ '(unify-8859-on-encoding-mode t nil (ucs-tables)))
+
+;; These lines only if org-mode is not part of the X/Emacs distribution.
+(autoload 'org-mode "org" "Org mode" t)
+(autoload 'org-diary "org" "Diary entries from Org mode")
+(autoload 'org-agenda "org" "Multi-file agenda from Org mode" t)
+(autoload 'org-store-link "org" "Store a link to the current location" t)
+(autoload 'orgtbl-mode "org" "Org tables as a minor mode" t)
+(autoload 'turn-on-orgtbl "org" "Org tables as a minor mode")
+
+(add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
+(define-key global-map "\C-cl" 'org-store-link)
+(define-key global-map "\C-ca" 'org-agenda)
+
+;(setq org-log-done nil)
+(setq org-log-done t)
+(setq org-agenda-include-diary nil)
+(setq org-deadline-warning-days 7)
+(setq org-timeline-show-empty-dates t)
+(setq org-insert-mode-line-in-empty-file t)
+
+(require 'org-install)
+
+(autoload 'remember "remember" nil t)
+(autoload 'remember-region "remember" nil t)
+
+(setq org-directory "~/org/")
+(setq org-default-notes-file "~/org/notes.org")
+(setq remember-annotation-functions '(org-remember-annotation))
+(setq remember-handler-functions '(org-remember-handler))
+(add-hook 'remember-mode-hook 'org-remember-apply-template)
+(define-key global-map "\C-cr" 'org-remember)
+
+(setq org-remember-templates
+     '(
+      ("Todo" ?t "* TODO %^{任务} %^g\n%?\nAdded: %U" "~/org/gtd.org" "INBOX")
+      ("Note" ?n "\n* %U %^{笔记} %^g \n%i%?\n %a" "~/org/notes.org")
+      ))
+
+(setq org-agenda-exporter-settings
+      '((ps-number-of-columns 1)
+        (ps-landscape-mode t)
+        (htmlize-output-type 'css)))
+
+(setq org-agenda-custom-commands
+'(
+  ("p" "Projects"
+   ((tags "PROJECT")))
+  ("h" "Office and Home Lists"
+   ((agenda)
+    (tags-todo "OFFICE")
+    (tags-todo "HOME")
+    (tags-todo "WEB")
+    (tags-todo "CALL")
+    ))
+
+  ("d" "Daily Action List"
+   (
+    (agenda "" ((org-agenda-ndays 1)
+        (org-agenda-sorting-strategy
+         (quote ((agenda time-up priority-down tag-up) )))
+        (org-deadline-warning-days 0)
+        ))))))
+
+(setq org-todo-keywords '((sequence "TODO" "APPT" "STARTED" "DONE")))
+(defun gtd ()
+    (interactive)
+    (find-file "~/org/gtd.org"))
+(global-set-key (kbd "C-c g") 'gtd)
+
+(add-hook 'org-agenda-mode-hook 'hl-line-mode)
+
+org 文件的设置 ::
+
+~/org/gtd.rog
+
+#+STARTUP: showall
+* INBOX
+#+CATEGORY: INBOX
+
+* Research
+#+CATEGORY: Research
+
+* Project A
+#+CATEGORY: Project A
+
+* Private
+#+CATEGORY: Private
+
+* Archive
+#+CATEGORY: Archive
+
+* org-mode configuration
+#+STARTUP: hidestars
+#+STARTUP: logdone
+#+PROPERTY: Effort_ALL  0:10 0:20 0:30 1:00 2:00 4:00 6:00 8:00
+#+COLUMNS: %38ITEM(Details) %TAGS(Context) %7TODO(To Do) %5Effort(Time){:} %6CLOCKSUM{Total}
+#+PROPERTY: Effort_ALL 0 0:10 0:20 0:30 1:00 2:00 3:00 4:00 8:00
+#+TAGS: { OFFICE(o) HOME(h) WEB(w) DOWNTOWN(d) CALL(c) }
+#+TAGS: PROJECT(p) READING(r)
+#+TODO: TODO(t) STARTED(s) WAITING(w) APPT(a) | DONE(d) CANCELLED(c) DEFERRED(f)
+
+~/org/notes.org
+
+
+#+STARTUP: showall
+#+STARTUP: hidestars
+#+TAGS: OFFICE(o) RESEARCH(r) DIARY(d) BOOK(b) FILMS(f) IDEA(i) WEB(w) COMPUTER(c)
+
+* 笔记
+** [2010-02-02 星期二 18:53] 今天写博 使用org-mode来GTD（1）                    :OFFICE:
+
+~/org/someday.org
+
+也许某天会做的事。
+
+
+#+STARTUP: showall
+* Someday
+** 计算机升级。
+** 去马尔代夫旅游。
+
+~/org/birthday.org
+
+这里记录预先决定的日常安排。比如生日节假日。
+与其他设备无缝连接
+
+使用Emacs的tramp1可以无缝地访问远程的设备。同样也可以连接 org-mode 的文件。下面是在HOST机器上设置 org-mode 与tramp关联的方法。
+
+比如下面设置的地方
+
+1
+
+"~/org/foo.org"
+
+替换为
+
+1
+
+	
+
+"/domain-name/org/foo.org"
+
+如果是 Windows 的 NTEmacs 为:
+
+1
+
+	
+
+"/plink:domain-name/org/foo.org"
+
+1. TRAMP 代表”Transparent Remote (file) Access, Multiple Protocol”，他是 Emacs 的一个用于远程文件编辑的扩展包。用来访问scp/ssh/smb服务器上的文件，可以做到像读写本地文件一样编辑远程的文件。

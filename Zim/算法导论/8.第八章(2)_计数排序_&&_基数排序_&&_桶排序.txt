@@ -1,0 +1,190 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-30T13:39:36+08:00
+
+====== 8.第八章(2) 计数排序 && 基数排序 && 桶排序 ======
+Created Saturday 30 July 2011
+
+这一节讲的是非线性排序。
+
+一.计数排序(Counting Sort)
+
+基本思想：对每一个输入元素x，确定出小于x的元素个数。
+
+适用范围：适用于输入是由小范围的整数构成的序列。
+
+稳定性：算法是稳定的。
+
+具体实现：
+ 1 /*
+ 2 Author: Tanky Woo
+ 3 Blog:   www.WuTianQi.com
+ 4 Description: 计数排序
+ 5 */
+ 6 #include <iostream>
+ 7 using namespace std;
+ 8  
+ 9 // arr--初始输入数组， res--存放排序结果的数组，hash临时存储区[0k]
+10 int arr[100], res[100], hash[100];
+11 int len, k = -1;
+12  
+13 void PrintHash()
+14 {
+15     cout << "Hash数组: " << endl;
+16     for(int i=0; i<=k; ++i)
+17         cout << hash[i] << " ";
+18     cout << endl;
+19 }
+20  
+21 void countingSort()
+22 {
+23     for(int i=0; i<=k; ++i)
+24         hash[i] = 0;
+25     // 此过程记录每一个元素的个数
+26     for(int i=1; i<=len; ++i)
+27         ++hash[arr[i]];
+28     PrintHash();
+29     // 此过程确定小于x的元素的个数
+30     for(int i=1; i<=k; ++i)
+31         hash[i] += hash[i-1];
+32     PrintHash();
+33     // 思考这里为何从i=len开始？而不从i=1开始？
+34     for(int i=len; i>0; --i)
+35     {
+36         res[hash[arr[i]]] = arr[i];
+37         --hash[arr[i]];
+38     }
+39 }
+40 /*
+41 思考这里为何从i=len开始？而不从i=1开始？
+42 保持排序后结果的稳定性！
+43 因为同一个元素，靠后的元素在排序后相对也是从后开始存入结果数组的。
+44 */
+45  
+46 int main()
+47 {
+48     cout << "输入元素个数: ";
+49     cin >> len;
+50     cout << "输入" << len << "个元素: " << endl;
+51     for(int i=1; i<=len; ++i)
+52     {
+53         cin >> arr[i];
+54         if(k < arr[i])
+55             k = arr[i];
+56     }
+57     countingSort();
+58     cout << "排序后结果为: " << endl;
+59     for(int i=1; i<=len; ++i)
+60         cout << res[i] << " ";
+61     cout << endl;
+62 }
+
+输出结果：
+{{./jishupaixu_thumb.jpg}}
+jishupaixu
+
+
+二.基数排序(Radix Sort)
+
+基本思想：按组成关键字的各个位的值来实现排序的。
+
+排序方式：
+
+排序方式：LSD 由右向左排; MSD 由左向右排
+
+稳定性：算法是稳定的。
+
+推荐：严蔚敏《数据结构》上的基数排序。
+
+先说下什么是基数：计算的基数就是基本的单元数。比如10进制的基数就是10，二进制的基数就2，八进制的基数是8等等。
+
+基数排序说通俗点，就是把带排序的N个数字右对齐排成一列。然后把相同的位数互相比较，来排序。
+
+例图：
+{{./jishu_thumb.jpg}}
+jishu
+
+以下是具体实现和分析：
+ 1/*
+ 2Author: Tanky Woo
+ 3Blog:   www.WuTianQi.com
+ 4Description: 基数排序
+ 5*/
+ 6#include <iostream>
+ 7#include <cstring>
+ 8using namespace std;
+ 9 
+10int arr[100], res[100], hash[10];
+11int n;
+12 
+13int maxbit()
+14{
+15       int _max = 0;
+16       int temp[100];
+17       for(int i=0; i<n; ++i)
+18           temp[i] = arr[i];
+19 
+20       for (int i=0; i<n; ++i)
+21       {
+22              int tt = 1;
+23              while(temp[i]/10 > 0)
+24              {
+25                     tt++;
+26                     temp[i] /= 10;
+27              }
+28              if(_max < tt)
+29                     _max = tt;
+30       }
+31       cout << "_max : " << _max << endl;
+32       return _max;
+33}
+34 
+35void radixSort()
+36{
+37    memset(res, 0, sizeof(res));
+38    int nbit = maxbit();
+39    int tmp;
+40    int radix = 1;
+41    // 以下和计数排序一样
+42    for(int i=1; i<=nbit; ++i)
+43    {
+44        for(int j=0; j<10; ++j)
+45            hash[j] = 0;
+46        for(int j=0; j<n; ++j)
+47        {
+48            tmp = (arr[j]/radix)%10;
+49            ++hash[tmp];
+50        }
+51        for(int j=1; j<10; ++j)
+52            hash[j] += hash[j-1];
+53        for(int j=n-1; j>=0; --j)
+54        {
+55            tmp = (arr[j]/radix)%10;
+56            --hash[tmp];
+57            res[hash[tmp]] = arr[j];
+58        }
+59        for(int j=0; j<n; ++j)
+60            arr[j] = res[j];
+61        radix *= 10;
+62    }
+63}
+64 
+65int main()
+66{
+67    freopen("input.txt", "r", stdin);
+68    cout << "输入元素个数: ";
+69    cin >> n;
+70    cout << "输入" << n << "个元素: " << endl;
+71    for(int i=0; i<n; ++i)
+72        cin >> arr[i];
+73    radixSort();
+74    cout << "排序后结果为: " << endl;
+75    for(int i=0; i<n; ++i)
+76        cout << res[i] << " ";
+77    cout << endl;
+78}
+
+推荐一个基数排序的动画演示：http://blogimg.chinaunix.net/blog/upfile/070912120349.swf
+
+桶排序就不写了，本质就是计数排序和基数排序的结合。
+不过我有点不明白，我们一般说的桶排序貌似就是基数排序？

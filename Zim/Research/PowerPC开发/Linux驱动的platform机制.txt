@@ -1,0 +1,91 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-15T19:26:06+08:00
+
+====== Linux驱动的platform机制 ======
+Created Sunday 15 January 2012
+
+最近在看SPI、I2C这样简单点的总线驱动程序，从Linux2.6起，内核引入了一套新的驱动管理和注册机制：Platform_device和Platform_driver。现在Linux中大部分的设备驱动都可以使用这套机制，总线为platform_bus，设备用platform_device表示，驱动用platform_driver进行注册。
+
+    Linux的这种platform driver机制和传统的device_driver机制相比，一个十分明显的优势在于platform机制将本身的资源注册进内核，由内核统一管理，在驱动程序中使用这些资源时通过platform_device提供的标准接口进行申请并使用。这样提高了驱动和资源管理的独立性，并且拥有较好的可移植性和安全性。下面是SPI驱动层次示意图，Linux中的SPI总线可理解为SPI控制器引出的总线：
+
+和传统的驱动一样，platform机制也分为三个步骤：
+
+1、总线注册阶段：
+
+内核启动初始化时的main.c文件中的kernel_init()→do_basic_setup()→driver_init()→platform_bus_init()→bus_register(&platform_bus_type)，注册了一条platform总线（虚拟总线，platform_bus）。
+
+2、添加设备阶段：
+
+设备注册的时候Platform_device_register()→platform_device_add()→(pdev→dev.bus = &platform_bus_type)→device_add()，就这样把设备给挂到虚拟的总线上。
+
+3、驱动注册阶段：
+
+Platform_driver_register()→driver_register()→bus_add_driver()→driver_attach()→bus_for_each_dev(), 对在每个挂在虚拟的platform bus的设备作__driver_attach()→driver_probe_device(),判断drv→bus→match()是否执行成功，此时通过指针执行platform_match→strncmp(pdev→name , drv→name , BUS_ID_SIZE),如果相符就调用really_probe(实际就是执行相应设备的platform_driver→probe(platform_device)。)开始真正的探测，如果probe成功，则绑定设备到该驱动。
+
+从上面可以看出，platform机制最后还是调用了bus_register() , device_add() , driver_register()这三个关键的函数。
+
+下面看几个结构体：
+[cpp] view plaincopy
+
+    struct platform_device           (/include/linux/Platform_device.h)  
+    {  
+        const char  * name;  
+        int     id;  
+        struct device   dev;  
+        u32     num_resources;  
+        struct resource * resource;  
+    };  
+
+    Platform_device结构体描述了一个platform结构的设备，在其中包含了一般设备的结构体struct device  dev;设备的资源结构体struct resource   * resource;还有设备的名字const char * name。（注意，这个名字一定要和后面platform_driver.driver àname相同，原因会在后面说明。）
+
+    该结构体中最重要的就是resource结构，这也是之所以引入platform机制的原因。
+[cpp] view plaincopy
+
+    struct resource                            ( /include/linux/ioport.h)  
+    {  
+        resource_size_t start;  
+        resource_size_t end;  
+        const char *name;  
+        unsigned long flags;  
+        struct resource *parent, *sibling, *child;  
+    };  
+
+    其中 flags位表示该资源的类型，start和end分别表示该资源的起始地址和结束地址(/include/linux/Platform_device.h)：
+[cpp] view plaincopy
+
+    struct platform_driver                    
+    {  
+        int (*probe)(struct platform_device *);  
+        int (*remove)(struct platform_device *);  
+        void (*shutdown)(struct platform_device *);  
+        int (*suspend)(struct platform_device *, pm_message_t state);  
+        int (*suspend_late)(struct platform_device *, pm_message_t state);  
+        int (*resume_early)(struct platform_device *);  
+        int (*resume)(struct platform_device *);  
+        struct device_driver driver;  
+    };  
+
+    Platform_driver结构体描述了一个platform结构的驱动。其中除了一些函数指针外，还有一个一般驱动的device_driver结构。
+
+名字要一致的原因：
+
+    上面说的驱动在注册的时候会调用函数bus_for_each_dev(), 对在每个挂在虚拟的platform bus的设备作__driver_attach()→driver_probe_device(),在此函数中会对dev和drv做初步的匹配，调用的是drv->bus->match所指向的函数。platform_driver_register函数中drv->driver.bus = &platform_bus_type，所以drv->bus->match就为platform_bus_type→match,为platform_match函数，该函数如下：
+[cpp] view plaincopy
+
+    static int platform_match(struct device * dev, struct device_driver * drv)  
+    {  
+        struct platform_device *pdev = container_of(dev, struct platform_device, dev);  
+       
+        return (strncmp(pdev->name, drv->name, BUS_ID_SIZE) == 0);  
+    }  
+
+    是比较dev和drv的name，相同则会进入really_probe（）函数，从而进入自己写的probe函数做进一步的匹配。所以dev→name和driver→drv→name在初始化时一定要填一样的。
+
+    不同类型的驱动，其match函数是不一样的，这个platform的驱动，比较的是dev和drv的名字，还记得usb类驱动里的match吗？它比较的是Product ID和Vendor ID。
+
+    个人总结Platform机制的好处：
+
+1、提供platform_bus_type类型的总线，把那些不是总线型的soc设备都添加到这条虚拟总线上。使得，总线——设备——驱动的模式可以得到普及。
+
+2、提供platform_device和platform_driver类型的数据结构，将传统的device和driver数据结构嵌入其中，并且加入resource成员，以便于和Open Firmware这种动态传递设备资源的新型bootloader和kernel 接轨。

@@ -1,0 +1,48 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-28T21:21:04+08:00
+
+====== 关于默认构造函数的几个错误认识 ======
+Created Friday 28 October 2011
+
+http://blog.csdn.net/dongfengsun/article/details/2104176
+
+假期间闲来无事,就下载了某大师的VC++视频资料。在讲到C++时,说是如果程序员没有自己定义默认构造函数,那么编译器会自动为我们产生一个默认的构造函数。 本来这个错误的认识很多程序员都有,不足为奇。但有这么多年编程经验的高手也有这样的错误认识就不禁让我哑然了。
+
+        其实编程语言和我们所用的任何软件没有区别,例如Photoshop、AutoCAD之类。其唯一不同的是我们用的编程语言是基于编译器的,而应用软件是基于我们的编程语言的。
+
+        既然我们所用的软件是基于编译器的,那么理解编译器在背后到底为我们做了些什么、在什么情况下做了哪些事情就显得异常重要。这就像Photoshop会为你产生一些基本图形例如矩形、三角形之类,而不会凭空产生一些风景优美的图片一样。
+
+        在《C++ Annotated Reference Manual(ARM)[ELLIS90]》中的Section 12.1告诉我们:"Default constructors...在需要的时候被编译器产生出来"。
+
+        其实默认构造函数也是分为两类的:**有用的、无用的**。
+
+        所谓有用的标准也是就默认构造函数会为我们的类做一些**初始化操作**。那么无用的就不会做任何工作,从而对我们的类也就没有任何意义。所以,我们通常所说的默认构造函数是指有用的默认构造函数,其英文名字叫nontrivial default constructor。
+
+        那么到底什么时候编译器会为我们产生nontrivial default constructor呢?有下面四中情况:
+
+__       ①如果一个类里面某个成员对象有nontrivial default constructor,编译器就会为我们的类产生nontrivial default constructor。__
+
+       那么编译器这样做的理由是什么?
+
+       答案是因为类成员对象有nontrivial default constructor,那么编译器就需要显式的来调用这个类成员对象的nontrivial default constructor。而编译器想显式的调用类成员对象的nontrivial default constructor,就需要自己来合成一些代码来调用。但是记住,编译器合成的nontrivial default constructor仅仅调用__类成员对象__的默认构造函数,而不对我们类里面的**其它变量**做任何初始化操作。
+
+        也就是说,如果你想初始化类成员变量以外的变量例如一个int、一个String,那么必须自己定义默认构造函数来完成这些变量的初始化。而编译器会对你定义的默认构造函数做相应的扩展,从而调用类成员对象的nontrivial default constructor。
+
+   __     ②如果一个派生类的基类有nontrivial default constructor,那么编译器会为派生类合成一个nontrivial default constructor。__
+
+        编译器这样的理由是:因为派生类被合成时需要显式调用基类的默认构造函数。
+
+   __     ③如何一个类里面隐式的含有任何virtual function table(或vtbl)、pointer member(或vptr)。__
+
+        编译器这样做的理由很简单:因为这些vtbl或vptr需要编译器隐式(implicit)的合成出来,那么编译器就把合成动作放到了默认构造函数里面。所以编译器必须自己产生一个默认构造函数来完成这些操作。
+
+        所以如果你的类里带有任何virtual function,那么编译器会为你合成一个默认构造函数。
+
+   __     ④如果一个类虚继承于其它类。__
+
+        编译器这样做的理由和③类似:因为虚继承需要维护一个类似指针一样,可以动态的决定内存地址的东西(不同编译器对虚继承的实现不仅相同)。
+
+        那么除了以上四种情况,编译器并不会为我们的类产生默认构造函数。
+
+        所以编程中切忌想当然,要明白哪些事情是编译器做的,哪些事情需要程序员来完成的。就像堆所占用的资源需要程序员自己来释放,而栈空间是编译器管理的一样。只有如此,才能编写出质量更高的代码。

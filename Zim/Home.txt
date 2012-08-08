@@ -1,0 +1,56 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-09-17T19:57:22+08:00
+
+====== Home ======
+Created Saturday 17 September 2011
+
+曾经有一段信息摆到我眼前,可是我没有珍惜.直到失去我才后悔莫及.如果上天能给我一个重来的机会,我希望将那段信息记为笔记,如果非要在这条笔记上加个期限,我希望是一万年.
+
+这个笔记记录着我的学习、生活、科研等值得回味的内容。
+好记性不如烂笔头，坚持就是胜利！
+
+以动手实践为荣 , 以只看不练为耻;
+以打印日志为荣 , 以单步跟踪为耻;
+以空格缩进为荣 , 以制表缩进为耻;
+以单元测试为荣 , 以人工测试为耻;
+
+以模块复用为荣 , 以复制粘贴为耻;
+以多态应用为荣 , 以分支判断为耻;
+以Pythonic为荣 , 以冗余拖沓为耻;
+以总结分享为荣 , 以跪求其解为耻;
+
+The beauty of free software is that you have choices
+
+necessity is the mother of invention
+
+sed has more than one way to solve many problems. What is important is you understand your problem, and document your solution
+
+“Time spent developing good habits is time well spent.” 
+
+Truth is the daughter of time
+
+"C makes it easy to shoot yourself in the foot; C++ makes it harder, but when you do it blows your whole leg off." -- Bjarne Stroustrup
+
+在学习过程中，我们要先宏观后微观：先对体系、结构、框架等有所了
+解，慢慢再掌握使用方法，细节处理更要靠经验的积累。同时还要勤于思
+考 what、why、how等问题。
+
+我认为，在计算机科学中保持计算中的趣味性是特别重要的事情。 — Alan J. Perlis
+
+http://www.ruanyifeng.com/blog/2011/04/on_hacker.html
+
+"出于兴趣，解决某个难题，不管它有没有用，这就是黑客。" （Playfully doing something difficult, whether useful or not, that is hacking.）
+
+    1. 使用计算机，不应受到任何限制。任何事情都应该亲手尝试。（Access to computers--and anything that might teach you something about the way the world works--should be unlimited and total. Always yield to the Hands-On Imperative!）
+
+    2. 信息应该全部免费。（All information should be free.）
+
+    3. 不信任权威，提倡去中心化。（Mistrust Authority--Promote Decentralization.）
+
+    4. 判断一个人应该看他的技术能力，而不是看其他标准。（Hackers should be judged by their hacking, not bogus criteria such as degrees, age, race, or position.）
+
+    5. 你可以用计算机创造美和艺术。（You can create art and beauty on a computer.）
+
+    6. 计算机使生活更美好。（Computers can change your life for the better.）
+

@@ -1,0 +1,247 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-06T11:10:34+08:00
+
+====== Python中应用shell脚本 ======
+Created Friday 06 January 2012
+http://rickyluo.iteye.com/blog/1327911
+
+===== 执行命令： =====
+首先介绍一个函数：
+**os.system(command)  #其实在python中执行shell命令的首选方式是使用subprocess模块。**
+这个函数可以调用shell运行命令行command并且返回它的__返回值__。试一下在python的解释器里输入os.system(”ls -l”)，就可以看到”ls”列出了当前目录下的文件。可以说，通过这个函数，python就拥有了shell的所有能力。呵呵。。不过，通常这条命令不需要用到。因为shell常用的那些命令在python中通常有对应而且同样简洁的写法。
+
+===== 列出文件： =====
+shell中最常用的是ls命令，python对应的写法是：os.listdir(dirname)，这个函数**返回字符串列表**，里面是所有的文件名，不过不包含”.”和”..”。如果要遍历整个目录的话就会比较复杂一点。我们等下再说吧。先在解释器里试一下：
+**>>> os.listdir(”/”)**
+[’tmp’, ‘misc’, ‘opt’, ‘root’, ‘.autorelabel’, ’sbin’, ’srv’, ‘.autofsck’, ‘mnt’, ‘usr’, ‘var’, ‘etc’, ’selinux’, ‘lib’, ‘net’, ‘lost+found’, ’sys’, ‘media’, ‘dev’, ‘proc’, ‘boot’, ‘home’, ‘bin’]
+
+===== 复制文件： =====
+对应于cp命令的是：__shutil.copy(src,dest)__，这个函数有两个参数，参数src是指源文件的名字，参数dest则是目标文件或 者目标目录的名字。 如果dest是一个目录名，就会在那个目录下创建一个相同名字的文件。与shutil.copy函数相类似的是__ shutil.copy2(src,dest)__，不过copy2还会复制最后存取时间和最后更新时间。
+
+===== 复制目录： =====
+不过，shell的cp命令还可以复制目录，python的shutil.copy却不行，第一个参数只能是一个文件。这怎么办？其 实，python还有个__shutil.copytree(src,dst[,symlinks])__ 。参数多了一个symlinks，它是一个布尔值，如果是True的话就创建符号链接。
+
+===== 移动或重命名文件： =====
+移动或者重命名文件和目录呢？估计被聪明的朋友猜到了，__shutil.move(src,dst)__，呵呵。。与mv命令类似，如果src和dst在 同一个文件系统上，shutil.move只是简单改一下名字，如果src和dst在不同的文件系统上，shutil.move会先把src复制到 dst，然后删除src文件。
+
+看到现在，大多数朋友应该已经对python的能力有点眉目了，接下来我就列个表，介绍一下其它的函数：
+**os.chdir(dirname)**
+把当前工作目录切换到dirname下
+**os.getcwd()**
+返回当前的工作目录路径
+**os.chroot(dirname)**
+把dirname作为进程的根目录。和*nix下的chroot命令类似
+**os.chmod(path,mode)**
+更改path的权限位。mode可以是以下值(使用or)的组合：
+os.S_ISUID
+os.S_ISGID
+
+os.S_ISVTX
+os.S_IREAD
+os.S_IWRITE
+os.S_IEXEC
+
+os.S_IRWXU
+os.S_IRUSR
+os.S_IWUSR
+os.S_IXUSR
+
+os.S_IRWXG
+os.S_IRGRP
+os.S_IWGRP
+os.S_IXGRP
+
+os.S_IRWXO
+os.S_IROTH
+os.S_IWOTH
+os.S_IXOTH
+具体它们是什么含义，就不仔细说了，基本上就是R代表读,W代表写，X代表执行权限。USR代表用户，GRP代表组，OTH代表其它。
+**os.chown(path,uid,gid)**
+改变文件的属主。uid和gid为-1的时候不改变原来的属主。
+**os.link(src,dst)**
+创建硬连接
+**os.mkdir(path,[mode])**
+创建目录。mode的意义参见os.chmod()，默认是0777
+__os.makedirs(path,[mode])__
+和os.mkdir()类似，不过会先创建不存在的父目录。
+os.readlink(path)
+返回path这个符号链接所指向的路径
+os.remove(path)
+删除文件，不能用于删除目录
+__os.rmdir(path)__
+删除文件夹，不能用于删除文件
+__removedirs(path)__
+递归移除目录。类似于rmdir()的工作，除了如果子目录被成功地删除，removedirs()尝试接连地删除每个在path中提及的父目录，直到一个错误被挂起（这个错误被忽略，因为它通常意味父目录不为空。）例如，"os.removedirs(‘foo/bar/baz')"将首先删除"'foo/bar/baz'"目录，然后如果 "'foo/bar'"和"'foo'"为空删除它们。如果子目录不能被成功地删除挂起OSError。1.5.2版本中的新方法。
+
+rename(src, dst)
+重命名文件或目录src为dst。如果dst是一个目录OSError将被挂起。在Unix上，如果dst存在并且是一个文件，如果用户有权限它将被**默默地删除**。在一些Unix风格的系统上如果src和dst是不同的文件系统，这个操作可能失败。如果成功，重命名将是一个基本的操作（这是一个POSIX要求）。在Windows上，如果dst已经存在，甚至如果它是一个文件，OSError将被挂起；当dst命名一个已存在的文件时没有办法执行基本的重命名。
+
+renames(old, new)
+递归重命名目录或文件函数。类似于rename()的工作，除了所有中间层目录的创建第一次试图需要有效的新的路径名。重命名后，目录符合老的名称最右边路径部分将被用removedirs()删除。1.5.2版本中的新方法。注意：如果你缺乏需要删除子目录或文件的权限，使用新的目录结构重命名时这个函数会失败。
+
+readlink(path)
+返回一个代表符号连接点指向的路径的字符串。结果可以是绝对或相对路径名的其中之一；如果是相对，它可以用__os.path.join(os.path.dirname(path)__, result)转换成一个绝对路径。可用：Macintosh, Unix。
+
+stat(path)
+在给定的路径上执行stat()系统调用。返回值是一个__对象__，它的属性对应stat的结构数，即：st_mode(保护块)，st_ino(索引节点数)， st_dev(设备)，st_nlink(硬连接数)，st_uid(所有者的用户ID)，st_gid(所有者的组ID),st_size(文件大小，用字节)，st_atime(当前访问的时间)，st_mtime(当前内容修改的时间)，st_ctime(平台依赖，在Unix上当前元数据改变的时间，在Windows上创建的时间)：
+
+>>> import os
+
+>>> statinfo = __os.stat__('somefile.txt')
+
+>>> statinfo
+
+(33188, 422511L, 769L, 1, 1032, 100, 926L, 1105022698,1105022732, 1105022732)
+
+>>> statinfo.st_size
+
+926L
+
+__os.symlink(src,dst)__
+创建符号链接
+
+tempnam([dir[, prefix]])
+为创建一个临时文件合理的返回一个唯一的路径名。这将是__一个绝对路径路径__，以dir目录中可能的目录项命名，或是一个通常的临时文件的位置，如果dir被忽略或为None。如果给定和不为None，prefix被用来给文件名提供一个简短的前缀。应用负责使用由tempnam()返回的路径恰当地创建和管理文件；**不提供自动清除**。在Unix上，环境变量TMPDIR覆盖dir，在Windows上TMP被使用。这个函数的指定行为依赖于C库的执行；some aspects are underspecified in system documentation.注意：tempnam()的用法是危险的对于符号连接攻击；考虑用tmpfile()（14.1.2节）替代。可用： Macintosh, Unix, Windows。
+
+tmpnam()
+为创建一个临时文件合理的返回一个唯一的路径名。这将是一个绝对路径路径，以一个通常的临时文件的位置中可能的目录项命名，应用负责使用由tempnam ()返回的路径恰当地创建和管理文件；**不提供自动清除**。注意：tempnam()的用法是危险的对于符号连接攻击；考虑用tmpfile() （14.1.2节）替代。可用：Macintosh, Unix, Windows。这个函数大概在Windows上不被使用，不过：微软tmpnam()的实现一直创建在当前驱动的根目录中创建一个名字，它通常是一个临时文件粗略的位置（依赖于特权，你甚至用这个名称不能打开一个文件）。
+
+TMP_MAX
+再使用这些名称之前tmpnam()将生成的唯一的名称的最大数目。
+
+**unlink(path)**
+删除文件path。同remove()相同；unlink()名称是它的传统的Unix名称。可用：Macintosh, Unix, Windows。
+
+__utime(path, times)__
+设置由path指定的文件的访问和修改时间。如果times是None，那么文件的访问和修改时间被设置为当前的时间。否则，__times必须是一个二元组数__，它的被用来设置访问和修改时间的格式分别是（atime, mtime）。目录能否由path指定依赖于操作系统是否作为一个文件执行目录（如，Windows就不是）。注意你这儿设置的精确的时间不能通过后来的 stat()调用返回，依赖于正式的你的操作系统纪录的访问和修改时间；参见stat()。2.0版本中的改变：增加times为None的支持。可用： Macintosh, Unix, Windows。
+
+__walk__(top[, topdown=True [, onerror=None]]),它os.listdir()明显的区别就是，它能进行__纵深遍历__，os.listdir()只能遍历当前目录里的所有子目录和文件。
+在目录树中walk()生成文件名，通过由上而下或右下而上遍历树。这个树中每个目录的根在目录top（包含top自身），它给出一个__三元组（dirpath, dirnames, filenames）__。
+
+
+	这个例子显示开始目录下的每个目录中非目录的文件的字节数，除了不查找任意CVS子目录下的：
+	
+	import os
+	from os.path import__ join__, getsize
+	for __root, dirs, files __in os.walk('python/Lib/email'):
+	    print root, "consumes",
+	    print sum(getsize(__join(root, name)) for name in files__),
+	    print "bytes in", len(files), "non-directory files"
+	    if 'CVS' in dirs:
+	        __dirs.remove__('CVS')  # don't visit CVS directories
+	
+	下面的例子中，从下到上遍历树等于：rmdir()目录为空之前不允许删除目录：
+	
+	# Delete everything reachable from the directory named in 'top',
+	# assuming there are no symbolic links.
+	# CAUTION:  This is dangerous!  For example, if top == '/', it
+	# could delete all your disk files.
+	
+	import os
+	for root, dirs, files in os.walk(top, topdown=False):
+	    for name in files:
+	        os.remove(os.path.join(root, name))
+	    for name in dirs:
+	        os.rmdir(os.path.join(root, name))
+
+介绍了这么多，其实只要查一下__os和shutil两个模块__的文档就有了，呵呵。。真正编写shell脚本的时候还需要注意：
+
+===== 1.环境变量 =====
+。python的环境变量保存在os.environ这个字典里，可以用普通字典的方法修改它，使用system启动其它程序的时候会自动被继承。比如：
+os.environ[”fish”]=”nothing”
+
+不过也要注意，环境变量的值只能是字符串。和shell有些不同的是，python没有export环境变量这个概念。为什么没有呢？因为python没有必要有:-)
+
+===== 2.os.path =====
+这个模块里包含了很多关于路径名处理的函数。在shell里路径名处理好像不是很重要，但是在python里经常需要用到。最常用的两个是分离和合并目录名和文件名：
+**os.path.split(**path) -> (dirname,basename)
+这个函数会把一个路径分离为两部分，比如：os.path.split(”/foo/bar.dat”)会返回(”/foo”,”bar.dat”)
+**os.path.join**(dirname,basename)
+这个函数会把目录名和文件名组合成一个完整的路径名，比如：os.path.join(”/foo”,”bar.dat”)会返回”/foo /bar.dat”。这个函数和os.path.split()刚好相反。
+还有这些函数：
+os.path.__commonprefix__(list)
+返回list中，所有path共有的最长的路径。
+如：
+>>> os.path.commonprefix(['/home/td','/home/td/ff','/home/td/fff'])
+'/home/td'
+os.path.__lexists__(path)与os.path.__exists__(path)的不同是如果有损坏的链接会返回True
+
+os.path.basename('/foo/bar.dat')
+>>>bar.dat
+os.path.dirname('/foo/bar.dat')
+>>>/foo
+
+os.path.__realpath__(path)            返回path的真实路径，去除符号链接
+os.path.__relpath__(path[, start])   返回一个“相对路径”，当前目录或者可选的start
+Return a relative filepath to path either from the current directory or from an optional start point.
+如：
+>>> os.path.relpath('/home/jimin','/usr/lib/')
+
+
+os.path.samefile(path1, path2)
+如果path1与path2是相同的文件或目录，返回真
+os.path.sameopenfile(fp1, fp2)
+如果fp1和fp2指向的是同一个文件，返回True
+os.path.samestat(stat1, stat2)
+如果 stat tuple stat1和stat2指向同一个文件，返回真。stat tuple结构是由fstat()、lstat()、stat()产生的
+os.path.__abspath__(path)
+把path转成绝对路径,相当于normpath(join(os.getcwd(), path))
+os.path.expanduser(path)
+把path中包含的”~”和”~user”转换成用户目录
+os.path.__expandvars__(path)
+接受环境变量的扩展，path中可以使用环境变量
+如：
+>>> os.path.expandvars('$PATH')
+'/usr/lib64/qt-3.3/bin:/usr/kerberos/bin:/usr/lib64/ccache:/usr/local/bin:/usr/bin:/bin:/usr/local        
+/sbin:/usr/sbin:/sbin:/home/jimin/bin'
+
+os.path.normpath(path)
+去掉path中包含的”.”和”..”
+os.path.__splitext__(path)
+把path分离成**基本名和扩展名**。比如：os.path.splitext(”/foo/bar.tar.bz2″)返回(’/foo /bar.tar’, ‘.bz2′)。要注意它和os.path.split()的区别
+
+===== 3.os.path =====
+模块。在os模块有一个很好用的函数叫os.stat()没有介绍，因为os.path模块里包含了一组和它具有同样功能的函数，但是名字更好记一点。
+os.path.**exists**(path)
+判断文件或者目录是否存在
+os.path.isfile(path)
+判断path所指向的是否是一个普通文件，而不是目录
+os.path.isdir(path)
+判断path所指向的是否是一个目录，而不是普通文件
+os.path.islink(path)
+判断path所指向的是否是一个符号链接
+os.path.ismount(path)
+判断path所指向的是否是一个挂接点(mount point)
+os.path.getatime(path)
+返回path所指向的文件或者目录的最后存取时间。
+os.path.getmtime(path)
+返回path所指向的文件或者目录的最后修改时间
+os.path.getctime(path)
+返回path所指向的文件的创建时间
+os.path.__getsize__(path)
+返回path所指向的文件的大小
+
+===== 4. =====
+应用python编写shell脚本经常要用到**os,shutil,glob(正则表达式的文件名),tempfile(临时文 件),pwd(操作/etc/passwd文件),grp(操作/etc/group文件),commands**(取得一个命令的输出)。前面两个已经基本上介绍完了，后面几个很简单，看一下文档就可以了。
+
+===== 5.sys.argv =====
+是一个列表，保存了python程序的命令行参数。其中sys.argv[0]是**程序本身**的名字。
+不能光说不练，接下来我们就编写一个用于复制文件的简单脚本。前两天叫我写脚本的同事有个几万个文件的目录，他想复制这些文件到其它的目录，又不能 直接复制目录本身。他试了一下”cp src/* dest/”结果报了一个**命令行太长**的错误，让我帮他写一个脚本（其实还可以使用find结合xargs来操作）。操起python来：
+
+
+import sys,os.path,shutil
+for f in __os.listdir__(sys.argv[1]):
+__shutil.copy__(__os.path.join__(sys.argv[1],f),__sys.argv__[2])
+
+
+再试一下linuxapp版里的帖子——把一个文件夹下的所有文件重命名成10001～10999。可以这样写：
+import os.path,sys
+dirname=sys.argv[1]
+i=10001
+for f in os.listdir(dirname):
+    src=os.path.join(dirname,f)
+    if os.path.isdir(src):
+     continue
+   os.rename(src,str(i))
+   i+=1 

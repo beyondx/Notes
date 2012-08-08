@@ -1,0 +1,152 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T19:54:45+08:00
+
+====== NOX ======
+Created Sunday 27 March 2011
+
+1、安装依赖的软件包
+
+$ apt-get install autoconf automake g++ libtool python python-twisted \ 
+       swig  libxerces-c2-dev libssl-dev make        \
+       libsqlite3-dev python-simplejson        \
+        python-sphinx
+
+注意：默认的libboost1.35-dev，ubuntu10.10上没有，可以用下面命令单独安装：
+
+sudo apt-get install libboost-all-dev 
+
+或：
+
+sudo apt-get install libboost-dev automake libtool flex bison pkg- 
+config g++ 
+
+2、下载NOX软件包
+
+ $ git clone git://noxrepo.org/nox
+           $ cd nox
+
+注意：缺省情况下，获得的是OpenFlow v0.8.9 compatible NOX (as of 5/20/2010).
+如果需要OpenFlow v1.0 compatible NOX, 则需要手动从源代码中检索出相应的分支，方法如下：
+
+ #### this is only for OpenFlow v1.0 user
+   $ git branch -a
+	* master
+      remotes/origin/HEAD -> origin/master
+      remotes/origin/destiny
+      remotes/origin/master
+      remotes/origin/openflow-0.9
+      remotes/origin/openflow-1.0
+   $ git checkout -b nox_v06_ofv1.0 remotes/origin/openflow-1.0
+   $ git branch -a
+        master
+	* nox_v06_ofv1.0
+         remotes/origin/HEAD -> origin/master
+         remotes/origin/destiny
+         remotes/origin/master
+         remotes/origin/openflow-0.9
+         remotes/origin/openflow-1.0
+
+3、编译并安装
+
+$ ./boot.sh
+$ mkdir build
+$ cd build/
+$ ../configure
+$ make
+$ make check
+注意：默认的源代码有bug，需要手动修复一下，否则编译时出现“ configure: error: Could not link against  ! ”的错误
+解决方法如下：
+
+vim [[~/nox/src/nox_main.cc]]
+
+在文件的开头添加一个头文件语句：
+
+#include <sys/stat.h>
+
+4、运行控制器
+
+$ cd   ~/nox/build/src
+$ ./nox_core -i ptcp:6633 routing
+
+注意：默认编译后的文件有bug，运行时会提示如下错误：
+
+> 00001|nox|ERR:Cannot change the state of 'python' to INSTALLED:
+
+解决方法如下：
+
+vim ~/nox/build/src/nox/coreapps/pyrt/ pyoxidereactor.py
+
+把133行替换为一下内容：
+
+signal.signal(signal.SIGCHLD, lambda : self.callLater(0, reapAllProcesses))
+
+
+5、测试
+
+$ netstat -an | grep 6663
+
+==================以下为google内容==============================
+
+checking Checking thrift_home set to... /usr/local 
+checking Checking fb303_home set to... /usr/local 
+checking Checking smc_home set to... /home/ubuntu/src/scribe/services/ 
+trunk/src 
+checking Checking fb_home set to... /home/ubuntu/src/scribe/ 
+libfacebook 
+checking Checking hadoop_home set to... /usr/local 
+checking for boostlib >= 1.36... yes 
+checking build system type... i686-pc-linux-gnu 
+checking whether the Boost::System library is available... yes 
+checking whether the Boost::Filesystem library is available... yes 
+configure: error: Could not link against  ! 
+Distribution: Ubuntu 10.04 
+Is any one else facing this issue? 
+
+More options Jun 22, 11:16 pm
+I was able to solve this by doing: 
+sudo apt-get install libboost-all-dev 
+This is in addition to the recommended: 
+sudo apt-get install libboost-dev automake libtool flex bison pkg- 
+config g++ 
+
+
+
+../../src/nox_main.cc: In function ‘int<unnamed>::daemon()’:
+../../src/nox_main.cc:201: error: ‘umask’ was not declared in this scope
+make[4]: *** [nox_main.o] Error 1
+make[4]: Leaving directory `/home/geekard/nox/build/src'
+make[3]: *** [all-recursive] Error 1
+make[3]: Leaving directory `/home/geekard/nox/build/src'
+make[2]: *** [all] Error 2
+make[2]: Leaving directory `/home/geekard/nox/build/src'
+make[1]: *** [all-recursive] Error 1
+make[1]: Leaving directory `/home/geekard/nox/build'
+make: *** [all] Error 2
+
+
+geekard@geekard:~/nox/build$ vim ../src/nox_main.cc 
+加一个
+#include <sys/stat.h>
+
+
+
+> ./nox_core -i ptcp:6633 switch switch_management hostip hosttracker monitoring jsonmessenger
+>
+> NOX 0.9.0(zaku)~full~beta (nox_core), compiled Nov 15 2010 21:36:36
+> Compiled with OpenFlow 0x01
+> 00001|nox|ERR:Cannot change the state of 'python' to INSTALLED:
+> 'python' ran into an error:
+>     Unable to construct a Python component:
+>     Traceback (most recent call last):
+>       File "./nox/coreapps/pyrt/pyoxidereactor.py", line 364, in instance
+>         return pyoxidereactor(ctxt)
+>       File "./nox/coreapps/pyrt/pyoxidereactor.py", line 133, in __init__
+>         signal.signal(signal.SIGCHLD, self._handleSigchld)
+>     AttributeError: 'pyoxidereactor' object has no attribute '_handleSigchld'
+
+
+I think the fix is to change line 133 in pyoxidereactor.py to:
+signal.signal(signal.SIGCHLD, lambda : self.callLater(0, reapAllProcesses))
+
+http://comments.gmane.org/gmane.network.nox.devel/1796

@@ -1,0 +1,101 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-15T16:47:17+08:00
+
+====== How to completely enclose a floated element in CSS2 ======
+Created Sunday 15 May 2011
+http://www.cs.hmc.edu/~mbrubeck/clear-after/
+Author: 	Matt Brubeck
+Date: 	2003-06-24
+
+===== Introduction =====
+
+Consider the following CSS and HTML:
+
+.item { border: 1px solid black; padding: 0.5em; }
+img { float: left; }
+
+<div class="item">
+  <img src="monkey.png"/>
+  <p>One time I hired a monkey to
+     take notes for me in class.</p>
+</div>
+
+Here's how this renders in Mozilla (example 1):
+{{./screenshot1.png}}
+Screenshot 1
+
+**PS:**这是因为img已经脱离了文档流，**div的大小由其padding和内部的段落空间决定**。下图为一个设置了padding:10px的dvi，其中内容为一个段落。
+注意：段落框大小由其上下margin和内容高度决定。
+{{./space-of-dvi.png?width=600}}
+If the image is taller than the text, it overruns the border of the enclosing div (except in IE/Win; see browser compatibility below). In some cases this is the desired behavior, but what if we want the border to fully enclose both the image and the text? This document describes the only way I know to do this using completely general, standards-compliant, clean CSS and HTML.
+
+===== Spacer div hack =====
+
+One common solution to this problem is known as the "spacer div" hack. We can __force the outer div to fully contain both elements by adding an element with __**clear: both **__to the end of the div:__
+
+img { float: left; padding: 0.5em; }
+.item { border: 1px solid black; }
+**.spacer { clear: both; }**
+
+<div class="item">
+  <img src="monkey.png"/>
+  <p>One time I hired a monkey to
+     take notes for me in class.</p>
+  **<div class="spacer"></div>**
+</div>
+
+This works, but it requires us to add a new element to our HTML for purely presentational reasons. That means we would have to add markup to every "item" div on our site, __costing us time and bandwidth.__ A CSS-only solution would save effort and bandwith, and avoid polluting our markup with meaningless elements.
+
+**PS**：div的框参数为0，因此上面加粗的空内容div大小为0；div 没有浏览器默认样式，没有特殊功能，而且一般不会被 css 样式化。
+
+===== CSS3 clear-after property =====
+
+The CSS3 working draft defines a new property,__ clear-after__, which has the desired effect without any markup changes. We can return to the original markup, and simply add the following rule to our stylesheet:
+
+__.item __{ clear-after: both; }
+
+This rule has the same effect as an element with clear: both at the end of the div, as in the "spacer div" hack above. Unlike the spacer div hack, it achieves this effect without needing the change the markup.
+
+Unfortunately, the clear-after property is not implemented by any current browsers. CSS3 is still in development, and the clear-after property may change before it is standardized.
+
+===== Solution: CSS2 generated content =====
+
+Fortunately, we can create the same effect using only CSS2:
+
+.item__:after __{ content: ""; display: block; height: 0; clear: both; }
+
+This uses the same method as the "spacer div" hack:** it adds an element at the end of the container div**, forcing its bottom border to clear the float. By using the __:after pseudo-selector__ we can generate the extra element from our stylesheet, with no changes to our HTML files.
+
+Here's the new version of our markup:
+
+.item { border: 1px solid black; padding: 0.5em; }
+img { float: left; }
+__.item:after { content: ""; display: block; height: 0; clear: both; }__
+
+<div class="item">
+  <img src="monkey.png"/>
+  <p>One time I hired a monkey to
+     take notes for me in class.</p>
+</div>
+
+and this what it looks like in Mozilla (example 2):
+{{./screenshot2.png}}
+Screenshot 2
+
+**PS：**上面的display:block是必需的，因为行内元素的上下margin是不起作用的。
+
+==== Browser compatibility ====
+
+The :after pseudo-selector is supported in Mozilla 1.x, Netscape 6 and 7, and Opera 7.
+It is not supported in IE 5 or 6, for either Windows or Macintosh (I haven't tested IE/Mac).
+(Updated 2003-06-24) Adding height: 100%; causes IE6/Win to expand a containing block around its floated children. Example 3 uses this technique to create a page that works in Mozilla, Netscape 6/7, IE6, and Opera 7 (not tested with other browsers). Note that the containing block must be inside another block-level element. If its immediate parent is the body element, then the height: 100% style will make it fill the entire viewport, at least in IE6.
+About this document
+
+The "spacer div" hack has been discussed in many places, including this article on A List Apart.
+
+My CSS2 implementation of clear-after is based on a suggestion by Lydia Lalopolis on the www-style mailing list. My version corrects the problem in Lydia's suggestion pointed out by David Baron.
+
+An article on Mezzoblue discusses this problem and its solutions. Mr. Brownstone's comment points out that adding height: 100%; leads to correct results in IE6.
+
+Please send any comments to mbrubeck@hmc.edu.

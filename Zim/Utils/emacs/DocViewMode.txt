@@ -1,0 +1,37 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-19T20:37:16+08:00
+
+====== DocViewMode ======
+Created Friday 19 August 2011
+DocViewMode is another file mode viewer like DviViewMode which adds support for PDF and PS files written by TassiloHorn. It’s official part of Emacs 23.
+
+Conversion is done with ghostscript and various other tools. It even supports regexp search in documents.
+
+To get it it’s best to install Emacs 23 (the current CVS HEAD).
+
+You can get a snapshot of doc-view.el at doc-view.el.
+
+The homepage of DocViewMode is http://www.tsdh.de/cgi-bin/wiki.pl/doc-view.el.
+
+This can be customized via:
+
+  M-x customize-group doc-view RET
+
+Required Software
+
+__    Ghostscript.__
+    Other Things?
+
+Cygwin
+
+Emacs 23 Instructions.
+
+1. Install several packages:
+
+    xpdf
+    ghostscript
+
+2. Restart Emacs.
+
+3. It should just work.

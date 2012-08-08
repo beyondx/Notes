@@ -1,0 +1,69 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-16T21:36:19+08:00
+
+====== POD对象 ======
+Created Thursday 16 February 2012
+
+http://blog.csdn.net/amossavez/article/details/4388756
+
+在C++中，我们__把传统的C风格的struct叫做POD（Plain Old Data）对象__。一般来说，POD对象应该满足如下特性。
+
+* 对于POD类型T的对象，不管这个对象是否拥有类型T的有效值，如果将该对象的底层字节序列复制到一个字符数组（或者无符号字符数组）中，再将其复制回对象，那么该对象的值与原始值一样。
+* 对于任意的POD类型T，如果两个T指针分别指向两个不同的对象obj1和obj2，如果用memcpy库函数把obj1的值复制到obj2，那么obj2将拥有与obj1相同的值。
+
+简言之，__针对POD对象，其二进制内容是可以随便复制的__，在任何地方，只要其二进制内容在，就能还原出正确无误的POD对象。对于任何POD对象，都可以使用memset()函数或者其他类似的内存初始化函数。
+
+===== 现在动手 =====
+
+为了更好地理解POD对象的含义，我们体验一下如何采用memxxx()函数对POD对象进行存储与还原。
+
+编写Win32控制台程序，主程序如下：
+
+【程序】使用memxxx函数操作POD对象
+
+[cpp] view plaincopy
+
+    01  #include "stdafx.h"   
+    02  #include <cstring>    
+    03    
+    04  //PERSON为POD    
+    05  struct PERSON    
+    06  {    
+    07      char _name[16];    
+    08      int _age;    
+    09      bool _gender;    
+    10  };    
+    11    
+    12  void print(PERSON * p)    
+    13  {    
+    14      printf("%s,%d,%s/r/n", p->_name, p->_age, (p->_gender ? "男" : "女"));    
+    15  }    
+    16    
+    17  int main()    
+    18  {    
+    19      //POD对象可以使用初始化列表    
+    20      PERSON p1 = {"佟湘玉", 28, false};    
+    21      PERSON p3 = {"白展堂", 26, true};    
+    22      print(&p1);    
+    23      print(&p3);    
+    24    
+    25      //将p1转储为char数组    
+    26      char bytes[sizeof(PERSON)];    
+    27      memcpy(bytes, &p1, sizeof(PERSON));    
+    28    
+    29      PERSON p2;    
+    30      memset(&p2, 0, sizeof(PERSON));    
+    31      print(&p2);    
+    32    
+    33      //将char数组还原为p2    
+    34      memcpy(&p2, bytes, sizeof(PERSON));    
+    35      print(&p2);    
+    36    
+    37      //将p3复制至p2    
+    38      memcpy(&p2, &p3, sizeof(PERSON));    
+    39      print(&p2);    
+    40    
+    41      return 0;42 }   
+
+因此，对于POD对象，我们完全可以大胆地使用memxxx函数进行操作，从而完成对对象复制、赋值的目的。但是注意，__对于多态类的对象，要慎重考虑使用memset__，因为它会同时修改vtable指针！vtable指针是多态的根本所在，弄乱了对象的虚表指针，很有可能会酿成大错。

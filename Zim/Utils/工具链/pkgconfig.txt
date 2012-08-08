@@ -1,0 +1,7 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-13T14:30:22+08:00
+
+====== pkgconfig ======
+Created Wednesday 13 June 2012
+

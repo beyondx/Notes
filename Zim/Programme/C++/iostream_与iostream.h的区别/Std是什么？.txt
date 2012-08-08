@@ -1,0 +1,28 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-06T09:45:43+08:00
+
+====== Std是什么？ ======
+Created Saturday 06 August 2011
+
+“std::”是名称空间标识符，C++标准库中函数或者对象都是在命名空间std中定义的，所以我们要使用标准库中函数或者对象都要用std来限定。
+
+接下来就很好理解，对象cout是标准库所提供的一个对象，而标准库在命名空间中被指定为std，所以在coutd时候前面要加上std::。这样编译器就会明白我们调用的cout是命名空间中的std中的cout。
+
+至于为什么将cout放到命名空间std中，是因为像cout这样的对象在实际操作中或许会有许多个，比如说你自己也可能会不小心定义了一个对象叫cout，那么这两个cout对象就会产生冲突，关于这个问题，我会在其他篇幅讲解，这里不再多说了。
+
+那么std是什么时候使用？
+
+一般来说，std都是要调用C++标准库时使用。如：使用标准库头文件iostream，要写上std，使用非标准库头文件iostream.h，不用写。
+
+最后，有没有一种简单的方法不用重复输入std::?
+
+当然有，如果在使用标准库头文件iostream时，不喜欢重复地使用std，我们可以用一种类似通告的形式告诉编译器我们将使用标准库函数cout和endl。
+
+可以使用using std::cout;将cout释放出来。
+
+同样使用using std::endl;将endl释放出来。
+
+这样在cout和endl前面就不要加std::。
+
+其实我们还有种更加简便的方法，就是直接使用using namespace std来代替using std::cout和using std::endl。using namespace std告诉编译器我们将要使用命名空间std中的函数或者对象，所以cout和endl前面不用注明它们是std这个命名空间中的cout何endl。

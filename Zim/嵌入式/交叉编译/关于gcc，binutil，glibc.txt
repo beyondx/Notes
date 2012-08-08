@@ -1,0 +1,33 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-22T22:27:53+08:00
+
+====== 关于gcc，binutil，glibc ======
+Created Wednesday 22 February 2012
+
+http://blog.sina.com.cn/s/blog_6f3260650100mwip.html
+
+1) gcc（gnu compiler collection）是__一组__编译工具的总称。它主要完成的工作任务是“预处理”和“编译”，以及提供了__与编译器紧密相关的运行库__的支持，如libgcc_s.so、libstdc++.so等。
+
+2) binutils提供了一系列用来创建、管理和维护二进制目标文件的工具程序，如汇编（as）、连接（ld）、静态库归档（ar）、反汇编（objdump）、elf结构分析工具（readelf）、无效调试信息和符号的工具（strip）等。通常，binutils与gcc是紧密相集成的，没有binutils的话，gcc是不能正常工作的。
+
+3) glibc是gnu发布的libc库，也即c运行库。glibc是linux系统中最底层的api，几乎其它任何的运行库都会倚赖于glibc。glibc除了封装linux__操作系统__所提供的系统服务外，它本身也提供了许多其它一些必要功能服务的实现
+
+4)程序在运行的时候动态库的装载依赖于ld-linux.so.6,默认情况ld-linux.so.2 在/lib/ld-linux.so.2。Linux动态库的默认搜索路径是/lib和/usr/lib。动态库被创建后，一般都复制到这两个目录中。当程序执行时需要某动态库，并且该动态库还未加载到内存中，则系统会自动到这两个默认搜索路径中去查找相应的动态库文件，然后加载该文件到内存中，这样程序就可以使用该动态库中的函数，以及该动态库的其它资源了。在Linux 中，动态库的搜索路径除了默认的搜索路径外，还可以通过以下三种方法来指定
+
+1.程序在编译时搜索库的路径顺序
+* ld-linux.so.6由__gcc的spec文件__中所设定
+* gcc --print-search-dirs所打印出的路径，主要是libgcc_s.so等库。可以通过GCC_EXEC_PREFIX来设定
+* LD_LIBRARY_PATH环境变量中所设定的路径，或编译的命令行中指定的-L/usr/local/lib
+
+2.程序在运行的时候动态库的装载__依赖于ld-linux.so.6的实现__,搜索动态库路径的顺序:
+* __编译目标代码时__指定的动态库搜索路径
+* 环境变量LD_LIBRARY_PATH指定的动态库搜索路径
+* 配置文件/etc/ld.so.conf(或/usr/local/etc/ld.so.conf)中指定的动态库搜索路径
+* 默认的动态库搜索路径/lib
+* 默认的动态库搜索路径/usr/lib
+注意:编辑完配置文件/etc/ld.so.conf后,要运行ldconfig,这样才能把内容添加到/etc/ld.so.cache中
+
+3、二进制程序的搜索路径顺序为PATH环境变量中所设定。
+如果 PATH=/usr/bin:/usr/local/bin:/bin
+那么是从靠前的路径往靠后的路径开始搜索

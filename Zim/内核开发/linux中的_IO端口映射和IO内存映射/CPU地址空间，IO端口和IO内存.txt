@@ -1,0 +1,328 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-01T15:33:44+08:00
+
+====== CPU地址空间，IO端口和IO内存 ======
+Created Thursday 01 March 2012
+http://www.360doc.com/content/11/0915/09/1299815_148365460.shtml
+
+1）物理地址：__CPU地址总线传来的地址__，由硬件电路控制其具体含义。物理地址中很大一部分是留给内存条中的内存的，但__也常被映射到其他存储器上__（如显存、BIOS等）。在程序指令中的虚拟地址经过段映射和页面映射后，就生成了物理地址，这个物理地址被放到CPU的地址线上。
+
+物理**地址空间**，一部分给物理RAM（内存）用，__一部分给总线用，这是由硬件设计来决定的__，因此在32 bits地址线的x86处理器中，物理地址空间是2的32次方，即4GB，但物理RAM一般不能上到4GB，因为__还有一部分要给总线用__（总线上还挂着别的许多设备）。在PC机中，一般是把低端物理地址给RAM用，高端物理地址给总线用。
+ 
+2）总线地址：寻址总线上设备时的地址，地址线或在地址周期上产生的信号。外设使用的是总线地址，CPU使用的是物理地址。
+
+物理地址与总线地址之间的关系由__系统的设计决定的__。在x86平台上，物理地址就是总线地址，这是因为它们共享相同的地址空间——这句话有点难理解，详见下面的“独立编址”。在其他平台上，可能需要转换/映射。比如：CPU需要访问物理地址是0xfa000的单元，那么在x86平台上，会产生一个PCI总线上对0xfa000地址的访问。因为物理地址和总线地址相同，所以凭眼睛看是不能确定这个地址是用在哪儿的，它或者在内存中，或者是某个卡上的存储单元，甚至可能这个地址上没有对应的存储器。
+
+3）虚拟地址：现代操作系统普遍采用虚拟内存管理（Virtual Memory Management）机制，这需要MMU（Memory Management Unit）的支持。MMU通常是CPU的一部分，如果处理器没有MMU，或者有MMU但没有启用，CPU执行单元发出的内存地址将直接传到芯片引脚上，被内存芯片（物理内存）接收，这称为物理地址（Physical Address），如果处理器启用了MMU，CPU执行单元发出的内存地址将被MMU截获，从CPU到MMU的地址称为虚拟地址（Virtual Address），而MMU将这个地址翻译成另一个地址发到CPU芯片的外部地址引脚上，也就是将虚拟地址映射成物理地址。
+
+Linux中，进程的4GB虚拟内存分为**用户空间、内核空间**。__用户虚拟地址空间__分布为0~3GB（即P__AGE_OFFSET__，在0X86中它等于0xC0000000），剩下的1G为内核虚拟地址空间。程序员只能使用虚拟地址。系统中每个进程有各自的私有用户空间（0～3G），这个空间对系统中的其他进程是不可见的。
+
+CPU发出取指令请求时的地址是__当前上下文的虚拟地址__，MMU再从页表中找到这个虚拟地址的物理地址，完成取指。同样读取数据的也是虚拟地址，比如mov ax, var. 编译时var就是一个虚拟地址，也是通过MMU从也表中来找到物理地址，再产生总线时序，完成取数据的。
+
+4）地址空间映射：
+
+这里要说的是__Intel构架下的CPU地址空间布局__，注意这里**没有说是内存地址空间布局**。 
+
+我们说的内存通常是指DRAM，DRAM相对于CPU也可以算是__外部设备__，__CPU地址空间是CPU访问外部设备过程中的一个概念__，CPU除了访问DRAM 外还会访问许多其他的设备。可以粗略的认为**CPU地址空间包含DRAM地址空间，但两者却是不同的概念**。而且DRAM地址空间是由内存控制器直接访问的，由CPU间接访问的。 过去很长一段时间Intel CPU是32位的，也就是可以访问到4GB的地址空间，但是当时的DRAM通常也就是512MB到2GB之间，现在假设DRAM是1GB，那么就是3GB 的地址空间是空的。在计算机里面，__地址也是资源__。这__空的地址空间就用来访问外部设备IO所用，这部分被称为MMIO__（Memory Mapped I/O)。MMIO的空间是很大的，它包含了__PCI的配置空间__(256MB或者更大)，__内置集成显存__(256MB,或者更大)，还有其他很多东西 。所以这部分的大小是不容忽视的。 以上主要说明:假设CPU是32位（i386），其可访问的地址范围大小是4G地址空间，在X86平台上，物理地址和总线地址共享这4G地址空间（物理地址就是总线地址），但物理RAM一般不能上到4GB，因为__还有一部分要给总线用__（总线上还挂着别的许多设备），假设RAM是1G，那么3G的地址空间就是空的，而在计算机里面，地址也是资源，这空的地址空间就用来访问外部设备IO资源所用，及产生内存映射时就用到这段地址空间。
+
+几乎每一种外设都是通过读写设备上的寄存器来进行的，通常包括控制寄存器、状态寄存器和数据寄存器三大类，外设的寄存器通常被连续地编址。根据CPU体系结构的不同，CPU对IO端口的编址方式有两种：
+
+（1）I/O映射方式（I/O-mapped）
+
+　　典型地，如X86处理器为外设专门实现了一个单独的地址空间，称为"I/O地址空间"或者"I/O端口空间"，CPU通过专门的I/O指令（如X86的IN和OUT指令）来访问这一空间中的地址单元。 　　
+
+（2）内存映射方式（Memory-mapped）
+
+　　RISC指令系统的CPU（如ARM、PowerPC等）通常只实现一个物理地址空间，外设I/O端口成为内存的一部分。此时，CPU可以象访问一个内存单元那样访问外设I/O端口，而不需要设立专门的外设I/O指令。
+
+　　但是，这两者在硬件实现上的差异对于软件来说是完全透明的，驱动程序开发人员可以将内存映射方式的I/O端口和外设内存统一看作是"I/O内存"资源。
+
+　　一般来说，在系统运行时，外设的I/O内存资源的物理地址是已知的（通过request_mem_region()），由硬件的设计决定。但是CPU通常并没有为这些已知的外设I/O内存资源的物理地址预定义虚拟地址范围，驱动程序并不能直接通过物理地址访问I/O内存资源，而必须将它们映射到核心虚地址空间内（通过页表），然后才能根据映射所得到的核心虚地址范围，通过访内指令访问这些I/O内存资源。Linux在io.h头文件中声明了函数ioremap（），（在内核驱动程序的初始化阶段，通过ioremap（）将物理地址映射到内核虚拟空间（3GB－4GB）；在驱动程序的mmap系统调用中，使用remap_page_range()将该块ROM映射到用户虚拟空间。这样内核空间和用户空间都能访问这段被映射后的虚拟地址。）
+
+4GB以下的地址空间的布局情况
+
+同样的图中红色字体部分为寄存器，这些寄存器与地址空间布局有着密切的关系。这些寄存器的详细说明可以参考spec。比如说“Egress Port Registers”这个4KB的窗口，会根据EPBAR的设置被放置到MMIO的任意一个DMI Interface的位置，但让该窗口不能与其他任何窗口重叠。
+
+ 
+
+       另外我也将我所了解的情况说明一下。
+
+
+      1.先看TOLUD-4GB的位置，可以看到有几处都是DMI Interface(Subtractive Decode)。DMI是南桥与北桥的接口，访问DMI，也就是访问南桥。
+
+      另外要解释的是Substactive decode，在计算机中地址译码有三种形式，当主设备通过指定地址访问总线上的从设备，一个是Positive decode，有从设备解码后发现是访问自己的，于是它就会响应，否则就没有从设备响应；一个是Negative decode，从设备收到该地址经解码后发现不属于自己的地址范围，从设备就转发出去；一个是Subtractive decode，在4个时钟周期内没有从设备响应，该地址就会发送到扩展的总线上面解码。
+
+     
+
+                          引自：http://www.microsoft.com/whdc/system/bus/pci/default.mspx
+
+       DMI Interface(Subtractive Decode)的意思就是CPU发送一地址先到北桥上解码，如果该地址没有北桥上的设备占用，那么就用该地址就会被传送到南桥上解码，，也就是访问南桥上的设备。可以假想为一开始4GB空间都是DMI Interface（Subtractive Decode），然后0-TOLUD被DRAM声明占用，TOLUD-4GB也纷纷被各种设备占用，于是就剩下了支离破碎的几个DMI Interface。(目前看上去这样理解是通顺的，但我希望它也是正确的)。
+
+IO Port和IO Mem的区别
+
+在驱动程序编写过程中，很少会注意到IO Port和IO Mem的区别。虽然使用一些不符合规范的代码可以达到最终目的，这是极其不推荐使用的。
+
+结合下图，我们彻底讲述IO端口和IO内存以及内存之间的关系。主存16M字节的SDRAM，外设是个视频采集卡，上面有16M字节的SDRAM作为缓冲区。
+
+1.      CPU是i386架构的情况在i386系列的处理中，内存和外部IO是独立编址，也是独立寻址的。MEM的内存空间是32位可以寻址到4G，IO空间是16位可以寻址到64K。
+
+2.      在Linux内核中，访问外设上的IO Port必须通过IO Port的寻址方式。而访问IO Mem就比较罗嗦，外部MEM不能和主存一样访问，虽然大小上不相上下，可是外部MEM是没有在系统中注册的。访问外部IO MEM必须通过remap映射到内核的MEM空间后才能访问。为了达到接口的同一性，内核提供了IO Port到IO Mem的映射函数。映射后IO Port就可以看作是IO Mem，按照IO Mem的访问方式即可。
+
+3.      CPU是ARM 或PPC架构的情况
+
+在这一类的嵌入式处理器中，IO Port的寻址方式是采用内存映射，也就是IO bus就是Mem bus。系统的寻址能力如果是32位，IO Port＋Mem（包括IO Mem）可以达到4G。
+
+访问这类IO Port时，我们也可以用IO Port专用寻址方式。至于在对IO Port寻址时，内核是具体如何完成的，这个在内核移植时就已经完成。在这种架构的处理器中，仍然保持对IO Port的支持，完全是i386架构遗留下来的问题，在此不多讨论。而访问IO Mem的方式和i386一致。
+
+注意：linux内核给我提供了完全对IO Port和IO Mem的支持，然而具体去看看driver目录下的驱动程序，很少按照这个规范去组织IO Port和IO Mem资源。对这二者访问最关键问题就是地址的定位，在C语言中，使用volatile 就可以实现。很多的代码访问IO Port中的寄存器时，就使用volatile关键字，虽然功能可以实现，我们还是不推荐使用。就像最简单的延时莫过于while，可是在多任务的系统中是坚决避免的！
+
+ 
+
+　RISC指令系统的CPU（如ARM、PowerPC等）通常只实现一个物理地址空间，外设I/O端口成为内存的一部分。此时，CPU可以象访问一个内存单元那样访问外设I/O端口，而不需要设立专门的外设I/O指令。
+
+但是，这两者在硬件实现上的差异对于软件来说是完全透明的，驱动程序开发人员可以将内存映射方式的I/O端口和外设内存统一看作是"I/O内存"资源。
+
+一般来说，在系统运行时，外设的I/O内存资源的物理地址是已知的，由硬件的设计决定。但是CPU通常并没有为这些已知的外设I/O内存资源的物理地址 预定义虚拟地址范围，驱动程序并不能直接通过物理地址访问I/O内存资源，而必须将它们映射到核心虚地址空间内（通过页表），然后才能根据映射所得到的核 心虚地址范围，通过访内指令访问这些I/O内存资源。Linux在io.h头文件中声明了函数ioremap（），用来将I/O内存资源的物理地址映射到 核心虚地址空间（3GB－4GB）中，原型如下：
+
+void * ioremap(unsigned long phys_addr, unsigned long size, unsigned long flags);
+
+iounmap函数用于取消ioremap（）所做的映射，原型如下：
+
+void iounmap(void * addr);
+
+这两个函数都是实现在mm/ioremap.c文件中。
+
+在将I/O内存资源的物理地址映射成核心虚地址后，理论上讲我们就可以象读写RAM那样直接读写I/O内存资源了。为了保证驱动程序的跨平台的可移植 性，我们应该使用Linux中特定的函数来访问I/O内存资源，而不应该通过指向核心虚地址的指针来访问。如在x86平台上，读写I/O的函数如下所示：
+
+#define readb(addr)   (*(volatile unsigned char *) __io_virt(addr))
+#define readw(addr)   (*(volatile unsigned short *) __io_virt(addr))
+#define readl(addr)    (*(volatile unsigned int *) __io_virt(addr))
+
+#define writeb(b,addr)   (*(volatile unsigned char *) __io_virt(addr) = (b))
+#define writew(b,addr)    (*(volatile unsigned short *) __io_virt(addr) = (b))
+#define writel(b,addr)    (*(volatile unsigned int *) __io_virt(addr) = (b))
+
+#define memset_io(a,b,c)   memset(__io_virt(a),(b),(c))
+#define memcpy_fromio(a,b,c)   memcpy((a),__io_virt(b),(c))
+#define memcpy_toio(a,b,c)    memcpy(__io_virt(a),(b),(c))
+
+最后，我们要特别强调驱动程序中mmap函数的实现方法。用mmap映射一个设备，意味着使用户空间的一段地址关联到设备内存上，这使得只要程序在分配的地址范围内进行读取或者写入，实际上就是对设备的访问。
+
+笔者在Linux源代码中进行包含"ioremap"文本的搜索，发现真正出现的ioremap的地方相当少。所以笔者追根索源地寻找I/O操作的物理地址转换到虚拟地址的真实所在，发现Linux有替代ioremap的语句，但是这个转换过程却是不可或缺的。
+
+ 
+
+ 
+
+ 
+
+CPU对外设端口物理地址的编址方式有两种：
+
+一种是IO映射方式，另一种是内存映射方式。
+
+ 
+
+　　Linux将基于IO映射方式的和内存映射方式的IO端口统称为IO区域（IO region）。
+
+ 
+
+　　IO region仍然是一种IO资源，因此它仍然可以用resource结构类型来描述。
+
+ 
+
+　　Linux管理IO region：
+
+ 
+
+　　1) request_region()
+
+ 
+
+　　把一个给定区间的IO端口分配给一个IO设备。
+
+ 
+
+　　2) check_region()
+
+ 
+
+　　检查一个给定区间的IO端口是否空闲，或者其中一些是否已经分配给某个IO设备。
+
+ 
+
+　　3) release_region()
+
+ 
+
+　　释放以前分配给一个IO设备的给定区间的IO端口。
+
+ 
+
+　　Linux中可以通过以下辅助函数来访问IO端口：
+
+ 
+
+　　inb(),inw(),inl(),outb(),outw(),outl()
+
+ 
+
+　　“b”“w”“l”分别代表8位，16位，32位。
+
+ 
+
+对IO内存资源的访问
+
+ 
+
+　　1) request_mem_region()
+
+ 
+
+　　请求分配指定的IO内存资源。
+
+ 
+
+　　2) check_mem_region()
+
+ 
+
+　　检查指定的IO内存资源是否已被占用。
+
+ 
+
+　　3) release_mem_region()
+
+ 
+
+　　释放指定的IO内存资源。
+
+ 
+
+　　其中传给函数的start address参数是内存区的物理地址（以上函数参数表已省略）。
+
+ 
+
+　　驱动开发人员可以将内存映射方式的IO端口和外设内存统一看作是IO内存资源。
+
+ 
+
+　　ioremap()用来将IO资源的物理地址映射到内核虚地址空间（3GB - 4GB）中，参数addr是指向内核虚地址的指针。
+
+ 
+
+　　Linux中可以通过以下辅助函数来访问IO内存资源：
+
+ 
+
+　　readb(),readw(),readl(),writeb(),writew(),writel()。
+
+ 
+
+　　Linux在kernel/resource.c文件中定义了全局变量ioport_resource和iomem_resource，来分别描述基于IO映射方式的整个IO端口空间和基于内存映射方式的IO内存资源空间（包括IO端口和外设内存）。
+
+ 
+
+ 
+
+内存映射（IO地址和内存地址）
+
+ARM体系结构下面内存和i/o映射区别
+（1）关于IO与内存空间：
+    在X86处理器中存在着I/O空间的概念，I/O空间是相对于内存空间而言的，它通过特定的指令in、out来访问。端口号标识了外设的寄存器地址。Intel语法的in、out指令格式为：
+    IN 累加器, {端口号│DX}
+    OUT {端口号│DX},累加器
+    目前，大多数嵌入式微控制器如ARM、PowerPC等中并不提供I/O空间，而仅存在内存空间。内存空间可以直接通过地址、指针来访问，程序和程序运行中使用的变量和其他数据都存在于内存空间中。
+    即便是在X86处理器中，虽然提供了I/O空间，如果由我们自己设计电路板，外设仍然可以只挂接在内存空间。此时，CPU可以像访问一个内存单元那样访问外设I/O端口，而不需要设立专门的I/O指令。因此，内存空间是必须的，而I/O空间是可选的。
+（2）inb和outb：
+在Linux设备驱动中，宜使用Linux内核提供的函数来访问定位于I/O空间的端口，这些函数包括：
+·  读写字节端口（8位宽）
+unsigned inb(unsigned port);
+void outb(unsigned char byte, unsigned port);
+·  读写字端口（16位宽）
+unsigned inw(unsigned port);
+void outw(unsigned short word, unsigned port);
+·  读写长字端口（32位宽）
+unsigned inl(unsigned port);
+void outl(unsigned longword, unsigned port);
+·  读写一串字节
+void insb(unsigned port, void *addr, unsigned long count);
+void outsb(unsigned port, void *addr, unsigned long count);
+·  insb()从端口port开始读count个字节端口，并将读取结果写入addr指向的内存；outsb()将addr指向的内存的count个字节连续地写入port开始的端口。
+·  读写一串字
+void insw(unsigned port, void *addr, unsigned long count);
+void outsw(unsigned port, void *addr, unsigned long count);
+·  读写一串长字
+void insl(unsigned port, void *addr, unsigned long count);
+void outsl(unsigned port, void *addr, unsigned long count);
+上述各函数中I/O端口号port的类型高度依赖于具体的硬件平台，因此，只是写出了unsigned。
+（3）readb和writeb:
+在设备的物理地址被映射到虚拟地址之后，尽管可以直接通过指针访问这些地址，但是工程师宜使用Linux内核的如下一组函数来完成设备内存映射的虚拟地址的读写，这些函数包括：
+·  读I/O内存
+unsigned int ioread8(void *addr);
+unsigned int ioread16(void *addr);
+unsigned int ioread32(void *addr);
+与上述函数对应的较早版本的函数为（这些函数在Linux 2.6中仍然被支持）：
+unsigned readb(address);
+unsigned readw(address);
+unsigned readl(address);
+·  写I/O内存
+void iowrite8(u8 value, void *addr);
+void iowrite16(u16 value, void *addr);
+void iowrite32(u32 value, void *addr);
+与上述函数对应的较早版本的函数为（这些函数在Linux 2.6中仍然被支持）：
+void writeb(unsigned value, address);
+void writew(unsigned value, address);
+void writel(unsigned value, address);
+（4）把I/O端口映射到“内存空间”:
+void *ioport_map(unsigned long port, unsigned int count);
+通过这个函数，可以把port开始的count个连续的I/O端口重映射为一段“内存空间”。然后就可以在其返回的地址上像访问I/O内存一样访问这些I/O端口。当不再需要这种映射时，需要调用下面的函数来撤消：
+void ioport_unmap(void *addr);
+实际上，分析ioport_map()的源代码可发现，所谓的映射到内存空间行为实际上是给开发人员制造的一个“假象”，并没有映射到内核虚拟地址，仅仅是为了让工程师可使用统一的I/O内存访问接口访问I/O端口。
+
+11.2.7 I/O 空间的映射
+很多硬件设备都有自己的内存，通常称之为I/O空间。例如，所有比较新的图形卡都有几MB的RAM，称为显存，用它来存放要在屏幕上显示的屏幕影像。
+1．地址映射
+    根据设备和总线类型的不同，PC体系结构中的I/O空间可以在三个不同的物理地址范围之间进行映射：
+（1）对于连接到ISA总线上的大多数设备
+I/O空间通常被映射到从0xa0000到0xfffff的物理地址范围，这就在640K和1MB之间留出了一段空间，这就是所谓的“洞”。
+（2）对于使用VESA本地总线（VLB）的一些老设备
+    这是主要由图形卡使用的一条专用总线：I/O空间被映射到从0xe00000到0xffffff的地址范围中，也就是14MB到16MB之间。因为这些设备使页表的初始化更加复杂，因此已经不生产这种设备。
+（3）对于连接到PCI总线的设备
+    I/O空间被映射到很大的物理地址区间，位于RAM物理地址的顶端。这种设备的处理比较简单。
+2．访问I/O空间
+    内核如何访问一个I/O空间单元？让我们从PC体系结构开始入手，这个问题很容易就可以解决，之后我们再进一步讨论其他体系结构。
+    不要忘了内核程序作用于虚拟地址，因此I/O空间单元必须表示成大于PAGE_OFFSET的地址。在后面的讨论中，我们假设PAGE_OFFSET等于0xc0000000，也就是说，内核虚拟地址是在第4G。
+    内核驱动程序必须把I/O空间单元的物理地址转换成内核空间的虚拟地址。在PC体系结构中，这可以简单地把32位的物理地址和0xc0000000常量进行或运算得到。例如，假设内核需要把物理地址为0x000b0fe4的I/O单元的值存放在t1中，把物理地址为0xfc000000的I/O单元的值存放在t2中，就可以使用下面的表达式来完成这项功能：
+
+    t1 = *((unsigned char *)(0xc00b0fe4));
+    t2 = *((unsigned char *)(0xfc000000));
+
+    在第六章我们已经介绍过,在初始化阶段,内核已经把可用的RAM物理地址映射到虚拟地址空间第4G的最初部分。因此，分页机制把出现在第一个语句中的虚拟地址0xc00b0fe4映射回到原来的I/O物理地址0x000b0fe4，这正好落在从640K到1MB的这段“ISA洞”中。这正是我们所期望的。
+    但是，对于第二个语句来说，这里有一个问题，因为其I/O物理地址超过了系统RAM的最大物理地址。因此，虚拟地址0xfc000000就不需要与物理地址0xfc000000相对应。在这种情况下，为了在内核页表中包括对这个I/O物理地址进行映射的虚拟地址，必须对页表进行修改：这可以通过调用ioremap( )函数来实现。ioremap( )和vmalloc( )函数类似，都调用get_vm_area( ) 建立一个新的vm_struct描述符，其描述的虚拟地址区间为所请求I/O空间区的大小。然后，ioremap( )函数适当地更新所有进程的对应页表项。
+因此，第二个语句的正确形式应该为：
+
+    io_mem = ioremap(0xfb000000, 0x200000);
+    t2 = *((unsigned char *)(io_mem + 0x100000));
+
+    第一条语句建立一个2MB的虚拟地址区间，从0xfb000000开始；第二条语句读取地址0xfc000000的内存单元。驱动程序以后要取消这种映射，就必须使用iounmap( )函数。
+
+    现在让我们考虑一下除PC之外的体系结构。在这种情况下，把I/O物理地址加上0xc0000000常量所得到的相应虚拟地址并不总是正确的。为了提高内核的可移植性，Linux特意包含了下面这些宏来访问I/O空间：
+    readb, readw, readl
+   分别从一个I/O空间单元读取1、2或者4个字节
+   writeb, writew, writel
+   分别向一个I/O空间单元写入1、2或者4个字节
+   memcpy_fromio, memcpy_toio
+   把一个数据块从一个I/O空间单元拷贝到动态内存中，另一个函数正好相反，把一个数据块从动态内存中拷贝到一个I/O空间单元
+   memset_io
+   用一个固定的值填充一个I/O空间区域
+对于0xfc000000 I/O单元的访问推荐使用这样的方法：
+    io_mem = ioremap(0xfb000000, 0x200000);
+    t2 = readb(io_mem + 0x100000);
+    使用这些宏，就可以隐藏不同平台访问I/O空间所用方法的差异。
+
+ 
+
+ 从本质上来说是一样的，IO端口在Linux驱动中是指IO端口的寄存器，通过操作寄存器来控制IO端口。而IO内存是指一些设备把IO寄存器映射到某个内存区域，因为访问内存就不要特殊的指令。
+
+ 

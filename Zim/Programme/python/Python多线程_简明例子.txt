@@ -1,0 +1,158 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-05T15:07:31+08:00
+
+====== Python多线程 简明例子 ======
+Created 星期二 05 七月 2011
+
+综述
+ 
+  多线程是程序设计中的一个重要方面，尤其是在服务器Deamon程序方面。无论何种系统，线程调度的开销都比传统的进程要快得多。
+  Python可以方便地支持多线程。可以快速创建线程、互斥锁、信号量等等元素，支持线程读写同步互斥。美中不足的是，Python的运行在Python 虚拟机上，创建的多线程可能是虚拟的线程，需要由Python虚拟机来轮询调度，这大大降低了Python多线程的可用性。希望高版本的Python可以解决这个问题，发挥多CPU的最大效率。
+  网上有些朋友说要获得真正多CPU的好处，有两种方法：
+  1.可以创建多个进程而不是线程，进程数和cpu一样多。
+  2.使用Jython 或 IronPython，可以得到真正的多线程。
+ 
+  闲话少说，下面看看Python如何建立线程
+ 
+  Python线程创建
+ 
+  使用threading模块的 Thread类
+  类接口如下
+ 
+class Thread( group=None, target=None, name=None, args=(), kwargs={})
+ 
+  需要关注的参数是target和args. target 是需要子线程运行的目标函数，args是函数的参数，以tuple的形式传递。
+  以下代码创建一个指向函数worker 的子线程
+def worker(a_tid,a_account):
+    ...
+
+th = threading.Thread(target=worker,args=(i,acc) ) ;
+ 
+  启动这个线程
+th.start()
+ 
+  等待线程返回
+threading.Thread.join(th)
+或者th.join()
+ 
+  如果你可以对要处理的数据进行很好的划分，而且线程之间无须通信，那么你可以使用：创建=》运行=》回收的方式编写你的多线程程序。但是如果线程之间需要访问共同的对象，则需要引入互斥锁或者信号量对资源进行互斥访问。
+ 
+ 下面讲讲如何创建互斥锁
+创建锁
+g_mutex = threading.Lock()
+
+....
+使用锁
+
+    for ... :
+        #锁定，从下一句代码到释放前互斥访问
+        g_mutex.acquire()
+        a_account.deposite(1)
+        #释放
+        g_mutex.release()
+ 
+  最后，模拟一个公交地铁IC卡缴车费的多线程程序
+  有10个读卡器，每个读卡器收费器每次扣除用户一块钱进入总账中，每读卡器每天一共被刷10000000次。账户原有100块。所以最后的总账应该为10000100。先不使用互斥锁来进行锁定（注释掉了锁定代码），看看后果如何。
+ 
+import time,datetime
+import threading
+
+def worker(a_tid,a_account):
+    global g_mutex
+    print "Str " , a_tid, datetime.datetime.now()
+    for i in range(1000000):
+        #g_mutex.acquire()
+        a_account.deposite(1)
+        #g_mutex.release()
+    print "End " , a_tid , datetime.datetime.now()
+    
+class Account:
+    def __init__ (self, a_base ):
+        self.m_amount=a_base
+    def deposite(self,a_amount):
+        self.m_amount+=a_amount
+    def withdraw(self,a_amount):
+        self.m_amount-=a_amount    
+        
+if __name__ == "__main__":
+    global g_mutex
+    count = 0
+    dstart = datetime.datetime.now()
+    print "Main Thread Start At: " , dstart
+
+    #init thread_pool
+    thread_pool = []
+    #init mutex
+    g_mutex = threading.Lock()
+    # init thread items
+    acc = Account(100)
+    for i in range(10):
+        th = threading.Thread(target=worker,args=(i,acc) ) ;
+        thread_pool.append(th)
+        
+    # start threads one by one        
+    for i in range(10):
+        thread_pool[i].start()
+    
+    #collect all threads
+    for i in range(10):
+        threading.Thread.join(thread_pool[i])
+    dend = datetime.datetime.now()
+    print "count=",acc.m_amount
+    print "Main Thread End at: " ,dend , " time span " , dend-dstart;
+ 
+  注意，先不用互斥锁进行临界段访问控制，运行结果如下：
+ 
+Main Thread Start At:    2009-01-13 00:17:55.296000
+Str    0 2009-01-13 00:17:55.312000
+Str    1 2009-01-13 00:17:55.453000
+Str    2 2009-01-13 00:17:55.484000
+Str    3 2009-01-13 00:17:55.531000
+Str    4 2009-01-13 00:17:55.562000
+Str    5 2009-01-13 00:17:55.609000
+Str    6 2009-01-13 00:17:55.640000
+Str    7 2009-01-13 00:17:55.687000
+Str    8 2009-01-13 00:17:55.718000
+Str    9 2009-01-13 00:17:55.781000
+End    0 2009-01-13 00:18:06.250000
+End    1 2009-01-13 00:18:07.500000
+End    4 2009-01-13 00:18:07.531000
+End    2 2009-01-13 00:18:07.562000
+End    3 2009-01-13 00:18:07.593000
+End    9 2009-01-13 00:18:07.609000
+End    7 2009-01-13 00:18:07.640000
+End    8 2009-01-13 00:18:07.671000
+End    5 2009-01-13 00:18:07.687000
+End    6 2009-01-13 00:18:07.718000
+count= 3434612
+Main Thread End at:    2009-01-13 00:18:07.718000    time span    0:00:12.422000
+ 
+  从结果看到，程序确实是多线程运行的。但是由于没有对对象Account进行互斥访问，所以结果是错误的，只有3434612，比原预计少了很多。
+ 
+  把上面阴影部分代码的注释打开，运行结果如下
+Main Thread Start At:    2009-01-13 00:26:12.156000
+Str    0 2009-01-13 00:26:12.156000
+Str    1 2009-01-13 00:26:12.390000
+Str    2 2009-01-13 00:26:12.437000
+Str    3 2009-01-13 00:26:12.468000
+Str    4 2009-01-13 00:26:12.515000
+Str    5 2009-01-13 00:26:12.562000
+Str    6 2009-01-13 00:26:12.593000
+Str    7 2009-01-13 00:26:12.640000
+Str    8 2009-01-13 00:26:12.671000
+Str    9 2009-01-13 00:26:12.718000
+End    0 2009-01-13 00:27:01.781000
+End    1 2009-01-13 00:27:05.890000
+End    5 2009-01-13 00:27:06.046000
+End    7 2009-01-13 00:27:06.078000
+End    4 2009-01-13 00:27:06.109000
+End    2 2009-01-13 00:27:06.140000
+End    6 2009-01-13 00:27:06.156000
+End    8 2009-01-13 00:27:06.187000
+End    3 2009-01-13 00:27:06.203000
+End    9 2009-01-13 00:27:06.234000
+count= 10000100
+Main Thread End at:    2009-01-13 00:27:06.234000    time span    0:00:54.078000
+ 
+  这次可以看到，结果正确了。运行时间比不进行互斥多了很多，需要花54秒才能运行（我机器烂，没钱更新，呵呵），不过这也是同步的代价，没办法。

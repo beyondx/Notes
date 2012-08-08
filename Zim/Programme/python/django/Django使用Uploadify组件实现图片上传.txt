@@ -1,0 +1,131 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-23T20:17:13+08:00
+
+====== Django使用Uploadify组件实现图片上传 ======
+Created Sunday 23 October 2011
+
+http://2goo.info/blog/panjj/Django/2011/08/04/527
+
+Uploadify组件上传文件很酷，可以实现文件进度上传，而且可以批量上传各种文件。好处还很多，具体详情登到官网看看文档了解吧。在同类组件中，Uploadify做的也很出色。打算在Django中用它，两个东西结合使用，也算简单，但有些细节需要记下来，以便以后重用。
+
+这次只说上传图片部分，至于上传文件，其实可以照猫画虎，而且来得会简单些，只是python程序后端写法的区别而已，前端代码Uploadify一律平等对待，图片也是文件一种特例罢了。
+
+Django使用Uploadify组件实现图片上传，可以分为两个大步骤。
+
+一：前端引用Uploadify所需要的类库(javascript)和脚本样式(css)。
+Uploadify会用到JQuery类库，还有自己的几个脚本和样式文件，搭配好了Django的静态文件，让Django**正确解析静态文件**，就算成功一半了，静态文件的配置参考先前的博客：《Django静态文件的配置》。
+
+静态文件我们统一存放在根目录的**site_media**文件夹下，到官网http://www.uploadify.com/下载Uploadify-2.14组件，放在site_media下的**plugin**，随意起名：uploadify_214，再新建个文件夹**upload(位于site_media下)**，来存放上传的图片。
+
+前端样式脚本引用代码：
+
+<link href="/site_media/plugin/uploadify_214/uploadify.css" type="text/css" rel="stylesheet" />
+<script type="text/javascript" src="/site_media/js/jquery.js"></script>
+<script type="text/javascript" src="/site_media/plugin/uploadify_214/swfobject.js"></script>
+<script type="text/javascript" src="/site_media/plugin/uploadify_214/jquery.uploadify.v2.1.4.min.js"></script>
+
+引用文件的路径算是很重要，具体静态配置决定这些。首先引用Uploadify的样式文件，然后就是先引用JQuery类库，再引用Uploadify自身脚本swfobject.js和jquery.uploadify.v2.1.4.min.js
+
+Uploadify组件初始化代码（放在包含上传功能的模板文件里）：
+
+<script type="text/javascript">
+$(document).ready(function() {
+  $('#file_upload').uploadify({
+    'uploader'  : '/site_media/plugin/uploadify_214/uploadify.swf',
+    'script'    : '{%url uploadify_script%}',
+    'cancelImg' : '/site_media/plugin/uploadify_214/cancel.png',
+    'folder'    : '/upload',
+    'auto'      : false,//
+    'multi': true,//设置可以上传多个文件
+    'queueSizeLimit':20,//设置可以同时20个文件
+    'removeCompleted':false,//
+    'sizeLimit':10240000,//设置上传文件大小单位kb
+    'fileExt':'*.jpg;*.gif;*.png',//设置上传文件类型为常用图片格式
+    'fileDesc':'Image Files',                
+    'onInit': function () {},
+    'onError' : function (event,ID,fileObj,errorObj) {
+            $('#id_span_msg').html("上传失败，错误码:"+errorObj.type+" "+errorObj.info);
+        },
+    'onSelect': function (e, queueId, fileObj) {
+        $('#id_span_msg').html("");
+    },
+    'onAllComplete': function (event, data) {
+        if(data.filesUploaded>=1){
+          $('#id_span_msg').html("上传成功！");
+        }                    
+    }                
+  });
+});
+</script>
+
+初始化脚本，有几个关键的参数需要说明一下：
+uploader是组件需要flash编译文件，里面封装了Uploadify核心的处理程序。
+script是后端上传文件程序的url，这个是后面说的，需要自己写。
+folder是上传文件的目录，这里我们不计划使用它，随便写一个充数。
+
+前端html代码
+
+<h1>Uploadify组件上传方式</h1>
+<div class="demo-box">
+    <input id="file_upload" type="file" name="Filedata">
+    <div id="file_uploadQueue" class="uploadifyQueue"></div>
+    <p><a href="javascript:$('#file_upload').uploadifyUpload()">上传图片</a>
+    <a href="javascript:$('#file_upload').uploadifyClearQueue()">取消上传</a>
+    </p>
+    <p><span id="id_span_msg"></span></p>
+</div>
+
+
+二：写好后端图片上传的方法。
+
+如果刚开始就把写好的上传程序和Uploadify结合，也许不是很明智的做法，因为过程中遇到问题，我们不很确定是后端程序的bug还是Uploadify的配置错误，所以建议先把写好的后端上传程序，用传统的上传方式，去测试，把程序调试好了，再和Uploadify结合，这样就会很清楚是那块出现问题了。
+所以我们先写个通用的上传函数_upload，用传统的上传方式测试它，该函数：
+
+def _upload(file):
+    '''图片上传函数'''
+    if file:            
+        path=os.path.join(**settings.MEDIA_ROOT,'upload'**)
+        file_name=str(**uuid.uuid1()**)+".jpg"      
+        path_file=os.path.join(path,file_name)
+        parser = ImageFile.Parser()  
+        for chunk in file.chunks():  
+            parser.feed(chunk)  
+        img = parser.close()
+        try:
+            if img.mode != "RGB":
+                img = img.convert("RGB")
+            img.save(path_file, 'jpeg',quality=100)
+        except:
+            return False
+        return True
+    return False
+
+
+这个程序接收一个Files对象，在内存里处理保存好图片，程序就几行代码就不解释太多了。大体是先构造一个物理地址用于保存图片，再把内存里的图片信息存入img临时变量中，判断图片的模式，如果不是RGB，转换，保存成jpg格式，返回True，失败返回False。
+该函数测试通过了，能完成保存图片的使命，最后就是写Uploadify需要的函数uploadify_script
+
+@csrf_exempt
+def uploadify_script(request):
+    response=HttpResponse()
+    response['Content-Type']="text/javascript"
+    ret="0"        
+    file = request.FILES.get("Filedata",None)        
+    if file:            
+        if _upload(file):
+            ret="1"
+        ret="2"
+    response.write(ret)
+    return response
+
+
+Uploadify使用uploadify_script函数，通过Get方式把图片控件的信息提交给该函数，函数返回"text/javascript"的内容类型，如果成功写入字符1，否则写入非1字符。页面的图片控件命名Filedata，Django通过file = request.FILES.get("Filedata",None)获取控件的图片信息，如果不是空的，就传递给刚才说的通用函数_upload，保存图片。
+
+
+整个过程算是完结了，过程中值得注意的：
+1 常常出现IO Error，如果我们已经测试_upload和uploadify_script后端程序，他们都没有错误，很多程度上是因为前端的Uploadify初始化脚本的问题，确认Uploadify几个关键的参数能不能正确解析，或者是静态文件配置没成功造成的。
+2 Forbidden (403)这是Django引发的，Django1.3引进了CSRF，我们需要进行一些处理，给uploadify_script一个装饰器@csrf_exempt，记住这个很关键，很折腾人。
+3 cannot write mode P as JPEG，这个是后端上传程序的错误，是因为上传了非jpg类型的图片，我们需要需要转换成RGB，再保存，上面已经提过。
+
+
+好了不废话，例行给一个例子，看源码就明白了,本地浏览地址：http://127.0.0.1:8000/uploadify/。

@@ -1,0 +1,42 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-21T16:20:47+08:00
+
+====== 修改终端和X下的键盘布局 ======
+Created Sunday 21 August 2011
+
+===== 一、修改终端的keymap =====
+
+在网上一直谷歌了很久  change linux console kdymaps,想得到什么关于终端下修改按键的方法,可惜找来找去,不是不清不楚,就是不详不细.
+
+还是自己来吧   查找下修改Keymaps 有那么几个 Loadkeys   dumpkeys  showkeys   setkeycodes  keymaps   ,一路Man 帮助下去,我修改交换Control 和 Caps_Lock 是这样的(用emacs方便)
+
+1)在终端(注意：不是X环境下的终端仿真)中先用showkey 命令查看要修改的按键的keycode。
+2).dumpkeys  > ~/.my_keymaps
+3).vi ~/.my_keymaps   
+	把第一步记下来的keycode号后的名称进行调换(或修改)把keycode 29 = Control 修改为 keycode 29 = Caps_Lock , 相应58修改为Control
+3).__loadkeys ~/.my_keyma__ps
+ps:可以添加启动   vi /etc/rc.local  这样就方便了
+
+二、修改X环境下的keymap
+需要使用xmodmap 工具，将下列内容保存到 [[~/.xmodmap文件中，然后执行：]]
+#  xmodmap .xmodmap（一般和loadkeys一样放在系统启动脚本中）
+
+ !
+ ! Swap Caps_Lock and Control_L
+ !
+ !remove Lock = Caps_Lock
+ !remove Control = Control_L
+ !keysym Control_L = Caps_Lock
+ !keysym Caps_Lock = Control_L
+ !add Lock = Caps_Lock
+ !add Control = Control_L
+ 
+
+!swithc alt and ctl
+remove mod1 = Alt_L
+remove Control = Control_L
+keycode 37 = Alt_L
+keycode 64 = Control_L
+add Control = Control_L
+add mod1 = Alt_L

@@ -1,0 +1,105 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-07T13:34:37+08:00
+
+====== TCP-IP FAQ ======
+Created 星期二 07 六月 2011
+http://www.itprc.com/tcpipfaq/default.htm
+Archive-name:      internet/tcp-ip/tcp-ip-faq/contents
+Version:           5.15
+Posting-Frequency: monthly (first Friday)
+Maintainer:        tcp-ip-faq@eng.sun.com (Mike Oliver)
+URL:               http://www.itprc.com/tcpipfaq/default.htm
+
+TCP/IP Frequently Asked Questions
+Table of Contents
+
+This is the Table of Contents for the Frequently Asked Questions (FAQ) list for the comp.protocols.tcp-ip Usenet newsgroup. The FAQ provides answers to a selection of common questions on the various protocols (IP, TCP, UDP, ICMP and others) that make up the TCP/IP protocol suite. It is posted to the news.answers, comp.answers and comp.protocols.tcp-ip newsgroups on or about the first Friday of every month.
+
+The FAQ is posted in two parts. Part 1 contains answers to general questions and questions that concern the fundamental components of the suite. Part 2 contains answers to questions concerning common applications that depend on the TCP/IP suite for their network connectivity.
+
+Comments on this document can be emailed to the FAQ maintainer at <tcp-ip-faq@eng.sun.com>.
+FAQ Part 1: Introduction and Fundamental Protocols
+Administrivia
+
+    Where can I find an up-to-date copy of this FAQ?
+    Who wrote this FAQ? 
+
+About TCP/IP
+
+    What is TCP/IP?
+    How is TCP/IP defined?
+    Where can I find RFC's?
+    How do I find the right RFC? 
+
+About IP
+
+    What is IP?
+    How is IP carried on a network?
+    Does IP Protect Data on the Network?
+    What is ARP?
+    What is IPv6?
+    What happened to IPv5?
+    What is the 6bone?
+    What is the MBONE?
+    What is IPsec? 
+
+About TCP
+
+    What is TCP?
+    How does TCP try to avoid network meltdown?
+    How do applications coexist over TCP and UDP?
+    Where do I find assigned port numbers? 
+
+About UDP
+
+    What is UDP? 
+
+About ICMP
+
+    What is ICMP? 
+
+TCP/IP Network Operations
+
+    How can I measure the performance of an IP link?
+    What IP addresses should I assign to machines on a private internet?
+    Can I set up a gateway to the Internet that translates IP addresses, so that I don't have to change all our internal addresses to an official network?
+    Can I use a single bit subnet? 
+
+TCP/IP Protocol Implementations
+
+    Where can I find TCP/IP source code?
+    Where can I find TCP/IP application source code?
+    Where can I find IPv6 source code? 
+
+Further Sources of Information
+
+    What newsgroups deal with TCP/IP?
+    Are there any good books on TCP/IP? 
+
+FAQ Part 2 -- Applications and Application Programming
+What Are The Common TCP/IP Application Protocols?
+
+    DHCP
+    DNS
+    FTP
+    HTTP
+    IMAP
+    NFS
+    NNTP
+    NTP
+    POP
+    Rlogin
+    Rsh
+    SMTP
+    SNMP
+    Ssh
+    Telnet
+    X Window System 
+
+TCP/IP Programming
+
+    What are sockets?
+    How can I detect that the other end of a TCP connection has crashed?
+    Can TCP keepalive timeouts be configured?
+    Are there object-oriented network programming tools? 

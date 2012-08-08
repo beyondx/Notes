@@ -1,0 +1,952 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-07T21:50:40+08:00
+
+====== 使用webpy创建一个blog ======
+Created Friday 07 October 2011
+http://hi.baidu.com/otherrrr/blog/item/2d0070cfaa9aca39f8dc61fb.html
+使用web.py创建一个blog
+2008-01-24 17:14
+
+（otherrrr@gmail.com原创）
+（转载请告知我一声，谢谢！）
+
+（注：本文针对web.py 0.23版，以及python 2.5.1；
+      如果您使用web.py 0.1x版，或python 2.4.x，
+      那么有些功能会有所不同）
+
+01、准备工作
+
+先安装Python，然后安装web.py。
+不会安装的朋友，参考本博客的其他文章。
+数据库我准备使用Python自带的sqlite，因此不用另安装其他数据库。
+（我的运行环境是在Windows 2003下面，因为Python是跨平台的，所以理论上在Linux下面一样可行，但是我没有测试）
+当前程序版本：Python 2.5.1，web.py 0.23。
+（Python的官方网站：http://www.python.org）
+（web.py的官方网站：http://webpy.org）
+
+02、数据库
+
+数据库我是用sqlite，主要是我并不会做一个大大大大的blog，用mysql是不是太浪费了？
+而且sqlite现在python也集成了，用起来很方便。
+（当然也可以用mysql，很流行的，如果想使用mysql的话，请搜一下“MySQLdb”）
+（在web.py 0.23版本中，目前只支持3种数据库：postgres、mysql、sqlite）
+
+那么不用数据库可不可以？当然可以。我其实很喜欢用txt文件，呵呵。
+但是大家都用，我们最好也用。
+（很久很久之后的将来，你会发现用数据库的好处）
+
+我创建一个Python源程序文件：database.py，然后写一些代码来创建一个数据库，并插入一些文件。
+
+代码如下：
+
+# -*- coding: utf-8 -*-
+
+import sqlite3 # 导入sqlite模块
+
+con = sqlite3.connect("blog.db") # 连接到数据库文件
+
+cur = con.cursor() # 创建一个指针
+
+cur.execute("create table user1 (date, number, article)") # 创建1个表格，并创建3个域
+
+tt1 = ('2007-10-11', '1', 'aaa') # 准备要插入的数据
+
+cur.execute("""insert into user1 (date, number, article) values(?,?,?)""", tt1) # 插入数据
+
+tt2 = ('2008-01-19', '2', 'bbbbb') # 再插入一组数据
+
+cur.execute("""insert into user1 (date, number, article) values(?,?,?)""", tt2)
+
+tt3 = ('1997-03-25', '3', 'cc') # 再再插入一组数据
+
+cur.execute("""insert into user1 (date, number, article) values(?,?,?)""", tt3)
+
+con.commit() # 执行操作
+
+cur.close() # 关闭指针
+
+con.close() # 关闭数据库连接
+
+如果你会SQL的话上面的东西就很好理解，不会的的话，也很好理解，是不是？
+数据库的连接——关闭，指针的创建——关闭，先建立一个表格，表格中有域，可以插入数据。
+（你用过Excel没有？差不多都是一样的）
+
+有可能你不太理解为什么要把插入的数据写成('2007-10-11', '1', 'aaa')这样的。
+这样的数据结构是一个tuple（元祖），据说这样可以防止“数据库的注入式漏洞”。
+
+好了，运行一下database.py吧，会在同目录下出现一个文件“blog.db”。这就是我们的数据库！
+
+（最好能看一下Python Library Reference的13.13 sqlite3 -- DB-API 2.0 interface for SQLite databases）
+（这里面会对python里面内置的sqlite3做一个简单但是非常有用的介绍）
+
+03、第一个页面
+
+我们现在来写第一个页面，看看web.py到底能不能跑起来。
+
+代码如下：
+# -*- coding: utf-8 -*-
+import web
+
+urls = (
+    '/', 'index',
+)
+
+class index:
+    def GET(self):
+        print 'index'
+
+if __name__ == "__main__":
+    app = web.application(urls,globals())
+    app.run()
+        
+
+保存为：blog_1.py。并运行之。
+注意：一定要在命令提示符下运行！
+
+可以在命令提示符下面看到：http://0.0.0.0:8080/，
+打开IE，访问：http://127.0.0.1:8080/，
+可以看到“index”了，是不是？
+
+04、整体架构
+
+现在让我们冷静一下，先想想我们要做的这个Blog的整体架构。
+虽然我们要做个最最最简单的Blog，但是还是要先想好然后再动手。
+
+首先，要能“显示”，能显示每个用户的文章、序号、以及日期。
+
+然后，要能“登陆”，只有“登陆”之后才能“写文章”。
+
+我就想到这两点，我认为这就是一个blog的雏形了。
+
+那么我们需要几个页面呢？
+
+第1个：主页面，显示所有用户的文章。
+
+第2个：登陆页面，用户在这里输入用户名和密码
+
+第3个：显示页面，显示某个用户的文章
+
+第4个：编辑页面，用户在这里写新文章
+
+（当然，有一些功能也很重要，比如“修改”，比如“图片”之类，慢慢来添加好不好？）
+
+05、主页面
+
+现在我们来做主页面，要能显示数据库中的数据。
+
+我们直接来修改blog_1.py。
+
+在import web这行代码的下面添加：
+# -*- coding: utf-8 -*-
+import sqlite3
+
+把print 'index'这行代码删除，
+添加：
+
+        con = sqlite3.connect("blog.db")
+        cur = con.cursor()
+        cur.execute('select * from user1')
+        for row in cur:
+            print row       
+        cur.close()
+        con.close()
+
+把这个文件另存为：blog_2.py。并运行之（记住要在命令提示符下运行）。
+然后我们打开IE，输入：http://127.0.0.1:8080/
+
+我看到了：(u'2007-10-11', u'1', u'aaa') (u'2008-01-19', u'2', u'bbbbb') (u'1997-03-25', u'3', u'cc')
+你看到了没有？
+
+06、主页面的第1次修改
+
+其实blog_2.py是一个相当不成熟的例子，我想你也能感觉出来。
+因为数据库不是这样用的，web.py是一个框架（Framework），
+它提供了数据库和模板的方便调用方法，这也是我们使用框架的原因。
+
+现在让我们来使用数据库吧。
+我们直接修改blog_1.py文件。
+
+先在：urls这一行下面添加：
+db = web.database(dbn='sqlite', db='blog.db') 
+（这一行代码是配置数据库的，mysql的话还需要添加用户名和密码）
+其中dbn表示数据库的名称，我们填入sqlite；
+db表示具体数据库的文件名称，我们填入blog.db。
+（注意：一定要加后缀名）
+
+然后把print 'index'这行代码删除，
+添加新的代码：
+
+        user1 = db.select("user1")
+        print user1[0].date
+        print len(list(user1))
+（第1行是遍历出整个user1表，第2行显示user1表的第1个元素的number值，第3行显示user1表的长度）
+（关于第3行看上去会有点奇怪，但是如果你试着用len(user1)这样就会出错，请试着理解，这就是“数据库的方式”）
+
+其中第1行可以改为user1 = db.query("select * from user1")，显示出来的东西会是完全一样的。
+为什么呢？
+因为本质上是一样的。但是db.query是用作查询之用的，最好还是专职专用。
+（详细的还是要看C:\Python25\Lib\site-packages\web文件夹下面的db.py）
+
+把这个文件另存为：blog_3.py。并运行之。
+在127.0.0.1:8080下面我们应该能够看到：“2007-10-11 2”
+
+其中“2007-10-11”是user1[0].date的值；
+“2”是“数据库游标之后部分的长度”。
+游标是什么呢？即cursor（游标，指针），它指向数据库的当前位置。
+
+接下来，你可以试试把user1[0].number改成user1[1].number或者user[2].article，看看会显示出来什么。
+
+07 主页面的第2次修改
+
+我们试着来显示数据库中所有的元素。
+
+直接修改blog_3.py，其实主要就是修改index类中的GET方法。代码如下：
+
+class index:
+    def GET(self):
+        user1 = db.select("user1")
+        user1_len = len(list(user1)) #数据库长度
+        user1_date = db.select("user1") #得到日期
+        user1_number = db.select("user1") #得到序号
+        user1_article = db.select("user1") #得到文章内容
+for i in range(0, user1_len):
+     print user1_date[i].date, \
+                  user1_number[i].number, \
+                  user1_article[i].article
+
+另存为blog_4.py，并运行之，应该能看到：2007-10-11 1 aaa 2008-01-19 2 bbbbb 1997-03-25 3 cc
+
+或者改为：
+
+class index:
+    def GET(self):
+        user1 = db.select("user1")
+        user1_len = len(list(user1)) #数据库长度
+        user1_date = db.query("select date from user1") #得到日期
+        user1_number = db.query("select number from user1") #得到序号
+        user1_article = db.query("select article from user1") #得到文章内容
+        for i in range(0, user1_len):
+            print user1_date[i].date, \
+                  user1_number[i].number, \
+                  user1_article[i].article
+
+另存，运行，得到的结果也和上面的一模一样。
+主要区别在于调用的方法不同，一个是db.select一个是db.query。
+（我看到别人写的一个程序，好像都是用的db.query）
+
+虽然这样可以显示，不过好丑！
+怎么办？用模板！
+
+08 用模板
+
+（模板的英文是templates）
+
+我们一步一步来看看模板怎么用。
+
+首先，先创建一个目录，名字就是templates。
+
+然后，在这个目录里面创建一个文件，名字是index.html。
+
+那么往这个index.html上面写些什么呢？
+
+$def with (user1_date)
+
+	<html>
+	<head>
+	<title>blog</title>
+	</head>
+	<body>
+	$user1_date[0].date
+	</body>
+	</html>
+
+在blog_4.py上面直接修改，在import web的下一行加上：
+
+render = web.template.render('templates/')
+
+然后另存为blog_5.py。
+这主要是告诉程序模板文件的位置。
+
+然后修改index类的GET方法，原先的代码统统删掉，新代码如下：
+
+user1_date = db.query("select date from user1") #得到日期
+return render.index(user1_date)
+
+好了，现在保存，然后运行blog_5.py吧。
+我看到了：2007-10-11
+你呢？
+
+09 蛋炒饭
+
+我放弃web.py有一段时间了。主要是因为自己在做：
+http://code.google.com/p/ssqpython/项目。
+但是因为空间的问题，SSQPython项目也搁置了，
+于是回头来看web.py。
+
+web.py官方发布版本还没有更新，还是0.23（到2008-04-22为止）。
+据说在下一个版本0.3中，会更改render的显示方式，把print改为return。
+
+现在准备重新把这个炒起来。
+（注：其实我注意到了在code.google.com上面有类似的项目）
+
+我们先来重新完整的考虑一下整个blog系统的架构：
+（注：如果你是从一开始来看本文章的，也许到了这里你会有一点失望，
+      因为我会重新来做，不过前面就当作热身了，好不好？）
+- 登陆页面(login.html) ---- （这个页面也同时作为注册页面，这样好吗？）
+- 浏览页面(blog.html) ---- （这个页面也是主页面，即在不登陆的情况下显示此页面）
+- 发表页面(post.html)
+以上3个页面是用户（user）的页面。
+我在这里省去了很多东西，比如：回复文章功能、修改文章功能、删除文章功能等等。
+而且将来可以添加用户信息显示及自定义功能。
+
+我们再来考虑一下管理员（admin）的页面：
+- 登陆页面(login.html) ---- （管理员就不能有注册页面了，要在后台进行注册及密码修改等操作）
+- 查看页面(index.html) ---- （浏览用户的数据，可删除用户、删除文章……）
+以上2个页面也不是很完整，还有许多功能需要添加，但是目前我还没有想到还有什么功能是必须的。
+
+至于“登出”功能则会在每个页面都显示一个按钮的方式来实现。
+
+这些架构的思考目前还不是很完善，我也是在一步一步摸索中……
+（注：其实“标签”或者“类别”的功能很重要，这个将来也要完善）
+
+10 大排面（主浏览页面--生成数据库）
+
+我们现在假设数据库中有很多很多数据，我们现在只是要把它们显示出来。
+这个显示页面是主浏览页面(index.html)。
+
+首先我们来生成这样的数据。
+我们创建一个db.py文件。
+文件内容如下：
+# -*- coding: utf-8 -*-
+import sqlite3
+
+con = sqlite3.connect('blog.db')
+cur = con.cursor()
+
+cur.execute('create table article \
+(articleID, articleTitle, articleContent, \
+articleAuthor, articleTime)')
+
+insert_datas = ('1', 'title_1', 'content_1', 'user_1', '2008-01-01')
+cur.execute('insert into article \
+(articleID, articleTitle, articleContent, \
+articleAuthor, articleTime) values (?, ?, ?, ?, ?)', \
+insert_datas)
+
+con.commit()                  
+cur.close()
+con.close()
+
+运行：python db.py
+则会生成：blog.db文件
+
+在这个数据库中有1个表（table），
+这个表有5个域（field）或者说是5个列（column），
+分别是：文章的ID号（这个会从1开始排列到无穷大）
+        文章的标题
+        文章的内容
+        文章的作者
+        文章的时间（这里当前记录的文章的发表时间，将来会有另一个来记录修改时间）
+
+11 大肉面（主浏览页面--主程序文件）
+
+我们再创建一个blog.py，这个会是我们这个blog的主程序文件。
+# -*- coding: utf-8 -*-
+import web
+
+render = web.template.render('templates/')
+db = web.database(dbn='sqlite', db='blog.db') 
+
+urls = (
+    '/', 'index',
+)
+
+class index:
+    def GET(self):
+        datas = db.query("select * from article order by articleID desc")
+        return render.index(datas)
+
+if __name__ == "__main__":
+	    web.webapi.internalerror = web.debugerror
+	    app = web.application(urls,globals())
+	    app.run()
+
+
+在这里我们定义了模板（template）的位置：templates文件夹。
+并且定义了当访问“/”的时候，调用index类。
+这表示我们访问127.0.0.1的时候，会显示index类中的print内容。
+
+并且我们开启了debug，即：web.webapi.internalerror = web.debugerror
+并设置数据库为sqlite，访问文件为blog.db。
+
+12 炸酱面（主浏览页面--模板）
+
+我们先创建一个文件夹：templates。
+在这个文件夹下面创建一个index.html文件，这个文件就是我们用到的模板。
+文件内容如下：
+
+$def with (datas)
+	<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+	<html>
+	<head>
+	<title>blog</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	</head>
+	<body>
+	<div id="wrapper">
+	    <div id="logo">
+	        <p>Blog</p>
+	    </div>
+	    <div id="nav">
+	    </div>
+	    <div id="article">
+	       $for data in datas:
+	            <div id="title">
+	            <p>$data.articleTitle</h3>
+	            </div>
+	            <div id="time">
+	            <p>$data.articleTime</p>
+	            </div>
+	            <div id="content">
+	            <p>$data.articleContent</p>
+	            </div>
+	            <div id="author">
+	            <p>Post by $data.articleAuthor</p>
+	            </div>
+	        </div>
+	    </div>
+	    <div id="copyright">
+	        <p>Copyright &copy; 2008 otherrrr. All rights reserved.</p>
+	    </div>
+	</div>
+	</body>
+	</html>
+
+其中：
+<!DOCTYPE .......>是定义HTML的文件格式
+<head>文件头
+<title>文件标题
+<meta ......>文档的其他信息
+<body>主体
+<div id="">之类的东西，CSS+DIV。
+目前我们还没有用上CSS，先定义一下，将来一定会用上的。
+
+$def with (datas)定义了传递过来的变量，
+这个与blog.py中的print render.index(datas)
+相对应。
+$for data in datas:是想循环显示所有数据。
+datas是一个storage格式的数据，类似与dict（字典），
+所以调用其中的值时可以用[]，例如data['articleTitle']
+但是用“.”无疑更为方便！
+
+13 卤肉饭（主浏览页面--好了）
+
+好了，现在我们运行一下吧：python blog.py
+（这个要在命令行下运行）
+显示：http://0.0.0.0:8080/
+在浏览器中访问网址：http://127.0.0.1:8080/
+（请把这个网址添加到浏览器的收藏夹中，因为在后面会多次用到）
+（而且我建议用Firefox，因为有些插件感觉挺不错的，Firebug/YSlow）
+
+可以看到：
+
+title_1 - user_1
+
+content_1
+
+2008-01-01
+
+因为现在只有一组数据，所以只显示了一组数据。
+
+顺便说一下：如果你想修改端口，可以这样：python blog.py 80
+这样就可以浏览：http://127.0.0.1/了。
+
+14 鸡腿饭（主浏览页面--多个文章同时显示）
+
+现在我们开始修改了，你最好把刚才那些文件另存为一下，
+以免修改过程中出现“天灾人祸”。
+
+我们首先修改db.py，新的代码如下：
+
+import sqlite3
+
+con = sqlite3.connect('blog.db')
+cur = con.cursor()
+
+cur.execute('create table article \
+(articleID, articleTitle, articleContent, \
+articleAuthor, articleTime)')
+
+insert_datas = ('1', 'title_1', 'content_1', 'user_1', '2008-01-01')
+cur.execute('insert into article \
+(articleID, articleTitle, articleContent, \
+articleAuthor, articleTime) values (?, ?, ?, ?, ?)', \
+insert_datas)
+
+insert_datas = ('2', 'title_2', 'content_2', 'user_2', '2008-02-02')
+cur.execute('insert into article \
+(articleID, articleTitle, articleContent, \
+articleAuthor, articleTime) values (?, ?, ?, ?, ?)', \
+insert_datas)
+
+con.commit()                  
+cur.close()
+con.close()
+
+其实主要是又添加了一组数据。
+
+删除目录下的blog.db，然后运行：python db.py
+
+重新启动：python blog.py，在浏览器下可以看到：
+
+title_2 - user_2
+
+content_2
+
+2008-02-02
+
+title_1 - user_1
+
+content_1
+
+2008-01-01
+
+是的，你很聪明的发现了，这是倒序的，也就是最后插入的数据在最上面显示。
+这时我故意的：注意blog.py中的代码：
+datas = web.query("select * from article order by articleID desc")
+注意到了desc了吗？
+desc表示倒序。
+
+你可以试着删除desc来看看显示效果。
+
+提示：当你修改blog.py的时候，并不用关闭web server，
+      修改完成后也不用重启，可直接刷新页面浏览。
+      这是因为我们在blog.py中的最后一行加了： web.reloader
+
+15 茶蛋（网页链接CSS）
+
+网页中插入CSS的方式有两种（我就知道两种，具体几种方式不确定）
+一种是连接文件：
+我们来修改一下index.html：
+在</head>上面插入一行：
+
+<link rel="stylesheet" type="text/css" href="/static/style.css">
+
+提示：当修改template文件夹中的文件之后，必须重启才能看到效果。
+
+我们重启一下，看看浏览器中显示什么。
+什么也没发生变化！
+但是在命令行下，我们可以看到：
+... /static/style.css" - 404 File not found
+
+我们先创建一个文件夹：static，这个名字是web.py默认的放置静态文件的目录名。
+然后创建一个style.css，可以用记事本或者之类的东西创建。
+（我用gVim，对于vim我有这样的感受：它确实提高了我的效率，但是也让我的手——
+变得更累了）
+
+文件内容如下：
+
+*******
+（注：在百度的blog中填写css代码，会给显示出来，暂时无法给出CSS的代码）
+
+然后刷新浏览器，感觉非常慢，
+但是最终还是显示出来了。
+字体、颜色、位置有了些变化，是不是？
+
+详细的CSS介绍我就不说了，不过CSS对于网站的美观真的很重要。
+
+16 咸鸭蛋（网页内置CSS）
+
+我们也可以把CSS放到HTML中。
+
+现在我们重新修改index.html，删掉<link ......这一行。
+在</head>上面加入如下文字：
+
+<style type="text/css">
+*******
+</style>
+
+（注：在百度的blog中填写css代码，会给显示出来，暂时无法给出CSS的代码）
+
+其中的设置和style.css一模一样。
+
+重启服务器，刷新浏览器。是不是快很多了？
+
+据说用lighttpd或apache作为web server（服务器），
+对于像CSS文件这样的静态文件的读取会有很大的提高。
+这个我正在尝试中。
+
+17 软炸里脊（用户发表文章代码）
+
+用户发表文章，就是向数据库中添加信息。
+
+首先修改blog.py
+
+修改urls，代码如下：
+
+urls = (
+    '/', 'index',
+    '/add', 'add',
+)
+
+即定义网址后面是“/add”的会调用add类。
+
+然后我们来写add类。
+import time
+class add:
+    def GET(self):
+        print render.add()
+
+    def POST(self):
+        i = web.input()
+        t = time.localtime(time.time())
+        st = time.strftime("%Y-%m-%d", t)
+        datas = list(web.query("select * from article order by articleID desc"))
+        n = db.insert('article',
+                articleID=str(len(datas)+1), \
+                articleTitle=i.post_title, \
+                articleContent=i.post_content, \
+                articleAuthor='user_3', \
+                articleTime=st)
+        web.seeother('/')
+
+GET中定义显示add.html这个模板。
+
+POST中定义来提交后的处理。
+
+i = db.input()
+得到网页中提交的数据。
+
+time部分是处理日期的格式。
+注意：需要在blog.py最前面加上import time。
+
+datas = list(...)
+这部分是算一下当前的ID会是多少。
+
+为什么len(datas)+1要加str呢？
+因为不加str的话，排序会有问题。
+我个人认为sqlite太过于随便，不需要初始定义数据的类型，
+但是到后面才发现，其实预先定义还是有好处的。
+
+这里面我们的用户暂时先默认为“user_3”，将来会改的。
+
+web.seeother('/')
+表示我们会跳转到“/”网址，也就是主页面。
+这部分将来也需要改，我初步的想法是跳到“/blog”页面。
+
+简单说一下web.seeother()和web.redirect()的区别。
+redirect()无法后退，后退时会提示：是否需要重新提交数据。
+官方说明里面说：当彻底跳转的时候最好用redirect()。
+（注：感觉web.py的官方文档真的很少，而且有一部分是针对0.3版本的，
+      但是主页能下载的却是0.23版本的）
+（注：web2py不知道大家用过没有，在邮件列表中感觉其作者“非常”热情，
+      如果一个礼拜当中提问的人少，他都会说“太安静了”，呵呵）
+
+18 糖醋里脊（用户发表文章页面）
+
+我们在templates目录下创建一个add.html。
+
+我们需要：
+一个输入文章标题的文本框、
+一个输入文章内容的文本框、
+一个提交按钮。
+
+（我们现在没有考虑用户登陆的情况，
+在实际情况下，如果用户未登陆，
+那么应该提示用户登陆，并引导
+用户到登陆页面）
+
+代码如下（我隐去了CSS部分的代码）：
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>post</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+</head>
+<body>
+<div id="wrapper">
+    <div id="logo">
+        <p>Blog</p>
+    </div>
+    <div id="post">
+        <form action="/add" method="post">
+        <label for="post_title">Title</label><br />
+        <textarea id="post_title" name="post_title" cols="60" rows="1"></textarea><br />
+        <label for="post_content">Content</label><br />
+        <textarea id="post_content" name="post_content" cols="80" rows="10"></textarea><br />
+        <input type="submit" name="post_submit" value="Post it" />
+        </form>
+    </div>
+    <div id="copyright">
+        <p>Copyright &copy; 2008 otherrrr. All rights reserved.</p>
+    </div>
+</div>
+</body>
+</html>
+
+其中<form>定义了一个提交表单。
+表单中有两个文本域（textarea），一个用来输入标题，一个用来输入内容。
+并定义了一个提交按钮。
+
+也许你会问<br />是怎么回事？和<br>有什么区别。
+都是换行的意思。
+但是从符合w3c的角度来说<br />更规范。
+（就是说没有结束符的标签最好自己本身带一个结束符“/”，
+同理还有input标签）
+
+那么w3c是什么？一个网页规范组织。
+
+19 清蒸里脊（发表文章测试）
+
+在浏览器中访问：http://127.0.0.1:8080/add
+如果无法访问，请确认你的web服务器已经开启了。
+
+输入一点东西吧，然后点击“Post it”按钮，
+看看效果。
+
+再试一次，多输入点文字，看看有什么不同。
+
+我发现一个问题，如果输入多行数据，但是显示的时候却是一行。
+只是数据之间加了空格。
+
+如果要保证显示完全正确，是不是需要将“\n”改为“<p>”。
+
+20 糖醋鱼（用户登陆代码）
+
+修改blog.py，在urls中添加login，修改后代码如下：
+
+urls = (
+    '/', 'index',
+    '/add', 'add',
+    '/login', 'login',
+)
+
+并创建一个login类，代码如下：
+
+class login:
+    def GET(self):
+        print render.login()
+
+    def POST(self):
+        i = web.input()
+        web.setcookie('id', '1')
+        web.setcookie('username', i.post_username)
+        web.seeother('/blog')
+
+在GET()中我们定义了显示login模板。
+
+在POST()中我们定义了接收到输入后，跳转到网址“/blog”。
+
+注意看，这里我用到了cookie。
+cookie可以记录用户访问网站的一些信息。
+如果我们不关掉浏览器，那么这个cookie会一直在。
+（因此我们将来一定要做退出）
+
+其中需要设置两个值，id和username。
+
+在这里id我是未做完的状态，固定为“1”。
+正常情况下，应该判断用户的帐户在数据库中有没有，以及密码是否正确。
+如帐户和密码都正确就从数据库中返回出一个id号。
+
+username则是输入的值。
+
+（在登陆页面，其实最好用一些JavaScript来做判断。
+如：用户名或密码是否为空等等）
+
+21 水煮鱼（用户登陆页面）
+
+在撞见用户登陆页面之前，我们先从首页加个链接。
+修改index.html。
+
+代码中添加对login页面的链接：
+
+    <div id="nav">
+        <a href="/login">Log in</a>
+    </div>
+
+并添加对应CSS设置部分。
+
+然后在templates文件夹下创建login.html文件。
+文件中的内容如下：
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>Log in</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+</head>
+<body>
+<div id="wrapper">
+    <div id="logo">
+        <p>Blog</p>
+    </div>
+    <div id="post">
+        <form action="/login" method="post">
+        <label for="post_username">Username</label><br />
+        <input id="post_username" name="post_username"><br />
+        <label for="post_password">Password</label><br />
+        <input id="post_password" name="post_password" type="password"><br />
+        <input type="submit" name="post_login" value="Login" />
+        </form>
+    </div>
+    <div id="copyright">
+        <p>Copyright &copy; 2008 otherrrr. All rights reserved.</p>
+    </div>
+</div>
+</body>
+</html>
+
+注：文件省去了CSS设置部分。
+
+我们定义了一个表单（form），用来提交信息。
+然后有两个输入框（input），一个用来输入用户，一个用来输入密码。
+还有一个提交（submit）按钮，用来登陆。
+
+密码框的类型（type）一定要指定为“password”。
+不然你输入密码旁边的眼神好的小子就能看见了。
+
+22 家焖黄花鱼（跳转到blog页面）
+
+首先我们还是要该blog.py
+
+urls里面加上：'/blog', 'blog',
+（我觉得你现在应该知道这个怎么加了）
+
+然后我们定义blog类：
+
+class blog:
+    def GET(self):
+        session = web.cookies()
+        datas = web.query("SELECT * FROM article where articleAuthor=$session.username", vars=locals())
+        print render.blog(datas, session)
+
+我们这里得到了cookies()。
+
+并且我们从数据库中查找作者名为登陆用户名的所有文章。
+
+接下来，是的，我们需要创建blog模板了。
+代码如下（没有CSS版本的）：
+
+$def with (datas, session)
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>blog</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+</head>
+<body>
+<div id="wrapper">
+    <div id="logo">
+        <p>Blog</p>
+    </div>
+    <div id="nav">
+        <ul>
+             <li><a href="/logout">Logout</a></li>
+                <li><a href="/add">Add</a></li>
+                <li><p>$session.username</p><li>
+        </ul>
+    </div>
+    <div id="article">
+       $for data in datas:
+            <div id="title">
+            <p>$data.articleTitle</h3>
+            </div>
+            <div id="time">
+            <p>$data.articleTime</p>
+            </div>
+            <div id="content">
+            <p>$data.articleContent</p>
+            </div>
+            <div id="author">
+            <p>Post by $data.articleAuthor</p>
+            </div>
+        </div>
+        <div id="copyright">
+            <p>Copyright &copy; 2008 otherrrr. All rights reserved.</p>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+
+是的，这个和index.html非常相似。我就是从index.html上面改的。
+
+主要不同的是这里：
+    <div id="nav">
+        <ul>
+             <li><a href="/logout">Logout</a></li>
+                <li><a href="/add">Add</a></li>
+                <li><p>$session.username</p><li>
+        </ul>
+    </div>
+我加了2个链接，一个是Logout（登陆出），一个是Add（添加文章）。
+
+并添加显示了登陆进来的用户名。
+
+注意最前面的部分：
+$def with (datas, session)
+是的，我们继承（获取？）了session变量。
+不然我们没办法显示用户名，对不对？
+
+23 炸刀鱼（测试登陆一下下）
+
+首先在index.html里面加一个链接：
+    <div id="nav">
+        <a href="/login">Log in</a>
+    </div>
+主要是为了链接到login（登陆）页面。
+
+我们先重启一下Web服务器：python blog.py
+
+然后，在浏览器中访问http://127.0.0.1/
+这会让我们看到所有用户的文章。
+
+然后我们点击Login链接，跳转到http://127.0.0.1/login
+这个就是登陆页面。
+
+输入用户名：user_2
+输入密码：*****（随便输什么都行，因为我们并没有验证用户和密码的有效性）
+
+然后点击Login按钮。
+
+唰一下，跳转到http://127.0.0.1/blog。
+在这里，我们只看见了user_2发布的文章。
+
+你可以重复试试登陆user_1或user_3。
+
+（我也不知道自己为什么会用菜名作为小节名，大概是因为中午总吃不好的缘故吧）
+
+24 火爆腰花（CSS的新处理方法）
+
+把CSS放到网页中无疑是非常不爽的。
+我们来改一下下。
+
+Blog.py中修改urls：
+
+'/styles.css', 'style',
+
+然后添加新的类（即处理方法）：
+
+class style:
+    def GET(self):
+        web.header("Content-Type","text/css; charset=utf-8")
+        print open('static/styles.css').read()
+
+网页中写法如下：
+
+<link rel="stylesheet" type="text/css" href="styles.css" />
+
+然后只要将styles.css放在templates目录下就可以了。
+
+25 黄瓜蜇皮（修改add类）
+
+我们添加一项，当登陆之后会将用户名添加到数据库中。
+session = web.cookies()
+（好像反复的读取好像这个不太对，不过我现在还不会在web.py内部传递变量）
+
+数据存储:sql加上xml,sql记录正文数据,xml记录不常变动的数据
+
+
+

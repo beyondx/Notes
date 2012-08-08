@@ -1,0 +1,301 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T19:43:16+08:00
+
+====== PCI ======
+Created Sunday 27 March 2011
+     1、用lspci命令:lspci -v , lspci -vmm ,lspci -vv ,lspci -nm
+     2、查看/proc/bus/pci目录下文件
+     3、查看/sys/bus/pci目录下的文件
+    常见的总线标准：eisa    i2c  isa    mmc  pci  pci_express  pcmcia   serio  spi  usb 。
+    Isa,eisa,spi,serio,mmc,i2c都为低速总线，现代的电脑系统以**pci多级总线**为主，不同总线和各级总线通过**bridge**总线相连。因为总线是共享的，每个总线上可以连接多个设备，所以每种总线都必须有一个**总线控制器**(或称总线仲裁器)以控制各设备对总线的竞争访问，这通常称为 __Host bridge__。各设备通过各自的**设备控制器与总线相连**如：USB Controller，Audio Controller，Graphics  Controller，Cardbus，SATA  Controller，IDE Controller，Ethernet Controller 等。如下图所示：
+
+   把计算机系统的总线分为三个档次，速度最快的为**处理器总线**，可连接主存等高速部件，通常处理器总线与pci总线的桥接器为**北桥芯片**，在lspci中显示为00:00.0 Host bridge: Intel Corporation Mobile 945GM/PM/GMS, 943/940GML and 945GT Express Memory Controller Hub (rev 03) ，通常 Memory Controller 就集成在北桥芯片即 __Host bridge__类型的设备中。第二级即为pci总线，可直接连接工作速度较快的卡，如AGP卡、网卡，已可以通过IDE Controller、SATA  Controller连接高数硬盘设备，各硬件设备通过各自的 controller 与pci总线相连。第三级通过pci总线的各种bridge与目前常用的其它总线相连，以提高兼容性。
+
+   PCI总线支持PNP技术，PNP指PCI扩展卡插入后，系统能自动识别并装入相应的驱动程序。这是因为各PCI设备中有存放设备具体信息的__寄存器__， 在操作系统启动时__BIOS__可以访问这些寄存器，以获得硬件信息并对其初始化，在系统启动后OS利用BIOS获得的信息或自己访问的到的信息装入相应的设备驱动程序，使其变为可用状态。**配置寄存器**  是即插即用的硬件基础。
+
+     由于系统大部分设备都连接在pci总线上，故通过lspci的相关命令就可以知道系统设备的详细信息，例如可以根据lspci列出的pci总线号到/sys/bus/pci目录下查看相关设备信息，也可以根据module到dmesg命令的输出中查看相关信息，也可以到系统日志文件里查看相关信息。注意dmesg中的信息是由内核和driver or module 发出的，每行的开头表示该信息来自哪里。
+   
+     geekard@geekard-laptop:~$ lspci -nm 
+00:00.0 "0600" "8086" "27a0" -r03 "103c" "30d5" 
+00:02.0 "0300" "8086" "27a2" -r03 "103c" "30d5" 
+00:02.1 "0380" "8086" "27a6" -r03 "103c" "30d5" 
+00:1b.0 "0403" "8086" "27d8" -r01 "103c" "30d5" 
+00:1c.0 "0604" "8086" "27d0" -r01 "" "" 
+00:1c.1 "0604" "8086" "27d2" -r01 "" "" 
+00:1d.0 "0c03" "8086" "27c8" -r01 "103c" "30d5" 
+00:1d.7 "0c03" "8086" "27cc" -r01 -p20 "103c" "30d5" 
+00:1e.0 "0604" "8086" "2448" -re1 -p01 "" "" 
+00:1f.0 "0601" "8086" "27b9" -r01 "103c" "30d5" 
+00:1f.1 "0101" "8086" "27df" -r01 -p8a "103c" "30d5" 
+00:1f.2 "0106" "8086" "27c5" -r01 -p01 "103c" "30d5" 
+02:06.0 "0607" "1524" "1410" -r01 "103c" "30d5" 
+02:08.0 "0200" "8086" "1068" -r01 "103c" "30d5" 
+10:00.0 "0280" "8086" "4222" -r02 "103c" "135d"
+pci-slot **设备类型(class) 设备厂商(vendor ID) 设备ID(device ID )**  Rev   Svendor Sdevice
+含义如下：
+       Slot   The name of the slot where the device resides ([domain:]bus:device.function).  This tag is always the first in a record. 
+      Class  Name of the class. 
+      Vendor Name of the vendor. 
+      Device Name of the device. 
+      SVendor 
+              Name of the subsystem vendor (optional). 
+      SDevice 
+              Name of the subsystem (optional). 
+      Rev    Revision number (optional). 
+      ProgIf Programming interface (optional). 
+      __Driver__ Kernel driver currently handling the device (optional, Linux only). 
+      __Module __Kernel module reporting that it is capable of handling the device (optional, Linux only). 
+
+通过查找**/usr/share/misc/**__pci.ids__ 将上述的数字编号翻译为文字：
+geekard@geekard-laptop:~$ cat /usr/share/misc/pci.ids |head 
+0000  Gammagraphx, Inc. (or missing ID) 
+0010  Allied Telesis, Inc 
+	8139  AT-2500TX V3 Ethernet 
+001a  Ascend Communications, Inc. 
+001c  PEAK-System Technik GmbH 
+	0001  PCAN-PCI CAN-Bus controller 
+0033  Paradyne corp. 
+003d  Lockheed Martin-Marietta Corp 
+0059  Tiger Jet Network Inc. (Wrong ID) 
+0070  Hauppauge computer works Inc. 
+
+
+注意：黑色来自lspci命令，红色来自cat __/proc/iomem__,绿色来自 __cat /proc/ioports__,蓝色来自cat __/proc/interrupts __
+geekard@geekard-laptop:~$ lspci 
+00:00.0 Host bridge: Intel Corporation Mobile 945GM/PM/GMS, 943/940GML and 945GT Express Memory Controller Hub (rev 03)  PCI总线控制器
+00:02.0 VGA compatible controller: Intel Corporation Mobile 945GM/GMS, 943/940GML Express Integrated Graphics Controller (rev 03) 
+e0000000-efffffff :  0000:00:02.0 
+f0400000-f047ffff : 0000:00:02.0 
+f0480000-f04bffff : 0000:00:02.0 由于VGA速度较高故占用多个内存区段。
+03c0-03df : vga+ 
+3000-3007 : 0000:00:02.0 
+00:02.1 Display controller: Intel Corporation Mobile 945GM/GMS/GME, 943/940GML Express Integrated Graphics Controller (rev 03)  无设备
+f0500000-f057ffff : 0000:00:02.1 
+00:1b.0 Audio device: Intel Corporation N10/ICH 7 Family High Definition Audio Controller (rev 01)
+ f0580000-f0583fff : 0000:00:1b.0 
+  f0580000-f0583fff : ICH HD audio 
+16:        686     291988   IO-APIC-fasteoi   i915, HDA Intel 
+00:1e.0 PCI bridge: Intel Corporation 82801 Mobile PCI Bridge (rev e1) 
+00:1c.0 PCI bridge: Intel Corporation N10/ICH 7 Family PCI Express Port 1 (rev 01) 
+00:1c.1 PCI bridge: Intel Corporation N10/ICH 7 Family PCI Express Port 2 (rev 01) 
+64000000-641fffff : PCI Bus 0000:08 表示**08号pci总线**
+64200000-643fffff : PCI Bus 0000:08 表示08号pci总线
+4000-4fff : PCI Bus 0000:08 
+00:1d.0 USB Controller: Intel Corporation N10/ICH7 Family USB UHCI Controller #1 (rev 01) 
+00:1d.7 USB Controller: Intel Corporation N10/ICH 7 Family USB2 EHCI Controller (rev 01) 
+f0584000-f05843ff : 0000:00:1d.7 
+  f0584000-f05843ff : ehci_hcd 
+3020-303f : 0000:00:1d.0 
+  3020-303f : uhci_hcd 
+ 20:       3479     382009   IO-APIC-fasteoi   ehci_hcd:usb1, uhci_hcd:usb2, eth0 
+00:1f.0 ISA bridge: Intel Corporation 82801GBM (ICH7-M) LPC Interface Bridge (rev 01) 无设备
+1000-107f : 0000:00:1f.0 
+  1000-107f : pnp 00:0a 
+    1000-1003 : ACPI PM1a_EVT_BLK 
+    1004-1005 : ACPI PM1a_CNT_BLK 
+    1008-100b : ACPI PM_TMR 
+    1010-1015 : ACPI CPU throttle 
+    1020-1020 : ACPI PM2_CNT_BLK 
+    1028-102f : ACPI GPE0_BLK 
+1100-113f : 0000:00:1f.0 
+  1100-113f : pnp 00:0a 
+00:1f.1 IDE interface: Intel Corporation 82801G (ICH7 Family) IDE Controller (rev 01) 
+0170-0177 : 0000:00:1f.1 
+  0170-0177 : ata_piix 
+01f0-01f7 : 0000:00:1f.1 
+  01f0-01f7 : ata_piix 
+0376-0376 : 0000:00:1f.1 
+  0376-0376 : ata_piix 
+03f6-03f6 : 0000:00:1f.1 
+  03f6-03f6 : ata_piix 
+3040-304f : 0000:00:1f.1 
+  3040-304f : ata_piix 
+ 14:      36253          0   IO-APIC-edge      ata_piix 
+ 15:          0          0   IO-APIC-edge      ata_piix 
+00:1f.2 SATA controller: Intel Corporation 82801GBM/GHM (ICH7 Family) SATA AHCI Controller (rev 01) 
+f0585000-f05853ff : 0000:00:1f.2 
+  f0585000-f05853ff : ahci 
+1370-1377 : 0000:00:1f.2 
+  1370-1377 : ahci 
+13f0-13f7 : 0000:00:1f.2 
+  13f0-13f7 : ahci 
+1574-1577 : 0000:00:1f.2 
+  1574-1577 : ahci 
+15f4-15f7 : 0000:00:1f.2 
+  15f4-15f7 : ahci 
+3070-307f : 0000:00:1f.2 
+  3070-307f : ahci 
+ 26:      30507          0   PCI-MSI-edge      ahci 
+02:06.0 CardBus bridge: ENE Technology Inc CB1410 Cardbus Controller (rev 01) 
+  f0100000-f0100fff : 0000:02:06.0 
+    f0100000-f0100fff : yenta_socket 
+ 18:          1          0   IO-APIC-fasteoi   yenta 
+02:08.0 Ethernet controller: Intel Corporation 82562ET/EZ/GT/GZ - PRO/100 VE (LOM) Ethernet Controller Mobile (rev 01) 
+  f0101000-f0101fff : 0000:02:08.0 
+    f0101000-f0101fff : e100 
+f0100000-f03fffff : PCI Bus 0000:02 表示**02号总线**
+60000000-63ffffff : PCI Bus 0000:02 表示02号总线
+  60000000-63ffffff : PCI CardBus 0000:03 
+68000000-6bffffff : PCI CardBus 0000:03 
+2000-2fff : PCI Bus 0000:02 表示02号总线
+  2000-203f : 0000:02:08.0 
+    2000-203f : e100 
+  2400-24ff : PCI CardBus 0000:03 
+  2800-28ff : PCI CardBus 0000:03 
+ 20:       3479     382009   IO-APIC-fasteoi   ehci_hcd:usb1, uhci_hcd:usb2, eth0 
+10:00.0 Network controller: Intel Corporation PRO/Wireless 3945ABG [Golan] Network Connection (rev 02) 
+f0000000-f00fffff : PCI Bus 0000:10 表示10号pci总线
+  f0000000-f0000fff : 0000:10:00.0 
+    f0000000-f0000fff : iwl3945 
+64400000-645fffff : PCI Bus 0000:10 表示**10号pci总线**
+5000-5fff : PCI Bus 0000:10 表示10号pci总线
+ 27:          0          0   PCI-MSI-edge      iwl3945 
+geekard@geekard-laptop:~$ 
+geekard@geekard-laptop:~$ lspci -vmm 
+Slot:	00:00.0 
+Class:	Host bridge 
+Vendor:	Intel Corporation 
+Device:	Mobile 945GM/PM/GMS, 943/940GML and 945GT Express Memory Controller Hub 
+SVendor:	Hewlett-Packard Company 
+SDevice:	Device 30d5 
+Rev:	03 
+
+Slot:	00:02.0 
+Class:	VGA compatible controller 
+Vendor:	Intel Corporation 
+Device:	Mobile 945GM/GMS, 943/940GML Express Integrated Graphics Controller 
+SVendor:	Hewlett-Packard Company 
+SDevice:	Device 30d5 
+Rev:	03 
+
+Slot:	00:02.1 
+Class:	Display controller 
+Vendor:	Intel Corporation 
+Device:	Mobile 945GM/GMS/GME, 943/940GML Express Integrated Graphics Controller 
+SVendor:	Hewlett-Packard Company 
+SDevice:	Device 30d5 
+Rev:	03 
+
+Slot:	00:1b.0 
+Class:	Audio device 
+Vendor:	Intel Corporation 
+Device:	N10/ICH 7 Family High Definition Audio Controller 
+SVendor:	Hewlett-Packard Company 
+SDevice:	Device 30d5 
+Rev:	01 
+
+Device:	00:1c.1 
+Class:	PCI bridge 
+Vendor:	Intel Corporation 
+Device:	N10/ICH 7 Family PCI Express Port 2 
+Rev:	01 
+
+Device:	00:1d.0 
+Class:	USB Controller 
+Vendor:	Intel Corporation 
+Device:	N10/ICH7 Family USB UHCI Controller #1 
+SVendor:	Hewlett-Packard Company 
+SDevice:	Device 30d5 
+Rev:	01 
+
+Device:	00:1d.7 
+Class:	USB Controller 
+Vendor:	Intel Corporation 
+Device:	N10/ICH 7 Family USB2 EHCI Controller 
+SVendor:	Hewlett-Packard Company 
+SDevice:	Device 30d5 
+Rev:	01 
+ProgIf:	20 
+
+Device:	00:1e.0 
+Class:	PCI bridge 
+Vendor:	Intel Corporation 
+Device:	82801 Mobile PCI Bridge 
+Rev:	e1 
+ProgIf:	01 
+
+Device:	00:1f.0 
+Class:	ISA bridge 
+Vendor:	Intel Corporation 
+Device:	82801GBM (ICH7-M) LPC Interface Bridge 
+SVendor:	Hewlett-Packard Company 
+SDevice:	Device 30d5 
+Rev:	01 
+
+Device:	00:1f.1 
+Class:	IDE interface 
+Vendor:	Intel Corporation 
+Device:	82801G (ICH7 Family) IDE Controller 
+SVendor:	Hewlett-Packard Company 
+SDevice:	Device 30d5 
+Rev:	01 
+ProgIf:	8a 
+
+Device:	00:1f.2 
+Class:	SATA controller 
+Vendor:	Intel Corporation 
+Device:	82801GBM/GHM (ICH7 Family) SATA AHCI Controller 
+SVendor:	Hewlett-Packard Company 
+SDevice:	Device 30d5 
+Rev:	01 
+ProgIf:	01 
+
+Device:	02:06.0 
+Class:	CardBus bridge 
+Vendor:	ENE Technology Inc 
+Device:	CB1410 Cardbus Controller 
+SVendor:	Hewlett-Packard Company 
+SDevice:	Device 30d5 
+Rev:	01 
+
+Device:	02:08.0 
+Class:	Ethernet controller 
+Vendor:	Intel Corporation 
+Device:	82562ET/EZ/GT/GZ - PRO/100 VE (LOM) Ethernet Controller Mobile 
+SVendor:	Hewlett-Packard Company 
+SDevice:	Device 30d5 
+Rev:	01 
+
+Device:	10:00.0 
+Class:	Network controller 
+Vendor:	Intel Corporation 
+Device:	PRO/Wireless 3945ABG [Golan] Network Connection 
+SVendor:	Hewlett-Packard Company 
+SDevice:	Device 135d 
+Rev:	02 
+
+geekard@geekard-laptop:~$ 
+      注意最前面的代表pci编号依次为：__[domain:]bus:device.func__
+       Show  only  devices in the specified domain (in case your machine has several host bridges, they can either share a common bus number space  or each of them can address a PCI domain of its own; domains are numbered from 0 to ffff), bus (0 to ff), slot (0 to 1f) and function (0 to 7).   Each component of the device address can be omitted or set to "*", both meaning "any value". All numbers are hexadecimal.  E.g., "0:"  means all devices on bus 0, "0" means all functions of device 0 on any bus, **"0.3" selects third function of device 0 **on all buses and  ".4"  shows only the fourth function of each device.
+     
+系统加载module是以device, IDvendor Id为准的，所有的pci驱动在/lib/modules/kernel-version/__modules-pcimap__都有记录：
+    geekard@geekard-laptop:~$ cat /lib/modules/2.6.32-22-generic/modules.pcimap | head -8 
+# pci module         vendor     device     subvendor  subdevice  class      class_mask driver_data 
+mce-xeon75xx 0x00008086 0x00003422 0xffffffff 0xffffffff 0x00000000 0x00000000 0x0 
+scx200               0x0000100b 0x00000500 0xffffffff 0xffffffff 0x00000000 0x00000000 0x0 
+scx200               0x0000100b 0x00000510 0xffffffff 0xffffffff 0x00000000 0x00000000 0x0 
+scx200               0x0000100b 0x00000505 0xffffffff 0xffffffff 0x00000000 0x00000000 0x0 
+scx200               0x0000100b 0x00000515 0xffffffff 0xffffffff 0x00000000 0x00000000 0x0 
+cpqphp               0xffffffff 0xffffffff 0xffffffff 0xffffffff 0x00080400 0xffffffff 0x0 
+ibmphp               0x00001014 0x00000246 0x00001014 0x00000247 0x00080400 0x00000000 0x0 
+geekard@geekard-laptop:~$ 
+    系统根据检测到的硬件 vendor     device     subvendor  subdevice  class信息来加载module,而这些信息存在__pci的配置寄存器__中。在操作系统启动或pci设备刚接入时pci总线驱动程序访问这些寄存器，以便对其初始化，并装入相应的设备驱动程序，使其变为可用状态。配置寄存器  是即插即用的硬件基础。
+geekard@geekard-laptop:~$ lspci -v 
+00:00.0 Host bridge: Intel Corporation Mobile 945GM/PM/GMS, 943/940GML and 945GT Express Memory Controller Hub (rev 03) 
+	Subsystem: Hewlett-Packard Company Device 30d5 
+	Flags: bus master, fast devsel, latency 0 
+	Capabilities: <access denied> 
+	Kernel driver in use: agpgart-intel 
+	Kernel modules: intel-agp 
+
+00:02.0 VGA compatible controller: Intel Corporation Mobile 945GM/GMS, 943/940GML Express Integrated Graphics Controller (rev 03) 
+	Subsystem: Hewlett-Packard Company Device 30d5 
+	Flags: bus master, fast devsel, latency 0, IRQ 16 
+	Memory at f0400000 (32-bit, non-prefetchable) [size=512K] 
+	I/O ports at 3000 [size=8] 
+	Memory at e0000000 (32-bit, prefetchable) [size=256M] 
+	Memory at f0480000 (32-bit, non-prefetchable) [size=256K] 
+	Capabilities: <access denied> 
+	Kernel driver in use: i915 
+	Kernel modules: i915 

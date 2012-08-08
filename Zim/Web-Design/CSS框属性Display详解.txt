@@ -1,0 +1,77 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-15T22:05:38+08:00
+
+====== CSS框属性Display详解 ======
+Created Sunday 15 May 2011
+http://www.tonjay.com/website/display.html
+在正常的网页设计中，我门经常会遇到display，那么它到底有什么作用呢，这里给大家分享它的详细css教程：display 属性规定元素应该生成的框的类型。
+
+说明：
+
+这个属性用于定义建立布局时元素生成的显示框类型。对于 HTML 等文档类型，如果使用 display 不谨慎会很危险，因为可能违反 HTML 中已经定义的显示层次结构。对于 XML，由于 XML 没有内置的这种层次结构，所有 display 是绝对必要的。注释：CSS2 中有值 compact 和 marker，不过由于缺乏广泛的支持，已经从 CSS2.1 中去除了。
+
+默认值： inline
+
+继承性： no
+
+版本： CSS1
+
+JavaScript 语法： object.style.display=”inline”
+
+实例：
+
+使段落生出行内框：
+
+p.inline{display:inline;}
+
+浏览器支持：
+
+所有主流浏览器都支持 display 属性。
+
+注释：任何版本的 Internet Explorer （包括 IE8）都不支持 “inherit”、”inline-table”、”run-in”、”table”、”table-caption”、”table-cell”、”table-column”、”table-column-group”、”table-row”、以及 “table-row-group” 属性值。
+
+Display值描述：
+
+none 此元素不会被显示。
+
+block 此元素将显示为块级元素，此元素前后会带有换行符。（Tonjay.com注：即如果没有浮动的话，应该此值的元素会占用一个行）
+
+inline 默认。此元素会被显示为内联元素，元素前后没有换行符。（Tonjay.com注：Ie 6 下左浮动双倍边距的Bug即用此属性解决）
+
+inline-block 行内块元素。（CSS2.1 新增的值）（Tonjay.com注：即将控制应用此值的元素形成一个块级元素并在一个行内！）
+
+list-item 此元素会作为列表显示。
+
+run-in 此元素会根据上下文作为块级元素或内联元素显示。
+
+compact CSS 中有值 compact，不过由于缺乏广泛支持，已经从 CSS2.1 中删除。
+
+marker CSS 中有值 marker，不过由于缺乏广泛支持，已经从 CSS2.1 中删除。
+
+table 此元素会作为块级表格来显示（类似），表格前后带有换行符。
+
+inline-table 此元素会作为内联表格来显示（类似），表格前后没有换行符。
+
+table-row-group 此元素会作为一个或多个行的分组来显示（类似）。
+
+table-header-group 此元素会作为一个或多个行的分组来显示（类似）。
+
+table-footer-group 此元素会作为一个或多个行的分组来显示（类似）。
+
+table-row 此元素会作为一个表格行显示（类似）。
+
+table-column-group 此元素会作为一个或多个列的分组来显示（类似）。
+
+table-column 此元素会作为一个单元格列显示（类似）
+
+table-cell 此元素会作为一个表格单元格显示（类似 和 ）
+
+table-caption 此元素会作为一个表格标题显示（类似）
+
+inherit 规定应该从父元素继承 display 属性的值。
+
+示例：
+
+img { disply: block; float: right; }
+

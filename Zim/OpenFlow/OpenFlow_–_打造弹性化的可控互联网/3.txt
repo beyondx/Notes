@@ -1,0 +1,84 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-19T23:09:29+08:00
+
+====== 3 ======
+Created Thursday 19 May 2011
+【摘要】在本系列前两篇文章里，我们分别介绍了软件定义网络的两大利器——OpenFlow和Open vSwitch。不少研究者可能很有兴趣尝试一下，却拿不出太多的时间。本文将介绍一套强大的轻量级网络研究平台——mininet，通过它相信大家可以很好地感受到软件定义网络的魅力。
+概述篇
+作为研究者，你是否想过，在自己的个人笔记本上就可以搭建一套媲美真实硬件环境的复杂网络，并轻松进行各项实验？无论是用专业级的硬件实验平台，还是用传统的虚拟机，都显得太过昂贵，且十分不方便进行操作。如果你有类似的需求，不妨试试mininet，绝对是“懒惰”却又追求效率的研究人员的福音。
+stanford大学Nick McKeown的研究小组基于Linux Container架构，开发出了这套进程虚拟化的平台。在mininet的帮助下，你可以轻易的在自己的笔记本上测试一个软件定义网络（software-defined Networks），对基于Openflow、Open vSwitch的各种协议等进行开发验证，或者验证自己的想法。最令人振奋的是，所有的代码几乎可以无缝迁移到真实的硬件环境中，学术界跟产业界再也不是那么难以沟通了。想想吧，在实验室里，一行命令就可以创建一个支持SDN的任意拓扑的网络结构，并可以灵活的进行相关测试，验证了设计的正确后，又可以轻松部署到真实的硬件环境中。
+mininet作为一个轻量级软定义网络研发和测试平台，其主要特性包括
+
+    支持Openflow、OpenvSwitch等软定义网络部件
+    方便多人协同开发
+    支持系统级的还原测试
+    支持复杂拓扑、自定义拓扑
+    提供python API
+    很好的硬件移植性（Linux兼容），结果有更好的说服力
+    高扩展性，支持超过4096台主机的网络结构
+
+实战篇
+获取镜像
+官方网站已经提供了配置好相关环境的基于Debian Lenny的虚拟机镜像，下载地址为http://openflowswitch.org/downloads/OpenFlowTutorial-081910.vmware.zip%EF%BC%8C%E5%8E%8B%E7%BC%A9%E5%8C%85%E5%A4%A7%E5%B0%8F%E4%B8%BA700M%E5%B7%A6%E5%8F%B3%EF%BC%8C%E8%A7%A3%E5%8E%8B%E5%90%8E%E5%A4%A7%E5%B0%8F%E4%B8%BA2.1G%E5%B7%A6%E5%8F%B3%E3%80%82%E8%99%9A%E6%8B%9F%E6%9C%BA%E9%95%9C%E5%83%8F%E6%A0%BC%E5%BC%8F%E4%B8%BAvmware%E7%9A%84vmdk%EF%BC%8C%E5%8F%AF%E4%BB%A5%E7%9B%B4%E6%8E%A5%E4%BD%BF%E7%94%A8vmware workstation或者virtualbox等软件打开。如果使用QEMU和KVM则需要先进行格式转换。后面我们就以这个虚拟os环境为例，介绍mininet的相关功能。
+登录镜像
+默认用户名密码均为openflow，建议通过本地利用ssh登录到虚拟机上使用（可以设置自动登录并将X重定向到本地），比较方便操作。
+简单测试
+创建网络
+mininet的操作十分简单，启动一个小型测试网络只需要下面几个步骤。
+登录到虚拟机命令行界面，打开wireshark，使其后台运行, 命令为sudo wireshark &
+启动mininet，命令为sudo mn，则默认创建如下图所示的网络拓扑。
+此时进入以mininet>引导的命令行界面
+好了，从现在开始，我们就拥有了一个1台控制节点(controller)、一台交换(switch)、两台主机(host)的网络，并且用wireshark进行观测。下面进行几项简单的测试。
+查看信息
+查看全部节点：
+mininet> nodes
+available nodes are:
+c0 h2 h3 s1
+查看链路信息：
+mininet> net
+s1 <-> h2-eth0 h3-eth0
+输出各节点的信息：
+mininet> dump
+c0: IP=127.0.0.1 intfs= pid=1679
+s1: IP=None intfs=s1-eth1,s1-eth2 pid=1682
+h2: IP=10.0.0.2 intfs=h2-eth0 pid=1680
+h3: IP=10.0.0.3 intfs=h3-eth0 pid=1681
+对节点进行单独操作
+如果想要对某个节点的虚拟机单独进行命令操作，也十分简单，格式为 node cmd。例如查看交换机s1上的网络信息，我们只需要在执行的ifconfig命令前加上s1主机标志即可，即 s1 ifconfig，同样，如果我们想用ping 3个包的方法来测试h2跟h3之间连通情况，只需要执行 h2 ping -c 3 h3 即可。得到的结果为
+mininet> h2 ping -c 3 h3
+PING 10.0.0.3 (10.0.0.3) 56(84) bytes of data.
+64 bytes from 10.0.0.3: icmp_seq=1 ttl=64 time=7.19 ms
+64 bytes from 10.0.0.3: icmp_seq=2 ttl=64 time=0.239 ms
+64 bytes from 10.0.0.3: icmp_seq=3 ttl=64 time=0.136 ms
+— 10.0.0.3 ping statistics —
+3 packets transmitted, 3 received, 0% packet loss, time 2006ms
+rtt min/avg/max/mdev = 0.136/2.523/7.194/3.303 ms
+在本操作执行后，可以通过wireshark记录查看到创建新的流表项的过程，这也是造成第一个ping得到的结果偏大的原因。更简单的全网络互ping测试命令是pingall，会自动所有节点逐对进行ping连通测试。
+常用功能
+快捷测试
+除了cli的交互方式之外，mininet还提供了更方便的自动执行的快捷测试方式，其格式为sudo mn –test cmd，即可自动启动并执行cmd操作，完成后自动退出。
+例如 sudo mn –test pingpair，可以直接对主机连通性进行测试，sudo mn –test iperf启动后直接进行性能测试。用这种方式很方便直接得到实验结果。
+自定义拓扑
+mininet提供了python api，可以用来方便的自定义拓扑结构，在mininet/custom目录下给出了几个例子。例如在topo-2sw-2host.py文件中定义了一个mytopo，则可以通过–topo选项来指定使用这一拓扑，命令为
+sudo mn –custom ~/mininet/custom/topo-2sw-2host.py –topo mytopo –test pingall
+使用友好的mac编号
+默认情况下，主机跟交换机启动后分配的MAC地址是随机的，这在某些情况下不方便查找问题。可以使用–mac选项，这样主机跟交换机分配到的MAC地址跟他们的ID是一致的，容易通过MAC地址较快找到对应的节点。
+使用XTerm
+通过使用-x参数，mn在启动后会在每个节点上自动打开一个XTerm，方便某些情况下的对多个节点分别进行操作。命令为
+sudo mn -x
+在进入mn cli之后，也可以使用 xterm node 命令指定启动某些节点上的xterm，例如分别启用s1跟h2上的xterm，可以用
+xterm s1 h2
+链路操作
+在mn cli中，使用link命令，禁用或启用某条链路，格式为 link node1 node2 up/down，例如临时禁用s1跟h2之间的链路，可以用
+link s1 h2 down
+名字空间
+默认情况下，主机节点有用独立的名字空间（namespace），而控制节点跟交换节点都在根名字空间（root namespace）中。如果想要让所有节点拥有各自的名字空间，需要添加 –innamespace 参数，即启动方式为 sudo mn –innamespace
+其他操作
+执行sudo mn -c会进行清理配置操作，适合故障后恢复。
+总结篇
+除了使用mn命令进行交互式操作以外，mininet最为强大之处是提供api可以直接通过python编程进行灵活的网络实验。在mininet/example目录下给出了几个python程序的例子，包括使用gui方式创建拓扑、运行多个测试，在节点上运行sshd，创建多个节点的tree结构网络等等。运行这些程序就可以得到令人信服的结果，而且这些程序大都十分短小，体现了mininet平台的强大易用性。
+另外，限于篇幅，本文仅对mininet做了较简略的介绍，更全面的版本可以从这里找到。此外，也建议有兴趣做深入研究的朋友通过阅读参考文献，进一步了解更多有趣内容。
+参考
+<1> A Network in a Laptop : Rapid Prototyping for Software-Defined Networks, Bob Lantz,  Brandon Heller, Nick Mckeown, ACM Hotnets 2010;
+<2> http://www.openflowswitch.org/foswiki/bin/view/OpenFlow/Mininet

@@ -1,0 +1,25 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-05T17:04:13+08:00
+
+====== 书签操作 ======
+Created Thursday 05 May 2011
+
+C-x r m	M-x bookmark-set		在当前位置设置书签
+C-x r  b	M-x bookmark-jump	跳转到书签
+C-x r  l	M-x bookmark-menu-list   列出所有的书签，在书签列表缓冲区可以进行的操作：
+								d 给书签加上待删除标记
+								r 对书签重命名
+								f 直接查看当前书签对应的文件
+								s 保存清单里的全部书签
+								m 给书签加待显示标记
+								v 显示所有待显示书签的内容
+								x删除所有待删除的书签
+								u去掉书签的标记
+								DEL 去掉上行书签的标记
+								q退出书签清单
+M-x bookmark-rename			重命名书签
+M-x bookmard-delete			删除书签
+M-x bookmark-load			从指定文件中加载书签
+M-x bookmark-insert			将书签指向的文件的内容插到光标处
+M-x bookmard-write			把书签全部保存到指定文件中

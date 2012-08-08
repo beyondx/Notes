@@ -1,0 +1,119 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T19:57:54+08:00
+
+====== Miscs ======
+Created Sunday 27 March 2011
+
+学习程序设计方法
+http://www.uudisc.com/group/10073
+
+强调动手，强调实践
+1)只有通过大量的实践才能不断的培养编程感觉
+2)编程是有感觉的，就好象英语阅读一样，是有语感的
+3)每天都要编写代码，不断培养编程感觉
+
+通过实践来增强对理论的理解
+1)没有实践的理论是空虚的理论
+2)没有理论的实践是盲目的实践
+3)实践是检验真理的唯一标准
+
+打破同学以往在程序设计学习中存在的误区
+误区一：注重理论，轻视实践：学习新知识前想把关于这方面的理论全部掌握后再去实践，大错特错
+解决方法：在了解理论后，就立即去实践，实践驱动理论的学习，这样掌握理论才更加扎实，不容易忘记
+
+误区二：不善于做笔记，不善于总结。
+解决方法：人总是有忘性的，今天记得很牢的东西，过一星期也许就完全忘记了，用笔记下来，好记性不如烂笔头，不要太相信自己的记忆
+
+误区三：不善于思考，遇到问题首先想到问别人
+解决方法：勤于思考，在学习的道路上会遇到大量问题，这些遇到的问题是你的宝贵财富。遇到问题时首先想为什么会出现该错误，尤其在程序中，应该学会看错误提示，根据提示去寻找错误的根源，实在不行再去问同学，问老师因为自己寻找错误的过程是最好的学习过程，这个错误一旦被自己解决掉，首先得到的是极大的满足感，另外会留下深刻的印象，这是看书所得不到的，有过这种经历的同学才会有这种体会。即使没有解决也会从这个过程中学到很多东西，这种感觉是：只可意会，不可言传。
+
+误区四：容易骄傲，以为自己会点技术就得意起来
+解决方法：做人要谦虚，学习程序设计更要谦虚
+
+。要知道山外有山，人外有人，只有谦虚才会督促自己不断的去学习，编程水平的提高才会一点点上去的
+
+误区五：没有耐心，怕麻烦，思考时间不够长
+解决方法：没有耐心是写不好程序的，写程序是不仅是知识的体现，更是耐心与毅力的体现，任何程序开始都会有错误的，耐心寻找错误体现一个人的编程素养。要多思考，多去想，脑子越用越灵。
+
+误区六：想慢慢学好技术，一步一个脚印，踏踏实实，严重错误
+解决方法：技术的发展日新月异，尤其在软件方面。学习一门新的技术，开始时不必面面俱到，先把hello world写出来再说，要“趁热打铁”，会的东西，仔细看；不会的东西，硬着头皮去看，实在不行就跳过。
+
+误区七：不看英文，只看中文
+解决方法：很多帮助文件，比如最重要的JDK帮助文件都是英文的，只有习惯看英文才能进步快，中文的翻译很多都是文不对题，看了还不如不看，看英文虽然慢，可是过了不久，你就会发现英文也没那么难懂。
+
+实践，实践，还是实践
+即使书上有代码，也要把它敲出来，敲代码也是有感觉的
+看明白 ！= 运行出来，是两个概念。
+
+
+一、学习编程，要完成三个步骤：
+
+   1. 看书，看代码；
+
+   2. 对照着书敲代码；
+
+   3. 抛开书本，自己根据自己理解，去敲代码，或者自己给个题目，然后用新学到的知识去解决；
+
+二、学习编程，如果只做到上面两个层次，不如不学，把时间留着去打会球，因为这样根本没学到知识，当然，不排除有些人记忆力超强。
+
+三、以上学习方法可以运用到其他学习上去。大家自行去理解，寻找一套适合自己的学习方法。
+
+以上是我对编程学习的一个提议、归纳、总结。
+
+
+学习是个过程，量的积累，达到一定程度才会促成质的变化。
+
+
+====== 言论 ======
+Created Saturday 01 January 2011
+
+启迪人心：10个的有关编程的至理名言
+
+ugmbbc发布于 2010-12-16 06:53:27|9271 次阅读 字体：大 小 打印预览       
+
+
+感谢IT哇咔的投递
+程序员世界里有哪些名言警局呢?Jun Auza 列出了一些启迪人心的至理名言，它们大多来自产业界富于经验的人们。
+下文列出前10个供读者欣赏。
+
+10. "People think that computer science is the art of geniuses but the actual reality is the opposite, just many people doing things that build on each other, like a wall of mini stones."- Donald Knuth
+
+10. “人们认为计算机科学是天才的艺术，但事实完全相反：只是很多人在共同建立起来的事物之上工作，就像一条由小石头铺成的小径。”—— Donald Knuth
+
+9. “First learn computer science and all the theory. Next develop a programming style. Then forget all that and just hack.”- George Carrette
+
+9. “首先学会计算机科学和所有的理论。然后发展出一个编程风格。之后便要忘掉所有这些，以自由的方式探索。”—— George Carrette
+
+8. “Most of you are familiar with the virtues of a programmer. There are three, of course: laziness, impatience, and hubris.”- Larry Wall
+
+8. “大多数的你们都熟悉程序员的美德。它们有三点：懒，不耐烦，以及狂妄自大。”—— Larry Wall
+
+7. “Most software today is very much like an Egyptian pyramid with millions of bricks piled on top of each other,with no structural integrity， but just done by brute force and thousands of slaves.”- Alan Kay
+
+7. “今日的大多数软件很像埃及金字塔，由千百万砖头堆砌起来，层层相切，没有着整体的结构，是由畜力和成千上万奴隶的力量建立起来的。”—— Alan Kay
+
+6. “The trouble with programmers is that you can never tell what a programmer is doing until it’s too late.”- Seymour Cray
+
+6. “程序员的问题是，不到太晚，你永远无法知道一个他在做着些什么。”—— Seymour Cray
+
+5. “To iterate is human, to recurse divine.”- L. Peter Deutsch
+
+5. “人理解迭代，神理解递归。”—— Peter Deutsch
+
+4. "On two occasions I have been asked [by members of Parliament]: 'Pray， Mr. Babbage, if you put into the machine wrong figures, will the right answers come out?' I am not able rightly to apprehend the kind of confusion of ideas that could provoke such a question."- Charles Babbage
+
+4. “有两次我被(国会议员)问道：‘ Mr. Babbage，如果你输入计算机错误的数据，正确的答案会出来吗?’我完全无法理解能产生此种问题的大脑的混乱。”
+
+3. "Most good programmers do programming not because they expect to get paid or get adulation by the public, but because it is fun to program."- Linus Torvalds
+
+3. “大部分好的程序员编程并不是为了钱或名望，而只是因为纯粹的乐趣。”—— Linus Torvalds
+
+2. "Always code as if the guy who ends up maintaining your code will be a violent psychopath who knows where you live."- Martin Golding
+
+2. “编程的时候，总是想着那个维护你代码的人会是一个知道你住在哪儿的有暴力倾向的精神病患者。”—— Martin Golding
+
+1. “There are two ways of constructing a software design. One way is to make it so simple that there are obviously no deficiencies. And the other way is to make it so complicated that there are no obvious deficiencies.”- C.A.R. Hoare
+
+1. “有两种生成一个软件设计方案的途径。一个是把它做得如此简单，以致于明显不会有漏洞存在。另一个是把它做的如此复杂，以致于不会有明显的漏洞存在。”—— C.A.R. Hoare
+

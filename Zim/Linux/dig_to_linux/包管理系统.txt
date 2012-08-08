@@ -1,0 +1,269 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T20:01:36+08:00
+
+====== 包管理系统 ======
+Created Sunday 27 March 2011
+
+在我们探秘之旅开始之前，了解自己系统上安装了哪些软件包、各个软件包的作用以及该软件包安装了哪些文件及目录是非常有用和重要的。以后的每一次探秘我都会用到这些命令以列出我的ubuntu 10.04系统上安装的相关软件包，这与你在自己的系统上实验时的结果可能不同。
+
+现在的系统为何要用软件包管理系统呢？
+         要回答这些问题，需要了解现在的软件开发都非常讲究可重用性，也就是说一个人写的功能代码可能会以库函数的形式发布供别人使用。
+最常用的就是glic函数库，它提供了常见的C语言标准库函数。由于这种代码的共享性，就造成成了软件之间的依赖关系即安装本软件前需要安装
+为其提供部分功能代码的其它软件。对于现在的很多软件这种依赖关系非常复杂，因为这种关系存在递归性和版本差别。为了解决这种复杂的依赖
+关系，现代的linux系统都提供了各种软件包管理机制,如REDHAT系列的基于RPM包管理，Debian的deb包管理等。
+
+
+       这次探秘的是基于debian的包管理机制 ，对于RPM包管理机制，可以参考附件。Ubunt用到的软件包管理工具主要有两个:dpkg和apt
+
+一、首先介绍DPKG
+
+DPKG   --- dpkg  is  a  tool to install, build, remove and manage Debian packages.  
+功能：
+1.安装、移除已下载到本地的软件包。
+2.查询、解包已经下载到本地的软件包。
+3.维护和保存已经安装到本地的软件包信息。
+总之，dpkg是一个底层的软件包管理系统，主要用于对已下载到本地和已安装的软件包进行管理.
+
+(1)、最常用选项：
+
+以下五个选项用于软件包的安装与移除
+-i package_file  #安装软件包，必须是deb包的完整名称
+-r   package  #移除软件包，但保留其配置文件
+-P   package  #移除软件包的所有文件
+--unpack package_file   #解开软件包到系统目录但不配置
+--configure package  #配置软件包
+
+以下四个选项用于查询已经安装到系统的软件包信息
+-l  package-name-pattern       #查看系统中软件包名符合pattern模式的软件包
+-L  package-name               #查看package-name对应的软件包安装的文件及目录
+-s  package-name               #查看package-name对应的软件包信息
+-S  filename-search-pattern   #从已经安装的软件包中查找包含filename的软件包名称
+
+(2)、让我们做一些实验：
+
+1、首先列出我的系统(ubuntu 10.04）上安装的与dpkg相关的软件包
+geekard@geekard-laptop:~$ dpkg -l \*dpkg*
+| Status=Not/Inst/Cfg-files/Unpacked/Failed-cfg/Half-inst/trig-aWait/Trig-pend
+|/ Err?=(none)/Reinst-required (Status,Err: uppercase=bad)
+||/ Name                              Version                           Description
++++-=================================-=================================-==================================================================================
+ii  dpkg                              1.15.5.6ubuntu4.1                 Debian package management system
+un  dpkg-dev                          <none>                            (no description available)
+un  dpkg-iasearch                     <none>                            (no description available)
+
+以ii(install ok installed )开头表示Name对应的软件包已安装, 以un(unknown ok not-installed)开头表示没有安装 ，以rc开头的表示deinstall ok config-files即要重新安装。
+那些没有安装的软件包(以un开头)的信息是从已经安装的软件包的Recommends，Suggests 字段获得的。
+
+2、查看已安装的dpkg软件包信息：
+geekard@geekard-laptop:~$ dpkg -s dpkg
+Package: dpkg
+Essential: yes
+Status: install ok installed                                       #该软件包已经安装
+Priority: required
+Section: admin
+Installed-Size: 6608
+Origin: debian
+Maintainer: Ubuntu Core Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+Bugs: debbugs://bugs.debian.org
+Architecture: i386
+Version: 1.15.5.6ubuntu4.1
+Replaces: manpages-de (<= 0.4-3), manpages-pl (<= 20051117-1)      #该软件包将要替换的文件
+Pre-Depends: libc6 (>= 2.11), coreutils (>= 5.93-1), lzma          #该软件包依赖的其它软件包及版本
+Suggests: apt                                                      #安装该软件包时建议同时安装的其它软件包
+Breaks: emacs21 (<< 21.4a+1-5.7), emacs21-nox (<< 21.4a+1-5.7), emacs22 (<= 22.2-0ubuntu2), emacs22-gtk (<= 22.2-0ubuntu2), emacs22-nox (<= 22.2-0ubuntu2), jed (<< 1:0.99.18+dfsg.1-13), jed-extra (<= 2.5.3-2), konqueror (<= 4:4.2.96-1), pinfo (<< 0.6.9-3.1), tkinfo (<< 2.8-3.1), xemacs21-support (<< 21.4.22-2), xjed (<< 1:0.99.18+dfsg.1-13)
+Conflicts: apt (<< 0.7.7), aptitude (<< 0.4.7-1), dpkg-dev (<< 1.14.16), dpkg-iasearch (<< 0.11), sysvinit (<< 2.82-1)  #与该软件包相冲突的其它软件包
+Conffiles:                                                        #该软件包提供的配置文件(config files)及校验信息
+/etc/dpkg/dpkg.cfg f4413ffb515f8f753624ae3bb365b81b
+/etc/alternatives/README 69c4ba7f08363e998e0f2e244a04f881
+/etc/cron.daily/dpkg b6b8dc21210ea50db7cc4636f521758f
+/etc/logrotate.d/dpkg 9e25c8505966b5829785f34a548ae11f
+Description: Debian package management system                     #该软件包功能描述，从中可以看出为用于安装与卸载debian软件包的低级工具
+This package provides the low-level infrastructure for handling the
+installation and removal of Debian software packages.
+.
+For Debian package development tools, install dpkg-dev.
+Homepage: http://wiki.debian.org/Teams/Dpkg
+Original-Maintainer: Dpkg Developers <debian-dpkg@lists.debian.org>
+geekard@geekard-laptop:~$ 
+
+3、查看dpkg软件包安装到系统中的文件：
+geekard@geekard-laptop:~$ dpkg -L dpkg
+/.
+/etc            
+/etc/dpkg                 #dpkg的配置目录
+/etc/dpkg/dpkg.cfg
+/etc/dpkg/dpkg.cfg.d
+/etc/alternatives
+/etc/alternatives/README
+。。。
+/usr/bin                    #dpkg相关命令
+/usr/bin/dpkg
+/usr/bin/dpkg-deb
+/usr/bin/dpkg-divert
+/usr/bin/dpkg-query
+/usr/bin/dpkg-split
+/usr/bin/dpkg-statoverride
+/usr/bin/dpkg-trigger
+/usr/bin/update-alternatives
+。。。
+/var
+/var/lib
+/var/lib/dpkg               #dpkg用于存储已安装到本地的软件包信息的目录
+/var/lib/dpkg/alternatives
+/var/lib/dpkg/info
+/var/lib/dpkg/parts
+/var/lib/dpkg/updates
+。。。
+geekard@geekard-laptop:~$ 
+
+4、dpkg软件包相关文件介绍(重点！)：
+/etc/dpkg/dpkg.cfg       #Configuration file with default options. 
+/var/log/dpkg.log        #Default log file (see /etc/dpkg/dpkg.cfg(5) and option --log). 
+
+/var/lib/dpkg/available 文件 #存放系统上曾经安装(包括现在)过的软件包信息。即使以后该软件包被卸载，这些信息仍然保留。这些信息就是dpkg -l pattern列出的内容。
+/var/lib/dpkg/status    文件 #存放系统上已经安装的软件的状态信息如标记为安装、卸载、重新安装等。
+/var/lib/dpkg/info      目录 #__非常重要__！ 记录安装的软件包**控制目录中**的控制信息文件如  control 、. Conffiles , .preinst  ,  .postinst  ,  .prerm  ,  .postrm  ,  .list  , .md5suns 等，用于后期软件包的**查询和移除**。
+例如:dpkg -r package-name 就是根据info目录中该软件包对应的控制信息文件来对其进行移除的。
+
+available与status文件的差别就是前者记录所有安装过的(不管现在是否已经卸载)的信息而后者只记录已安装但没卸载的软件包信息。这也可以从两者记录的软件包数量上看出来，命令如下：
+geekard@geekard-laptop:~$ for file in /var/lib/dpkg/{available,status} 
+> do 
+> echo " packages in "${file}" file are : $(grep -w Package "${file}" | wc -l ) " 
+> done 
+输出为：
+packages in /var/lib/dpkg/available file are : 1597 
+packages in /var/lib/dpkg/status file are : 1531 
+
+5、另外再提一下debian软件包中包含的内容及用途：
+debian软件包其实是以.deb为后缀的__归档文件__，其内容主要包括两方面：Package control data 和Upstream data,前者为软件包控制数据，dpkg就是根据这些文件来安装该软件包的，主要是一些脚本文件如：
+control    文本文件，提供该软件包的metadate也称“__元数据__”，通常为软件包的名称、版本、作者、依赖关系、架构、功能描述等内容
+conffiles  文本文件，即configure files的缩写，主要记录该软件包包含的**配置文件完整路径**
+preinst    脚本文件，pre install 即安装软件包前要做的工作，通常为**建立相关目录、检测系统环境**等
+postinst   脚本文件，post install即安装软件包后要做的工作，通常为**开启daemon，建立菜单项和快捷方式**等。
+prerm      脚本文件，pre remove，即在移除或重新安装该软件包前要做的工作
+postrm     脚本文件，post remove即在移除该软件包后要做的工作
+其它的就是Upstream data，即要安装到系统中的所有文件。这些文件可以通过双击deb软件包用package installer工具看到。
+
+二、下面我们再来探秘一下ATP工具
+
+APT   --- a simple command line interface for downloading and  installing packages. 
+功能：
+1.从网络的软件源下载最新的软件包metadate(也就是各软件包的索引和摘要信息文件)和binary or source package .
+2.利用下载到本地的metadate，完成软件包的搜索、系统的更新。
+3.安装和移除软件包时自动寻找最新版本并自动解决依赖关系。
+总之，APT工具主要利用从网络软件源下载到的metadate完成软件包的搜索、下载、安装和移除，后两种功能是通过调用底层的dpkg完成的。
+
+
+(1)让我们看一下安装到系统上的相关软件包
+geekard@geekard-laptop:~$ dpkg -l \*apt* |grep ii
+ii  apt                                             0.7.25.3ubuntu9.1                               Advanced front-end for dpkg
+ii  apt-utils                                       0.7.25.3ubuntu9.1                               APT utility programs
+ii  __aptitude  __                                      0.4.11.11-1ubuntu10                             terminal-based package manager
+geekard@geekard-laptop:~$
+最重要的就是apt软件包，从描述信息：Advanced front-end for dpkg中可以看出其依赖于dpkg，是其前端工具.
+
+(2)查看apt软件包的信息
+geekard@geekard-laptop:~$ dpkg -s apt
+Package: apt
+Status: install ok installed
+Priority: important
+Section: admin
+Installed-Size: 5460
+Maintainer: Ubuntu Core Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+Architecture: i386
+Version: 0.7.25.3ubuntu9.1
+Replaces: libapt-pkg-dev (<< 0.3.7), libapt-pkg-doc (<< 0.3.7)
+Provides: libapt-pkg-libc6.10-6-4.8
+。。。。
+
+让我们重点看一下相关目录及文件
+geekard@geekard-laptop:~$ dpkg -L apt
+/.
+/usr
+/usr/bin
+/usr/bin/**apt-cache**
+/usr/bin/apt-cdrom
+/usr/bin/apt-config
+/usr/bin/**apt-get   **                  #这个是搜索、安装、卸载软件包最常用到的命令
+/usr/bin/apt-key
+/usr/bin/apt-mark
+。。。。
+/etc/apt/preferences.d
+/etc/apt/sources                    #这个文件很重要，记录的是软件源的地址
+/etc/apt/sources.list.d              
+/etc/apt/trusted.gpg.d
+。。。
+/var
+/var/cache
+/var/cache/apt                     
+/var/cache/apt/**archives   **         #已经下载到的软件包都放在这里(用的是apt-get upgrade 命令)，要定期清理否则会占用很大空间并有可能带来版本冲突问题。
+/var/cache/apt/archives/partial    #这个是没有完全下载的软件包存放目录
+
+/var/lib
+/var/lib/apt
+/var/lib/apt/__lists __               #这个目录很重要，里面存放的都是软件源的metadate，也就是用apt-get update 时下载的文件
+/var/lib/apt/lists/partial
+/var/lib/apt/mirrors
+/var/lib/apt/mirrors/partial
+/var/lib/apt/periodic
+
+(3)下面谈一下我对系统更新和用新立得工具查找软件包原理的理解：
+/var/lib/apt/lists目录存放的是已经下载的各软件源的metadata，这些数据是系统更新和软件包查找工具的基础。
+Ubuntu Software Center 、Snaptic SoftwaresManager 和Update Manager等工具就是利用这些信息来更新和安装软件的。
+Ubuntu Software Center主要用于软件的安装、卸载和查询。其安装和卸载软件的信息来源是/var/lib/dpkg/states,查询软件的信息来源是/var/lib/apt/lists/ 。
+Snaptic Softwares Manager 的工作方式类似。
+Update Manager是系统更新工具，它是将系统已经安装的软件版本信息(存储在/var/lib/dpkg/states)与/var/lib/apt/lists/中同名的软件版本进行比较(比较Version字段)，从而判断更新与否，然后将所有需要更新的软件在窗口中列出。
+
+(4)让我们看一下向/etc/apt/source.list文件中添加软件源的方法，以我的配置为例：
+geekard@geekard-laptop:~$ sudo cat /etc/apt/sources.list |tail 
+deb http://debian.ustc.edu.cn/ubuntu/ lucid main multiverse restricted universe
+deb http://debian.ustc.edu.cn/ubuntu/ lucid-backports main multiverse restricted universe
+deb http://debian.ustc.edu.cn/ubuntu/ lucid-proposed main multiverse restricted universe
+deb http://debian.ustc.edu.cn/ubuntu/ lucid-security main multiverse restricted universe
+deb http://debian.ustc.edu.cn/ubuntu/ lucid-updates main multiverse restricted universe
+deb-src http://debian.ustc.edu.cn/ubuntu/ lucid main multiverse restricted universe
+deb-src http://debian.ustc.edu.cn/ubuntu/ lucid-backports main multiverse restricted universe
+deb-src http://debian.ustc.edu.cn/ubuntu/ lucid-proposed main multiverse restricted universe
+deb-src http://debian.ustc.edu.cn/ubuntu/ lucid-security main multiverse restricted universe
+deb-src http://debian.ustc.edu.cn/ubuntu/ lucid-updates main multiverse restricted universe
+geekard@geekard-laptop:~$ 
+
+ubuntu的软件源类型有4种分别为：
+main  Canonical-support open source softs  即canoniacl公司(ubuntu幕后的开发团队)支持的开源软件
+multiverse 各开源社区支持的开源软件
+restricted 有专利限制的设备驱动软件(主要是显卡驱动)
+universe   有版权限制的软件(但个人在一定条件下可以自由使用)
+
+ubuntu用于更新的软件源类型有4种分别为：
+security  重要的安全更新
+updates   建议的更新
+proposed  pre-release updates
+backports unsupported updates
+
+向source.list文件添加源的格式为：
+   deb|deb-src  http://path/to/ubuntu/               ubuntu发行版名称 | 发行版名称-更新的类型      软件源类型 ...
+  
+如 deb           http://debian.ustc.edu.cn/ubuntu/    lucid-backports                        main multiverse restricted universe
+
+当要下载源码包时需要添加源码源(以deb-src开头)。
+
+(5)最后介绍一下apt常用的命令及选项：
+
+Usage: apt-get [options] command 
+          apt-get [options] install|remove pkg1 [pkg2 ...] 
+          apt-get [options] source pkg1 [pkg2 ...] 
+Commands: 
+   update - Retrieve new lists of packages  #从源服务器上下载metadate到/var/lib/apt/lists目录中
+   upgrade - Perform an upgrade             #更新系统，下载的软件包放在/var/cache/apt/archives 目录中
+   install - Install new packages (pkg is libc6 not libc6.deb) #安装软件包并自动解决依赖关系
+   remove - Remove packages                                    #卸载软件包
+   purge - Remove packages and config files 
+   source - Download source archives                           #下载软件包的源代码,前提是source.lst文件中由deb-src开头的源
+   clean - Erase downloaded archive files                      #清理软件包缓存即/var/cache/apt/archives 目录中的内容
+
+好了，Ubuntu的包管理机制就是这些，相信你看了后会有些收获，有问题或不完善的地方希望大家跟贴！
+
+另外，为了方便熟悉RPM包管理机制的童鞋向deb包管理机制转变，我将两者作了对比，限于篇幅故放在附件中，有兴趣的童鞋可以下载看看。
+
+让我们挖掘linux的奥秘，享受技术带来的快乐！记住unix的哲学就是在探索中just have fun !

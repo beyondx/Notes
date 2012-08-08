@@ -1,0 +1,23 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-05T15:04:57+08:00
+
+====== 打开保存 ======
+Created Thursday 05 May 2011
+
+C-x C-f   		find-file		打开文件,出现提示时输入/username@host:filepath可编辑FTP文件
+C-x 4 C-f 		打开一个新窗口，将文件名作为缓冲区名
+C-x 4 f			同上
+C-x 5 C-f		在另一个frame中打开文件
+C-x C-v 			find-alternate-file	打开一个文件，取代当前缓冲区
+C-x i 			insert-file		在当前缓冲区的插入点处插入文件 　　　
+C-x d			打开目录
+C-x C-r 			只读打开文件
+
+C-x C-c 			save-buffers-kill-emacs		退出Emacs 　　
+C-x C-s 			save-buffer				保存文件 　　
+				您指定的文件名不必与缓冲区名称相同，可请注意，Emacs 会改变缓冲区的名称，使之与新文件相符。
+C-x C-w 			write-file				另存为新文件 
+C-x s			save-some-buffers			提示逐个保存所有的缓冲区
+M-~				从当前缓冲区中清除修改标志(保存时不会提示保存该文件)　　
+C-x C-q 			切换缓冲区为只读或者读写模式 　　

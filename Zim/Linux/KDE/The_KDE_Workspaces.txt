@@ -1,0 +1,31 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-16T11:28:32+08:00
+
+====== The KDE Workspaces ======
+Created Wednesday 16 November 2011
+http://kde.org/workspaces/
+
+KDE offers an array of different workspaces, each tailored to a different kind of **workflow **or computing **device.** Each workspace provides a modern and customizable **environment** for running your favorite applications and accessing your information wherever it may be. Other common attributes of the KDE workspaces include advanced window management and desktop effects, support for KDE Plasma Widgets, integrated search, hardware management and a high degree of customizability. KDE workspaces are compatible with **all **applications, including but not limited to those built using the KDE Development Platform.
+
+=== Plasma Desktop Workspace ===
+{{~/sync/notes/zim/Linux/KDE/The_KDE_Workspaces/desktop_workspace.png?width=591}}
+For desktop and laptop computers
+
+Plasma Netbook Workspace
+{{~/sync/notes/zim/Linux/KDE/The_KDE_Workspaces/netbook_workspace.png?width=600}}
+For devices with small screens like netbooks
+
+===== Widgets everywhere =====
+{{~/sync/notes/zim/Linux/KDE/The_KDE_Workspaces/widgets.png}}
+Widgets in the KDE Workspace
+
+A **key component **in the KDE workspaces are the __widgets__, the basic "building blocks" of the desktop infrastructure. Widgets power __everything__, from a weather forecast on your screen to icons, application menus and panels. Adding and removing widgets is extremely easy, so the desktop can be tailored exactly to your needs and desires. You can share your preferred widgets on a local network, access widgets shared by other users and download new widgets with a single click as they become available from the KDE community.
+
+In addition to "native" Plasma widgets, the KDE workspaces also support** third-party **widgets including Google Gadgets, Superkaramba, Enlightenment 17 Edje content and some MacOS X Dashboard widgets. Along with the ability to display __web __sites and other web content directly, Plasma workspaces offer a nearly "**universal canvas**" for you to customize.
+
+If you are a software developer with even basic knowledge of C++, Javascript, Ruby or Python you can create widgets for personal use or to share with others. Visit the Plasma development tutorials on KDE Techbase to learn how to get started creating your own Plasma widgets.
+
+==== Flexibility and ease of use at the same time ====
+
+KDE workspaces have been created with the aim of combining** ease of use and flexibility** without being overwhelming. If you want a desktop that "just works", they provide a set of defaults that allow you to immediately start working without trouble or configuration. On the other hand, if you want to carefully tailor your desktop experience, the Plasma Workspaces offer you a tremendous amount of flexibility and customization opportunities.

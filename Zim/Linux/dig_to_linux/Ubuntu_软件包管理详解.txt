@@ -1,0 +1,87 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-27T19:44:11+08:00
+
+====== Ubuntu 软件包管理详解 ======
+Created Sunday 27 November 2011
+http://www.cppblog.com/jb8164/archive/2009/01/09/71583.html
+
+Ubuntu 方便宜用，最值得让人称道的便是其安装软件的方式, 一条命令: sudo apt-get install xxx 就几乎能帮你搞定所有的软件安装难题。但是有时你可能有这样的需求，查看某个软件包是否安装、安装在哪..., 那我们就来介绍一下 Ubuntu 的软件包管理方式。
+
+一、Ubuntu 采用 Debian 的软件包管理器 dpkg 来管理软件包, 类似 RPM. 系统中所有 packages 的信息都在** /var/lib/dpkg/**
+目录下, 其子目录 **/var/lib/dpkg/info **用于保存各个软件包的配置文件列表:
+ (1).conffiles 记录了软件包的配置文件列表
+ (2).list 保存软件包中的**文件列表**, 用户可以从 .list 的信息中找到软件包中文件的具体安装位置.
+ (3).md5sums 记录了软件包的md5信息, 这个信息是用来进行包验证的.
+ (4).prerm 脚本在 Debian 包解包之前运行, 主要作用是停止作用于即将升级的软件包的服务, 直到软件包安装或升级完成.
+ (5).postinst 脚本是完成 Debian 包解开之后的配置工作, 通常用于执行所安装软件包相关命令和服务重新启动.
+
+/var/lib/dpkg/available 文件的内容是软件包的描述信息, 该软件包括当前系统所使用的 Debian 安装源中的所有软件包,
+其中包括当前系统中已安装的和未安装的软件包.
+
+/var/cache/apt/archives 目录是在用 apt-get install 安装软件时，软件包的临时存放路径
+
+/etc/apt/sources.list 存放的是软件源站点, 当你执行 sudo apt-get install xxx 时，Ubuntu 就去这些站点下载软件包到本地并执行安装
+
+二、相关命令使用示例:
+ (1)查看某软件包的安装内容
+    dpkg __-L __xxx
+
+ (2)查找软件库中的软件包
+    apt-cache__ search__ 正则表达式
+
+ (3)显示系统安装包的统计信息
+    apt-cache **stats**
+ 
+ (4)显示系统全部可用软件包的名称
+    apt-cache pkgnames
+
+ (5)显示某软件包的详细信息
+    apt-cache **show** xxx
+
+ (6)查找某文件属于哪个包
+    apt-file search xxx
+
+ (7)查看已经安装了哪些软件包
+    dpkg -l
+
+ (8)查询某软件依赖哪些软件包
+    apt-cache depends xxx
+
+ (9)查询某软件被哪些软件包依赖
+    apt-cache rdepends xxx
+
+ (10)增加一个光盘源
+    sudo apt-cdrom add
+    注: 顾名思义, 就是安装更新软件包时让其优先从Ubuntu 光盘上找(如果你不能上网安装/更新, 但有 Ubuntu 的 DVD ISO, 这会对你非常有用)
+
+ (11)系统升级
+    sudo apt-get update
+
+ (12)清除所有已删除软件包的残馀配置文件
+    dpkg -l |grep ^rc|awk '{print $2}' |sudo xargs dpkg -P
+
+ (13)编译时缺少h文件的自动处理
+    sudo **auto-apt run ./configure**
+
+ (14)查看安装软件时下载软件包的临时存放目录
+    ls /var/cache/apt/archives
+
+ (15)备份当前系统安装的所有软件包的列表
+    dpkg --get-selections | grep -v deinstall > ~/somefile
+
+ (16)从上面备份的安装包的列表文件恢复所有包
+    dpkg --set-selections < ~/somefile
+    sudo dselect
+
+ (17)清理旧版本的软件缓存
+    sudo apt-get **autoclean**
+
+ (18)清理所有软件缓存
+    sudo apt-get **clean**
+
+ (19)删除系统不再使用的孤立软件
+    sudo apt-get **autoremove**
+
+ (20)查看软件包在服务器上面的地址
+    apt-get -qq --print-uris install ssh | cut -d\' -f2

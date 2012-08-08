@@ -1,0 +1,32 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-27T12:17:00+08:00
+
+====== Bibtex 文献排序 ======
+Created Sunday 27 November 2011
+http://blog.csdn.net/forsiny/article/details/4805778
+通过设置 bibliographystyle 就可以达到上述目的，Bibtex 自身已具备排序的功能，而且可以选择自己想要的排序方式。Bibtex 已自带有 8 种样式，分别如下（下面内容摘自 LaTeX 编辑部）：
+
+    plain，按字母的顺序排列，比较次序为作者、年度和标题
+
+    unsrt，样式同plain，只是按照引用的先后排序
+
+    alpha，用作者名首字母+年份后两位作标号，以字母顺序排序
+
+    abbrv，类似plain，将月份全拼改为缩写，更显紧凑：
+
+    ieeetr，国际电气电子工程师协会期刊样式：
+
+    acm，美国计算机学会期刊样式：
+
+    siam，美国工业和应用数学学会期刊样式：
+
+    apalike，美国心理学学会期刊样式：
+
+BibTeX 提供了一个外部的 BibTeX 工具程序，源文件经过 LaTeX 编译后，还要使用BibTeX 对数据库文件编译一次，最后再用 LaTeX 连续编译两遍，才能得到正确结果。 可用下图解释这四个编译步骤的作用：
+
+Kurs T: System skladu publikacji LATEX
+
+文献数据库可根据要求自行编写，其格式有：文章、书籍、技术报告、会议论文集和博士论文等十几种，每种格式都有一些必填和选填的项目，如作者、标题、出版社、发表年度、...等等，最后存储为 .bib 文件。
+
+如果对生成的参考文献样式仍有不满意之处，还可将编译信息文件*.bbl 中的参考文献列表源程序拷贝到论文尾部，然后进行手工调整。

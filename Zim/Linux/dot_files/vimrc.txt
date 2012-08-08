@@ -1,0 +1,40 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T20:19:39+08:00
+
+====== vimrc ======
+Created Sunday 27 March 2011
+
+Sunday 27/03/2011
+set nocompatible
+
+set autoindent
+set smartindent
+set tabstop=4
+set shiftwidth=4
+set softtabstop=4
+set expandtab
+colorscheme desert
+
+set ignorecase
+set incsearch
+set smartcase
+set showmatch
+
+
+set nu
+set ruler
+set nohls
+set virtualedit=all
+set background=dark
+
+set fileencodings=utf8,ucs-bom,chinese
+set encoding=utf8
+set termencoding=utf8
+set langmenu=zh_CN
+set imcmdline
+
+if has("gui_gtk2")
+    set guifont=Bitstream\ Vera\ Sans\ Mono\ 12,Fixed\ 12
+    set guifontwide=Microsoft\ Yahei\ 12,WenQuanYi\ Zen\ Hei\12
+endif

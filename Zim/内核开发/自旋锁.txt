@@ -1,0 +1,58 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-28T19:52:16+08:00
+
+====== 自旋锁 ======
+Created Sunday 28 August 2011
+http://bbs.chinaunix.net/viewthread.php?tid=1929798
+
+自旋锁：书上说在单CPU，可抢占式内核中，自旋锁还是有用的，但是这个时候还是会发送进程上下文的切换，这个跟信号量又有什么区别呢。
+自旋锁：书上说这样使用：如果进程申请获得自旋锁不成功，便一直忙等待，直到可以成功获得自旋锁为止。
+
+如果是在SMP上，这个很好理解。但是在单CPU上，如果在忙等待的进程不放弃CPU,持有该锁的进程怎么会有机会释放该锁呢，所以后面书上讲在单CPU上自旋锁的加锁操作是空操作。在单处理器中，__自旋锁的工作仅仅是禁止内核抢占__。在内核代码中，如果禁止内核抢占，内核会一直运行下去，直到它主动放弃CPU。也就是说这个时候不会发生进程切换。能够阻止该内核代码运行的就只有中断了，如果在中断中也申请同样的自旋锁就会发送死锁，所以也有一些形式的自旋锁是要禁止中断的。
+
+为了支持内核抢占，每个进程的thread_info引入了preempt_count计数器。该计数器初始值为0，每当使用锁的时候值加1，释放锁的时候值减1。当该值为0时，内核就可以抢占。所以，如果你使用了自旋锁，那么preempt_count的值就不为0，此时不允许内核抢占。
+
+===== 那么自旋锁为什么不能被阻塞呢 =====
+关键问题是 申请自选锁后，内核是被禁止抢占的。如果进程A在内核态下拥有自旋锁，被阻塞后，被调度的另外一个进程B也执行到同样的一段内核代码，申请自旋锁，但是由于进程A并没有释放该锁，所以B会一直自旋等待，同时内核被禁止抢占，也就是说进程B会一直自旋，不会让出处理器。
+
+===== 中断上下文和进程上下文之间又该如何做互斥与同步呢 =====
+？
+在中断上下文中需要加锁，而在进程上下文（这里指的是内核态）中调用的是spin_lock_irqsave、spin_unlock_irqrestore这一对函数，因为这对函数__禁止了中断__。在进程上下文在处理临界区数据的时候，不必担心中断的发生。同时进程也不用担心会被抢占，会很快的完成处理。
+
+ISR与下半部都会抢占进程上下文，ISR还会抢占下半部，所以：
+1>进程上下文与ISR：若共享数据，则在进程上下文中加锁的同时还要禁止本地中断。
+2>进程上下文与下半部：若共享数据，则在进程上下文中加锁的同时还要禁止下半部执行。
+3>ISR与下半部：若共享数据，则在下半部中加锁的同时还要禁止本地中断。
+
+
+===== 自旋锁与信号量的不同 =====
+1.自旋锁在申请锁失败后，不断忙循环等待锁可用
+2.信号量在申请失败后，把自己放到等待队列，然后睡眠。
+
+所以，自旋锁可以用在ISR中，而ISR中不可以使用信号量。
+
+
+关于内核抢占，Robert Love在LKD原文中是这么写的：
+
+===== Kernel Preemption =====
+
+The Linux kernel, unlike most other Unix variants and many other operating systems, is a fully preemptive kernel. In non-preemptive kernels, __kernel code runs until completion__. That is, the scheduler is not capable of rescheduling a task while it is in the kernelkernel code is scheduled cooperatively, not preemptively.__ Kernel code runs until it finishes__ (returns to user-space) or explicitly blocks. In the 2.6 kernel, however, the Linux kernel became preemptive: It is now possible to preempt a task at any point, so long as the kernel is in a state in which it is safe to reschedule.
+
+So when is it safe to reschedule? The kernel is capable of preempting a task running in the kernel so long as it does not__ hold a lock__. That is, locks are used as markers of regions of non-preemptibility. Because the kernel is SMP-safe, if a lock is not held, the current code is reentrant and capable of being preempted.
+
+The first change in supporting kernel preemption was the addition of a __preemption counter__, preempt_count, to each process's thread_info. This counter begins at zero and increments once for each lock that is acquired and decrements once for each lock that is released. When the counter is __zero__, the kernel is preemptible. Upon return from interrupt, if returning to kernel-space, the kernel checks the values of need_resched and preempt_count. If need_resched is set and preempt_count is zero, then a more important task is runnable and it is safe to preempt. Thus, the scheduler is invoked. If preempt_count is nonzero, a lock is held and it is unsafe to reschedule. In that case, the interrupt returns as usual to__ the currently executing task__. When all the locks that the current task is holding are released, preempt_count returns to zero. At that time, the unlock code checks whether need_resched is set. If so, the scheduler is invoked. Enabling and disabling kernel preemption is sometimes required in kernel code and is discussed in Chapter 9.
+
+Kernel preemption can also occur explicitly, when a task in the kernel blocks or explicitly calls schedule(). This form of kernel preemption has always been supported because no additional logic is required to ensure that the kernel is in a state that is safe to preempt. It is assumed that the code that explicitly calls schedule() knows it is safe to reschedule.
+Kernel preemption can occur
+When an interrupt handler exits, before returning to kernel-space
+When kernel code becomes preemptible again
+If a task in the kernel explicitly calls schedule()
+If a task in the kernel blocks (which results in a call to schedule())
+
+这是在百度百科里看到的：__单cpu的时候自旋锁会让其它process动不了__. 因此，一般自旋锁实现会有一个参数限定最多持续尝试次数. 超出后, 自旋锁放弃当前time slice. 等下一次机会。
+
+3.如果进程A在内核态下拥有自旋锁，被阻塞后，被调度的另外一个进程B也执行到同样的一段内核代码，申请自旋锁，但是由于进程A并没有释放该锁，所以B会一直自旋等待，同时内核被禁止抢占，也就是说进程B会一直自旋，不会让出处理器。
+
+    我的理解是，在单处理器可抢占内核中，一般来讲在进程上下文中肯定可以申请到自旋锁，因为__别的进程持有锁的时候，内核是禁止抢占的__，也就是说这个时候除了中断，持有锁的进程肯定会执行完毕，并且释放锁。
+    所以__在进程中是可以放心使用自旋锁__的(但是该进程不能睡眠，即__持有自旋锁的进程不能睡眠__)，但是在中断程序中，就要小心使用，因为当进程拥有一个自旋锁的时候，被中断程序打断，而在中断处理程序中又同样申请该锁，这样就造成了死锁。所以在进程和中断服务程序都要访问一内核数据的时候，一般只要在进程中或者内核代码中申请自选锁时要__禁止中断__。就是调用spin_lock_irqsave,spin_unlock_irqstroe函数。

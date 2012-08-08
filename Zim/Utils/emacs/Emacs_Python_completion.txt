@@ -1,0 +1,89 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-20T00:17:13+08:00
+
+====== Emacs Python completion ======
+Created Sunday 20 November 2011
+http://www.rwdev.eu/articles/emacspyeng
+C
+Emacs Python completion
+
+The purpose of this package is to support Python code completion and to make easier to use Python documentation using Emacs.
+There are available following features:
+
+    code completion hitting <TAB> (or <C-M-i>) key: e.g.: time.cl<TAB> -> time.clock time.<TAB> -> list of possible choices
+    description of the element (function/module/class/keyword) at the point hitting <F1> key
+    hitting '(' and ',' shows funtion signature e.g.: time.strftime( -> strftime(format[, tuple]) -> string
+    <F2> getting signature of a given function name
+    <F3> getting description of a given element name
+
+=============== Python 2.x =================
+Requirements
+
+    Pymacs the latest version from trunk or prepared package for Python2.x
+    python-mode or python-mode.el included in this package
+
+Installation
+
+    if you choose original Pymacs install according to instructions
+    if you choose my Pymacs package: copy file pymacs.el on your Emacs load-path (e.g. /usr/share/emacs/site-lisp), and directory Pymacs on PYTHONPATH (e.g. /usr/lib/python2.7/site-packages)
+    copy files python-mode.el and pycomplete.el on your Emacs load-path (e.g. /usr/share/emacs/site-lisp).
+    copy file pycomplete on your PYTHONPATH (e.g. /usr/lib/python2.7/site-packages)
+    Copy the following settings to your .emacs file
+
+# .emacs
+
+;; python-mode settings
+(setq auto-mode-alist (cons '("\\.py$" . python-mode) auto-mode-alist))
+(setq interpreter-mode-alist(cons '("python" . python-mode)
+                             interpreter-mode-alist))
+;; path to the python interpreter, e.g.: ~rw/python27/bin/python2.7
+(setq py-python-command "python")
+(autoload 'python-mode "python-mode" "Python editing mode." t)
+
+;; pymacs settings
+(setq pymacs-python-command py-python-command)
+(autoload 'pymacs-load "pymacs" nil t)
+(autoload 'pymacs-eval "pymacs" nil t)
+(autoload 'pymacs-apply "pymacs")
+(autoload 'pymacs-call "pymacs")
+
+(require 'pycomplete)
+
+# end of .emacs
+
+=============== Python 3.x =================
+Requirements
+
+    Pymacs the latest version from trunk or prepared package for Python3.x
+    python-mode or python-mode.el included in this package
+
+Installation
+
+    if you choose original Pymacs install according to instructions
+    if you choose my Pymacs package: copy file pymacs.el on your Emacs load-path (e.g. /usr/share/emacs/site-lisp), and directory Pymacs on PYTHONPATH (e.g. /usr/lib/python3.1/site-packages)
+    copy files python-mode.el and pycomplete.el on your Emacs load-path (e.g. /usr/share/emacs/site-lisp).
+    copy file pycomplete3 on your PYTHONPATH (e.g. /usr/lib/python3.1/site-packages)
+    Copy the following settings to your .emacs file
+
+# .emacs
+
+;; python-mode settings
+(setq auto-mode-alist (cons '("\\.py$" . python-mode) auto-mode-alist))
+(setq interpreter-mode-alist(cons '("python" . python-mode)
+                             interpreter-mode-alist))
+;; path to the python interpreter, e.g.: ~rw/python31/bin/python3
+(setq py-python-command "python3")
+(autoload 'python-mode "python-mode" "Python editing mode." t)
+
+;; pymacs settings
+(setq pymacs-python-command py-python-command)
+(autoload 'pymacs-load "pymacs" nil t)
+(autoload 'pymacs-eval "pymacs" nil t)
+(autoload 'pymacs-apply "pymacs")
+(autoload 'pymacs-call "pymacs")
+
+(require 'pycomplete)
+
+# end of .emacs
+

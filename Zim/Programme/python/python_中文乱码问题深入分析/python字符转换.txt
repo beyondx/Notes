@@ -1,0 +1,81 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-05T15:37:54+08:00
+
+====== python字符转换 ======
+Created 星期二 05 七月 2011
+
+===== 1.系统默认字符编码为utf-8时 =====
+[geekard@geekard ~]$ python2
+Python 2.7.2 (default, Jun 12 2011, 03:16:36) 
+[GCC 4.6.0 20110603 (prerelease)] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> ha=u'哈哈'   ** //ha为unicode对象，通常说的unicode为utf-16即使用等宽的2字节来表示所有字符。**
+>>> ha
+u'\u54c8\u54c8'
+>>> ha_gbk=ha.encode('gbk')   **//对ha进行gbk格式的编码存储(将unicode对象用字节码表示)**
+>>> ha_gbk
+'\xb9\xfe\xb9\xfe'    ** //ha的gbk编码，gbk和gb2312是等宽编码即不论是中文还是英文字符都用两字节编码，且中文字符的最高位为1**
+>>> print ha_gbk
+u'\u54c8\u54c8'
+>>> print ha_gbk.decode('gbk')  **//将gbk编码的unicode对象解码，生成为unicode对象（**__显示unicode对象时，其实中间有一个自动转换过程：将unicode对象自动编码为系统默认的字符编码格式__**）**
+哈哈
+>>> ha_utf=ha_gbk.encode('utf') ** //不能直接将一种编码格式转为另一种编码格式**
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+UnicodeDecodeError: 'ascii' codec can't decode byte 0xb9 in position 0: ordinal not in range(128)
+>>> ha_utf=ha_gbk.decode('gbk').encode('utf')  **//必须先将已编码的格式解码为unicode对象，然后再转为另一种格式**
+>>> ha_utf   
+'\xe5\x93\x88\xe5\x93\x88'  **//ha的utf-8编码，**__utf-8对中文的编码为3字节，对英文的编码为1字节__
+>>> print ha_utf                **  //因为操作系统的默认字符编码格式为utf-8，所以print可以直接识别并显示字符**
+哈哈 
+>>> print ha_utf.decode('utf')
+哈哈
+>>> 
+
+**综上：**
+__ GBK、GB2312等与UTF8之间都必须通过Unicode编码才能相互转换__
+
+    GBK、GB2312－－Unicode－－UTF8
+    UTF8－－Unicode－－GBK、GB2312
+
+===== 2. str文件中内容为“hello, 中国!”,编码格式为utf-8（系统编码格式为utf-8） =====
+Python 2.7.2 (default, Jun 12 2011, 03:16:36) 
+[GCC 4.6.0 20110603 (prerelease)] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> print open('str').read()   **//系统默认字符格式为utf-8，所以可以直接显示**
+hello, 中国！
+>>> print open('str').read().decode('utf-8')
+hello, 中国！
+
+>>> print open('str').read().decode('gbk')  **//由于默认编码为utf-8形式，所以用gbk解码出错**
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+UnicodeDecodeError: 'gbk' codec can't decode bytes in position 9-10: illegal multibyte sequence
+>>> print open('str').read().encode('gbk')  **//必须先解码为unicode对象，然后才能编码为另一种格式**
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+UnicodeDecodeError: 'ascii' codec can't decode byte 0xe4 in position 7: ordinal not in range(128)
+
+>>> print open('str').read().decode('utf-8').encode('gbk') ** //系统默认编码为utf-8，所以英文字符可以直接输出，但中文字符由于为gbk编码，所以不能在utf-8系统上输出**
+hello, ���
+
+>>> print open('str').read().decode('utf-8').encode('gbk').decode('gbk')  **//将gbk编码的字符解码为utf-8后可以显示**
+hello, 中国！
+
+>>> 
+
+===== 2. str文件中内容为“hello, 中国!”,编码格式为gbk(系统编码格式为utf-8) =====
+
+[geekard@geekard ~]$ python2
+Python 2.7.2 (default, Jun 12 2011, 03:16:36) 
+[GCC 4.6.0 20110603 (prerelease)] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> print open('str').read()  **//gbk编码的中文字符在utf-8系统上不能直接显示**
+hello, ���
+
+>>> print open('str').read().decode('gbk')  **//将gbk编码的中文字符解码为unicode对象后可以显示。**
+hello, 中国！
+
+>>> 
+

@@ -1,0 +1,111 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-17T17:26:00+08:00
+
+====== 输入法配置 ======
+Created Thursday 17 November 2011
+
+1.确保输入法已经正确安装:
+[geekard@geekard ~]$ pacman -Qs fcitx
+local/fcitx 4.1.2-1
+    Free Chinese Input Toy of X - Input Method Server for X window system
+local/fcitx-cloudpinyin 0.1.2-1
+    This is a standalone module for fcitx, it can use pinyin API on the internet to input.
+local/fcitx-configtool 0.3.1-1
+    GTK based config tool for Fcitx.
+local/fcitx-qt 4.1.2-1
+    QT IM Module for fcitx
+local/kcm-fcitx 0.2.0-1
+    KDE Config Module for Fcitx
+
+2.将相关的环境变量添加到启动文件中:
+#
+# ~/.bash_profile
+#
+
+export XMODIFIERS="@im=fcitx"
+export QT_IM_MODULE=xim
+export GTK_IM_MODULE=xim
+
+alias emacs="**LC_CTYPE=zh_CN.UTF-8** emacs"
+export EDITOR="emacsclient -c $@"
+export VISUAL="emacsclient -c $@"
+
+3.对于终端还需以下配置
+
+!!Emacs set
+__Emacs.UseXIM:true__
+__Emacs.inputMethon:fcitx__
+
+__XTerm*inputMethod:fcitx __
+!font and locale
+xterm*utf8: 1
+xterm*locale: true
+xterm*utf8Title: true
+xterm*renderFont: true
+xterm*preeditType: Root
+xterm*xftAntialias: true
+xterm*background: 0
+xterm*foreground: #ffffff
+!下面是是刚才推荐的编程用英文字体
+!xterm*faceName:Inconsolata:antialias=True:pixelsize=14   
+xterm*faceName:Consolas:antialias=True:pixelsize=18   
+!中文字体支持，选的是文泉驿
+xterm*faceNameDoublesize: WenQuanYi Zen Hei:pixelsize=14 
+
+!! RXVT setting
+
+URxvt.preeditType:Root
+!!调整此处设置输入法
+__URxvt.inputMethod:fcitx__
+!!颜色设置
+URxvt.depth:32
+!!中括号内数表示透明度
+URxvt.background: [90]#000000
+URxvt.foreground:  #ffffff
+URxvt.colorBD:Gray95
+URxvt.colorUL:Green
+URxvt.color1:Red2
+URxvt.color4:RoyalBlue
+URxvt.color5:Magenta2
+URxvt.color8:Gray50
+URxvt.color10:Green2
+URxvt.color12:DodgerBlue
+URxvt.color14:Cyan2
+URxvt.color15:Gray95
+!!URL操作
+URxvt.urlLauncher:chromium
+URxvt.matcher.button:1
+Urxvt.perl-ext-common:matcher
+!!滚动条设置
+URxvt.scrollBar:True
+URxvt.scrollBar_right:True
+URxvt.scrollBar_floating:False
+URxvt.scrollstyle:plain
+!!滚屏设置
+URxvt.mouseWheelScrollPage:True
+URxvt.scrollTtyOutput: False
+URxvt.scrollWithBuffer: True
+URxvt.scrollTtyKeypress: True
+!!光标闪烁
+URxvt.cursorBlink:True
+URxvt.saveLines:3000
+!!边框
+URxvt.borderLess:    False
+Rxvt.menu:/etc/X11/rxvt.menu
+!!字体设置
+Xft.dpi:96
+urxvt.imLocale:zh_CN.utf8
+!!URxvt.font:xft:Monaco:size=12:antialias=false,xft:WenQuanYi Zen Hei:size=10:antialias=false:charwidth=13
+!!URxvt.font:xft:Liberation Mono:pixelsize=16:antialias=true,xft:WenQuanYi Zen Hei:pixelsize=14
+!!URxvt.boldFont:xft:Liberation Mono:pixelsize=13:antialias=false:Bold,xft:WenQuanYi Zen Hei:pixelsize=12:Bold:charwidth=13
+
+Rxvt.font:9*15,xft:DejaVu Sans Mono-11,xft:WenQuanYi Zen Hei-10
+Rxvt.boldFont:9*15,xft:DejaVu Sans Mono-11:Bold,xft:WenQuanYi Zen Hei-10:Bold
+
+!!URxvt.font:xft:Monaco:size=12:antialias=false,xft:DejaVu Sans Mono-12:antialias=false:charwidth=13:charheight=13
+!!URxvt.boldFont:xft:Monaco:pixelsize=12:antialias=false:Bold,xft:Liberation Mono:pixelsize=12:Bold:charwidth=13:charheight=13
+
+
+
+

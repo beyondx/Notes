@@ -1,0 +1,86 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-23T19:33:37+08:00
+
+====== Django环境搭建常用的工具及做法 ======
+Created Sunday 23 October 2011
+
+http://2goo.info/blog/panjj/Django/2011/06/05/521
+
+自己购买了个廉价的vps，部署Django开发的网站，汲取强大互联网的信息，结合自己需要的环境尝试去搭配，从中把最常用的工具和命令记录下来。服务器我选择Debian，觉它更适合自己。Debian自带主流版本的Python，最先要安装的是easy_install 和pip，因为这两个工具，可以方便安装python所需要的类库。
+
+===== 安装方法： =====
+
+    apt-get install python-pip  
+    pip install easy_install  
+    pip install -U virtualenv  
+
+
+我们只需要给python安装**基本的类库**即可，比如上面的pip easy_install和virtualenv等即可，其他和django项目紧密相关的，而因django项目不同而不用的类库，我们**采用virtualenv工具具体安装就好了(这会将django项目的python环境和本机上的python环境隔离，在virtualenv中安装的软件包不会带到本机中)**，比如:Django psycopg  MySQLdb simplejson python-openid flup html5lib simplejson等。这样的做的好处很多，这些类库版本都不断更新，我们具体的项目具体安装具体的版本，而**不会影响全局的python环境**，把他们都集中在一个项目中。而且可以使用pip把这些虚拟环境的**类库清单**生成一个txt文件，然后再通过pip一键式安装到位。
+
+开始我们的环境搭建之旅吧。我们创建一个django虚拟环境：
+
+    virtualenv --no-site-packages --distribute twogoo  
+    cd twogoo  
+    source bin/activate  
+
+
+此时，已经进入虚拟环境，接下来就是使用pip或者easy_install安装**项目的类库**了，如：
+
+    pip install django  
+    pip install psycopg  
+    pip install flup  
+    ...  
+
+我们目前在**项目环境文件夹**twogoo下，当下建立**项目程序文件夹**myproject
+
+django-admin.pu createproject myproject
+
+我们已经安装了flup，如果要启动fastcgi，在虚拟环境中启动想要的端口（9090或者其他的）即可：
+
+    python myproject/manage.py runfcgi method=threaded host=127.0.0.1 port=9090  
+
+
+启动了fastcgi，如果我们修改了程序，想再重启，使用以上的命令是无效的，我们需要关闭掉9090端口，再重新启动：
+
+    python myproject/manage.py runfcgi method=threaded host=127.0.0.1 port=9090  
+
+
+查看端口的PID,关闭掉端口的办法：
+
+    netstat -anp|grep 9090  #(端口号)  
+
+
+这时PID会列举出来，比如PID是8920，我们kill掉它
+
+kill 8920
+
+刚才说通过pip**一键式安装虚拟环境**，办法是先导出环境的**类库列表(除了python自带的标准库以外的安装)**：
+pip freeze > req.txt
+这时会生成req.txt文件，里面是具体的类库名和版本号，格式如下：
+
+    Django==1.3  
+    Markdown==2.0.3  
+    PIL==1.1.7  
+    South==0.7.3  
+    distribute==0.6.15  
+    django-debug-toolbar==0.8.5  
+    flup==1.0.3.dev-20110405  
+    html5lib==0.90  
+    psycopg2==2.4.1  
+    python-openid==2.2.5  
+    simplejson==2.1.6  
+    wsgiref==0.1.2  
+
+
+我们再**根据req.txt文件，创建一个wow项目虚拟环境**：
+
+    cd ../  
+    pip install -E wow -r twogoo/req.txt  
+
+
+此时会创建一个wow文件夹，里面和twogoo环境是一模一样的。
+
+如果要退出虚拟环境，请使用：
+
+    deactivate  

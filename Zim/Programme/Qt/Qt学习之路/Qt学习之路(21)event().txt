@@ -1,0 +1,51 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-31T22:05:06+08:00
+
+====== Qt学习之路(21)event() ======
+Created Monday 31 October 2011
+
+原创作品，允许转载，转载时请务必以超链接形式标明文章 原始出处 、作者信息和本声明。否则将追究法律责任。http://devbean.blog.51cto.com/448512/230883
+
+今天要说的是event()函数。记得之前曾经提到过这个函数，说在事件对象创建完毕后，Qt将这个事件对象传递给QObject的event()函数。event()函数并不直接处理事件，而是将这些事件对象按照它们不同的类型，分发给不同的事件处理器(event handler)。
+
+event()函数主要用于__事件的分发__，所以，如果你希望在事件分发之前做一些操作，那么，就需要注意这个event()函数了。为了达到这种目的，我们可以重写event()函数。例如，如果你希望在窗口中的tab键按下时将焦点移动到下一组件，而不是让具有焦点的组件处理，那么你就可以继承QWidget，并重写它的event()函数，已达到这个目的：
+
+bool MyWidget::event(QEvent *event) {
+        if (event->type() == QEvent::KeyPress) {
+                QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+                if (keyEvent->key() == Qt::Key_Tab) {
+                        // 处理Tab鍵
+                        return true;
+                }
+        }
+
+        return QWidget::event(event);
+}
+
+event()函数接受一个QEvent对象，也就是需要这个函数进行转发的对象。为了进行转发，必定需要有一系列的__类型判断__，这就可以调用QEvent的type()函数，其返回值是__QEvent::Type类型的枚举__。我们处理过自己需要的事件后，可以直接return回去，对于其他我们不关心的事件，需要调用父类的event()函数继续转发，否则这个组件就只能处理我们定义的事件了。
+
+event()函数返回值是bool类型，如果传入的事件已被识别并且处理，返回true，否则返回false。如果返回值是true，QApplication会认为这个事件已经处理完毕，会继续处理事件队列中的下一事件；如果返回值是false，QApplication会尝试寻找这个事件的下一个处理函数。
+
+event()函数的返回值和事件的accept()和ignore()函数不同。accept()和ignore()函数用于不同的事件处理器之间的沟通，例如判断这一事件是否处理；event()函数的返回值主要是通知QApplication的notify()函数是否处理下一事件。为了更加明晰这一点，我们来看看QWidget的event()函数是如何定义的：
+
+bool QWidget::event(QEvent *event) {
+        switch (e->type()) {
+        case QEvent::KeyPress:
+                 keyPressEvent((QKeyEvent *)event);
+                if (!((QKeyEvent *)event)->isAccepted())
+                        return false;
+                break;
+        case QEvent::KeyRelease:
+                keyReleaseEvent((QKeyEvent *)event);
+                if (!((QKeyEvent *)event)->isAccepted())
+                        return false;
+                break;
+                // more...
+        }
+        return true;
+}
+
+QWidget的event()函数使用一个巨大的switch来判断QEvent的type，并且分发给不同的事件处理函数。在事件处理函数之后，使用这个事件的isAccepted()方法，获知这个事件是不是被接受，如果没有被接受则event()函数立即返回false，否则返回true。
+
+另外一个必须重写event()函数的情形是有自定义事件的时候。如果你的程序中有自定义事件，则必须重写event()函数以便将自定义事件进行分发，否则你的自定义事件永远也不会被调用。关于自定义事件，我们会在以后的章节中介绍。

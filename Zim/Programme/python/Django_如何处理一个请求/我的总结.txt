@@ -1,0 +1,147 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-23T22:00:44+08:00
+
+====== 我的总结 ======
+Created Sunday 23 October 2011
+
+__#/usr/lib/python2.7/site-packages/django/contrib/admin/__init__.py __
+**from django.contrib.admin.sites import AdminSite, site **
+
+def autodiscover():   #遍历项目中使用的每一个安装的APP的admin.py模块，将其中注册的每一个model
+  class 添加到admin界面中。
+   
+    """
+    Auto-discover INSTALLED_APPS admin.py modules and fail silently when
+    not present. This forces an import on them to register any admin bits they
+    may want.
+    """
+    **from django.conf import**
+
+===  settings ===
+** # 而安装的APP存放在django.conf.settings中的**
+     INSTALL_APPS变量中，这个变量中的每个值来自django.conf.global_settings 
+     和DJANGO_SETTINGS_MODULE  environment  variable中定义的用户项目settings文件。
+    
+    from django.utils.importlib import import_module
+    from django.utils.module_loading import module_has_submodule
+
+    **for app in **
+
+=== settings.INSTALLED_APPS:   ===
+
+   
+因为admin包中的__init__.py导入了site模块，定义了autodiscover()函数，因此可以如下
+使用：
+
+**#使用方式**(项目里的urls.py文件节选)
+__/home/geekard/djcode/mysite/urls.py__
+from django.contrib import admin
+admin.**autodiscover()**
+
+# And include this URLpattern...
+urlpatterns = patterns('',
+    # ...
+    (r'^admin/', include(**admin.site.urls**)),
+    # ...
+)
+
+# admin模块导入的文件settings
+__#/usr/lib/python2.7/site-packages/django/conf/__init__.py__
+"""
+Settings and configuration for Django.
+
+Values will be read from the module specified by the DJANGO_SETTINGS_MODULE environment
+variable, and then from django.conf.global_settings; see the global settings file for a list of all possible variables.
+"""
+注意：定义在DJANGO_SETTINGS_MODULE中同名变量会覆盖global settings中的同名变量值。
+
+from django.conf import 
+
+=== global_settings ===
+from django.utils.functional import LazyObject
+from django.utils import importlib
+
+ENVIRONMENT_VARIABLE = 
+
+=== "DJANGO_SETTINGS_MODULE" ===
+class LazySettings(LazyObject):
+    """
+    A lazy proxy for either global Django settings or a custom settings object.
+    The user can manually configure settings prior to using them. Otherwise,
+    Django uses the settings module pointed to by DJANGO_SETTINGS_MODULE.
+    """
+    def _setup(self):
+        """
+        Load the settings module pointed to by the environment variable. This
+        is used the first time we need any settings at all, if the user has not
+        previously configured the settings manually.
+        """
+ 
+
+===   settings  ===
+**= LazySettings()**
+
+__/usr/lib/python2.7/site-packages/django/contrib/admin/sites.py__
+from django.conf import settings
+class AdminSite(object):
+    """
+    An AdminSite object encapsulates an instance of the Django admin application, ready
+    to be hooked in to your URLconf. Models are registered with the AdminSite using the
+    register() method, and the get_urls() method can then be used to access Django view
+    functions that present a full admin interface for the collection of registered
+    models.
+    """
+    def** get_urls**(self):
+        from django.conf.urls.defaults import patterns, url, include
+
+        if settings.DEBUG:
+            self.check_dependencies()
+
+        def wrap(view, cacheable=False):
+            def wrapper(*args, **kwargs):
+                return self.admin_view(view, cacheable)(*args, **kwargs)
+            return update_wrapper(wrapper, view)
+
+        # Admin-site-wide views.
+        urlpatterns = patterns('',
+            url(r'^$',
+                wrap(self.index),
+                name='index'),
+            url(r'^logout/$',
+                wrap(self.logout),
+                name='logout'),
+            url(r'^password_change/$',
+                wrap(self.password_change, cacheable=True),
+                name='password_change'),
+            url(r'^password_change/done/$',
+                wrap(self.password_change_done, cacheable=True),
+                name='password_change_done'),
+            url(r'^jsi18n/$',
+                wrap(self.i18n_javascript, cacheable=True),
+                name='jsi18n'),
+            url(r'^r/(?P<content_type_id>\d+)/(?P<object_id>.+)/$',
+                wrap(contenttype_views.shortcut)),
+            url(r'^(?P<app_label>\w+)/$',
+                wrap(self.app_index),
+                name='app_list')
+        )
+
+        # Add in each model's views.
+        for model, model_admin in self._registry.iteritems():
+            urlpatterns += patterns('',
+                url(r'^%s/%s/' % (model._meta.app_label, model._meta.module_name),
+                    include(model_admin.urls))
+            )
+        return urlpatterns
+
+**    @property**
+**    def **
+
+=== urls ===
+**(self):**
+        return self.get_urls(), self.app_name, self.name
+ 
+
+===   site  ===
+= AdminSite() 

@@ -1,0 +1,446 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-05T14:46:50+08:00
+
+====== Python Essential Reference 4th – 第1章 – 读书笔记 ======
+Created 星期二 05 七月 2011
+http://www.coder4.com/archives/1475
+
+1、Python是解释型语言。
+
+2、在python解释器下，下划线”_”存储了上次计算的结果。
+
+3、关于print的写法：print(“Hi!”)是Python2和3的，print “Hi!”是Python2的。
+
+4、程序退出的方法：*nix(Ctrl+D)、Windows（Ctrl+Z）、程序中（raise SystemExit异常）
+
+5、每一行算一条语句，如果要一行中表示多条，用分号”;”分割。
+
+6、Block靠缩进识别（一般为4个空格），没有花括号。
+
+7、如果Block下暂时没有代码，（如分支的某个if）必须用pass代替，否则格式会报错。
+
+8、类似printf的print方法：print( “%3d %.2f” % (year,) )，即用百分号“%”分割。
+
+9、python没有switch，只能用if和elif：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+if suffix == ".htm":
+    content = "text/html"
+elif suffix == ".jpg":
+    content = "image/jpeg"
+elif suffix == ".png:
+    centent = "image/png"
+else:
+    raise RUntimeError("Unknown content type")
+
+10、in是操作符号，用在sequence（map、list、tuple等）中时，检查seq中是否含有某元素。用在字符串中时，检查是否为子串，返回True或者False。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#检查元素
+arr = [1,2,3,4,5]
+if 1 in arr:
+    print "Has 1"
+else:
+    print "None"
+#查找字串
+if "spam" in s:
+    has_spam = True
+else:
+    has_spam = False
+
+11、文件读写
+基础版本代码，性能较低，因为将会把所有数据都读入内存！后面几章会介绍使用yield的版本，不会都调入内存，性能更好。
+代码1：比较初级
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+f = open("../ExpInfoDAO.cc")
+line = f.readline()
+while line:
+    print line,    #这里加上,会防止多换一行。
+    line = f.readline()
+f.close()
+
+代码2：更简洁，只有两行！
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+for line in open("../ExpInfoDAO.cc"):
+    print line,
+
+如果想要输出到文件怎么办呢？
+假设已经打开f = open(“out”,”w”)
+print >>f,”Hi” #Python2的方法
+print(“Hi”,file=f) #Python3的方法
+
+12、字符串string：包含在单、双、三引号中：’Hi’,”Hi”。三引号可多行，多用于doc：
+“”“
+I
+can
+do
+it
+“”"
+
+13、string也是sequence的一种，但是是不可变的！（immutable，和tuple一样）
+
+14、字符串可用加号+连接：g = a + “Test string”。
+可以slice（切分、取字串）：
+a = “Hello world.”
+b = a[4] # a == “o”
+b = a[:5] # a==”Hello”
+类似的，用2~3个下标可非常轻松的取出字串
+
+15、string->其他：使用int()、float()将字符串强制转化为其他类型：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> x = int("12")
+>>> x
+12
+
+16、其他->string：使用str()、repr()、format()。str一般是直接字符转换（直译）、repr是翻译为内置类型的字符串（译意），format翻译完了再格式化。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> x = 3L
+>>> str(x)
+'3'
+>>> repc(x)
+>>> repr(x)
+'3L'
+>>> format(x,"0.5f")
+'3.00000'
+
+17、list是sequence的一种，用方括号表示：[1,2,"3",4,[5,6]]。可以嵌套任意类型。
+
+18、list的基础操作：slice、加运算、list复合（comprehension）
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#slice
+>>> names = ["Li","He","Yuan"]
+>>> names[:1]
+['Li']
+#加运算
+>>> names_2 = ["Liu"]
+>>> names + names_2
+['Li', 'He', 'Yuan', 'Liu']
+
+复合运算是比较高级的一种，如下，以打开文件、打印每行为例：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+lines = [line for line in open("../test.txt")]
+for line in lines:
+    print line,
+
+上面这个例子这么用有些繁琐，但是做数值计算时候非常有用，经常很有用，比如，求幻方：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> [x*x for x in xrange(1,10)]
+[1, 4, 9, 16, 25, 36, 49, 64, 81]
+
+19、Tuples，它和list同属sequence，用圆括号表示，区别是它是不可变的！相对比list更省内存。
+
+20、Tuples的用途很广泛
+函数return返回多个值：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#arr = [1,2,3,4,5]
+def minmax(arr):
+    m1 = min(arr)
+    m2 = max(arr)
+    return (m1,m2)
+#结果：
+>>> minmax(arr)
+(1, 5)
+
+再比如for时候的unpack解包：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+m = [(1,"liheyuan"),(2,"liuxinrui")]
+for (name,id) in m:
+    print name," ",id,
+
+21、set，类似stl和java里的set，非重复无序元素集合，必须用set()函数创建。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#3不会重复的！
+>>> set([1,2,3,3,4,5])
+set([1, 2, 3, 4, 5])
+
+通过add()或者update()都用来添加！前者更新单个元素，后者可写入sequence。
+s = set("1","2","3")
+s.add("x")
+s.update([1,2,3,4])
+、
+通过remove()来删除
+s.remove("x")
+
+22、Dictionaries（叫法奇怪啊，我更愿意叫map），用花括号写。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+stock = {
+"name": "GOOG",
+"shares": 100,
+"price": 490.10
+}
+
+
+要说明的是：任何不可变类型都可做key
+
+23、Dictionaries的操作：访问value、更新、删除、转化为list。
+可以直接用下标来完成。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#访问value，直接下标
+>>> stock["shares"]
+100
+ 
+#更新value，也用下标！
+>>> stock["shares"] = 200
+>>> print stock
+{'price': 490.10000000000002, 'name': 'GOOG', 'shares': 200}
+ 
+#删除一个key（和value）
+>>> del stock["shares"]
+>>> print stock
+{'price': 490.10000000000002, 'name': 'GOOG'}
+ 
+#转化为list（只转化key）
+>>> list(stock)
+['price', 'name']
+
+
+24、for循环和迭代。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#range一次产生
+>>> range(10)
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+ 
+#xrange是迭代的产生
+>>> xrange(10)
+xrange(10)
+ 
+#迭代上面的stock
+>>> for key in stock:
+...     print key,stock[key]
+...
+ 
+price 490.1
+name GOOG
+
+
+说明：在Python3中，xrange已经被合并为了range。
+
+25、函数定义：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+def remainder(a,b):
+    q = a//b
+    r = a - q * b
+    return (q,r)
+ 
+if __name__ == "__main__":
+    print remainder(30,7)
+ 
+#结果：
+(4, 2)
+
+
+26、Generators（生成器、发射器），是一个很有用的功能，可以理解为函数级的”管道“。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+def countdown(n):
+    print "Ready for countdown..."
+    for i xrange(n):
+        yield i
+ 
+#用法：获取函数的handle后，依次调用next()来获取下一通过”管道“发射过来的数值。
+>>> c = countdown(10)
+>>> c.next()
+Ready for countdown...
+0
+>>> c.next()
+1
+>>> c.close()
+
+
+27、用yield（发射器）来模拟*nix的常用命令：“tail -f log|grep key“
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+import os,time
+def tail(f):
+    f.seek(0,os.SEEK_END)
+    while True:
+        line = f.readline()
+        if not line:
+            time.sleep(0.1)
+            continue
+        else:
+            yield line
+ 
+def grep(lines,key):
+    for line in lines:  #注意：必须有是for，不能省略！
+        if key in line:
+            yield line
+ 
+if __name__ == "__main__":
+    for line in grep(tail(open("log")),"python"):
+        print line,
+
+
+28、Coroutines（协同程序）
+协同程序与发射器有区别，但类似：
+line = (yied) #用括号( )把yield围起来了。
+与发射器相反，程序中的协同语句将阻塞，直到send()塞入消息为止。
+发射器的“生命周期”（工作周期）是从直行第一次开始，到close( )或者函数返回。此外，在第一次send( )之前需要调用一次next( )
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+import os
+import time
+ 
+def print_matches(key):
+    print "Looking for,",key
+    while True:
+        line = (yield)
+        if key in line:
+            print line
+ 
+def tail(f):
+    f.seek(0,os.SEEK_END)
+    while True:
+        line = f.readline()
+        if not line:
+            time.sleep(0.1)
+            continue
+        else:
+            yield line
+ 
+matchers = [
+print_matches("python"),
+print_matches("guido"),
+print_matches("jython")
+]
+ 
+#在第一次使用一个coroutine之前，必须先调用一次next()函数
+for m in matchers:
+    m.next()
+ 
+wwwlog = tail(open("log"))
+for line in wwwlog:
+    for m in matchers:
+        m.send(line)
+
+
+29、查看类（对象）的方法，Python的源代码中含有与javadoc类似的文档机制。
+使用dir(类名/对象变量名)，可以查看某类可用的方法，
+特殊的方法，是两个下划线开始和结束的，如：__ne__，实际上是重载了操作符！=
+如下：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> map = {"a":1,"b":2}
+>>> dir(map)
+['__class__', '__cmp__', '__contains__', '__delattr__', '__delitem__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__getitem__', '__gt__', '__hash__', '__init__', '__iter__', '__le__', '__len__', '__lt__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__setitem__', '__sizeof__', '__str__', '__subclasshook__', 'clear', 'copy', 'fromkeys', 'get', 'has_key', 'items', 'iteritems', 'iterkeys', 'itervalues', 'keys', 'pop', 'popitem', 'setdefault', 'update', 'values']
+ 
+#__ne__是特殊函数，实际重载了!=操作符
+>>> map.__ne__({"a":1,"b":2})
+False
+>>> map != {"a":1,"b":2}
+False
+
+
+这是一个很实用的技巧（我感觉Python的文档没有Javadoc那么详细）。
+
+30、class里的类函数（相当于c++的static函数）。
+需要用@staticmethod标记，如下：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#!/usr/bin/python
+ 
+class TestClass:
+    #注意：static函数无需self参数
+    @staticmethod
+    def print_static():
+        print("I'm an static function.")
+ 
+    def print_non_static(self):
+        print("I'm not an static function.")
+ 
+if __name__ == "__main__":
+    TestClass.print_static()
+    tc = TestClass()
+    tc.print_non_static()
+
+
+31、异常处理方法为：的try、catch：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#!/usr/bin/python
+ 
+try:
+    f = open("file.txt","r")
+except IOError as e:
+    print e
+finally:
+    print "Finally release other resource."
+
+
+（2）使用with语句：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+ 
+
+
+主动抛出异常用raise：
+raise RuntimeError("Computer says no")
+
+32、除了finally之外，还可以使用with来自动释放资源：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+with m_lock:
+    message.add(msg)
+
+
+with操作符由lock重载过了，当进入with时候，会锁住临界区，出with块后会释放锁。
+
+33、关于简单的doc。
+在函数下面用三引号定义的，可以用doc函数（或者函数名.__doc__）取出，如下：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+def TestFunction():
+    """
+    I'm the doc for TestFunction.
+    """
+    print("Do nothing.")
+ 
+if __name__ == "__main__":
+    TestFunction()
+ 
+#可以用__doc__取出。
+>>> TestFunction.__doc__
+"\n    I'm the doc for TestFunction.\n    "
+
+
+（第一章笔记完）

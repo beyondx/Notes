@@ -1,0 +1,115 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-09T21:22:33+08:00
+
+====== Python操作SQLite备忘 ======
+Created Sunday 09 October 2011
+http://www.2cto.com/kf/201103/85992.html
+
+    SQLite，是一款轻型的数据库，它的设计目标是嵌入式的，而且目前已经在很多嵌入式产品中使用了它，它占用资源非常的低，在嵌入式设备中，可能只需要几百K的内存就够了。
+
+    它能够支持Windows/Linux/Unix等等主流的操作系统，同时能够跟很多程序语言相结合，比如 Tcl、C#、PHP、Java等，还有ODBC接口。
+
+    PS：单数据存储文件（类似微软的Access），支持数据库大小至2TB，支持多种开发语言,C, PHP, Perl, Java, ASP .NET,Python。
+
+
+    Python操作SQLite的库PySQLite已经被包括在Python2.5以后的标准库中了，可以方便的使用。
+
+    下面是Python操作SQLite的示例代码：
+
+
+    # coding:utf-8
+    # Practice of oprating SQLite with Python
+    # by redice 2010.11.09
+
+    import sys
+    reload(sys)
+    sys.setdefaultencoding(utf-8)
+
+    import sqlite3
+
+    # 连接数据库，数据库文件不存在则创建
+    conn = sqlite3.connect("users.db")
+    conn.text_factory = lambda x: unicode(x, utf-8, replace)
+    curs = conn.cursor()
+
+    # 检查users表是否存在，不存在则创建
+    # 很强大，不需要使用管理工具事先创建
+    curs.execute(CREATE TABLE if not exists users(username VARCHAR(20) UNIQUE,password VARCHAR(32),groupe INTEGER);)
+    # 对数据库有修改的操作要调用commit提交事务
+    conn.commit()
+
+    # insert data
+    # 采用这种方法插入数据，不用担心数据要转义。数据库接口会自动帮你转义
+    curs.execute("insert into users values(?,?,?);", (redice,123456,1))
+    curs.execute("insert into users values(?,?,?);", (qipeng,123456,0))
+    curs.execute("insert into users values(?,?,?);", (zhangsan,123456,0))
+    curs.execute("insert into users values(?,?,?);", (laowu,123456,0))
+    curs.execute("insert into users values(?,?,?);", (lisi,123456,0))
+    curs.execute("insert into users values(?,?,?);", (wangwu,123456,0))     
+    conn.commit()
+           
+    # 查找数据
+    # 对数据库没有修改的操作不需要用commit提交事务
+    curs.execute("select * from users where username=?;" ,(raw_input("请输入要查询的用户名称："),))
+    row = curs.fetchone()
+    if row:
+        print row
+
+    conn.close()
+
+    运行结果：
+
+==================================
+
+import pysqlite2.dbapi2 as sqlite
+    
+def runTest():
+    cx = sqlite.connect('test.db')
+    cu = cx.cursor()
+    
+    #create
+    cu.execute('''create table catalog(
+        id integer primary key,
+        pid integer,
+        name varchar(10) unique
+        )''')
+
+    #insert
+    cu.execute('insert into catalog values(0,0,"张小山")')
+    cu.execute('insert into catalog values(1,0,"hello")')
+    cx.commit()
+    
+    #select
+    cu.execute('select * from catalog')
+    print '1:',
+    print cu.rowcount
+    rs = cu.fetchmany(1)
+    print '2:',
+    print rs
+    rs = cu.fetchall()
+    print '3:',
+    print rs
+    
+    #delete
+    cu.execute('delete from catalog where id = 1 ')
+    cx.commit()
+    
+    
+    cu.execute('select * from catalog')
+    rs = cu.fetchall()
+    print '4:',
+    print rs
+    
+    #select count
+    cu.execute("select count(*) from catalog")
+    rs = cu.fetchone()
+    print '5:',
+    print rs
+    
+    
+    cu.execute("select * from catalog")
+    cu.execute('drop table catalog')
+
+if __name__ == '__main__':
+    runTest()

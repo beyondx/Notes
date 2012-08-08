@@ -1,0 +1,44 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-22T18:33:51+08:00
+
+====== google group的订阅方法 ======
+Created Sunday 22 May 2011
+http://www.mednoter.com/archives/120.html
+
+===== 方法一 =====
+Google提供了非常便捷的方法让你可以轻松的订阅group的发言。
+
+==== 订阅邮件列表 ====
+发送电子邮件至：GROUPNAME+subscribe@googlegroups.com
+例如：我想订阅ssmu-postgraduat这个群，我只需要发送一份邮件（内容随便填写）
+到ssmu-postgraduat+subscribe@googlegroups.com即可订阅此讨论组。
+退订邮件列表
+发送电子邮件至：GROUPNAME+unsubscribe@googlegroups.com
+
+ 
+
+例如：我想退订ssmu-postgraduat这个群，我只需要发送一封邮件（内容随便填写）
+
+到ssmu-postgraduat+unsubscribe@googlegroups.com即可退订此讨论组。
+
+ 
+
+发表主题
+发送电子邮件至：GROUPNAME@googlegroups.com
+
+ 
+
+例如：如果想在群组里发表主题，在邮件里编辑好主题内容，邮件主题为正文的题目。发送邮件到ssmu-postgraduat@googlegroups.com既可。
+
+ 
+
+如果想修改订阅方式，可以自行想办法登录Google论坛后在设置中进行更改。
+
+ 
+
+提醒：
+热门的讨论组一天内会有几十封邮件，为了不至于收件箱爆炸，可以建立一个过滤器。
+方法二
+
+web：Group访问限制已做调整，允许非Group成员通过Web方式浏览。

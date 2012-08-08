@@ -1,0 +1,68 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-18T09:30:44+08:00
+
+====== etags-1 ======
+Created Monday 18 April 2011
+
+===== 简介 =====
+etags用于生成TAGS文件来提供emacs快速浏览C/C++源代码，它的最大作用就是能够快速跳转到函数定义、宏定义、数据结构定义、全局变量定义等(注意跳转到的都是定义)。
+etags常常和find命令一同使用来生成TAGS文件( etags不支持递归)。在emacs里可以用etags命令生成emacs专用的tags文件，有了此文件之后便可以使用一些emacs tags的命令，比如对于编辑C/C++程序的人员可以方便的定位一个函数的定义，或者对函数名进行自动补齐：
+
+find -name "*.h" -o -name "*.cpp" |xargs etags --members  --language=c++ 或
+find | egrep '(.h|.cpp|.c)$' | xargs etags -a  --declarations --members
+
+我在使用上述命令时未能成功，但以下命令可以
+
+find -name "*.cpp" -exec etags -a {} ;
+或
+find . -name "*.[chCH]" -print | etags -
+
+上述命令可以在当前目录查找所有的.h和.cpp文件并把它们的摘要提取出来做成TAGS文件，具体的etags的用法可以看一下etags的manual。
+
+创建好tag表后，告知emacs。
+M-x visit-tags-table
+
+在.emacs中加入这样的语句：
+
+(setq tags-file-name "~/sim973/src/TAGS")
+
+这样emacs就会自动读取这个tags文件的内容。
+
+如果要一次查找多个TAGS文件，可以设置tags-table-list变量
+(setq tags-table-list '("path1/TAGS" "path2/TAGS" "path3/TAGS"))
+另外，对于较大又不是经常使用的TAGS，尽量放到该list的后面，避免不必要的打开
+
+===== 使用 =====
+    1.创建tag表。
+        在当前的工作目录中调用etags程序。它的参数是正则表达式。  如：etags *.[ch]。从所有以.c或.h结尾的文件中，构建一个tag表。
+        在shell mode或M-!命令下，执行etags。输出结果是一个TAGS文件。 如果要更新TAGS文件，则重新调用一下etags命令即可。
+       在ubuntu下有所不同，一般是使用etags命令，但ubuntu下是etags.emacs22。它默认解析了很多种源文件，根据这些文件的后缀，比如.c, .h, .s, .S, .py, .pl等。 etags.emacs22 *，解析当前目录下的所有文件，会跳过目录文件。 如果只想解析特定的文件，比如.c文件和.h文件，则可以：etags.emacs22 *.[ch] 。
+       etags不支持递归，如果想为目录及其子目录的所有文件创建tags，则需要借用其它的工具，比如find。
+         find . -name *.[sSch] -print | etags.emacs22 -
+         对于一些project，makefile里已经做好了这一步，例如对工程glibc，执行make -f MakeTAGS
+    2.创建好tag表后，告知emacs。
+        M-x visit-tags-table
+    3.相关命令：
+        M-.   find-tag：在tag表查找函数名中包含有某个字符串的函数。a nice feature：它把光标当前所在的word当作默认查找字符串。
+        C-x 4 .   find-tag-other-window：作用与M-.相似，不过是使用另一个缓冲区
+        M-,  tags-loop-continue ：查看下一个函数。如果存在多个符合查询条件的函数，M-.只显示结果列表中按字母序排的第一个函数，M-,用来查看下一个函数
+        M-x tags-search：输入正则表达式，查找所有列在tag表中的文件中的内容。凡是符合reglar expression的内容都显示出来。这点有点类似grep。结果中可通过M-,查看下一个。
+        M-x tags-query-replace：查询替换。作用在tag中列出的所有文件上。
+        C-u M-x tags-query-replace：只有完全匹配时，才替换(replaces only matches that are whole words)
+            如果用Esc或C-g退出了tags-query-replace，可通过M-,再恢复到刚才退出的位置继续重新继续下去
+        M-x tags-apropos：如果给定正则表达式作参数，它将在*Tags List*中列出匹配该正则表达式的所有tags
+        M-x list-tags：list所有给定C文件中的在tag表中所有的tag。可通过M-.查看每个函数的定义
+        M-TAB 自动补齐函数名。
+
+生成当前目录和所有子目录中代码文件的脚本
+#!/bin/sh
+trap "rm -f /tmp/$$" 0 1 2 3 15
+rm -f ./TAGS
+find `pwd`/  -type f -name "*.[chyl]" -print | xargs etags --append -o TAGS
+find . -type d -print | 
+while read DIR; do
+[ "$DIR" != "." ] && ln -f -s `pwd`/TAGS $DIR
+done 
+
+

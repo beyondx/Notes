@@ -1,0 +1,133 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T19:43:00+08:00
+
+====== Memory ======
+Created Sunday 27 March 2011
+
+     1、可以在demidecode的输出信息查看内存信息
+     2、查看/proc/meminfo文件中信息
+     3、查看/proc/mtrr，/proc/iomem ，前者显示系统的内存分段配置，后者显示具体的内存分配情况。
+     4、用free 命令
+    geekard@geekard-laptop:~$ cat /proc/meminfo 
+MemTotal:        1535840 kB 
+MemFree:           40016 kB 
+Buffers:           76004 kB 
+Cached:           532568 kB 
+SwapCached:         8940 kB 
+Active:           681248 kB 
+Inactive:         656796 kB 
+Active(anon):     472652 kB 
+Inactive(anon):   479252 kB 
+Active(file):     208596 kB 
+Inactive(file):   177544 kB 
+Unevictable:          16 kB 
+Mlocked:              16 kB 
+HighTotal:        655176 kB 
+HighFree:           1116 kB 
+LowTotal:         880664 kB 
+LowFree:           38900 kB 
+SwapTotal:       2498552 kB 
+SwapFree:        2448240 kB 
+Dirty:               112 kB 
+Writeback:             0 kB 
+AnonPages:        723256 kB 
+Mapped:           218960 kB 
+Shmem:            222432 kB 
+Slab:              40360 kB 
+SReclaimable:      25572 kB 
+SUnreclaim:        14788 kB 
+KernelStack:        2472 kB 
+PageTables:         6444 kB 
+NFS_Unstable:          0 kB 
+Bounce:                0 kB 
+WritebackTmp:          0 kB 
+CommitLimit:     3266472 kB 
+Committed_AS:    1655648 kB 
+VmallocTotal:     122880 kB 
+VmallocUsed:       32528 kB 
+VmallocChunk:      67476 kB 
+HardwareCorrupted:     0 kB 
+HugePages_Total:       0 
+HugePages_Free:        0 
+HugePages_Rsvd:        0 
+HugePages_Surp:        0 
+Hugepagesize:       4096 kB 
+DirectMap4k:       24568 kB 
+DirectMap4M:      884736 kB 
+geekard@geekard-laptop:~$ 
+
+geekard@geekard-laptop:~$ cat /proc/mtrr 
+reg00: base=0x000000000 (    0MB), size= 1024MB, count=1: write-back 
+reg01: base=0x040000000 ( 1024MB), size=  512MB, count=1: write-back 
+reg02: base=0xf5f800000 (62968MB), size=    8MB, count=1: uncachable 
+reg03: base=0x0feda0000 ( 4077MB), size=  128KB, count=1: uncachable 
+reg04: base=0x0e0000000 ( 3584MB), size=  256MB, count=1: write-combining 
+geekard@geekard-laptop:~$ 
+
+geekard@geekard-laptop:~$ cat /proc/iomem 
+00000000-00001fff : System RAM 
+00002000-00005fff : reserved 
+00006000-0009fbff : System RAM 
+0009fc00-0009ffff : reserved 
+000a0000-000bffff : Video RAM area 
+000c0000-000c7fff : Video ROM 
+000e0000-000fffff : reserved 
+  000f0000-000fffff : System ROM 
+00100000-5f7cffff : System RAM 
+  00100000-00590662 : Kernel code 
+  00590663-007a2e47 : Kernel data 
+  0084c000-008d9e97 : Kernel bss 
+5f7d0000-5f7e55ff : reserved 
+5f7e5600-5f7f7fff : ACPI Non-volatile Storage 
+5f7f8000-5f7fffff : reserved 
+5f800000-5fffffff : RAM buffer 
+60000000-63ffffff : PCI Bus 0000:02 
+  60000000-63ffffff : PCI CardBus 0000:03 
+64000000-641fffff : PCI Bus 0000:08 
+64200000-643fffff : PCI Bus 0000:08 
+64400000-645fffff : PCI Bus 0000:10 
+68000000-6bffffff : PCI CardBus 0000:03 
+e0000000-efffffff : 0000:00:02.0 
+f0000000-f00fffff : PCI Bus 0000:10 
+  f0000000-f0000fff : 0000:10:00.0 
+    f0000000-f0000fff : iwl3945 
+f0100000-f03fffff : PCI Bus 0000:02 
+  f0100000-f0100fff : 0000:02:06.0 
+    f0100000-f0100fff : yenta_socket 
+  f0101000-f0101fff : 0000:02:08.0 
+    f0101000-f0101fff : e100 
+f0400000-f047ffff : 0000:00:02.0 
+f0480000-f04bffff : 0000:00:02.0 
+f0500000-f057ffff : 0000:00:02.1 
+f0580000-f0583fff : 0000:00:1b.0 
+  f0580000-f0583fff : ICH HD audio 
+f0584000-f05843ff : 0000:00:1d.7 
+  f0584000-f05843ff : ehci_hcd 
+f0585000-f05853ff : 0000:00:1f.2 
+  f0585000-f05853ff : ahci 
+f8000000-fbffffff : PCI MMCONFIG 0 [00-3f] 
+  f8000000-fbffffff : pnp 00:0a 
+fec00000-fec00fff : IOAPIC 0 
+  fec00000-fec00fff : reserved 
+fed00000-fed003ff : HPET 0 
+fed20000-fed9afff : reserved 
+  fed20000-fed3ffff : pnp 00:0a 
+  fed45000-fed8ffff : pnp 00:0a 
+  fed90000-fed9afff : pnp 00:0a 
+feda0000-fedbffff : reserved 
+  feda0000-fedbffff : pnp 00:0b 
+fee00000-fee00fff : Local APIC 
+  fee00000-fee00fff : reserved 
+    fee00000-fee00fff : pnp 00:0b 
+ffb00000-ffbfffff : reserved 
+  ffb00000-ffbfffff : pnp 00:09 
+fff00000-ffffffff : reserved 
+  fff00000-ffffffff : pnp 00:09 
+geekard@geekard-laptop:~$ 
+
+geekard@geekard-laptop:~$ free -m 
+             total       used       free     shared    buffers     cached 
+Mem:          1499       1459         40          0         73        519 
+-/+ buffers/cache:        866        633 
+Swap:         2439         49       2390 

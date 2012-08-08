@@ -1,0 +1,31 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-27T16:21:48+08:00
+
+====== Programming is Debating ======
+Created Thursday 27 October 2011
+http://www.muhuk.com/2011/07/programming-is-debating/
+
+How difficult is it to start programming? By starting I mean producing real code, be it a personal project or something you will get paid for. But it is **not **written for the purpose of learning.
+
+Most of the readers of this blog are professional programmers. I am sure for many of you starting was quite easy and natural. But for a lot of people it is an **extremely difficult obstacle**. I know people, more than 50 people, who studied CS or CE in university but has never written any real code. They get anxious when the possibility presents itself.
+
+The problem with the start is usually the **false expectations **about programming. There are certain myths about heroic programmers writing incredible programs in impossible conditions with little or no effort. This is of course bullshit. But I have witnessed again and again people setting their expectations about the experience of writing code by these absurd standards. The actual experience inevitably fails to deliver these expectations and the person gives up. This doesn’t have be so. __Programming is supposed to be fun__.
+
+When we open a book and start reading, the words we see are unlikely the author’s **original words. **The original, raw content get edited before printing. __It is an iterative process__. I don’t want to get into the details about publishing1 but beginners should study this process carefully. Because the process of programming is same, sans the magic.
+
+So __the act of programming is also an act of debating__. You __debate with your tests __using your code. When all tests pass, the debate is over. When you are **making design decisions**, no matter how small they are, there is a debate going on between the requirements, the resources and your professional judgement. Therefore __it would be unreasonable to expect programming to be a smooth, frictionless process.__ If you want to start you should be prepared for it.
+
+I would like to share a few pointers that I hope will make the start more predictable if not easier:
+
+1)    Try to find __a real problem __to work on. Forget about educational/theoretical problems. Solve a real, practical problem. There is one extremely important thing to remember here; the scope of the project must be __as small as possible__. A series of 2-day projects are much better than a 2 week project.
+ 2)  Start by documenting the usage of the code. Write an example script that imports your hypotetical code and uses its functionality. In other words; __design top-down, program bottom-up.__
+  3)  Then flesh out the structure. Create files, classes, functions, comments. Writing code is good for warming-up to write some code.
+ 4)   Divide and conquer. Implement incrementally, accomplish one thing at a time. If a functionality is giving you hard time, try to write something that produces some results but __not exactly__ what you expect. Then continue __iterating__ until you get it right. __Don’t wait __for the programming muse to come and light the way. Sometimes you need to invent all the wrong implementations before figuring out the correct one.
+ 5)   Never hesitate to __ask for help__. Programming is debating, why not introduce your peers and mentors into the process. If you are asking for help make sure you have a concrete question. Input, expected output and your current code is usually enough. Even when you don’t have a problem or question, share your work with others and try to get as much feedback as possible.
+ 6)   Do your research. There is no getting around the reading. I would be lying to you if I said otherwise. If you want to win the debate you need to be well prepared. It may be a little overwhelming in the beginning. But as you build up your knowledge (and experience) you will enjoy reading more.
+
+I hope these pointers are helpful. But I think the most important thing to remember is programming is not a mechanical process but it is very human, I call it a debate, some call it art.
+
+1: Nor am I an expert on the subject.
+Bookmark and Share

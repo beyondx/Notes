@@ -1,0 +1,199 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-08T17:08:38+08:00
+
+====== tramp ======
+Created Friday 08 April 2011
+Contents
+
+什么是 TRAMP
+安装 TRAMP
+
+    获取 TRAMP
+    安装 TRAMP
+    让 Emacs 使用 TRAMP
+
+配置 TRAMP
+
+    Inline methods
+    External transfer methods
+    指定默认方法
+    指定默认用户
+    指定默认主机
+    Reusing passwords for several connections
+    自动保存和备份的配置
+
+使用 TRAMP
+
+    文件名约定
+    URL 式的文件名语法
+    和 Emacs 的其他包的整合
+
+什么是 TRAMP
+
+TRAMP 代表"Transparent Remote (file) Access, Multiple Protocol"，他是 Emacs 的一个用于远程文件编辑的扩展包。
+安装 TRAMP
+获取 TRAMP
+
+你可以在 http://ftp.gnu.org/gnu/tramp/ 下载到最新版本的 TRAMP 。
+安装 TRAMP
+
+把 tramp-2.1.5.tar.gz 解压到一个目录下面，比如 ~/emacs/packages 。
+
+cd ~/emacs/packages/tramp-2.1.5
+./configure --prefix=/usr --with-contrib
+make
+make install
+
+让 Emacs 使用 TRAMP
+
+在你的 ~/.emacs 里面加入
+
+(require 'tramp)
+
+就安装完成了。但是如果你没有执行 make install 把 TRAMP 安装到约定的目录下面，你需要手工通知 Emacs elisp 文件和 info 文件的所在。设置 lisp 目录：
+
+(add-to-list 'load-path "~/emacs/tramp-2.1.5/lisp/")
+(require 'tramp)
+
+并且，要让 Emacs 知道编译出来的 info 文档的所在，你可以把 ~/emacs/tramp-2.1.5/info 添加到环境变量 INFOPATH 里面，或者，在你的 ~/.emacs 里面加上：
+
+(add-to-list 'Info-default-directory-list "~/emacs/tramp/info/")
+
+配置 TRAMP
+
+TRAMP 有两种基本的文件传输方式，一种是使用与登录到远程主机上相同的连接进行传输的 inline methods，另一种是使用 rcp、scp、rsync 之类的外部程序进行传输的 External transfer methods。
+Inline methods
+
+inline methods 非常强大，特别是在你用 telnet 进行连接的时候，只能使用 inline methods 进行传输。还有一些奇怪的用于不同用户之间而不是不同主机之间的 inline methods。TRAMP 检查远程主机上是否有 mimencode(metamail 软件包的一部分) 或者 uuencode。第一个可用的程序将被使用，如果都不可用， TRAMP 将试着传输一个小 Perl 脚本到远程主机进行编码和解码。有下面这些 inline methods 可用：
+
+rsh
+    用 rsh 和远程主机进行连接，由于安全的原因，只推荐用于本地传输。
+ssh
+    用 ssh 和远程主机进行连接。有两种变体 ssh1 和 ss2 可用，他们分别对应着 'ssh -1' 和 'ssh -2'，你也可以使用 ssh1_old 或者 ssh2_old，对应 'ssh1' 和 'ssh2'。所有基于 ssh 的 inline method 都有一个特性就是：你可以以 host#42 这种形式来指定主机，这将给 ssh 命令传递一个额外的 '-p 42' 参数用来指定端口。
+telnet
+    用 telnet 进行连接，同 rsh 一样，这也是不安全的。
+su
+    这种 inline method 并不连接到远程主机，他的作用是允许你以另一个用户的身份编辑一个本地文件。所以，在文件名里面指定的主机名将会被忽略。
+sudo
+    和 su 类似，但是使用 sudo 命令。
+sshx
+    这和 ssh 很类似，只有一点细微的差别：ssh 在远程机器上打开一个正常的交互 shell ，而 sshx 使用 'ssh -t -t host -l user /bin/sh' 来打开连接。当正常登录的时候会被提一些问题的时候，这就会很有用了，这种方法会避开那些提问。需要注意的是这种方法并不能避开 ssh 自己提的问题，例如： “Are you sure you want to continue connecting?” TRAMP (目前)并不知道如何处理这些问题，所以你必须确保你可以在不被提问的情况下正常登录(前面那个问题通常是在第一次连接到某个远程主机的时候会被问到的)。
+krlogin
+    和 ssh 类似，但是使用 'krlogin -x' 来登录。
+plink
+    这是对于使用 PuTTY 的 ssh 的 Windows 用户来说最有趣的一个 inline method，他使用 'plink -ssh' 来进行连接。
+
+External transfer methods
+
+External transfer methods 省掉了编码和解码的负担。要使用 External transfer methods，你必须能够使用非交互的工具在本机和远程主机之间拷贝文件，这表示如果你使用 scp 的话，你需要使用 ssh-agent，或者你的 scp 允许从命令行传递密码。如果你无法保证这一点，你可以使用 Password caching 。
+
+rcp
+    使用 rsh 和 rcp 于远程主机连接和传输。这也许是最快的方式了。
+scp
+    使用 ssh 和 scp 。和 inline methods 类似，也有 scp1、scp2、 scp1_old、scp2_old 这几个变体。
+sftp
+    使用 ssh 和 sftp 。
+rsync
+    使用 ssh 和 rsync 。
+scpx
+    使用 ssh 和 scp 。和 inline methods 的提到的类似。
+pscp
+    使用 plink 和 pscp 。
+psftp
+    使用 plink 和 psftp 。
+fcp
+    使用 fsh 和 fcp 。fsh/fcp 是 ssh 的用于避免同一个 ssh 会话提交多个命令的前端。他使用命令 'fsh host -l user /bin/sh -i' 来打开连接。
+ftp
+    这不是 TRAMP 自己的 method，他把所有的请求都传递给 Ange-FTP。
+smb
+    使用 smbclient 。值得注意的是，文件名里面的 $(通常是共享文件夹的最后一个字符) 需要写成 $$ ，这是由于环境变量替换的原因。由于 MS Windows 使用用户名和域名进行验证，所以 TRAMP 的语法进行了一些扩展，你可以这样来指定一个用户名：user%domain 。例如： /smb:daniel%BIZARRE@melancholia:/daniel$$/.emacs 。不同于其他方法的是，如果没有指定用户名，TRAMP 将进行 anonymous 匿名访问(其他方法会使用当前的本地用户名)。注意：如果 Emacs 在 MS Windows 上运行，这种方法事实上是不可用的。你应该使用 UNC 文件名，例如： //melancholia/daniel$$/.emacs 。唯一的缺点就是不能指定另外一个用户名了。
+
+指定默认方法
+
+通过设定 tramp-default-method 变量来指定默认方法：
+
+(setq tramp-default-method "scp")
+
+你也可以对特定的 用户/主机 组合设定不同的方法。例如，下面将指定对用户匹配 john 使用 ssh，对主机匹配 lily 使用 rsycn 并对本地的 root 使用 su ：
+
+(add-tol-lisp 'tramp-default-method-alist '("" "john" "ssh"))
+(add-to-list 'tramp-default-method-alist '("lily" "" "rsync"))
+(add-to-list 'tramp-default-method-alist
+             '("\\`localhost\\'" "\\`root\\'" "su"))
+
+一般推荐使用 inline methods 。External transfer methods 对于大文件来说会更快一点，但是一般大家都是编辑小文件。而且 inline methods 通常也是足够快的。
+指定默认用户
+
+通常在省略用户名的时候，TRAMP 会使用当前的登录用户名，但这通常不是你想要的。你可以指定 TRAMP 说使用的默认用户名，例如：
+
+(setq tramp-default-user "root")
+
+你也可以对于不同的 方法/主机 组合使用不同的用户名。例如，如果你总是想在域 somewhere.else 上使用用户名 john ，你可以用如下方法指定：
+
+(add-to-list 'tramp-default-user-alist
+             '("ssh" ".*\\.somewhere\\.else\\'" "john"))
+
+值得注意的是，如果你在 ssh 的配置文件里面指定了不同的用户，TRAMP 并不知道这一点，这将导致登录失败。这个时候你必须让 TRAMP 不要使用默认的用户名：
+
+(add-to-list 'tramp-default-user-alist
+             '("ssh" "\\`here\\.somewhere\\.else\\'" nil))
+
+指定默认主机
+
+你可以通过 tramp-default-host 变量来设定默认主机。例如，如果你指定了：
+
+(setq tramp-default-user "john"
+      tramp-default-host "target")
+
+那么 `/ssh::' 将连接到 target 上 john 的主目录。注意 `/::' 并不能达到同样的目的，因为 `/:' 是 "the prefix for quoted file names" 。
+
+Reusing passwords for several connections
+
+TRAMP 默认会替你缓存密码，当需要再一次用同样的用户名和主机进行连接的时候，TRAMP 会重复使用密码。密码并不是永久保存的，他将随着 Emacs 会话的结束而消除，你也可以自定义 password-cache-expiry 这个变量来设定密码缓存的秒数。把它设为 nil 会禁用密码缓存。当一个连接失败的时候，那个连接的密码缓存就会被清除，你也可以在一个远程文件或者目录的 buffer 里面用 M-x tramp-clear-passwd 来清除这个连接的密码缓存。如果你不喜欢这个特性，你可以把 password-cache 设置为 nil 来完全禁用这个特性。
+自动保存和备份的配置
+
+Emacs 一般会在原来的文件所在的目录下面添加备份文件。你可以设置 backup-directory-alist 目录来指定所有的备份文件都被存到那儿，但是这将会导致一个问题，比如：你编辑了 /su:root@localhost:/etc/secretfile ，备份文件将被保存到 backup-directory-alist 所指定的地方1。把 backup-directory-alist 设定为 nil 可以避免这个问题，当然，你也可以专门为 TRAMP 而设置：
+
+(add-to-list 'backup-directory-alist
+             (cons tramp-file-name-regexp nil))
+
+另外一种方法是指定 tramp-backup-directory-alist 。他和 backup-directory-alist 的功能类似，例如：
+
+(add-to-list 'backup-directory-alist
+             (cons "." "~/.emacs.d/backups/"))
+(setq tramp-backup-directory-alist backup-directory-alist)
+
+那么， /su:root@localhost:/etc/secretfile 的备份文件为 /su:root@localhost:~/.emacs.d/backups/!su:root@localhost:!etc!secretfile~ 。Emacs 的自动保存文件存在同样的问题， 从 GNU Emacs 21 开始， auto-save-file-name-transforms 可以指定把自动保存的文件放到哪儿。把他设置为 nil 可以让自动保存的文件被放在原文件所在的目录下。
+使用 TRAMP
+
+一旦配置好 TRAMP ，你就可以很方便地使用他了。你可以像编辑本地文件一样编辑远程文件，只要你遵守一些约定即可。
+文件名约定
+
+使用 /usr@machine:/path/to.file 的语法来访问远程文件。例如：
+
+/melancholia:.emacs
+    编辑默认用户在主机 melancholia 上主目录里面的 .emacs 文件。
+/melancholia.danann.net:.emacs
+    编辑同一个文件，只不过用了主机名的全称。
+/melancholia:~/.emacs
+    编辑同样的文件。
+/melancholia:~daniel/.emacs
+    编辑 daniel 的主目录下的 .emacs 。
+/melancholia:/etc/squid.conf
+    编辑主机 melancholia 上的 /etc/squid.conf 文件。
+
+也可以使用 /method: 的方法来指定访问方法，例如： /ssh:deniel@melancholia:.emacs 。
+URL 式的文件名语法
+
+你可以使用 URL 式的语法： /method://usr@machine:port/path/to.file 。你必须在加载 STRAMP 之前指定 tramp-syntax 来达到这个目的：
+
+(setq tramp-syntax 'url)
+(require 'tramp)
+
+和 Emacs 的其他包的整合
+
+TRAMP 已经试验着实现远程启动进程的机制。例如，你可以在一个远程的 c 文件的 buffer 里面启动远程机器上的编译命令。到目前为止，已经做好了和 compile.el(包含 compile 和 grep 等命令)与 gud.el(包含 gdb 和 perldb 等命令)的整合，和其他包的整合正在计划中。
+Footnote
+
+1. 我在实验的时候发现并不是这样，虽然我指定了 backup-directory-alist ，普通文件的备份是都跑到那儿去了，可是通过 TRAMP 编辑的文件还是在原来的文件那个目录下面的。

@@ -1,0 +1,66 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-05T14:48:17+08:00
+
+====== Python Essential Reference 4th – 第15章 – 读书笔记 ======
+Created 星期二 05 七月 2011
+本章主要介绍抽象类和一些高级的Collection。
+
+1、abc模块：抽象类模块。
+一个抽象类的例子：
+(1)__metaclass__用ABCMeta替换
+(2)抽象方法用@abstractmethod标注
+(3)抽象属性用@abstractproperty标注
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+from abc import ABCMeta,abstractmethod,abstractproperty
+class Stackable:
+    __metaclass__ = ABCMeta
+    @abstractmethod
+    def push(self,item):
+        pass
+    @abstractmethod
+    def pop(self):
+        pass
+    @abstractproperty
+    def size(self):
+        pass
+
+2、抽象方法和属性必须被子类全部实现后，才能实例化！
+
+3、array模块：类似list，只不过其中所含元素必须全部相同！
+array模块的优点是：比list省空间！运算速度更快。缺点是之中类型显然不够灵活！
+array(typecode)
+typecode可以取基本类型（主要是char、整形、浮点），具体见书P259页。
+
+4、bisect模块：在有序队列上插入并保持排序！（基于二分查找）
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> lst = [1,2,5,6,7]
+>>> bisect.insort(lst,4)
+>>> print lst
+[1, 2, 4, 5, 6, 7]
+
+也有其他方法，用于二分查找：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> lst = [1,2,5,6,7]
+>>> bisect.bisect(lst,4)
+2
+
+上面返回2，表示它应该被插入到2的位置！
+
+5、collections模块：
+deque：双向队列
+defaultdict：与dictionary一样，只是对keyerror的处理不同。
+namedtuple：命名的tuple，与传统tuple兼容，在提供作为参数时非常管用。
+heapq：优先队列！
+itertools：用于iter的工具。
+itertools.chain(itr1,itr2…)：把N个itr串联，一个end后执行下一个！
+itertools.cycle(itr)：对itr循环！到了end后回到头。
+itertools.ifilter(func,iterable)：仅当func返回True时，才产生itr。
+
+完毕。

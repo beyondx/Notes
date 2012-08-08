@@ -1,0 +1,219 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-30T20:44:05+08:00
+
+====== 内存管理实践 ======
+Created Tuesday 30 August 2011
+
+接下来的几篇文章中，将通过一些简单的内核模块编程，从代码的角度来理解虚拟内存。
+
+我们的实践代码分为四个部分：
+
+list_myvma()：打印**当前进程的内存区域**；
+find_myvma()：通过给内核模块传递内存地址，寻找这个**地址所属的内存区域**；
+find_mypageframe()：寻找指定**虚存地址所对应的物理页面**；
+write_myvalue()：直接给某个**内存地址写入数据**；
+
+上述四个功能都可以作为单独的模块来编写程序。因此，接下来的代码都是相对独立的。在本系列文章的最后，我将给出一个将四个模块结合在一起的方法（通过传递参数，你知道了吧？）。
+
+===== 打印内存区域 =====
+
+上文中，我们通过打印某个进程的maps文件来查看某个进程的内存区域。如果你理解了进程，进程的用户空间，内存区域三者之间的关系，那么就可以通过内核模块的方式打印指定进程的内存区域。
+
+通过在内核模块加载函数中调用下述函数，来打印当前进程的内存区域。首先通过全局变量current获得当前进程的mm字段，该字段指向当前进程的用户空间（mm_struct）；由于多个内存区域（vm_area_struct）是通过一个双链表（最新内核中）链接在一起的，所以在接下来的for循环当中，依次遍历各个内存区域，打印当前内存区域的起始地址和终止地址，并且打印内核对该区域的操作权限。完整代码在这里。
+01	static void list_myvma(void)
+02	{
+03	    struct mm_struct *mm = current->mm;
+04	    struct vm_area_struct *vma;
+05	 
+06	    printk("list vma..\n");
+07	        //print the current process's name and pid
+08	    printk("current:%s pid:%d\n",current->comm,current->pid);
+09	 
+10	    down_read(&mm->mmap_sem);
+11	    //vma is a linklist
+12	    for(vma = mm->mmap; vma; vma = vma->vm_next)
+13	    {
+14	        //from the begining to the ending of a virtual memory area
+15	        printk("0x%lx-0x%lx ",vma->vm_start,vma->vm_end);
+16	        //check the flags of this VMA
+17	        if(vma->vm_flags & VM_READ)
+18	            printk("r");
+19	        else
+20	            printk("-");
+21	 
+22	        if(vma->vm_flags & VM_WRITE)
+23	            printk("w");
+24	        else
+25	            printk("-");
+26	 
+27	        if(vma->vm_flags & VM_EXEC)
+28	            printk("x");
+29	        else
+30	            printk("-");
+31	 
+32	        if(vma->vm_flags & VM_SHARED)
+33	            printk("s");
+34	        else
+35	            printk("p");
+36	 
+37	            printk("\n");
+38	 
+39	    }
+40	    up_read(&mm->mmap_sem);
+41	}
+
+===== 查找内存区域 =====
+
+该模块实现的功能是：通过向内核模块中**传递一个虚存地址，进而查找该地址所在的内存区域**。具体查找的功能我们通过find_vma函数来实现，这个函数的原型如下：
+1	struct vm_area_struct *find_vma(struct mm_struct *mm, unsigned long addr);
+
+该函数在指定的地址空间中搜索第一个vm_end大于addr的内存区域。也就是说，当找到了第一个包含该addr或vm_start大于addr的内存区域时，该函数就返回相应区域的vm_area_struct结构体指针，否则返回NULL。那么，find_vma这个函数有可能找到的vma并不是包含addr的内存区域。这是怎么一回事？还是先看图吧。
+{{./Screenshot-2-300x218.png}}
+在图(b)中，所找到的VMA的vm_end大于addr，但是addr却刚好是处于两个VMA之间。因此，find_vma函数所找到的VMA并不包含addr。正因为如此，在find_myvma函数中在使用完find_vma函数后，还要进测addr是否真正包含在vma中。具体函数实现可参考下述代码。本模块完整代码在这里。
+01	static ulong address = 0;
+02	static void find_myvma(void)
+03	{
+04	    struct mm_struct *mm = current->mm;
+05	    struct vm_area_struct *vma;
+06	 
+07	    printk("find the vma..\n");
+08	 
+09	    down_read(&mm->mmap_sem);
+10	    vma=find_vma(mm, address);
+11	    /* when the vma_start > address, it means that the address doesn't belong to the vma */
+12	    if(vma && address <= vma->vm_start)
+13	    {
+14	        printk("address 0x%lx found in the VMA:0x%lx-0x%lx ",address,vma->vm_start,vma->vm_end);
+15	        if(vma->vm_flags & VM_READ)
+16	            printk("r");
+17	        else
+18	            printk("-");
+19	 
+20	        if(vma->vm_flags & VM_WRITE)
+21	            printk("w");
+22	        else
+23	            printk("-");
+24	 
+25	        if(vma->vm_flags & VM_EXEC)
+26	            printk("x");
+27	        else
+28	            printk("-");
+29	 
+30	        if(vma->vm_flags & VM_SHARED)
+31	            printk("s");
+32	        else
+33	            printk("p");
+34	        printk("\n");
+35	    }
+36	    else
+37	    {
+38	        printk("address 0x%lx didn't find in the VMA which you just now found..\n",address);
+39	    }
+40	    up_read(&mm->mmap_sem);
+41	}
+42	 
+43	module_param(address, ulong, S_IRUGO);
+
+===== 通过虚拟地址找到物理地址 =====
+
+我们知道，应用程序的访问对象都是__虚拟地址__，CPU通过__MMU__将虚拟地址转化成物理地址。虚拟内存和物理内存的映射关系是通过__页表__来实现的。由于内核的设计需要在各种不同的CPU上实现，甚至还要考虑在64位机上的实现。因此，内核提供了__四级页表__的管理机制，它可以兼容各种架构的CPU。
+
+因此，一个线性地址会被分为五个部分：__页全局目录PGD，页上级目录PUD，页中间目录PMD，页表项PTE，偏移量offset__。
+
+也就是说，一个线性地址中除去偏移量，分别存放了四级目录表项的__索引值__。
+
+具体的线性地址翻译成物理地址的过程是：首先从进程地址描述符中（mm_struct）中读取pgd字段的内容，它就是页全局目录的起始地址；然后页全局目录起始地址加上页全局目录索引获得页上级目录的起始地址；页上级目录的起始地址加上页上级目录的索引获得页中间目录的起始地址；页中间目录的起始地址加上页中间目录的索引获得页表起始地址；页表起始地址加上索引，可以得到完整的__页表项内容__；从页表项中取出__物理页的基址__，加上偏移量可以得到最终的物理地址。
+
+接下来的程序是通过给定一个有效的线性地址，首先找到该线性地址所属的**内存区域**，然后通过my_follow_page函数得到该线性地址对应的物理页描述符page。最后通过page_address函数找到该物理页描述符所代表的物理页起始地址，接着提取出物理页的偏移量，最终合成完整的物理地址。
+01	static unsigned long addr;
+02	static void mtest_find_page(void)
+03	{
+04	    struct mm_struct *mm = current->mm;
+05	    struct vm_area_struct *vma;
+06	    struct page *page;
+07	    unsigned long kernel_addr;
+08	 
+09	    printk("mtest_find_page..........\n");
+10	 
+11	    down_read(&mm->mmap_sem);
+12	    vma = find_vma(mm, addr);
+13	    page = my_follow_page(vma, addr);
+14	    if(!page){
+15	        printk("page not found for 0x%lx\n", addr);
+16	        goto out;
+17	    }
+18	 
+19	    printk("page found for 0x%lx\n", addr);
+20	 
+21	    kernel_addr = (unsigned long)page_address(page);
+22	    printk("kernel_address_base:0x%lx\n", kernel_addr);
+23	 
+24	    kernel_addr += addr & ~PAGE_MASK;
+25	    printk("find 0x%lx to kernel_address 0x%lx\n", addr, kernel_addr);
+26	out:
+27	    up_read(&mm->mmap_sem);
+28	}
+
+正如上述，my_follow_page函数是通过**线性地址addr和其所在内存区域描述符来最终得到物理页描述如page的**。这个函数很好的表现了四级页表的管理机制。在X86的32位机上，PUD和PMD的页表项都只有1个，在线性地址结构中都占0位。从下面的逐步转换过程中，就可以发现。
+
+下面先概述这个函数的转换过程，然后再针对某些函数进行源码分析。
+
+该函数首先通过**pgd_offset**函数得到addr对应在页全局目录中相应表项的线性地址；再通过**pud_offset**函数得到addr在页上级目录中对应的目录项的线性地址；接着通过**pmd_offset**函数得到addr对应在页中间目录中相应表项的线性地址；最后通过**pte_offset_map_lock**函数得到addr在页表中对应的页表项的线性地址。
+
+得到页表项的线性地址后，通过**pte_pfn**函数得到该页表项的前20位，也就是物理页框号。接着通过**pfn_to_page**函数从物理页框号得到该物理页框对应的页描述符page。最后通过get_page函数，使得page->_count原子的加一。以表示该物理页的引用数加一。
+
+01	static struct page *my_follow_page(struct vm_area_struct *vma, unsigned long addr)
+02	{
+03	    pgd_t *pgd;
+04	    pud_t *pud;
+05	    pmd_t *pmd;
+06	    pte_t *pte;
+07	 
+08	    spinlock_t *ptl;
+09	    struct page *page = NULL;
+10	    struct mm_struct *mm = vma->vm_mm;
+11	    unsigned long full_addr;
+12	  **  pgd **= pgd_offset(mm, addr);
+13	    if(pgd_none(*pgd) || unlikely(pgd_bad(*pgd))){
+14	        goto out;
+15	    }
+16	 
+17	    pud = pud_offset(pgd, addr);
+18	    if(pud_none(*pud) || unlikely(pud_bad(*pud))){
+19	        goto out;
+20	    }
+21	 
+22	    pmd = pmd_offset(pud, addr);
+23	    if(pmd_none(*pmd) || unlikely(pmd_bad(*pmd))){
+24	        goto out;
+25	    }
+26	 
+27	    pte = **pte_offset_map_lock**(mm, pmd, addr, &ptl);
+28	    if(!pte){
+29	        goto out;
+30	    }
+31	 
+32	    if(!pte_present(*pte)){
+33	        goto unlock;
+34	    }
+35	 
+36	    page = pfn_to_page(**pte_pfn(*pte)**);
+37	    if(!page){
+38	        goto unlock;
+39	    }
+40	 
+41	    full_addr=(*pte).pte_low & PAGE_MASK;
+42	    printk("full_addr=%lx..\n",full_addr);
+43	    full_addr+=addr & (~PAGE_MASK);
+44	    printk("full_addr=%lx..\n",full_addr);
+45	 
+46	    printk("pte=%lx.....\n",pte_pfn(*pte));
+47	    printk("page=%p..\n",page);
+48	    get_page(page);
+49	 
+50	unlock:
+51	    pte_unmap_unlock(pte, ptl);
+52	out:
+53	    return page;
+54	}

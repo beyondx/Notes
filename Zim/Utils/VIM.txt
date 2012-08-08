@@ -1,0 +1,248 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T19:51:24+08:00
+
+====== VIM ======
+Created Sunday 27 March 2011
+
+14.vim打开txt文件中文乱码
+vim /etc/vimrc (加入4行)
+set fileencodings=utf-8,gb2312,gbk,gb18030
+set termencoding=utf-8
+set fileformats=unix
+set encoding=prc
+
+/**
+ *Useful usage of vim 
+ *Author: geekard
+ *Date: 2011.3.6
+ *Ver: 0.1
+ */
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ . repeat last change
+ ^ move curse to the first none space char of the line.
+ 0 move curse to the head of line
+ $ move curse to the end of line
+* move curse to the next word of current curse on.
+ # move curse to the prive word of current curse on.
+ g* like * but match whole string which include the word.
+ g# like #
+ gd move curse to the current word in the none-note part.
+ % move curse to other part of ([{
+ u undo 
+ ~ make current char to upper
+ v toggle on VISUAL mode
+ [n]>> shift current line to next n tabs position
+ [n]<< shift current line to prive tabs position
+ :#,#>
+ :#,#<
+ J connect two line together
+ ctl+o move back to last positon
+ ctl+i move foward to next postion
+ ctl+[ shit to comnandmod
+ ctl+] toggle help link
+ ctl+v block select
+ ctl+r redo
+ ctl+p prive item
+ ctl+n next item (using for command completation)
+ ctl+d list all possible command (using for last-line mode)
+ ctl+g display the edit stats
+ ctl+w h j k l move curse between each window
+ ctl+w q close current window
+ ctl+a increase currnt number 
+ TAB   command completation
+ "a  the register named a
+ ma  mark a position named a
+ qa  record the operations, quotaing as a
+ @a  replay the operations named a
+ :edit open a file in current window
+ :ab[revate] abrevate somewords in inserting mode 
+ :mksession name_of_session_file
+ :new  new window
+
+ Many commands that change text are made from an operator and a motion.
+  The format for a delete command with the  d  delete operator is as follows:
+
+  	d   motion
+ A short list of motions:
+    w - until the start of the next word, EXCLUDING its first character.
+    e - to the end of the current word, INCLUDING the last character.
+    $ - to the end of the line, INCLUDING the last character.
+
+  Thus typing  de  will delete from the cursor to the end of the word.
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  1. To delete from the cursor up to the next word type:    dw
+  2. To delete from the cursor to the end of a line type:    d$
+  3. To delete a whole line type:    dd
+
+  4. To repeat a motion prepend it with a number:   2w
+  5. The format for a change command is:
+               operator   [number]   motion
+     where:
+       operator - is what to do, such as  d  for delete
+       [number] - is an optional count to repeat the motion
+       motion   - moves over the text to operate on, such as  w (word),
+		  $ (to the end of line), etc.
+
+  6. To move to the start of the line use a zero:  0
+
+  7. To undo previous actions, type: 	       u  (lowercase u)
+     To undo all the changes on a line, type:  U  (capital U)
+     To the undo's, type:		       CTRL-R
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			       Lesson 4 SUMMARY
+
+
+  1. CTRL-G  displays your location in the file and the file status.
+             G  moves to the end of the file.
+     number  G  moves to that line number.
+            gg  moves to the first line.
+
+  2. Typing  /	followed by a phrase searches FORWARD for the phrase.
+     Typing  ?	followed by a phrase searches BACKWARD for the phrase.
+     After a search type  n  to find the next occurrence in the same direction
+     or  N  to search in the opposite direction.
+     CTRL-O takes you back to older positions, CTRL-I to newer positions.
+
+  3. Typing  %	while the cursor is on a (,),[,],{, or } goes to its match.
+
+  4. To substitute new for the first old in a line type    :s/old/new
+     To substitute new for all 'old's on a line type	   :s/old/new/g
+     To substitute phrases between two line #'s type	   :#,#s/old/new/g
+     To substitute all occurrences in the file type	   :%s/old/new/g
+     To ask for confirmation each time add 'c'		   :%s/old/new/gc
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		    Lesson 5.3: SELECTING TEXT TO WRITE
+
+
+	** To save part of the file, type  v  motion  :w FILENAME **
+
+  1. Move the cursor to this line.
+
+  2. Press  v  and move the cursor to the fifth item below.  Notice that the
+     text is highlighted.
+
+  3. Press the  :  character.  At the bottom of the screen  :'<,'> will appear.
+
+  4. Type  w TEST  , where TEST is a filename that does not exist yet.  Verify
+     that you see  :'<,'>w TEST  before you press <ENTER>.
+
+  5. Vim will write the selected lines to the file TEST.  Use  :!dir  or  !ls
+     to see it.  Do not remove it yet!  We will use it in the next lesson.
+
+NOTE:  Pressing  v  starts Visual selection.  You can move the cursor around
+       to make the selection bigger or smaller.  Then you can use an operator
+       to do something with the text.  
+
+
+For example,  d  deletes the text;
+		 s/^/# add # to begin of each line.
+  		 [n]>  right shift n times
+
+
+
+  6.  :r FILENAME  retrieves disk file FILENAME and puts it below the
+      cursor position.
+
+  7.  :r !ls reads the output of the dir command and puts it below the
+      cursor position.
+NOTE:  a, i and A all go to the same Insert mode, the only difference is where
+       the characters are inserted.
+NOTE:  Replace mode(R) is like Insert mode, but every typed character deletes an
+       existing character.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			       Lesson 6 SUMMARY
+
+  1. Type  o  to open a line BELOW the cursor and start Insert mode.
+     Type  O  to open a line ABOVE the cursor.
+
+  2. Type  a  to insert text AFTER the cursor.
+     Type  A  to insert text after the end of the line.
+
+  3. The  e  command moves to the end of a word.
+
+  4. The  y  operator yanks (copies) text,  p  puts (pastes) it.
+
+  5. Typing a capital  R  enters Replace mode until  <ESC>  is pressed.
+
+  6. Typing ":set xxx" sets the option "xxx".  Some options are:
+  	'ic' 'ignorecase'	ignore upper/lower case when searching
+	'is' 'incsearch'	show partial matches for a search phrase
+	'hls' 'hlsearch'	highlight all matching phrases
+     You can either use the long or the short option name.
+
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		      Lesson 7.2: CREATE A STARTUP SCRIPT
+
+
+			  ** Enable Vim features **
+
+  Vim has many more features than Vi, but most of them are disabled by
+  default.  To start using more features you have to create a "vimrc" file.
+
+  1. Start editing the "vimrc" file.  This depends on your system:
+	:e ~/.vimrc		for Unix
+	:e $VIM/_vimrc		for MS-Windows
+
+  2. Now read the example "vimrc" file contents:
+	:r $VIMRUNTIME/vimrc_example.vim
+
+  3. Write the file with:
+	:w
+
+  The next time you start Vim it will use syntax highlighting.
+  You can add all your preferred settings to this "vimrc" file.
+  For more information type  :help vimrc-intro
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			     Lesson 7.3: COMPLETION
+
+
+	      ** Command line completion with CTRL-D and <TAB> **
+
+  1. Make sure Vim is not in compatible mode:  :set nocp
+
+  2. Look what files exist in the directory:  :!ls   or  :!dir
+
+  3. Type the start of a command:  :e
+
+  4. Press  CTRL-D  and Vim will show a list of commands that start with "e".
+
+  5. Press <TAB>  and Vim will complete the command name to ":edit".
+
+  6. Now add a space and the start of an existing file name:  :edit FIL
+
+  7. Press <TAB>.  Vim will complete the name (if it is unique).
+
+NOTE:  Completion works for many commands.  Just try pressing CTRL-D and
+       <TAB>.  It is especially useful for  :help .
+
+ 7. Prepend "no" to switch an option off:   :set noic
+
+ set tabstop=4 set real tab-space to 4 not default 8
+ set stabstop=4 when press tab ,curse move 4 space
+ set shiftwidth=4 auto shift 4 spaces
+ set nu
+ set ai or set autoindent 
+ set fileencoding=cp936 utf-8
+ :help options give a complete list of all options
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			       Lesson 7 SUMMARY
+
+
+  1. Type  :help  or press <F1> or <Help>  to open a help window.
+
+  2. Type  :help cmd  to find help on  cmd .
+
+
+  3. Type  CTRL-W CTRL-W  to jump to another window
+
+  4. Type  :q  to close the help window
+
+  5. Create a vimrc startup script to keep your preferred settings.
+
+  6. When typing a  :  command, press CTRL-D to see possible completions.
+     Press <TAB> to use one completion.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+

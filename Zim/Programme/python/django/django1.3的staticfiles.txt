@@ -1,0 +1,28 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-23T17:57:50+08:00
+
+====== django1.3的staticfiles ======
+Created Sunday 23 October 2011
+http://haoluobo.com/2011/07/django1-3%E7%9A%84staticfiles/
+
+django1.3新加入了一个静态资源管理的app，django.contrib.staticfiles。在以往的django版本中，静态资源的管理一向都是个问题。
+
+部分app发布的时候会带上静态资源文件，在部署的时候你必须手动从各个app中将这些静态资源文件复制到同一个static目录。
+在引入staticfiles后，你只需要执行./manage.py collectstatic就可以很方便的将所用到app中的静态资源复制到同一目录。
+
+staticfiles的引入，方便了django静态文件的管理，不过感觉staticfiles的文档写的并不是太清楚，初次使用的时候还是让我有些困惑。
+
+下面简单的介绍一下staticfiles的主要配置：
+
+* STATIC_ROOT：运行manage.py collectstatic后静态文件将复制到的目录。注意：不要把你项目的静态文件放到这个目录。这个目录只有在运行collectstatic时才会用到。我最开始想当然的以为这个目录和MEDIA_ROOT的作用是相同的，致使在开发环境下一直无法找到静态文件。
+* STATIC_URL：设置的static file的起始url，这个只可以在template里面引用到。这个参数和MEDIA_URL的含义差不多。
+* STATICFILES_DIRS：除了各个app的static目录以外还需要管理的静态文件位置，比如项目公共的静态文件差不多。和TEMPLATE_DIRS的含义差不多。
+* 各个APP下static/目录下的静态文件django的开发服务器会自动找到，这点和以前APP下的templates目录差不多。
+* 在urls.py中加入静态文件处理的代码
+
+* from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+* # ... the rest of your URLconf goes here ...
+* urlpatterns += staticfiles_urlpatterns()
+
+

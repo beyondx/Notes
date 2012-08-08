@@ -1,0 +1,48 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-21T19:19:19+08:00
+
+====== Nouveau Driver ======
+Created Monday 21 November 2011
+http://us.download.nvidia.com/XFree86/Linux-x86/285.05.09/README/commonproblems.html#nouveau
+8.1. Interaction with the Nouveau Driver
+	
+What is Nouveau, and why do I need to disable it?
+	
+Nouveau is a display driver for NVIDIA GPUs, developed as an** open-source project** through **reverse-engineering** of the NVIDIA driver. It ships with many current Linux distributions as the **default display driver** for NVIDIA hardware. It is __not developed or supported__ by NVIDIA, and is not related to the NVIDIA driver, other than the fact that both Nouveau and the NVIDIA driver are capable of driving NVIDIA GPUs. Only one driver can control a GPU at a time, so if a GPU is being driven by the Nouveau driver, Nouveau must be disabled before installing the NVIDIA driver.
+
+Nouveau performs **modesets in the kernel**. This can make disabling Nouveau difficult, as the kernel modeset is used to display a **framebuffer console**, which means that __Nouveau will be in use even if X is not running__. As long as Nouveau is in use, its kernel module cannot be unloaded, which will prevent the NVIDIA kernel module from loading. It is therefore important to make sure that Nouveau's kernel modesetting is disabled before installing the NVIDIA driver.
+	
+
+How do I prevent Nouveau from loading and performing a kernel modeset?
+	
+A simple way to prevent Nouveau from loading and performing a kernel modeset is to add configuration directives for the module loader to a file in **/etc/modprobe.d/**. These configuration directives can technically be added to any file in /etc/modprobe.d/, but many of the existing files in that directory are provided and maintained by your distributor, which may from time to time provide updated configuration files which could conflict with your changes. Therefore, it is recommended to__ create a new file__, for example, /etc/modprobe.d/disable-nouveau.conf, rather than editing one of the existing files, such as the popular /etc/modprobe.d/__blacklist.conf__. Note that some module loaders will only look for configuration directives in files whose names end with .conf, so if you are creating a new file, make sure its name ends with .conf.
+
+Whether you choose to create a new file or edit an existing one, the following two lines will need to be added:
+
+**blacklist nouveau**
+**options nouveau modeset=0**
+
+The first line will prevent **Nouveau's kernel module **from loading __automatically__ at boot. It will not prevent manual loading of the module, and it will not prevent the X server from loading the kernel module; see "How do I prevent the X server from loading Nouveau?" below. The second line will prevent Nouveau from doing a kernel modeset. Without the kernel modeset, it is possible to unload Nouveau's kernel module, in the event that it is accidentally or intentionally loaded.
+
+You will need to** reboot your system** after adding these configuration directives in order for them to take effect.
+
+If nvidia-installer detects Nouveau is in use by the system, it will offer to create such a __modprobe configuration__ file to disable Nouveau.
+	
+
+What if my initial ramdisk image contains Nouveau?
+	
+
+Some distributions, particularly recent Red Hat/Fedora distributions, include Nouveau in an__ initial ramdisk image__ (henceforth referred to as "initrd" in this document, and sometimes also known as "initramfs"), so that Nouveau's kernel modeset can take place as early as possible in the boot process. This poses an additional challenge to those who wish to prevent the modeset from occurring, as the modeset will occur while **the system is executing within the initrd**, __before__ the directives in /etc/modprobe.d are processed.
+
+If you have an initrd which loads the Nouveau driver, you will additionally need to ensure that __Nouveau is disabled in the initrd__. If your initrd understands the rdblacklist parameter, you can add the option __rdblacklist=nouveau__ to your kernel's boot parameters. This should be done in your bootloader's configuration file(s), so that the option gets passed to your kernel every time the system is booted. Please consult your distribution's documentation on how to configure your bootloader, as different distributions use different configuration files.
+
+An alternative is to __rebuild your initrd without Nouveau__. If you choose this option instead of configuring your bootloader, please consult your distribution's documentation on how to rebuild the initrd, as different distributions have different tools for building and modifying the initrd.
+	
+
+How do I prevent the X server from loading Nouveau?
+	
+
+Blacklisting Nouveau will only prevent it from being loaded automatically at boot. If an X server is started as part of the normal boot process, and that X server uses the Nouveau X driver, then the Nouveau kernel module will still be loaded. Should this happen, you will be able to unload Nouveau with `__modprobe -r nouveau__` __after__ stopping the X server, as long as you have taken care to prevent it from doing a kernel modeset; however, it is probably better to just make sure that X does not load Nouveau in the first place.
+
+If your system is not configured to start an X server at boot, then you can simply run the NVIDIA driver installer after rebooting. Otherwise, the easiest thing to do is to edit your__ X server's configuration file__ so that your X server uses a non-modesetting driver that is compatible with your card, such as the __vesa driver__. You can then stop X and and install the driver as usual. Please consult your X server's documentation to determine where your X server configuration file is located.

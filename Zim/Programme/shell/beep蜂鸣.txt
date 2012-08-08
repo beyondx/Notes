@@ -1,0 +1,10 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-26T19:49:25+08:00
+
+====== beep蜂鸣 ======
+Created Sunday 26 February 2012
+
+可以使用命令：
+# echo -ne '\a' 
+但是不能将上述命令的输出重定向，否则不会响铃。

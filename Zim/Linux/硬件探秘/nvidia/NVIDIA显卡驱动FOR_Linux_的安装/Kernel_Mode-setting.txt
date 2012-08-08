@@ -1,0 +1,162 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-21T22:10:10+08:00
+
+====== Kernel Mode-setting ======
+Created Monday 21 November 2011
+http://nouveau.freedesktop.org/wiki/KernelModeSetting
+
+Kernel mode-setting (KMS) means that the kernel is responsible for setting up and changing the__ display mode__: resolution, frequencies and color depth. Kernel modesetting and memory management describes some aspects of KMS along with Fedora specific information. KMS as a Linux feature was introduced in 2.6.29.
+
+KMS in Nouveau is supported and actually the only way to go. It automatically offers **nouveaufb**, an integrated (into the DRM driver) framebuffer driver for the **virtual console**. Most notably this gives you a __high resolution text console__. More information about framebuffer console is in Documentation/fb/fbcon.txt. KMS and nouveaufb are inseparable.
+
+Your boot time virtual console display driver affects the compatibility of nouveaufb:
+
+* VGA text mode: works
+* vesafb: works (hand-over) (more reliable for >= 2.6.35)
+* efifb: works (hand-over) (fixed in 2.6.33, commit; more reliable for >= 2.6.35)
+* offb: might work (hand-over) after fixes in offb (merged in 2.6.33), but still some problems
+* vga16fb: works (hand-over) (>= 2.6.35) 
+* uvesafb: does not work 
+* **nvidiafb**: does not work (does not make sense, either) 
+* rivafb: does not work (ditto) 
+* anything else: most likely does not work 
+* **nvidia**, the proprietary driver: does not work (included in the list of incompatible kernel modules, just for completeness) 
+
+==== Kernel framebuffer driver hand-over ====
+
+Here hand-over means that when nouveaufb takes over the card on load, the previous fb driver __deactivates__ automatically: the device ownership is handed over. Without hand-over, there would be several drivers driving the same card, and Nouveau does not support that.
+
+Another aspect of hand-over is selecting the driver for the framebuffer consoles. When there is only one fb driver, this works automatically. When there are several, the first fb driver (fb0) is used by default. In a hand-over case with CONFIG_VT_HW_CONSOLE_BINDING=n the first fb driver is not completely unloaded, and nouveaufb will get to be fb1. This will result in a non-working console display, because the consoles are bound to fb0.
+
+For hand-over to work properly, your kernel configuration needs to have CONFIG_VT_HW_CONSOLE_BINDING=y. An alternative to that is passing fbcon=map:1 on the kernel command line (does this really work?).
+
+===== Activating KMS =====
+
+First, make sure your kernel configuration has __CONFIG_FRAMEBUFFER_CONSOLE__ enabled. Most sane configurations have it built into the kernel, but you can have it as a module (fbcon.ko), too. In that case make sure this module is loaded before or along with nouveau.ko. Otherwise your virtual console appears frozen.
+
+With recent nouveau, KMS is on by default, unless you disable it with modeset=0 option.
+
+===== Am I running KMS? =====
+
+If you cannot tell from the screen right away (you are not sure what a framebuffer mode looks like, or you had another fb driver active), look into __/proc/fb__. If it mentions nouveaufb, you are running KMS.
+
+The best hint is the kernel log. When you use KMS, you get something like this (NV28 card):
+
+[drm] Initialized drm 1.1.0 20060810
+[drm] nouveau 0000:01:00.0: Detected an NV20 generation card (0x028200a2)
+[drm] nouveau 0000:01:00.0: Attempting to load BIOS image from PROM
+[drm] nouveau 0000:01:00.0: ... appears to be valid
+[drm] nouveau 0000:01:00.0: BMP BIOS found
+[drm] nouveau 0000:01:00.0: BMP version 5.36
+[drm] nouveau 0000:01:00.0: Bios version 04.28.20.23
+[drm] nouveau 0000:01:00.0: Found Display Configuration Block version 2.2
+[drm] nouveau 0000:01:00.0: Raw DCB entry 0: 02000310 000088b8
+[drm] nouveau 0000:01:00.0: Raw DCB entry 1: 02110302 00000010
+[drm] nouveau 0000:01:00.0: Raw DCB entry 2: 01010300 000088b8
+[drm] nouveau 0000:01:00.0: Raw DCB entry 3: 01120321 00000002
+[drm] nouveau 0000:01:00.0: Parsing VBIOS init table 0 at offset 0xC7EE
+[drm] nouveau 0000:01:00.0: Parsing VBIOS init table 1 at offset 0xCB38
+[drm] nouveau 0000:01:00.0: Parsing VBIOS init table 2 at offset 0xC8D6
+[drm] nouveau 0000:01:00.0: Parsing VBIOS init table 3 at offset 0xD0C2
+[drm] nouveau 0000:01:00.0: Parsing VBIOS init table 4 at offset 0xD0DE
+[drm] nouveau 0000:01:00.0: Parsing VBIOS init table 5 at offset 0xCA19
+[drm] nouveau 0000:01:00.0: Parsing VBIOS init table 6 at offset 0xCAD3
+[TTM] Zone  kernel: Available graphics memory: 511802 kiB.
+[drm] nouveau 0000:01:00.0: 128 MiB VRAM
+agpgart-amd64 0000:00:00.0: AGP 3.0 bridge
+agpgart: modprobe tried to set rate=x12. Setting to AGP3 x8 mode.
+agpgart-amd64 0000:00:00.0: putting AGP V3 device into 8x mode
+nouveau 0000:01:00.0: putting AGP V3 device into 8x mode
+[drm] nouveau 0000:01:00.0: 64 MiB GART (aperture)
+[drm] nouveau 0000:01:00.0: Allocating FIFO number 0
+[drm] nouveau 0000:01:00.0: nouveau_channel_alloc: initialised FIFO 0
+[drm] nouveau 0000:01:00.0: Initial CRTC_OWNER is 0
+[drm] nouveau 0000:01:00.0: Saving VGA fonts
+[drm] nouveau 0000:01:00.0: Probing TV encoders on I2C bus: 2
+[drm] nouveau 0000:01:00.0: No TV encoders found.
+[drm] nouveau 0000:01:00.0: Detected a VGA connector
+[drm] nouveau 0000:01:00.0: Detected a DVI-I connector
+[drm] nouveau 0000:01:00.0: Setting dpms mode 3 on vga encoder (output 0)
+[drm] nouveau 0000:01:00.0: Setting dpms mode 3 on tmds encoder (output 1)
+[drm] nouveau 0000:01:00.0: Setting dpms mode 3 on vga encoder (output 2)
+[drm] nouveau 0000:01:00.0: allocated 1280x1024 fb: 0x49000, bo ffff88003e572c00
+[drm] TMDS-8: set mode 1280x1024 1e
+[drm] nouveau 0000:01:00.0: Output DVI-I-1 is running on CRTC 0 using output B
+[drm] nouveau 0000:01:00.0: Setting dpms mode 0 on tmds encoder (output 1)
+[drm] nouveau 0000:01:00.0: Output DVI-I-1 is running on CRTC 0 using output B
+Console: switching to colour frame buffer device 160x64
+__fb0: nouveaufb frame buffer device__
+registered panic notifier
+[drm] Initialized nouveau 0.0.15 v2.6.32-926-ge68d239e6a63e0231 for 0000:01:00.0 on minor 0
+
+Especially notice the line fb0: nouveaufb frame buffer device.
+
+If you do not use KMS, you will only get very little, e.g. this log from an NV98 system:
+
+[drm] Initialized drm 1.1.0 20060810
+pci 0000:01:00.0: PCI INT A -> GSI 16 (level, low) -> IRQ 16
+pci 0000:01:00.0: setting latency timer to 64
+[drm] nouveau 0000:01:00.0: Detected an NV50 generation card (0x298580a2)
+[drm] Initialized nouveau 0.0.15 20090420 for 0000:01:00.0 on minor 0
+
+The Nouveau DDX also mentions in the X server log if KMS is in use. For instance, in /var/log/Xorg.0.log you may find a line:
+
+__(--) NOUVEAU(0): [drm] kernel modesetting in use__
+
+If you are not using KMS, you should update all the Nouveau components, because you are using an outdated version. User mode setting, i.e. non-KMS, was completely removed.
+
+=== Deactivating KMS and unloading Nouveau() ===
+
+The framebuffer console **reserves nouveaufb** and therefore you __cannot directly unload __the Nouveau kernel module. You have to unbind nouveaufb first. When you unbind nouveaufb, the earlier fb driver (not vesafb) or the VGA console driver will take over. Your kernel configuration needs to have CONFIG_VT_HW_CONSOLE_BINDING enabled.
+
+NOTE: For NV50 class hardware and above, the VGA text mode cannot be restored, you will be without a working virtual console until you load a new framebuffer driver! For older hardware the VGA text mode console should be restored fine. If you want to try to restore the VGA text mode yourself, the command vbetool post might be able to do that. Please, read the vbetool manual, before attempting it.
+
+Here is an example script to unload Nouveau KMS:
+
+#!/bin/bash
+
+echo 0 > /sys/class/vtconsole/vtcon__1__/bind
+rmmod nouveau
+/etc/init.d/consolefont restart
+rmmod ttm
+rmmod drm_kms_helper
+rmmod drm
+
+The echo line unbinds **nouveaufb** from the__ framebuffer console driver __(fbcon). Usually it is vtcon1 as in this example, but it may also be another vtcon*. See /sys/class/vtconsole/vtcon*/name which one of them is a "__frame buffer device__".
+
+The console font trick may be needed with the VGA text mode to restore proper console state (to keep the active line visible), and depends on your distribution.
+
+=== Forcing Modes ===
+
+A mode can be forced on the kernel command line. Unfortunately, the command line option video is poorly documented in the DRM case. Bit and pieces on how to use it can be found in
+
+    http://cgit.freedesktop.org/nouveau/linux-2.6/tree/Documentation/fb/modedb.txt
+
+    http://cgit.freedesktop.org/nouveau/linux-2.6/tree/drivers/gpu/drm/drm_fb_helper.c 
+
+The format is: video=<conn>:<xres>x<yres>[M][R][-<bpp>][@<refresh>][i][m][eDd]
+
+    <conn>: Connector, e.g. DVI-I-1, see your kernel log.
+
+    <xres> x <yres>: resolution
+
+    M: compute a CVT mode?
+
+    R: reduced blanking?
+
+    -<bpp>: color depth
+
+    @<refresh>: refresh rate
+
+    i: interlaced (non-CVT mode)
+
+    m: margins?
+
+    e: output forced to on
+
+    d: output forced to off
+
+    D: digital output forced to on (e.g. DVI-I connector) 
+
+You can override the modes of several outputs using "video" several times, for instance, to force DVI to 1024x768 at 85 Hz and TV-out off: video=DVI-I-1:1024x768@85 video=TV-1:d

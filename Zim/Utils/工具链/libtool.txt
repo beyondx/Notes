@@ -1,0 +1,592 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-13T11:04:34+08:00
+
+====== libtool ======
+Created Wednesday 13 June 2012
+http://www.ibm.com/developerworks/cn/aix/library/1007_wuxh_libtool/
+
+===== 使用 GNU Libtool 创建库 =====
+
+吴 小虎, 程序员, 天用唯勤
+简介： 这篇文档向大家介绍 GNU Libtool 的用途及基本使用方法，同时描述如何结合 GNU Autoconf 和 Automake 来使用 Libtool。
+发布日期： 2010 年 7 月 12 日
+级别： 中级
+访问情况 ： 7093 次浏览
+评论： 3 (查看 | 添加评论 - 登录)
+平均分 4 星 共 28 个评分 平均分 (28个评分)
+为本文评分
+
+Libtool用于创建库，pkgconfig用于使用库，两者结合使用很完美。
+
+===== 介绍 =====
+在不同的系统中建立动态链接库的方法有很大的差别，这主要是因为每个系统对动态链接库的__看法和实现__并不相同，以及编译器对动态链接库__支持的选项__也不太一样。对于开发人员，如果尝试**将使用动态库的软件在这些系统之间移植**，需要参考枯涩难懂的系统手册，以及修改相应的 Makefile，这一工作是乏味的，并且具有一定的难度。
+
+使用 GNU Libtool 可以容易的在不同的系统中建立动态链接库。它__通过一个称为 Libtool 库的抽象，隐藏了不同系统之间的差异，给开发人员提供了一致的的接口__。对于大部分情况，开发人员甚至不用去查看相应的系统手册，只需要掌握 GNU Libtool 的用法就可以了。并且，使用 Libtool 的 Makefile 也只需要编写一次就可以在多个系统上使用。
+
+Libtool 库可以是一个静态链接库，可以是一个动态链接库，也可以同时包含两者。在这篇文档中，我们围绕 Libtool 库的建立和使用，只是在适当的说明 Libtool 库和系统动态或者静态链接库之间的映射关系。
+
+===== Libtool 是一个工具 =====
+虽然 Libtool 隐藏了在不同平台创建链接库的复杂性，但其最终还是需要底层系统对链接库的支持，它不能超越系统的限制，例如，Libtool 并不能在不支持动态链接库的系统中创建出动态链接库。
+
+===== Libtool 基本用法 =====
+这一节以实例来说明如何使用 Libtool 从源代码创建最终链接库以及执行程序的完整步骤，这是软件开发过程中经常使用的内容，包括 :
+
+* 创建 Libtool 对象文件 ;
+* 创建 Libtool 库；
+* 安装 Libtool 库 ;
+* 使用 Libtool 库 ;
+* 卸载 Libtool 库 ;
+
+首先需要准备一个源文件 compress.c，代码如下：
+
+清单 1: compress.c
+				
+ #include <sys/mman.h> 
+ #include <sys/stat.h> 
+ #include <fcntl.h> 
+ #include <stdio.h> 
+ #include <stdlib.h> 
+ #include <unistd.h> 
+ #include <string.h> 
+ #include <limits.h> 
+ #include <assert.h> 
+ #include __<zlib.h>__ 
+
+ /* 一个简单的文件压缩函数 */ 
+ int compress_file (const char *filename) 
+ { 
+  int src_fd, dest_fd; 
+  struct stat sb; 
+  Bytef *src, *dest; 
+  uLong dest_len; 
+  char dest_file[PATH_MAX]; 
+
+  src_fd = open (filename, O_RDONLY); 
+  assert (dest_fd != -1); 
+
+  assert (fstat (src_fd, &sb) != -1); 
+
+  src = mmap (NULL, sb.st_size, PROT_READ, MAP_PRIVATE, src_fd, 0); 
+  assert (src != MAP_FAILED); 
+
+  dest_len = compressBound (sb.st_size); 
+  dest = malloc (dest_len); 
+  assert (dest); 
+
+  assert (__compress__ (dest, &dest_len, src, sb.st_size) == Z_OK); 
+
+  munmap (src, sb.st_size); 
+  close (src_fd); 
+
+  snprintf (dest_file, sizeof (dest_file), "%s.z", filename); 
+  dest_fd = creat (dest_file, S_IRUSR | S_IWUSR); 
+  assert (dest_fd != -1); 
+
+  write (dest_fd, dest, dest_len); 
+  close (dest_fd); 
+  free (dest); 
+
+  return 0; 
+ } 
+
+这个文件实现了一个函数 compress_file()，它接收一个文件名作为参数，然后对文件进行压缩，生成一个 .z结尾的压缩文件。在这个文件中使用了 compress()函数，这个函数是有由 libz 提供的。
+从源文件建立 Libtool 库需要经过两个步骤，先建立 Libtool 对象文件，再建立 Libtool 库。
+
+===== 建立 Libtool 对象文件 =====
+如果使用传统的方式，建立对象文件通常使用下面的命令 :
+
+ $ gcc -c compress.c 
+
+使用 Libtool 则使用下面的命令 :
+
+ $ libtool --mode=compile gcc -c foo.c 
+
+可以看到，**使用 Libtool 只需要将“传统”的命令 (gcc -c foo.c) 作为参数传递给 Libtool 即可**。
+在上面的命令中，libtool 使用 compile模式 (--mode=compile 选项 )，这是建立对象文件的模式，Libtool 还有其它的模式，后面将介绍。
+上面的命令输出如下 :
+
+ mkdir .libs 
+ gcc -c compress.c  -fPIC -DPIC -o __.libs__/compress.o 
+ gcc -c compress.c -o compress.o >/dev/null 2>&1 
+
+它建立了两个文件，一个是 .libs/compress.o，在建立这个文件时，Libtool 自动插入了 -fPIC和 -DPIC选项，告诉编译器生成**位置独立的代码**，之后将用这个文件来建立**动态链接库**。生成第二个文件 compress.o没有添加额外的选项，它准备用来建立**静态链接库**。
+
+除了上面的两个文件之外，Libtool 还在当前目录建立了一个文件 **compress.lo**，这个文件就是 __Libtool 对象文件__，实际上也就是一个**文本文件**，里面记录了建立动态链接库和静态链接库分别所需要的**真实文件名称**，后面 Libtool 将使用这个文件而**不是直接的使用** .libs/compress.o 和 compress.o。
+
+===== 建立 Libtool 库 =====
+用下面的命令建立 Libtool 库 :
+
+ $ libtool --mode=link gcc -o **libcompress.la** compress.lo **-rpath /tmp -lz** 
+
+注意这里使用 compress.lo 作为输入文件，并且告诉 Libtool 生成的目标文件为 libcompress.la，__.la 是 Libtool 的库文件后缀__。
+-rpath选项告诉 Libtool 生成的**动态链接库（即libcompress.so）将被安装到什么地方**，该路径将加入到链接该文件的可执行程序的符号表中，这样**程序运行时不用设置LD_LIBRARY_PATH**。
+因为我们的库中使用了 libz 提供的 compress 函数，所以也提供了 -lz 选项，Libtool **会将这个依赖关系写入到生成的libcompress.la文件中**，后续在使用我们的库时自动的将依赖的库链接进来。
+上面的命令输出如下 :
+
+gcc -shared  .libs/compress.o  **-lz**  -Wl,-soname  -Wl,libcompress.so.0 
+                                       -o **.libs/libcompress.so.0.0.0** 
+ (cd .libs && rm -f libcompress.so.0 && 
+ ln -s libcompress.so.0.0.0 **libcompress.so.0**) 
+ (cd .libs && rm -f libcompress.so && 
+ ln -s libcompress.so.0.0.0 **libcompress.so**) 
+ ar cru .libs/**libcompress.a**  compress.o 
+ ranlib .libs/libcompress.a 
+ creating libcompress.la 
+ (cd .libs && rm -f libcompress.la && 
+ ln -s ../libcompress.la **libcompress.la**) 
+
+可以看到，Libtool 自动的插入了**建立动态链接库需要的编译选项** -shared。并且，它也建立了**静态链接库** .libs/libcompress.a，后面我们将会介绍如何控制 Libtool 只建立需要的库。
+你可能会奇怪为什么建立的动态链接库有 .0 和 .0.0.0 这样的后缀，这里先不用理会它，后面在介绍 **Libtool 库版本信息**时将会解释这点。
+值得注意的是，Libtool 希望以后系统程序在链接时使用 libcompress.la 文件而不是直接使用 libcompress.a 和 libcompress.so 文件，如果你这样做，虽然可以，但会破坏 Libtool 库的可移植性。
+
+===== 安装 Libtool 库 =====
+如果打算发布建立好的 Libtool 库，可以使用下面的命令安装它 :
+
+ $ libtool --mode=install **install -c libcompress.la** /tmp    #/tmp需要与-rpath一致。
+
+我们需要告诉 Libtool 使用的安装命令，Libtool 支持 install 和 cp，这里使用的是 install。
+
+虽然前面我们在建立库时，通过 -rpath 选项指定了库准备安装的路径 (/tmp)，但是这里我们还得要提供安装路径。请确保它们一致。
+
+这个命令的输出如下 :
+ install .libs/libcompress.so.0.0.0 /tmp/libcompress.so.0.0.0 
+ (cd /tmp && { ln -s -f libcompress.so.0.0.0 libcompress.so.0 || 
+ { rm -f libcompress.so.0 && 
+ ln -s libcompress.so.0.0.0 libcompress.so.0; }; }) 
+ (cd /tmp && { ln -s -f libcompress.so.0.0.0 libcompress.so || 
+ { rm -f libcompress.so && ln -s libcompress.so.0.0.0 libcompress.so; }; }) 
+ i**nstall .libs/libcompress.lai  /tmp/libcompress.la** 
+ install .libs/libcompress.a /tmp/libcompress.a 
+ chmod 644 /tmp/libcompress.a 
+ ranlib /tmp/libcompress.a 
+ ... 
+
+可以看到它安装了真实的动态链接库和静态链接库，**同时也安装了 Libtool 库文件 libcompress.la**，这个文件可以被后续的 Libtool 命令使用。
+在安装完成之后，可能还需要做一些配置才能正确使用，Libtool 的 finish 模式可以在这方面给我们一些提示 :
+
+ $ libtool -n --mode=finish /tmp 
+
+这个命令的输出有点长，所以不在这里列出，如果不能正常的使用安装好的库，请运行这个命令。
+
+====== 使用 Libtool 库 ======
+要在应用程序中使用前面创建的 Libtool 库很简单，准备一个源文件 main.c，它将**使用 libcompress.la 库**中定义的函数，代码如下 :
+
+清单 2: main.c
+				
+ #include <stdio.h> 
+
+ extern int compress_file (const char *filename); 
+
+ int main (int argc, char *argv[]) 
+ { 
+  if (argc < 2) 
+    {   
+      printf ("usage : %s file\n", argv[0]); 
+      return 1; 
+    }   
+  return compress_file (argv[1]); 
+ } 
+
+我们还是要先为 main.c 建立 Libtool 对象文件，这和前面的方法一样 :
+
+ $ libtool --mode=compile gcc -c main.c 
+
+===== 链接时使用安装的库 =====
+然后使用下面的命令链接执行文件 : 
+ $ libtool --mode=link gcc -o main main.lo **/tmp/libcompress.la** 
+
+我们也可以直接使用 libcompress.a 或者 libcompress.so，__但是使用 Libtool 更加简单，因为它会将帮助你解决依赖关系__，例如我们的 libcompress 依赖 libz。
+
+上面命令的输出如下 :
+
+ gcc -o main .libs/main.o  **/tmp/libcompress.so -lz  -Wl,--rpath -Wl,/tmp -Wl,--rpath -Wl,/tmp** 
+
+这里，Libtool 自动选择链接动态链接库，并且加上了__运行时需要的 --rpath 选项__，以及依赖的库 -lz。
+
+如果要使用静态链接库，只需要加上 -static-libtool-libs选项即可，如下 :
+
+ $ libtool --mode=link  gcc  -o main main.lo /tmp/libcompress.la **-static-libtool-libs** 
+
+这个命令的输出如下 :
+
+ gcc -o main .libs/main.o  /tmp/libcompress.a -lz 
+
+===== 链接时使用未安装的库 =====
+也可以使用还没有安装的库，这和使用安装好的库几乎相同，只是指定的输入文件位置不一样，假如我们在同一个目录中开发 compress.c 和 main.c，那么使用下面的命令 :
+
+ $ libtool --mode=link gcc -o main main.lo ./libcompress.la 
+
+和使用安装的库不一样，这个时候建立的 **main 程序只是一个封装脚本**，如果你直接执行它不会有什么问题，但是如果你想调试它，例如 :
+
+ $ gdb main 
+
+gdb 会报怨 main 不是可执行格式，不能接受。这个时候我们需要使用 Libtool 的执行模式，使用下面的命令调试程序 :
+
+ $ libtool --mode=execute gdb main 
+
+
+===== 卸载 Libtool 库 =====
+使用下面的命令可以卸载安装的库 :
+
+ $ libtool --mode=uninstall rm /tmp/libcompress.la 
+
+这个命令的输出如下 :
+
+ rm /tmp/libcompress.la /tmp/libcompress.so.0.0.0 /tmp/libcompress.so.0 
+ /tmp/libcompress.so /tmp/libcompress.a 
+
+这将删除所有安装的库文件。
+
+====== Libtool 高级用法 ======
+这一节将对 Libtool 进行更加全面的描述，包括下面的内容 :
+
+* 创建可动态加载模块 ;
+* 禁止创建动态或者静态链接库 ;
+* Libtool 命令模式 ;
+* 库版本信息 ;
+
+====== 创建可动态加载模块(默认) ======
+有些高级的软件系统在建立时不需要与特定的库链接，而在运行时可以动态加载符合规范的库，来提供额外的功能，这通常称为插件系统。
+
+可动态加载的库和通常的库有一些区别，它们可以通过 dlopen() 打开，并且可以通过 dlsym() 查询它输出的符号。
+
+使用 Libtool 可以很容易的建立这样的库，还是以前面的 compress.c 为例，我们可以通过这样的命令建立一个可动态加载模块 :
+
+ $ libtool --mode=link  gcc -o compress.la compress.lo  -rpath /tmp  -lz -module -avoid-version 
+
+这里添加了额外的两个参数，-module告诉 Libtool 建立一个可动态加载的模块，-avoid-version告诉 Libtool 不要添加版本号。
+在 UNIX/Linux 系统中，库通常以 lib 作为前缀，可在上面我们指定的输出文件为 compress.la而不是 libcompress.la，这也是可动态加载模块的一个特征，它不需要遵循通常的库命名规则。
+在实际应用中，可动态加载模块通常会使用主程序提供的一些函数，为了满足动态模块的需求，在编译主程序时，需要添加 -export-dynamic选项。
+
+===== 禁止创建动态或者静态链接库 =====
+大部分情况下，Libtool 都配置成同时创建动态链接库和静态链接库。可以通过下面的命令查看 Libtool 的当前配置 :
+
+ $ libtool – features 
+
+它的输出如下 :
+
+ host: i686-pc-linux-gnu 
+ enable shared libraries 
+ enable static libraries 
+
+
+可是有时侯，只想创建动态链接库或者只想创建静态链接库，这需要修改 Libtool 自身。后面介绍 Libtool 结合 Autoconf 和 Automake 使用时，将有更加简单的办法。
+
+===== 禁止创建动态链接库 =====
+Libtool 自身是一个安装在 /usr/bin 目录下的 Shell 脚本，为了修改它，我们需要将它复制到一个有修改权限的目录，然后找到下面的两行 :
+
+  52 # Whether or not to build **shared libraries**. 
+  53 build_libtool_libs=yes 
+
+将 yes 改为 no。之后用这个修改过的 libtool 就不会创建动态链接库。
+还有其它几个方法可以禁止创建动态链接库，第一个方法是在链接时不提供 -rpath 选项，第二个方法是在链接时使用 -all-static选项，第三个方法是指定目标文件为 libcompress.a 而不是 libcompress.la。
+
+===== 禁止创建静态链接库 =====
+在 Libtool 脚本中找到下面两行
+
+  55 # Whether or not to build static libraries. 
+  56 build_old_libs=no 
+
+将 yes 改为 no。之后用这个修改过的 libtool 就不会创建静态链接库。
+
+===== Libtool 命令模式 =====
+在前面，我们已经用到了 Libtool 的大部分命令模式，**每个命令模式用于不同的阶段，Libtool 根据当前的命令模式添加需要的编译器选项**。
+
+Libtool 支持下面的几个命令模式 :
+
+* 编译模式 ;
+* 连接模式 ;
+* 安装模式 ;
+* 完成模式 ;
+* 卸载模式 ;
+* 执行模式 ;
+* 清除模式 ;
+
+每个命令模式对应开发中的不同阶段，但并不是在每个项目中都需要使用上面所有的模式，例如一个不需要安装的库就不需要安装和卸载模式。
+
+===== 编译模式 =====
+编译模式用于建立从源文件建立对象文件。它需要一个编译器名称作为第一个参数，并且还要提供 -c 选项，Libtool 将根据源文件名称自动选择目标文件名称。如果是建立动态链接库，它也会加入相应的选项，例如 -fPIC等等。
+
+编译模式使用示例 :
+
+ $ libtool --mode=compile gcc -c src.c 
+
+
+===== 链接模式 =====
+链接模式用于**建立 Libtool 库或者可执行文件**，如果输出文件名称以 __.la 结尾__，那么它将尝试建立 Libtool 库。如果输出文件名称以 __.a 结尾__，它就只建立静态链接库。如果输出文件名称以 __.lo 或者 .o 结尾__，则建立一个可重新加载的对象文件，这经常叫做部分链接。否则它就建立一个执行文件。
+
+链接模式使用示例 :
+
+ $ libtool --mode=link gcc -o library.la src.lo -rpath /usr/local/lib 
+
+
+===== 安装模式 =====
+安装模式用于安装 Libtool 库或者执行程序。它的第一个参数必须是 install 或者 cp，之后是要安装的文件以及目标路径。
+
+安装模式使用示例 :
+
+ $ libtool --mode=install install -c library.la /usr/local/lib 
+
+
+===== 完成模式 =====
+完成模式是在安装完 Libtool 库之后，在使用之前进行适当的配置。finish 模式需要一个参数，即 Libtool 库的安装路径。
+
+完成模式使用示例 :
+
+ $ libtool --mode=finish /usr/local/lib 
+
+
+===== 卸载模式 =====
+卸载模式用于卸载已经安装的 Libtool 库或者执行程序。
+
+卸载模式使用示例 :
+
+ $ libtool --mode=uninstall rm /usr/local/lib/library.la 
+
+
+===== 执行模式 =====
+执行模式用来执行应用程序，它在启动应用程序之前自动的设置好库的路径。
+
+执行模式使用示例 :
+
+ $ libtool --mode=execute gdb program 
+
+
+===== 清除模式 =====
+清除模式和卸载模式差不多，只是它用来清除开发过程中的中间文件。
+
+清除模式使用示例 :
+
+ $ libtool --mode=clean rm library.la 
+
+
+===== 库版本信息 =====
+和应用程序一样，库也需要不断的升级，考虑一个第三方应用程序使用了我们之前发布的 libcompress。现在我们对 libcompress 的性能进行了优化，并且提供了新的接口，所以我们又发布了这个新版本。
+这引入了几个问题，如果以前的应用程序采用静态方式链接，那么如果它想使用新库的功能，就必须用新库重新链接应用程序。如果是采用动态链接方式，那么新库安装后，应用程序应该使用新库还是旧库呢？并且，如何避免新库和旧库之间的冲突呢？
+**库版本号可以解决上述这些问题，一个动态链接库有一个版本号，它在链接时**__硬编码__**到动态链接库中，当一个应用程序链接动态链接库时，它也存储了链接库的版本信息，动态加载器 ( 如 ld-linux.so.2) 可以在程序启动时正确的加载版本匹配的库。**
+
+用 ldd命令可以查看应用程序使用的动态链接库以及它们的版本信息 :
+
+ $ ldd .libs/lt-main 
+ linux-gate.so.1 =>  (0x00182000) 
+ libcompress.so.0 => /home/.../.libs/libcompress.so.0 (0x00c25000) 
+ libz.so.1 => /lib/libz.so.1 (0x00565000) 
+ libc.so.6 => /lib/libc.so.6 (0x003ad000) 
+ /lib/ld-linux.so.2 (0x0038d000) 
+
+我们需要用 .libs/lt-main 作为输入文件，当前目录下的 main 只是一个封装脚本。从上面的输出可以看到，main 程序依赖 libcompress.so 的版本 0。
+
+===== 库接口 =====
+库接口是 应用程序可以和库交流的入口，常用的库接口包括 :
+
+* 全局变量、结构体、常数 ;
+* 全局函数，包括参数类型、数量和返回类型 ;
+* socket、管道，以及其它进程间通讯的协议格式 ;
+
+当然还有其它的接口。在设计和实现库时，应该考虑尽量在将来减少库接口的改变。
+
+===== 库版本号 =====
+通常一个库有两个版本号，一个主版本号，一个次版本号，__主版本号指示接口的改变，次版本号指示性能增强或者错误修复__。但不是每个系统都是如此。
+
+在前面的例子中我们可以看到，为动态链接库 libcompress.so.0.0.0 建立了两个符号链接 :
+
+    libcompress.so -> libcompress.so.0.0.0
+    libcompress.so.0 -> libcompress.so.0.0.0
+
+其中 __libcompress.so 是供链接器 ( 例如 ld) 使用的__，它应该指向当前系统中 libcompress 的最新版本，这样新程序总是可以链接最新的库版本。
+__libcompress.so.0 是供动态加载器 ( 例如 ld-linux.so.2) 使用的__，它应该指向当前系统中相同接口号 ( 这里是 0) 的最新版本，这样动态链接器就可以加载相同接口最新的库版本。
+
+===== Libtool 库版本号 =====
+每个系统的库版本机制并不一样，Libtool 通过一种抽象的版本机制，最终在创建库时映射到具体的系统版本机制。
+
+Libtool 的版本号分为 3 个部分 :
+
+* current: 表示当前库输出的接口的数量 ;
+* revision: 表示当前库输出接口的修改次数 ;
+* age: 表示当前库支持先前的库接口的数量，例如 age为 2，表示它可以和支持当前库接口的执行文件，或者支持前面两个库接口的执行文件进行链接。所以 age应该总是小于或者等于 current。
+
+Libtool 的库版本通过参数 **-version-info current:revision:age**指定，例如下面的例子 :
+
+ $ libtool --mode=link gcc -l libcompress.la -version-info 0:1:0 
+
+如果没有指定，默认版本是 0.0.0。
+
+注意，应该尽可能少的更新库版本号，尤其是不能强行将库版本号和软件发行号保持一致，下面是更新库版本号的几个策略 :
+
+* 如果修改了库的源代码，那么应该增加 revision。这是当前接口的新的修订版本。
+* 如果改变了接口，应该增加 current，将 revision重置为 0。这是接口的新版本。
+* 如果新接口是前面接口的超集 ( 前面的接口还是可用 )，那么应该增加 age。这是一个向后兼容的版本。
+* 如果新接口删除了前面接口的元素，那么应该将 age重置为 0。这是一个新的，但是不向后兼容的版本。
+
+===== 避免版本信息 =====
+有些动态链接库，例如可动态加载模块，不需要版本号，这时可使用 Libtool 的 -avoid-version选项，例如下面的命令 :
+
+ $ libtool --mode=link gcc -o libcompress.la compress.lo -rpath /tmp **-avoid-version** 
+
+
+将只会创建一个 .so 结尾的动态链接库，而没有 .0.0.0 这样的版本后缀。
+
+====== 结合 Autoconf 和 Automake 使用 Libtool ======
+
+在使用 Autoconf 和 Automake 的项目中使用 Libtool 更加容易，只需要添加或者修改几个地方，后续**由 Automake 来帮你正确的调用 Libtool**。
+和 Autoconf 和 Automake 一样，__当在其它主机上编译发布的软件包时，不需要安装 Libtool__。
+我们以前面的 compress.c 文件为例，介绍如何将它转换成一个 Autoconf/Automake/Libtool 项目。
+
+==== 建立 configure.ac ====
+使用下面的命令建立一个 configure.ac 模板 :
+
+ $ autoscan 
+
+
+这将生成一个 configure.scan 文件，将它改名为 configure.ac。
+在 AC_INIT() 之后加入下面几行 :
+
+ # 初始话 Automake 
+ AM_INIT_AUTOMAKE([-Wall]) 
+ # 这是在 Autoconf 中使用 Libtool 唯一必须的宏
+ **AC_PROG_LIBTOOL** 
+
+
+在 AC_OUTPUT 之前加入几行 :
+
+ # 告诉 Autoconf 通过 Makefile.in 自动生成 Makefile 
+ AC_CONFIG_FILES([Makefile]) 
+
+
+==== 建立 Makefile.am ====
+
+建立一个 Makefile.am 文件，内容如下 :
+
+ # _LTLIBRARIES 是 Automake 支持 Libtool 的原语
+ lib___LTLIBRARIES__ = libcompress.__la__ 
+ libcompress_la_SOURCES = compress.c 
+ # 可以通过 _LDFLAGS 传递选项给 Libtool 
+ libcompress_la_LDFLAGS = 
+ # 通过 _LIBADD 可以指定库依赖关系
+ libcompress_la_LIBADD  = -lz 
+
+__注意上面用 lib_LTLIBRARIES，而不是 lib_LIBRARIES，这告诉 Automake 使用 Libtool 创建 Libtool 库。__
+
+==== 建立 configure 和 Makefile ====
+用下面的命令建立几个空文件 :
+
+ $ touch NEWS README AUTHORS ChangeLog 
+
+然后运行 :
+
+ $ autoreconf -i -s 
+这将建立 configure 脚本，运行它将得到 Makefile: 
+ $ ./configure 
+
+同时，__configure 也建立了 libtool 脚本__，后续 Automake 将使用这个 libtool 脚本，而不是系统的那个。
+
+==== 建立 Libtool 库 ====
+现在已经有了 Makefile，我们只需要简单的输入 :
+
+ $ make 
+
+便可以创建 libcompress 了，这比手动调用 Libtool 要方便很多。
+
+注意 __Automake 自动为 Libtool 选择了 -rpath 的路径__，这是跟随 UNIX 系统习惯定义的，库文件安装到 $prefix/lib 目录中，头文件安装到 $prefix/include 目录中。我们可以通过 configure 脚本的 --prefix选项改变上面的 $prefix，也可以使用 configure 脚本的 --libdir明确的指定库文件的安装目录。
+
+==== 静态库和动态库 ====
+前面在 configure.ac 中的 AC_PROG_LIBTOOL 宏为 configure 脚本添加了两个选项 :
+
+    --enable-static
+    --enable-shared
+
+这两个选项可以__控制是否建立动态或者静态链接库__，例如，如果只想建立动态链接库，可以这样运行 configure:
+
+ $ ./configure --enable-shared – disable-static 
+
+在开发过程中，禁止创建动态链接库有几个优势 :
+
+* 编译速度提高了，这可以节省时间 ;
+* 调试更加容易，因为不用处理任何动态链接库引入的复杂性 ;
+* 你可以了解 Libtool 在只支持静态链接库的平台的行为 ;
+
+为了避免在 configure 时忘记 --disable-shared选项，你可以在 configure.ac 中 AC_PROG_LIBTOOL __之前__加入一行 :
+
+ **AC_DISABLE_SHARED** 
+
+
+==== 可动态加载模块 ====
+Libtool 的 链接模式支持 -module选项，它用来建立一个**可动态加载模块**，可以通过 Automake 将这个选项传递给 Libtool。只需要选项添加到 Makefile.am 中的 libcompress_la_LDFLAGS变量即可，所以，要建立可动态加载模块，我们需要修改 Makefile.am:
+
+ libcompress_la_LDFLAGS = -module -avoid-version 
+
+修改 Makefile.am 之后，需要运行 Automake:
+
+ $ automake 
+
+
+这将重新生成 Makefile.in 文件，以至于 Makefile。
+
+==== 安装 Libtool 库 ====
+安装 Libtool 库非常的简单，只需要运行 :
+
+ $ make install 
+
+
+==== 卸载 Libtool 库 ====
+和安装 Libtool 库同样简单 :
+
+ $ make uninstall 
+
+
+==== 建立执行程序 ====
+通过 Automake 使用 Libtool 库也非常容易，我们需要在 Makefile.am 中加入下面的几行 :
+
+ bin_PROGRAMS = main 
+ main_SOURCES = main.c 
+ main_LDFLAGS = 
+ **main_LDADD   = libcompress.la** 
+
+注意在建立 libcompress.la 时，我们通过 _LIBADD 指定依赖库，而建立执行文件 main 时，我们通过 _LDADD 指定依赖库，要记住这点区别。
+
+也记得把前面为测试可动态加载模块时修改的 libcompress_la_LDFLAGS 变量改回来 :
+
+ libcompress_la_LDFLAGS = 
+
+修改 Makefile.am 之后，需要运行 Automake 更新 Makefile.in:
+
+ $ automake 
+
+然后运行
+
+ $ make 
+
+
+就可以建立可执行程序 main。
+
+==== 调试执行程序 ====
+在结合 Autoconf 和 Automake 使用 Libtool 时，我们几乎永远都不会直接调用 Libtool，除了一个例外，那就是 Libtool 的执行模式。
+
+例如我们__在开发时要调试执行程序__，可以使用下面的命令 :
+
+ $ libtool --mode=execute gdb main 
+
+如果直接使用 :
+
+ $ gdb main 
+
+gdb 会抱怨 main 的格式不可接受，因为使用 Libtool 建立的 main 只是一个封装脚本，它最终启动的是 .lib/lt-main。
+
+
+===== 小结 =====
+本文档描述了 GNU Libtool 解决的问题，它的工作方式，以及在实际工作中使用 Libtool 的方法。有兴趣的读者应该进一步参考 GNU Libtool 手册获得更详细的信息。在安装了 GNU Libtool 的系统中可以直接通过 info libtool 来查看手册。
+
+===== 参考资料 =====
+    Shared libraries: 这篇 HOWTO 描述了 Linux 系统中动态链接库名字、位置，以及使用动态链接库相关的环境变量，可以在 http://tldp.org/HOWTO/Program-Library-HOWTO/shared-libraries.html%E6%9F%A5%E7%9C%8B。
+
+    Autoconf, Automake, Libtool: 这本在线书籍详细描述了 GNU Autotools(Autoconf, Automake, Libtool) 之间的关系，以及如何在软件项目中结合使用 GNU Autotools。可以在 http://sources.redhat.com/autobook/ 查看本书的在线版本，或者从 http://sources.redhat.com/autobook/download.html%E4%B8%8B%E8%BD%BD。
+
+    GNU Libtool ：可以在 http://www.gnu.org/software/libtool/%E4%BB%8E%E8%BF%99%E9%87%8C%E5%8F%AF%E4%BB%A5%E4%B8%8B%E8%BD%BD GNU Libtool 的最新版本，阅读在线手册，或者下载 PDF 版本的手册。
+
+    GNU Autoconf：GNU Autotool 解决了 UNIX 世界大部分常见的__软件移植性问题__，它通过使用各种手段去探测当前操作系统的特征，以及系统中安装的软件包的特征，**最后生成一个头文件(config.h)，定义各种各样的宏来表示系统的特征**。__应用程序可以通过这个头文件来针对不同的环境来进行开发__。可以在 http://www.gnu.org/software/autoconf/%E4%B8%8B%E8%BD%BD Autoconf 最新版本的软件包和手册，或者查看在线手册。
+
+    GNU Automake：GNU Automake 解决了编写可移植 Makefile 的问题，它使用和 Makefile 规则不同的语法来描述软件项目的依赖关系。其生成的 Makefile 通常比手工写的 Makefile 更加规范，例如它总是包含 dist, install, uninstall 等等常用的 Makefile target。它支持几种常见的语言，例如 Java, vala 等等。可以在 http://www.gnu.org/software/automake/%E4%B8%8B%E8%BD%BD Automake 最新版本的软件包和手册，或者查看在线手册。
+
+===== 关于作者 =====
+吴小虎，主要从事 UNIX/Linux系统下的程序编写，喜欢 GTK,Python，熟悉 c。 

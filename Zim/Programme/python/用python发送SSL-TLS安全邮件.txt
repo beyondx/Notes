@@ -1,0 +1,223 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-05T15:12:15+08:00
+
+====== 用python发送SSL-TLS安全邮件 ======
+Created 星期二 05 七月 2011
+python的smtplib提供了一种很方便的途径发送电子邮件。它对smtp协议进行了简单的封装。
+     smtp协议的基本命令包括：
+         HELO 向服务器标识用户身份
+         MAIL 初始化邮件传输 mail from:
+         RCPT 标识单个的邮件接收人；常在MAIL命令后面,可有多个rcpt to:
+         DATA 在单个或多个RCPT命令后,表示所有的邮件接收人已标识,并初始化数据传输,以.结束
+         VRFY 用于验证指定的用户/邮箱是否存在；由于安全方面的原因,服务器常禁止此命令
+         EXPN 验证给定的邮箱列表是否存在,扩充邮箱列表,也常被禁用
+         HELP 查询服务器支持什么命令
+         NOOP 无操作,服务器应响应OK
+         QUIT 结束会话
+         RSET 重置会话,当前传输被取消
+         MAIL FROM 指定发送者地址
+         RCPT TO 指明的接收者地址
+     一般smtp会话有两种方式，一种是邮件直接投递，就是说，比如你要发邮件給zzz@163.com，那就直接连接163.com的邮件服务器，把信投給zzz@163.com; 另一种是验证过后的发信，它的过程是，比如你要发邮件給zzz@163.com，你不是直接投到163.com，而是通过自己在sina.com的另一个邮箱来发。这样就要先连接sina.com的smtp服务器，然后认证，之后在把要发到163.com的信件投到sina.com上，sina.com会帮你把信投递到163.com。
+     第一种方式的命令流程基本是这样：
+         1. helo
+         2. mail from
+         3. rcpt to
+         4. data
+         5. quit
+     但是第一种发送方式一般有限制的，就是rcpt to指定的这个邮件接收者必须在这个服务器上存在，否则是不会接收的。先看看代码：
+#-*- encoding: gb2312 -*-
+import os, sys, string
+import smtplib
+
+# 邮件服务器地址
+mailserver = "smtp.163.com"
+# smtp会话过程中的mail from地址
+from_addr = "asfgysg@zxsdf.com"
+# smtp会话过程中的rcpt to地址
+to_addr = "zhaoweikid@163.com"
+# 信件内容
+msg = "test mail"
+
+svr = smtplib.SMTP(mailserver)
+# 设置为调试模式，就是在会话过程中会有输出信息
+svr.set_debuglevel(1)
+# helo命令，docmd方法包括了获取对方服务器返回信息
+svr.docmd("HELO server")
+# mail from, 发送邮件发送者
+svr.docmd("MAIL FROM: <%s>" % from_addr)
+# rcpt to, 邮件接收者
+svr.docmd("RCPT TO: <%s>" % to_addr)
+# data命令，开始发送数据
+svr.docmd("DATA")
+# 发送正文数据
+svr.send(msg)
+# 比如以/r/n./r/n作为正文发送结束的标记,用send发送的，所以要用getreply获取返回信息
+svr.send("/r/n./r/n")
+svr.getreply()
+# 发送结束，退出
+svr.quit()
+
+     第二种有点不一样：
+         1.ehlo
+         2.auth login
+         3.mail from
+         4.rcpt to
+         5.data
+         6.quit
+相对于第一种来说，多了一个认证过程，就是auth login这个过程。
+#-*- encoding: gb2312 -*-
+import os, sys, string
+import smtplib
+import base64
+
+# 邮件服务器地址
+mailserver = "smtp.163.com"
+# 邮件用户名
+username = "xxxxxx@163.com"
+# 密码
+password = "xxxxxxx"
+# smtp会话过程中的mail from地址
+from_addr = "xxxxxx@163.com"
+# smtp会话过程中的rcpt to地址
+to_addr = "yyyyyy@163.com"
+# 信件内容
+msg = "my test mail"
+
+svr = smtplib.SMTP(mailserver)
+# 设置为调试模式，就是在会话过程中会有输出信息
+svr.set_debuglevel(1)
+# ehlo命令，docmd方法包括了获取对方服务器返回信息
+svr.docmd("EHLO server")
+# auth login 命令
+svr.docmd("AUTH LOGIN")
+# 发送用户名，是base64编码过的，用send发送的，所以要用getreply获取返回信息
+svr.send(base64.encodestring(username))
+svr.getreply()
+# 发送密码
+svr.send(base64.encodestring(password))
+svr.getreply()
+# mail from, 发送邮件发送者
+svr.docmd("MAIL FROM: <%s>" % from_addr)
+# rcpt to, 邮件接收者
+svr.docmd("RCPT TO: <%s>" % to_addr)
+# data命令，开始发送数据
+svr.docmd("DATA")
+# 发送正文数据
+svr.send(msg)
+# 比如以/r/n./r/n作为正文发送结束的标记
+svr.send("/r/n./r/n")
+svr.getreply()
+# 发送结束，退出
+svr.quit()
+
+     上面说的是最普通的情况，但是不能忽略的是现在好多企业邮件是支持安全邮件的，就是通过SSL发送的邮件，这个怎么发呢？SMTP对SSL安全邮件的支持有两种方案，一种老的是专门开启一个465端口来接收ssl邮件，另一种更新的做法是在标准的25端口的smtp上增加一个starttls的命令来支持。
+     看看第一种怎么办:
+#-*- encoding: gb2312 -*-
+import os, sys, string, socket
+import smtplib
+
+
+class SMTP_SSL (smtplib.SMTP):
+     def __init__(self, host='', port=465, local_hostname=None, key=None, cert=None):
+         self.cert = cert
+         self.key = key
+         smtplib.SMTP.__init__(self, host, port, local_hostname)
+        
+     def connect(self, host='localhost', port=465):
+         if not port and (host.find(':') == host.rfind(':')):
+             i = host.rfind(':')
+             if i >= 0:
+                 host, port = host[:i], host[i+1:]
+                 try: port = int(port)
+                 except ValueError:
+                     raise socket.error, "nonnumeric port"
+         if not port: port = 654
+         if self.debuglevel > 0: print>>stderr, 'connect:', (host, port)
+         msg = "getaddrinfo returns an empty list"
+         self.sock = None
+         for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
+             af, socktype, proto, canonname, sa = res
+             try:
+                 self.sock = socket.socket(af, socktype, proto)
+                 if self.debuglevel > 0: print>>stderr, 'connect:', (host, port)
+                 self.sock.connect(sa)
+                 # 新增加的创建ssl连接
+                 sslobj = socket.ssl(self.sock, self.key, self.cert)
+             except socket.error, msg:
+                 if self.debuglevel > 0:
+                     print>>stderr, 'connect fail:', (host, port)
+                 if self.sock:
+                     self.sock.close()
+                 self.sock = None
+                 continue
+             break
+         if not self.sock:
+             raise socket.error, msg
+
+         # 设置ssl
+         self.sock = smtplib.SSLFakeSocket(self.sock, sslobj)
+         self.file = smtplib.SSLFakeFile(sslobj);
+
+         (code, msg) = self.getreply()
+         if self.debuglevel > 0: print>>stderr, "connect:", msg
+         return (code, msg)
+        
+if __name__ == '__main__':
+     smtp = SMTP_SSL('192.168.2.10')
+     smtp.set_debuglevel(1)
+     smtp.sendmail("zzz@xxx.com", "zhaowei@zhaowei.com", "xxxxxxxxxxxxxxxxx")
+     smtp.quit()
+
+     这里我是从原来的smtplib.SMTP派生出了新的SMTP_SSL类，它专门来处理ssl连接。我这里测试的192.168.2.10是我自己的测试服务器.
+     第二种是新增加了starttls的命令，这个很简单，smtplib里就有这个方法，叫smtplib.starttls()。那么相对于发送普通邮件的第二种方法来说，只需要新增加一行代码就可以了:
+
+#-*- encoding: gb2312 -*-
+import os, sys, string
+import smtplib
+import base64
+
+# 邮件服务器地址
+mailserver = "smtp.163.com"
+# 邮件用户名
+username = "xxxxxx@163.com"
+# 密码
+password = "xxxxxxx"
+# smtp会话过程中的mail from地址
+from_addr = "xxxxxx@163.com"
+# smtp会话过程中的rcpt to地址
+to_addr = "yyyyyy@163.com"
+# 信件内容
+msg = "my test mail"
+
+svr = smtplib.SMTP(mailserver)
+# 设置为调试模式，就是在会话过程中会有输出信息
+svr.set_debuglevel(1)
+# ehlo命令，docmd方法包括了获取对方服务器返回信息
+svr.docmd("EHLO server")
+svr.starttls() # <------ 这行就是新加的支持安全邮件的代码！
+# auth login 命令
+svr.docmd("AUTH LOGIN")
+# 发送用户名，是base64编码过的，用send发送的，所以要用getreply获取返回信息
+svr.send(base64.encodestring(username))
+svr.getreply()
+# 发送密码
+svr.send(base64.encodestring(password))
+svr.getreply()
+# mail from, 发送邮件发送者
+svr.docmd("MAIL FROM: <%s>" % from_addr)
+# rcpt to, 邮件接收者
+svr.docmd("RCPT TO: <%s>" % to_addr)
+# data命令，开始发送数据
+svr.docmd("DATA")
+# 发送正文数据
+svr.send(msg)
+# 比如以/r/n./r/n作为正文发送结束的标记
+svr.send("/r/n./r/n")
+svr.getreply()
+# 发送结束，退出
+svr.quit()
+
+注意： 以上的代码为了方便我都没有判断返回值，严格说来，是应该判断一下返回的代码的，在smtp协议中，只有返回代码是2xx或者3xx才能继续下一步，返回4xx或5xx的，都是出错了。
+分享到：
+

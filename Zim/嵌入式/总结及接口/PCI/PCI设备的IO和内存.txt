@@ -1,0 +1,812 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-02T15:50:43+08:00
+
+====== PCI设备的IO和内存 ======
+Created Monday 02 July 2012
+http://blog.chinaunix.net/uid-20543183-id-1930828.html
+
+Pci设备的I/O和内存是一个比较复杂的问题.如下的总线结构:
+{{./080825163400.jpg}}
+
+在上图的总线结构中,ethernet设备和pci-pci bridge的同类型资源空间__必须要是pci bus0的一个子集__。例如,pci bus 0的I/O端口资源是0x00CC~0x01CC. Ethernet设备的I/O范围的是0x00CC~0x0xE0.那么pci-pci bridge的I/O端口范围就必须要在0x0xE0~0x01CC之间.
+
+同样,SCSI和VIDEO同类型资源必须要是pci_bus1的子集.pci bus1上有一个pci桥,对应的资源也就是它所连桥上的资源.即**pci_bus->self**.也就是说，__下层总线的资源是它上层总线资源的子集__。上层总线资源是下层总线资源的父集。其实,每个PCI设备的资源地始地址都是由操作系统设置的.在x86上,都由bios设置好了.假若没有bios的时候,我们应该怎么去设置设备的资源起始范围呢?  可能在pci枚举完成之后:
+
+1:从根总线开始,设置根总线的资源范围是从0开始,到0xFFFF或者0xFFFFFFFF的最大范围.
+2:对其它的设备,可往其资源寄存器全部写入1,就可以求得**该资源项的类型和长度**.
+3:设备从根总线的资源那里分得对应长度的资源.
+4:如果设备是pci-pci bridge,则__递归配置__它.
+ 
+可能有人会有这样迷惑,对应于上图,如果pci-pci bridge的资源大小是N.而SCSI和video资源范围超过了N怎么办呢?我们必须要注意一点,__总线的区间是可以自已设定的,而设备资源的区间是在设计的时候就已经确定好了.__也就是说,我们可以更改pci device区间的起始地址,但我们**不能改变它的大小.**因此,出现了上面所说的这种情况.可能是由bios在处理PCI的时候出现了BUG.我们需要**调整总线的资源区间**.
+ 
+其实对于pci_bus的资源范围就是它的__过滤窗口__.对于过滤窗口的作用,我们在枚举的时候分析的很清楚了.
+ 
+CPU访问PCI 过程是这样的(只有一个根总线和pci-pci bridge过滤窗口功能打开的情况):
+
+1:cpu向pci发出一个I/O请求.__首先经过根总线__.它会判断是否在它的资源范围内(地址在自己的过滤窗口内).如果在它的范围,它就会丢向总线所在的__每一个设备__.包括pci bridge. 如果没有在根总线的资源范围,则不会处理这个请求.
+2:如果pci设备判断该地址属于它的资源范围,则处理后发出应答
+4:pci bridge接收到这个请求,它会判断I/O地址是否在它的资源范围内.如果在它的范围,它会把它丢到它的__下层子线__.
+5:下层总线经过经过相同的处理后,就会找到这个PCI设备了
+ 
+一个PCI设备访问其它PCI设备或者其它外设的过程:
+1:首先这个PCI发出一个__请求__,这个请求会在总线上广播
+2:如果要请求的设备是在同级总线,就会产生应答
+3:请求的设备不是在同层总线,就会进行pci bridge. pci桥判断该请求__不在它的范围内__(目的地不是它下层的设备，即地址不在自己的过滤窗口内),就会将它__丢向上层__.
+4:这样辗转之后,就能找到对应的设备了
+ 
+经过这样的分析过来,相信对pci bridge的过滤窗口有更深的理解了。
+
+Linux中使用__struct resource__的结构来表示I/O端口或者是设备内存。定义如下：
+
+struct resource {
+         resource_size_t start;
+         resource_size_t end;
+         const char *name;
+         unsigned long flags;
+         struct resource *parent, *sibling, *child;
+};
+Start: 表示它所占资源的起始地址。
+End: 表示它所占资源的未尾地址
+Name: 所占**资源的名字**
+Flags: __资源的类型__。目前有I/O和内存两种
+Parent.sibling.child:用来表示**资源的所属关系**。分别表示它的父结点，兄弟结点和子结点。
+ 
+从前面的分析可以看到，有一些总线可能bios没有遍历到或许bios的处理有错误,所以需要对整个系统的PCI总线和PCI设备的资源占用情况遍历一次。完整的建立上述的struct resource结构(在之前枚举的时候，只是处理了start和end成员).。这个过程是在__pcibios_resource_survey( )__完成的。如下所示：
+ 
+
+static int __init pcibios_init(void)
+{
+         ……
+         …….
+         pcibios_resource_survey();
+}
+subsys_initcall(pcibios_init);
+
+pcibios_init这个函数是被fs_initcall()所描述的。在kernel启动的时候，会调用宏所描述的函数。在pcibios_init （）又会调用pcibios_assign_resources（），它的代码如下所示：
+
+void __init pcibios_resource_survey(void)
+{
+         DBG("PCI: Allocating resources\n");
+         pcibios_allocate___bus_resources__(&pci_root_buses);
+         pcibios_allocate_resources(0);
+         pcibios_allocate_resources(1);
+}
+
+它先对**PCI总线**的资源进行处理。然后再对**PCI设备**的资源进行处理。我们先看pcibios_allocate_bus_resources()
+
+static void __init pcibios_allocate_bus_resources(struct list_head *bus_list)
+{
+         struct pci_bus *bus;
+         struct pci_dev *dev;
+         int idx;
+         struct resource *r, *pr;
+ 
+         /* Depth-First Search on bus tree */
+         list_for_each_entry(bus, bus_list, node) {
+ 
+                   //__pci-bridge__
+                   if ((dev = bus->self)) {
+                            for (idx = PCI_BRIDGE_RESOURCES;
+                                idx < PCI_NUM_RESOURCES; idx++) {
+                                     r = &dev->resource[idx];
+                                     if (!r->flags)
+                                               continue;
+                                     pr = **pci_find_parent_resource**(dev, r);
+                                     if (!r->start || !pr || **request_resource**(pr, r) < 0) {
+                                               printk(KERN_ERR "PCI: Cannot allocate "
+                                                        "resource region %d "
+                                                        "of bridge %s\n",
+                                                        idx, pci_name(dev));
+                                               /*
+												* Something is wrong with the region.
+												* Invalidate the resource to prevent
+												* child resource allocations in this
+												* range.
+                                                */
+                                               r->flags = 0;
+                                     }
+                            }
+                   }
+                   pcibios_allocate_bus_resources(&bus->children);
+         }
+}
+
+这个是一个__深度优先搜索算法__。类似的算法在pci结构中用得很多。它遍历pci_root_buses中的每一个根总线下面的所有总线。如果该总线有对应的pci-pci bridge，就先处理这个pci桥的资源.PCI桥的资源范围是PCI_BRIDGE_RESOURCES~ PCI_NUM_RESOURCES.对于它的每个资源区间。都要从它的上层总线中获得.代码中遍历PCI桥的每一个资源区间，然后找到它在上层总线的对应区间。然后为它建立结构关系。__pci_find_parent_resource__（）就是为PCI的资源区间找到一个合适的父结点。代码如下：
+
+struct resource *
+pci_find_parent_resource(const struct pci_dev *dev, struct resource *res)
+{
+         const struct pci_bus *bus = dev->bus;
+         int i;
+         struct resource *best = NULL;
+ 
+         for(i = 0; i < PCI_BUS_NUM_RESOURCES; i++) {
+                   struct resource *r = __bus->resource[i]__;
+                   if (!r)
+                            continue;
+                   if (res->start && !(res->start >= r->start && res->end <= r->end))
+                            continue;  /* Not contained */
+                   if ((res->flags ^ r->flags) & (IORESOURCE_IO | IORESOURCE_MEM))
+                            continue;  /* Wrong type */
+                   if (!((res->flags ^ r->flags) & IORESOURCE___PREFETCH__))
+                            return r;     /* Exact match */
+                   if ((res->flags & IORESOURCE_PREFETCH) && !(r->flags & IORESOURCE_PREFETCH))
+                            best = r;    /* Approximating prefetchable by non-prefetchable */
+         }
+         return best;
+}
+
+首先从pci_dev ->bus就找到了它的上层总线，__每条总线拥有PCI_BUS_NUM_RESOURCES个资源区间__. 所要寻找的父结点必须要满足以后几个条件：
+1：子结点的范围必须要落在父结点的区间范围内
+2：父子区间的**基本类型应该一致**。（基本类型即IO或者内存）
+3：如果父子窗口都是可预读的，就完全匹配了
+4:如果子结点可预读，而父结点不可预读。也将就着可以了.
+注意：父结点可预读而子结点不可预读是不允许的。
+ 
+找到它所属的父结点之后，会调用request_resource（）从父结点中请求资源。代码如下：
+
+int request_resource(struct resource *root, struct resource *new)
+{
+         struct resource *conflict;
+ 
+         write_lock(&resource_lock);
+         conflict = ____request_resource__(root, new);
+         write_unlock(&resource_lock);
+         return conflict ? -EBUSY : 0;
+}
+
+__request_resource（）代码如下：
+static struct resource * __request_resource(struct resource *root, struct resource *new)
+{
+         resource_size_t start = new->start;
+         resource_size_t end = new->end;
+         struct resource *tmp, **p;
+ 
+         if (end < start)
+                   return root;
+         if (start < root->start)
+                   return root;
+         if (end > root->end)
+                   return root;
+         p = &root->child;
+         for (;;) {
+                   tmp = *p;
+                   if (!tmp || tmp->start > end) {
+                            new->sibling = tmp;
+                            *p = new;
+                            new->parent = root;
+                            return NULL;
+                   }
+                   p = &tmp->sibling;
+                   if (tmp->end < start)
+                            continue;
+                   return tmp;
+         }
+}
+这个函数的逻辑比较简单。**即在它父节点的子节点中找个合适的位置插下去**。父结点的子结点都是按照起始资源地址从小到大的顺序排列的。
+ 
+返回到pcibios_allocate_bus_resources()中，如果它的资源分配过程失败，它会怎么处理呢？看下面的代码片段：
+
+static void __init pcibios_allocate_bus_resources(struct list_head *bus_list)
+{
+         ……
+         ……
+if (!r->start || !pr || request_resource(pr, r) < 0) {
+                                               printk(KERN_ERR "PCI: Cannot allocate "
+                                                        "resource region %d "
+                                                        "of bridge %s\n",
+                                                        idx, pci_name(dev));
+                                               r->flags = 0;
+         }
+         ……
+         ……
+}
+也就是说，如果分配失败了，它会__将资源的flags标志置为0__。
+
+回到pcibios_resource_survey()中，接着往下来，会发现它以不同的参数调用了pcibios_allocate_resources（）两次。跟进这个函数的代码进行分析：
+
+static void __init pcibios_allocate_resources(int pass)
+{
+         struct pci_dev *dev = NULL;
+         int idx, disabled;
+         u16 command;
+         struct resource *r, *pr;
+ 
+         for_each_pci_dev(dev) {
+                   pci_read_config_word(dev, PCI_COMMAND, &command);
+                   for (idx = 0; idx < __PCI_ROM_RESOURCE__; idx++) {
+                            r = &dev->resource[idx];
+                            if (r->parent)               /* Already allocated */
+                                     continue;
+                            if (!r->start)                  /* Address not assigned at all */
+                                     continue;
+                            if (r->flags & **IORESOURCE_IO**)
+                                     disabled = !(command & PCI_COMMAND_IO);
+                            else
+                                     disabled = !(command & PCI_COMMAND_MEMORY);
+                            //对于已经启用的，在第一次扫描的时候就将其配制，否则。要等到第二次
+                            if (pass == disabled) {
+                                     DBG("PCI: Resource %08lx-%08lx "
+                                         "(f=%lx, d=%d, p=%d)\n",
+                                         r->start, r->end, r->flags, disabled, pass);
+                                     pr = **pci_find_parent_resource**(dev, r);
+                                     if (!pr || **request_resource**(pr, r) < 0) {
+                                               printk(KERN_ERR "PCI: Cannot allocate "
+                                                        "resource region %d "
+                                                        "of device %s\n",
+                                                        idx, pci_name(dev));
+                                               /* We'll assign a new address later */
+                                               r->end -= r->start;
+                                               r->start = 0;
+                                     }
+                            }
+                   }
+                   if (!pass) { 
+                            //对于ROM。在第一次扫描时就将它关闭
+                            r = &dev->resource[PCI_ROM_RESOURCE];
+                            if (r->flags & IORESOURCE_ROM_ENABLE) {
+                                     /* Turn the ROM off, leave the resource region,
+									* but keep it unregistered. */
+                                     u32 reg;
+                                     DBG("PCI: Switching off ROM of %s\n",
+                                               pci_name(dev));
+                                     r->flags &= ~IORESOURCE_ROM_ENABLE;
+                                     pci_read_config_dword(dev,
+                                                        dev->rom_base_reg, &reg);
+                                     pci_write_config_dword(dev, dev->rom_base_reg,
+                                                        reg & ~PCI_ROM_ADDRESS_ENABLE);
+                            }
+                   }
+         }
+}
+
+该函数遍历整个pci设备。如果该设备的相应空间已经启用了（I/O或者内存）。那在以0为参数调用的时候就让它分配好资源。__对于没有被启用的资源。要等到第二次以1为参数调用参数时才会处理__。另外：__在第一次处理中就把设备的ROM区间关闭__。要等到使用设备的时候再把区间打开。这个打开的过程一般在设备驱动程序里完成。到这里，我们终于知道为什么要用不同的参数调用函数二次。这样做是为了优先让已经被启用的资源从父节点中分得资源。
+如果资源分配失败了。就会将相应资源的start设为0。End成员则设为这个区间的长度。
+ 
+pcibios_resource_survey（）执先完了之后。Pci的所有总线和设备的资源都被验证分配了一次。对于不能正确分配资源的设备。也做好了标记。接下来，我们来看一下__怎么处理资源分配失败的设备__。
+ 
+看下面的这段代码：
+fs_initcall(pcibios_assign_resources);
+
+fs_initcall()的优先级比subsys_initcall的优先级小，它在pcibios_init()__之后__才会得到运行。看一下它的代码：
+
+static int __init pcibios_assign_resources(void)
+{
+         struct pci_dev *dev = NULL;
+         struct resource *r, *pr;
+ 
+         if (!(pci_probe & PCI_ASSIGN_ROMS)) {
+                   /*
+					* Try to use BIOS settings for ROMs, otherwise let
+					* pci_assign_unassigned_resources() allocate the new
+					* addresses.
+                    */
+                   for_each_pci_dev(dev) {
+                            r = &dev->resource[PCI_ROM_RESOURCE];
+                            if (!r->flags || !r->start)
+                                     continue;
+                            pr = pci_find_parent_resource(dev, r);
+                            if (!pr || request_resource(pr, r) < 0) {
+                                     r->end -= r->start;
+                                     r->start = 0;
+                            }
+                   }
+         }
+ 
+         __pci_assign_unassigned_resources__();
+ 
+         return 0;
+}
+
+之前在pcibios_resource_survey（）中没有处理ROM的区间。在这里，先遍历每个设备，**处理一下它的ROM空间的资源分配**。照以前的方式一样，如果资源分配失败，就让它的start置为0。End置为区间的长度。处理完之后，进入到pci_assign_unassigned_resources()。我们希望每一个PCI设备，bios都为我们处理好了。可是总是事与愿违。进行的这里，不得不处理一下之前资源分配失败的设备了。代码如下：
+
+void __init
+pci_assign_unassigned_resources(void)
+{
+         struct pci_bus *bus;
+ 
+         /* Depth first, calculate sizes and alignments of all
+            subordinate buses. */
+         list_for_each_entry(bus, &pci_root_buses, node) {
+                   pci_bus_size_bridges(bus);
+         }
+         /* Depth last, allocate resources and update the hardware. */
+         list_for_each_entry(bus, &pci_root_buses, node) {
+                   pci_bus_assign_resources(bus);
+                   pci_enable_bridges(bus);
+         }
+}
+
+首先我们要处理资源分配失败的pci_bus。在上面的分析中，如果pci bus资源分配失败。就会将其所属资源的flags置为0.对于这些总线，是在第一个循环里处理的.第一个循环，遍历挂在pci_root_buses上的__所有根结点__。然后调用pci_bus_size_bridges（）。代码如下：
+
+void __ref pci_bus_size_bridges(struct pci_bus *bus)
+{
+         struct pci_dev *dev;
+         unsigned long mask, prefmask;
+ 
+         list_for_each_entry(dev, &bus->devices, bus_list) {
+                   struct pci_bus *b = dev->subordinate;
+                   if (!b)
+                            continue;
+ 
+                   switch (dev->class >> 8) {
+                   case PCI_CLASS_BRIDGE_CARDBUS:
+                            pci_bus_size_cardbus(b);
+                            break;
+ 
+                   case PCI_CLASS_BRIDGE_PCI:
+                   default:
+                            pci_bus_size_bridges(b);
+                            break;
+                   }
+         }
+ 
+         /* The root bus? */
+         if (!bus->self)
+                   return;
+ 
+         switch (bus->self->class >> 8) {
+         case PCI_CLASS_BRIDGE_CARDBUS:
+                   /* don't size cardbuses yet. */
+                   break;
+ 
+         case PCI_CLASS_BRIDGE_PCI:
+                   __pci_bridge_check_ranges__(bus);
+         default:
+                   pbus_size_io(bus);
+                   /* If the bridge supports prefetchable range, size it
+                      separately. If it doesn't, or its prefetchable window
+                      has already been allocated by arch code, try
+                      non-prefetchable range for both types of PCI memory
+                      resources. */
+                   mask = IORESOURCE_MEM;
+                   prefmask = IORESOURCE_MEM | IORESOURCE_PREFETCH;
+                   if (pbus_size_mem(bus, prefmask, prefmask))
+                            mask = prefmask; /* Success, size non-prefetch only. */
+                   pbus_size_mem(bus, mask, IORESOURCE_MEM);
+                   break;
+         }
+}
+
+这是一个深度优先搜索算法。首先遍历总线上的所有设备，如果是pci bridge，递归调用pci_bus_size_bridges（）处理下层pci bus.对于每一条不是根总线的pci bus都会经过大循环后面的处理，即对应于case PCI_CLASS_BRIDGE_PCI后面的处理.它要经过的第一个函数是pci_bridge_check_ranges().代码如下：
+
+static void pci_bridge_check_ranges(struct pci_bus *bus)
+{
+         u16 io;
+         u32 pmem;
+         struct pci_dev *bridge = bus->self;
+         struct resource *b_res;
+ 
+         b_res = &bridge->resource[PCI_BRIDGE_RESOURCES];
+         b_res[1].flags |= IORESOURCE_MEM;
+ 
+         pci_read_config_word(bridge, PCI_IO_BASE, &io);
+         if (!io) {
+                   pci_write_config_word(bridge, PCI_IO_BASE, 0xf0f0);
+                   pci_read_config_word(bridge, PCI_IO_BASE, &io);
+                  pci_write_config_word(bridge, PCI_IO_BASE, 0x0);
+        }
+        if (io)
+                   b_res[0].flags |= IORESOURCE_IO;
+         /*  DECchip 21050 pass 2 errata: the bridge may miss an address
+             disconnect boundary by one PCI data phase.
+             Workaround: do not use prefetching on this device. */
+         if (bridge->vendor == PCI_VENDOR_ID_DEC && bridge->device == 0x0001)
+                   return;
+         pci_read_config_dword(bridge, __PCI_PREF_MEMORY_BASE__, &pmem);
+         if (!pmem) {
+                   pci_write_config_dword(bridge, PCI_PREF_MEMORY_BASE,
+                                                      0xfff0fff0);
+                   pci_read_config_dword(bridge, PCI_PREF_MEMORY_BASE, &pmem);
+                   pci_write_config_dword(bridge, PCI_PREF_MEMORY_BASE, 0x0);
+         }
+         if (pmem)
+                   b_res[2].flags |= IORESOURCE_MEM | IORESOURCE_PREFETCH;
+}
+
+Pci bridge设备的7,8,9项()是属于__过滤窗口__，也就是对应于总线的资源。在这里,检查pci bus是否支持I/O和__prefetch memory__类型的窗口.如果不支持,则相应寄存器是只读的,而且值为0. 顺便说一句,所有的pci bus都是支持memory窗口的.如果相应类型的资源有效则给相应资源的flags置相应的标志。最后还要记得将相关寄存器清空。
+
+我们在前面分析过.:
+经过这里的处理，只要判断区间存在，就会置相应的标志。那么，对于我们在上面分配资源失败的pci bus.如果区间确实存在的话。就会重新设置这个标志。重新设置标志的操作是很重要的一个步骤.它能将前面处理时,因资源冲突的pci bus修正过来.运行到这里.怎么区分哪些pci bus是有待修正的,而哪些pci bus是正常的呢?可能根据 resource->parent来判断.如果是正常的pci bus.该成员会指向它的父结点.如果是有待修正的pci bus.它的这个域是空的.也就是说,还没有链接到父结点.
+ 
+回到pci_bus_size_bridges()中,经过pci_bridge_check_ranges()的处理过后,流程会转向pbus_size_io().从字面意思看这个函数是用来计算i/o的大小.主要是用来处理有待修正的pci bus.我们来思考一下,为什么pci bus的资源会有冲突呢?可能有两个原因:
+
+1:pci bus的起始地址冲突.在上层pci bus中,该区间已经被其它设备占用了.这种情况只需要在上层设备中偏移到特定位置就可以了.
+2:pci bus的__长度过长__.这可能是bios在处理PCI的时候出现了错误,我们需要重新计算pci bus的长度.
+
+而pbus_size_io()就是用来处理第二种情况的,处理资源的类型为I/O.代码如下:
+static void pbus_size_io(struct pci_bus *bus)
+{
+         struct pci_dev *dev;
+         struct resource *b_res = find_free_bus_resource(bus, IORESOURCE_IO);
+         unsigned long size = 0, size1 = 0;
+ 
+         if (!b_res)
+                  return;
+ 
+         list_for_each_entry(dev, &bus->devices, bus_list) {
+                  int i;
+ 
+                   for (i = 0; i < PCI_NUM_RESOURCES; i++) {
+                            struct resource *r = &dev->resource[i];
+                            unsigned long r_size;
+ 
+                            if (r->parent || !(r->flags & IORESOURCE_IO))
+                                     continue;
+                            r_size = r->end - r->start + 1;
+ 
+                            if (r_size < 0x400)
+                                     /* Might be re-aligned for ISA */
+                                     size += r_size;
+                            else
+                                     size1 += r_size;
+                   }
+         }
+/* To be fixed in 2.5: we should have sort of HAVE_ISA
+   flag in the struct pci_bus. */
+#if defined(CONFIG_ISA) || defined(CONFIG_EISA)
+         size = (size & 0xff) + ((size & ~0xffUL) << 2);
+#endif
+         size = ALIGN(size + size1, 4096);
+         if (!size) {
+                   b_res->flags = 0;
+                   return;
+         }
+         /* Alignment of the IO window is always 4K */
+         b_res->start = 4096;
+         b_res->end = b_res->start + size - 1;
+}
+
+首先,它查看对应类型(I/O)的总线资源是否有冲突的情况.如果有冲突,则计算下层需要该资源的总数.冲突资源的长度就是下层设备所需该资源的总数.只不过,对于pci bus 的I/O资源是4K对齐的.因此总长度也是4K对齐.find_free_bus_resource()就是用来检查冲突资源项的.代码如下:
+
+static struct resource *find_free_bus_resource(struct pci_bus *bus, unsigned long type)
+{
+         int i;
+         struct resource *r;
+         unsigned long type_mask = IORESOURCE_IO | IORESOURCE_MEM |
+                                       IORESOURCE_PREFETCH;
+ 
+         for (i = 0; i < PCI_BUS_NUM_RESOURCES; i++) {
+                   r = bus->resource[i];
+                   if (r == &ioport_resource || r == &iomem_resource)
+                            continue;
+                   if (r && (r->flags & type_mask) == type && !r->parent)
+                            return r;
+         }
+         return NULL;
+}
+
+对于资源是ioport_resource, iomem_resource的情况.表示该总线是根总线,不需要处理.注意这一句:
+if (r && (r->flags & type_mask) == type && !r->parent)
+
+不仅要求类型匹配,而且要父节点为空.父节点为空.说明之前在分配资源的时候失败,也即资源冲突.
+
+因为pci_bus_size_bridges()使用的是深度优先搜索算法,它是先处理最底层的总线,然后再逐层上处理.而下层总线又是上层总线的一个设备(通过pci-pci bridge相连)所以,**下层所需的资源长度就可以从下往上反应到上层总线中**.最后,到最上层资源冲突的pci bus就可以知道下层需要多少长度的资源了.
+ 
+pbus_size_mem()类似于pbus_size_io(),只是它是用来查找memory类型资源的长度.在代码中,以不同的参数两次调用了这个函数,分别是用来查找带预读的存储区间和一般的存储区间.pbus_size_mem()和pbus_size_io()相比只是对齐因子不一样,其它大部份的处理都是一样,所以在这里不分析这个函数的代码了.请自行查阅.
+ 
+回到pci_assign_unassigned_resources()函数中.剩余的代码如下所示:
+
+void __init
+pci_assign_unassigned_resources(void)
+{
+         ……
+         ……
+list_for_each_entry(bus, &pci_root_buses, node) {
+                   pci_bus_assign_resources(bus);
+                   //启用pci-pci briage的窗口机制
+                   pci_enable_bridges(bus);
+         }
+}
+
+遍历pci_root_buses中存放的根总线,对每条根总线调用pci_bus_assign_resources().代码如下:
+void __ref pci_bus_assign_resources(struct pci_bus *bus)
+{
+         struct pci_bus *b;
+         struct pci_dev *dev;
+ 
+         pbus_assign_resources_sorted(bus);
+ 
+         list_for_each_entry(dev, &bus->devices, bus_list) {
+                   b = dev->subordinate;
+                   if (!b)
+                            continue;
+ 
+                   pci_bus_assign_resources(b);
+ 
+                   switch (dev->class >> 8) {
+                   case PCI_CLASS_BRIDGE_PCI:
+                            pci_setup_bridge(b);
+                            break;
+ 
+                   case PCI_CLASS_BRIDGE_CARDBUS:
+                            pci_setup_cardbus(b);
+                            break;
+ 
+                   default:
+                            printk(KERN_INFO "PCI: not setting up bridge %s "
+                                   "for bus %d\n", pci_name(dev), b->number);
+                            break;
+                   }
+         }
+}
+
+这也是一个使用深度优先搜索算法的函数.现在是时候处理资源冲突的设备了.这是在pbus_assign_resources_sorted()中完成的,代码如下:
+static void pbus_assign_resources_sorted(struct pci_bus *bus)
+{
+         struct pci_dev *dev;
+         struct resource *res;
+         struct resource_list head, *list, *tmp;
+         int idx;
+ 
+         head.next = NULL;
+         //遍历该总线下的所有设备
+         list_for_each_entry(dev, &bus->devices, bus_list) {
+                   u16 class = dev->class >> 8;
+ 
+                   /* Don't touch classless devices or host bridges or ioapics.  */
+                   if (class == PCI_CLASS_NOT_DEFINED ||
+                       class == PCI_CLASS_BRIDGE_HOST)
+                            continue;
+ 
+                   /* Don't touch ioapic devices already enabled by firmware */
+                   if (class == PCI_CLASS_SYSTEM_PIC) {
+                            u16 command;
+                            pci_read_config_word(dev, PCI_COMMAND, &command);
+                            if (command & (PCI_COMMAND_IO | PCI_COMMAND_MEMORY))
+                                     continue;
+                   }
+ 
+                   //所有没有成功分配资源的resource会放到head链表中
+                   pdev_sort_resources(dev, &head);
+         }
+ 
+         for (list = head.next; list;) {
+                   res = list->res;
+                   idx = res - &list->dev->resource[0];
+                   if (pci_assign_resource(list->dev, idx)) {
+                            res->start = 0;
+                            res->end = 0;
+                            res->flags = 0;
+                   }
+                   tmp = list;
+                   list = list->next;
+                   kfree(tmp);
+         }
+}
+
+首先,它将有总线下有资源冲突的设备加到链表中,然后遍历这个链表,处理每个资源冲突的设备.pdev_sort_resources()代码很简单,就是计算对齐因子,然后按照对齐因子大小添加到链表.在这里要特别注意.对于pci bus中的资源是要按起始地址对齐的(还记得我们在为冲突的pci bus计算I/O资源长度的时候,它的start成员就是设为4K.表示要4K对齐).这个函数代码比较简单.不再详细分析,请自己阅读.具体的资源冲突处理过程是在pci_assign_resource()中完成的,代码如下:
+
+int pci_assign_resource(struct pci_dev *dev, int resno)
+{
+         struct pci_bus *bus = dev->bus;
+         struct resource *res = dev->resource + resno;
+         resource_size_t size, min, align;
+         int ret;
+ 
+         //空间大小
+         size = res->end - res->start + 1;
+         //起点最小值
+         min = (res->flags & IORESOURCE_IO) ? PCIBIOS_MIN_IO : PCIBIOS_MIN_MEM;
+         /* The bridge resources are special, as their
+            size != alignment. Sizing routines return
+            required alignment in the "start" field. */
+           
+            //对于pci-pci bridge.有特殊的对齐方式
+         align = (resno < PCI_BRIDGE_RESOURCES) ? size : res->start;
+ 
+         /* First, try exact prefetching match.. */
+         //首先,带IORESOURCE_PREFETCH 标志处理
+        
+         ret = pci_bus_alloc_resource(bus, res, size, align, min,
+                                          IORESOURCE_PREFETCH,
+                                          pcibios_align_resource, dev);
+ 
+         if (ret < 0 && (res->flags & IORESOURCE_PREFETCH)) {
+                   /*
+					* That failed.
+                    *
+					* But a prefetching area can handle a non-prefetching
+					* window (it will just not perform as well).
+                    */
+                   //分配失败,不带IORESOURCE_PREFETCH标志处理
+                   ret = pci_bus_alloc_resource(bus, res, size, align, min, 0,
+                                                    pcibios_align_resource, dev);
+         }
+ 
+         if (ret) {
+                   printk(KERN_ERR "PCI: Failed to allocate %s resource "
+                            "#%d:%llx@%llx for %s\n",
+                            res->flags & IORESOURCE_IO ? "I/O" : "mem",
+                            resno, (unsigned long long)size,
+                            (unsigned long long)res->start, pci_name(dev));
+         } else if (resno < PCI_BRIDGE_RESOURCES) {
+                   //如果冲突修正成功
+                   pci_update_resource(dev, res, resno);
+         }
+ 
+         return ret;
+}
+
+首先计算该资源的长度和起始地址的最小值以及对齐因子.然后向父结点去申请资源.如果分配失败,那就放松条件,不带预读标志再去分配一次.如果成功,则更新设备的寄存器.如果还是失败,那就没什么办法了.
+
+pci_bus_alloc_resource()代码如下:
+int
+pci_bus_alloc_resource(struct pci_bus *bus, struct resource *res,
+                   resource_size_t size, resource_size_t align,
+                   resource_size_t min, unsigned int type_mask,
+                   void (*alignf)(void *, struct resource *, resource_size_t,
+                                     resource_size_t),
+                   void *alignf_data)
+{
+         int i, ret = -ENOMEM;
+ 
+         type_mask |= IORESOURCE_IO | IORESOURCE_MEM;
+ 
+         for (i = 0; i < PCI_BUS_NUM_RESOURCES; i++) {
+                   struct resource *r = bus->resource[i];
+                   if (!r)
+                            continue;
+ 
+                   /* type_mask must match */
+                   if ((res->flags ^ r->flags) & type_mask)
+                            continue;
+ 
+                   /* We cannot allocate a non-prefetching resource
+                      from a pre-fetching area */
+                   if ((r->flags & IORESOURCE_PREFETCH) &&
+                       !(res->flags & IORESOURCE_PREFETCH))
+                            continue;
+ 
+                   /* Ok, try it out.. */
+                   ret = allocate_resource(r, res, size,
+                                               r->start ? : min,
+                                               -1, align,
+                                               alignf, alignf_data);
+                   if (ret == 0)
+                            break;
+         }
+         return ret;
+}
+
+遍历上层总线类型相同的资源区,从中分配资源.如果分配成功退出.allocate_resource()如下所示:
+
+int allocate_resource(struct resource *root, struct resource *new,
+                         resource_size_t size, resource_size_t min,
+                         resource_size_t max, resource_size_t align,
+                         void (*alignf)(void *, struct resource *,
+                                          resource_size_t, resource_size_t),
+                         void *alignf_data)
+{
+         int err;
+ 
+         write_lock(&resource_lock);
+         err = find_resource(root, new, size, min, max, align, alignf, alignf_data);
+         if (err >= 0 && __request_resource(root, new))
+                   err = -EBUSY;
+         write_unlock(&resource_lock);
+         return err;
+}
+
+先到父节点中寻找是否有符合的资源区间.如果有,则向父节点请求这个区间.__request_resource()的代码之前我们研究了,这里不再赘述. find_resource()代码如下:
+
+static int find_resource(struct resource *root, struct resource *new,
+                             resource_size_t size, resource_size_t min,
+                             resource_size_t max, resource_size_t align,
+                             void (*alignf)(void *, struct resource *,
+                                               resource_size_t, resource_size_t),
+                             void *alignf_data)
+{
+         struct resource *this = root->child;
+ 
+         new->start = root->start;
+         /*
+		* Skip past an allocated resource that starts at 0, since the assignment
+		* of this->start - 1 to new->end below would cause an underflow.
+          */
+         if (this && this->start == 0) {
+                   new->start = this->end + 1;
+                   this = this->sibling;
+         }
+         for(;;) {
+                   if (this)
+                            new->end = this->start - 1;
+                   else
+                            new->end = root->end;
+                   if (new->start < min)
+                            new->start = min;
+                   if (new->end > max)
+                            new->end = max;
+                  new->start = ALIGN(new->start, align);
+                   if (alignf)
+                            alignf(alignf_data, new, size, align);
+                   if (new->start < new->end && new->end - new->start >= size - 1) {
+                            new->end = new->start + size - 1;
+                            return 0;
+                   }
+                   if (!this)
+                            break;
+                   new->start = this->end + 1;
+                   this = this->sibling;
+         }
+         return -EBUSY;
+}
+
+这个函数比较简单,就是判断父节点是否有足够长的空间区间.返回到pci_assign_resource()中,如果修正成功,就会调用pci_update_resource().因为pci设备的资源区间的起始地址改了,要将它更新到寄存器.这正是pci_update_resource()要处理的事情.函数比较简单.就不详细分析了,但这个函数中有个特别的处理,需要指出来.代码片段如下:
+
+void
+pci_update_resource(struct pci_dev *dev, struct resource *res, int resno)
+{
+         ……
+         ……
+         if (resno < 6) {
+                   reg = PCI_BASE_ADDRESS_0 + 4 * resno;
+         } else if (resno == PCI_ROM_RESOURCE) {
+                   if (!(res->flags & IORESOURCE_ROM_ENABLE))
+                            return;
+                   new |= PCI_ROM_ADDRESS_ENABLE;
+                   reg = dev->rom_base_reg;
+         } else {
+                   /* Hmm, non-standard resource. */
+        
+                   return;                /* kill uninitialised var warning */
+         }
+……
+……
+}
+
+从上面的处理可以看到,它只会处理前7个资源区间,对于8.9.10区间,是pci-pci bridge的中存放的关于pci bus中的资源信息.也就是说,这个函数只会处理pci device中的寄存器,不会处理pci bus.返回到pci_bus_assign_resources()中.剩余的代码片段如下:
+
+void __ref pci_bus_assign_resources(struct pci_bus *bus)
+{
+         ……
+         ……
+         list_for_each_entry(dev, &bus->devices, bus_list) {
+                   b = dev->subordinate;
+                   if (!b)
+                            continue;
+ 
+                   pci_bus_assign_resources(b);
+ 
+                   switch (dev->class >> 8) {
+                   case PCI_CLASS_BRIDGE_PCI:
+                            pci_setup_bridge(b);
+                            break;
+ 
+                   case PCI_CLASS_BRIDGE_CARDBUS:
+                            pci_setup_cardbus(b);
+                            break;
+ 
+                   default:
+                            printk(KERN_INFO "PCI: not setting up bridge %s "
+                                   "for bus %d\n", pci_name(dev), b->number);
+                            break;
+                   }
+         }
+}
+
+处理完pbus_assign_resources_sorted()之后,遍历总线下面的pci-pci bridge(dev->subordinate不为空).对每一条下层总线,都递归调用pci_bus_assign_resources().Switch后面的部份,是处理完下层总线,回到本层的处理了.忽略对cardbus的处理.看到了pci_setup_bridge().我们在前面已经分析到.对于修正过后的处理,只会更新pci device的寄存器信息,而不会更新pci bus中的寄存器. pci_setup_bridge()就是更新pci bus寄存器信息的.只是不管它之前是不是资源冲突的.所有的pci bus全部都会更新一下.该函数代码比较简单.就不做分析了.
+ 
+回到pci_assign_unassigned_resources()中.对每条根总线,我们还要经过pci_enable_bridges()的处理,这个函数是这一节分析的最后一个函数了.
+代码如下:
+void pci_enable_bridges(struct pci_bus *bus)
+{
+         struct pci_dev *dev;
+         int retval;
+ 
+         list_for_each_entry(dev, &bus->devices, bus_list) {
+                   if (dev->subordinate) {
+                            retval = pci_enable_device(dev);
+                            pci_set_master(dev);
+                            pci_enable_bridges(dev->subordinate);
+                   }
+         }
+}
+
+运行到这里,pci总线和设备都准备好了,现在就可以启用pci-pci bridge了.pci_enable_bridge()做的工作如下:
+1:启用所有pci-pci bridge的所有I/O和内存.
+2:启用pci-pci bridge的中断
+3:设置pci-pci bridge 的电源管理状态
+4:设置pci-pci bridge对总线的控制能力
+在这里要注意了,这个函数只是启用了pci-pci bridge的相关功能.__对于一般pci_dev.需要驱动程序在使用的时候启用它们__. 函数比较简单,内部就不加详细分析了.

@@ -1,0 +1,7 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-05T14:46:37+08:00
+
+====== Python Essential Reference 4th ======
+Created 星期二 05 七月 2011
+

@@ -1,0 +1,15 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-17T09:57:38+08:00
+
+====== Sonnet ======
+Created Thursday 17 November 2011
+http://en.wikipedia.org/wiki/Sonnet_%28KDE%29
+
+In KDE Software Compilation 4, Sonnet is a **multilingual spell check program**. Sonnet replaces kspell2 that was created for KDE3. The two main goals for Sonnet's development were a simpler API, wider language support and performance. Notable improvements in Sonnet over kspell2 are:
+
+* Automatic language detection, a language can be identified with as little as 20 characters of text. Even multiple languages in the same document can be detected and spell checked correctly
+* Better performance
+* Improvements in spell checking languages like Thai and Japanese
+* Simpler design, kspell2 consisted of 7 components and a complicated API. Sonnet is a single component and aims to provide a simpler API
+* The user can select a primary and backup dictionary, an example given was a doctor who frequently uses terms from a medical dictionary. Words that would not appear in a regular dictionary would be corrected by the backup dictionary that contains medical terms.

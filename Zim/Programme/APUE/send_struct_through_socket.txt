@@ -1,0 +1,109 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-04T23:55:02+08:00
+
+====== send struct through socket ======
+Created 星期六 04 六月 2011
+
+You can send it using the same send function without having another
+char buffer.
+since a is an object of your struct you need to give the address of
+it.
+i.e
+send(sd, (void*)&a, sizeof(a), 0); will resolve your issue.
+
+One thing you've to notice while dealing with structure variables.
+
+the size of the structure will be aligned according the pack size you
+are specifying. Normally the default alignment for the structure
+members will be 4 bytes in size.
+
+i.e if you declare
+
+struct MyStruct
+{
+int a;
+char buff[21]; //Oops I meant 20 letters for name and extra one
+byte for null character
+};
+
+You might be expecting a size 25 bytes for this structure but if you
+are giving alignment bytes 4, the size of the struct will be 28 bytes.
+(24 for buff and 4 for variable a)
+
+As per your code you will be sending some extra bytes because of the
+alignment and you've to make sure that, at the client side too, you
+are having same structure alignment. else you may face some unexpected
+behavior.
+
+You can specify the alignment using "#pragma pack" directive
+
+#pragma pack(1) // alignment will be 1 byte you will get the exact
+size of members
+#pragma pack(2) // alignment will be 2 byte members will be aligned to
+2 bytes
+#pragma pack(4) // alignment will be 4 byte members will be aligned to
+4 bytes
+#pragma pack(8) // alignment will be 8 byte members will be aligned to
+8 bytes
+
+Normally this will be set to the wordlength of the processsor. i.e 4
+bytes if you are using 32 bit architecture or 8 bytes if you are using
+64 bit architecture.
+and for strict size information we will use 1 byte alignment.
+
+You can send any bytes you want. It's up to your send and recv code to
+deal with what the bytes mean. Note that you need the '&'
+
+send(sd, (void*)&a, sizeof(a), 0);
+
+
+of course,structure object just a seriate memory buffer, the same as
+array of char or other, so you can using send() function to send the
+structure(memory)
+
+
+Don't forget only that different architectures has different
+endienless (little and big)
+So, when on the other side you receive a packet ()
+
+recv(sd, (void*) &a, sizeof(a), 0);
+
+the a.id maybe not 1(0x00000001), but (0x01000000)
+
+Good Day
+--
+Alexander Pazdnikov
+
+And if your struct has pointers to other types of data you must
+consider another way of sending your struct.
+
+For ex.
+
+struct tag_MyStruct {
+int a, b;
+fooStruct *pFoo;
+};
+
+You will need to traverse those pointers and write the data to a
+single stream of bytes to send() the struct.
+
+Sending raw struct's over the wire is a really bad idea, even between
+homogeneous systems.
+
+Depending on the compiler used, different padding may be used.
+
+So don't do that... for more advanced protocols ASN.1 is typically used,
+but for simpler applications, you can just define endian order of
+binary data, and pass each struct member along the wire.
+--------------
+Serialization
+
+It is often necessary to send or receive complex datastructures to or from another program that may run on a different architecture or may have been designed for different version of the datastructures in question. A typical example is a program that saves its state to a file on exit and then reads it back when started.
+
+The 'send' function will typically start by writing a magic identifier and version to the file or network socket and then proceed to write all the data members one by one (i.e. in serial). If variable length arrays are encountered (e.g. strings), it will either write a length followed by the data or it will write the data followed by a special terminator. The format is often XML or binary in which case the htonl() set of macros may come in handy.
+
+The 'receive' function will be nearly identical : It will read all the items on by one. Variable length arrays are either handled by reading the count followed by the data, or by reading the data until the special terminator is reached.
+
+Since these two functions often follow the same pattern as the declaration of the data(structures), it would be nice if they could all be generated from a common definition.
+

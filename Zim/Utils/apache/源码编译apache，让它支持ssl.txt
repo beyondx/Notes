@@ -1,0 +1,39 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-10T17:20:03+08:00
+
+====== 源码编译apache，让它支持ssl ======
+Created Wednesday 10 August 2011
+
+1、 了解系统有没有安装openssl，应该默认都安装了。
+2、 生成ssl证书
+openssl genrsa -des3 -out ssl.key 1024
+然后他会要求你输入这个key文件的密码。不推荐输入。因为以后要给apache使用。
+由于生成时候必须输入密码。你可以输入后 再删掉。
+mv ssl.key xxx.key
+openssl rsa -in xxx.key -out ssl.key
+rm xxx.key
+然后根据这个key文件生成证书请求文件
+openssl req -new -key ssl.key -out ssl.csr
+
+最后根据这2个文件生成crt证书文件
+openssl x509 -req -days 365 -in ssl.csr -signkey ssl.key -out ssl.crt
+
+最后用到的文件是key和crt文件。
+
+3、 tar zxvf httpd-2.2.10.tar.gz
+
+4、 cd httpd-2.2.10
+
+5、 ./configure –prefix=/usr/local/apache –enable-ssl && make && make install
+
+6、 vi /usr/local/apache/conf/extra/httpd-ssl.conf
+修改以下两项，将openssl生成的证书cp到相应路径（/usr/local/apache/conf/）
+SSLCertificateFile "/usr/local/apache/conf/ssl.crt"
+SSLCertificateKeyFile "/usr/local/apache/conf/ssl.key"
+
+7、vi /usr/local/apache/conf/httpd.conf
+去掉这行注释
+Include conf/extra/httpd-ssl.conf
+
+8、/usr/local/apache/bin/apachectl start

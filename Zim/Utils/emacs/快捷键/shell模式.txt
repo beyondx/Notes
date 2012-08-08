@@ -1,0 +1,30 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-05T17:14:03+08:00
+
+====== shell模式 ======
+Created Thursday 05 May 2011
+
+M-x shell 		打开一个*shell*缓冲区
+				注意：同时只能有一个名为*shell*的缓冲区运行，如果要运行多个shell则需要用
+				M-x rename-buffer 将当前shell缓冲区改名
+M-x eshell		打开内置的shell，可以在其中执行的命令包括
+M-! 				执行SHELL命令 (shell-command) 　　
+C-u M-! 			执行SHELL命令,命令输出插入光标位置,不打开新输出窗口 　　
+M-|(竖杠)         	提示用户输入shell命令，将区域作为输入，并显示结果
+C-u M-|			提示用户输入shell命令，将区域作为输入，用输出结果替换原来的区域
+
+C-c C-c 			相当于Bash下的C-c 　　
+C-c C-z 			相当于Bash下的C-z 　　
+C-c C-d 			相当于Bash下的C-d 　　
+M-p 			检索前一条命令，将其放在命令提示符处 　　
+M-n 			检索下一条命令 　　
+
+C-c C-o 			删除最后一条命令产生的输出 ，例如cat输出一文件的内容将以前的命令输出覆盖了　　
+C-c C-r 			屏幕滚动到最后一条命令输出的开头 　　
+C-c C-e 			屏幕滚动到最后一套命令输出的结尾 　
+　
+C-c C-p 			移动光标到前一个输出组 　　
+C-c C-n 			移动光标到后一个输出组 
+	输出组由一条命令和他的执行输出内容构成
+

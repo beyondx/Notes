@@ -1,0 +1,25 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-25T19:49:33+08:00
+
+====== IBM POWER ======
+Created Friday 25 November 2011
+
+http://baike.baidu.com/view/66226.htm
+
+**概述**
+　　POWER是Performance Optimization With Enhanced RISC的缩写，它指
+　　1. 一种由IBM公司设计开发的一种基于RISC架构的__指令集体系构架__（ISA)，被称为POWER ISA。
+　　2. 是实现了POWER ISA的处理器系列的名称。POWER系列处理器在不少IBM服务器、超级计算机、小型计算机及工作站中，广泛作为主CPU使用。而PowerPC架构也是源自POWER架构，并应用在苹果的麦金塔计算机及部份IBM的工作站上。
+
+**POWER处理器历史**
+　　POWER1。第一代的POWER处理器，诞生于1990年2月，随着IBM的RS/6000系列计算机系统发布。
+　　POWER2。于1993年11月发布， 并在当时成为性能最高的处理器。
+　　POWER3。于1998年发布。POWER3以及随后的POWER系列处理器均全部实施了**64-bit** PowerPC架构，并都不再支持更早之前的旧POWER指令集架构（ISA)，包括PowerPC指令集架构或任何POWER2所追加延伸的指令，如lfq或stfq等，都不再具备与支持。
+　　POWER4。于2001年发布。POWER4是第一款频率超过1GHz的POWER处理器。POWER4实现了POWER ISA v.2.00。.
+　　POWER5。于2004年发布。POWER5是一款**双核**处理器，并在逻辑上实现了**4核心**运算。
+　　POWER6。于2007年5月发布。POWER6采用了65纳米工艺设计。摒弃了乱序运算单元，而采用顺序运算的流水线设计。其最高运行频率达到了恐怖的5GHz。对应POWER ISA v.2.03。
+　　POWER7。于2010年2月发布。POWER7采用了45纳米的SOI工艺设计。运行频率介于3.0 GHz到4.25 GHz之间。每个处理器4、6或者8核心，且每核心可以采用4路SMT线程。且由于芯片同时集成了SRAM和DRAM工艺，L3缓存最高可达32M多。对应POWER ISA v.2.06。
+　　POWER8。IBM的下一代POWER处理器。
+其它
+　　IBM通过Power.org网站，向其它开发者及制造商推广POWER架构及其它衍生产品。

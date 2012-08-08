@@ -1,0 +1,78 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-27T21:10:43+08:00
+
+====== 再谈select, iocp, epoll,kqueue及各种IO复用机制 ======
+Created Monday 27 February 2012
+
+http://blog.csdn.net/shallwake/article/details/5265287
+
+我也是菜鸟，学习本身就是一个不断追求真理的过程，希望能谅解：）
+
+首先，介绍几种常见的I/O模型及其区别，如下：
+
+* blocking I/O
+* nonblocking I/O
+* I/O multiplexing (select and poll)
+* __signal driven I/O__ (SIGIO)
+* __asynchronous I/O__ (the POSIX aio_functions)
+
+===== blocking I/O =====
+这个不用多解释吧，阻塞套接字。下图是它调用过程的图示：
+{{./1.jpg}}
+重点解释下上图，下面例子都会讲到。首先application调用 recvfrom()转入kernel，注意kernel有2个过程，wait for data和copy data from kernel to user。直到最后copy complete后，recvfrom()才返回。此过程Application一直是阻塞的。
+
+===== nonblocking I/O： =====
+与blocking I/O对立的，非阻塞套接字，调用过程图如下：
+{{./2.jpg}}
+可以看见，__如果直接操作它，那就是个轮询__, 直到内核缓冲区有数据。
+
+===== I/O multiplexing (select and poll) =====
+最常见的I/O复用模型，select。
+{{./3.jpg}}
+select先阻塞，__有活动套接字才返回__。与blocking I/O相比，select会有两次系统调用，但是select能处理__多个套接字__。
+
+===== signal driven I/O (SIGIO) =====
+只有UNIX系统支持，感兴趣的课查阅相关资料
+{{./4.jpg}}
+与I/O multiplexing (select and poll)相比，它的优势是，__免去了select的阻塞与轮询__，当有活跃套接字时，由注册的handler处理。
+
+===== asynchronous I/O (the POSIX aio_functions) =====
+很少有*nix系统支持，__windows__的IOCP则是此模型
+{{./5.jpg}}
+__完全异步的I/O复用机制__，因为纵观上面其它四种模型，至少都会在由kernel copy data to appliction时阻塞。而该模型是__当copy完成后才通知application__，可见是纯异步的。好像只有windows的完成端口是这个模型，效率也很出色。
+
+===== 下面是以上五种模型的比较 =====
+{{./6.jpg}}
+可以看出，越往后，阻塞越少，理论上效率也是最优。
+
+=====================分割线==================================
+
+5种模型的比较比较清晰了，剩下的就是把select,epoll,iocp,kqueue按号入座那就OK了。
+
+select和iocp分别对应第3种与第5种模型，那么epoll与kqueue呢？其实也__与select属于同一种模型，只是更高级一些__，可以看作有了第4种模型的某些特性，如__callback机制__。
+
+==== 那么，为什么epoll,kqueue比select高级？ ====
+
+答案是，__他们无轮询，因为他们用callback取代了__。想想看，当套接字比较多的时候，每次select()都要通过__遍历__FD_SETSIZE个Socket来完成调度,不管哪个Socket是活跃的,都遍历一遍。这会浪费很多CPU时间。如果能**给套接字注册某个回调函数，当他们活跃时，自动完成相关操作，那就避免了轮询**，这正是epoll与kqueue做的。
+
+==== windows or *nix （IOCP or kqueue/epoll）？ ====
+
+诚然，Windows的IOCP非常出色，目前很少有支持asynchronous I/O的系统，但是由于其系统本身的局限性，大型服务器还是在UNIX下。而且正如上面所述，kqueue/epoll 与 IOCP相比，就是__多了一层从内核copy数据到应用层的阻塞__，从而不能算作asynchronous I/O类。但是，这层小小的阻塞无足轻重，kqueue与epoll已经做得很优秀了。
+
+==== 提供一致的接口，IO Design Patterns ====
+
+实际上，不管是哪种模型，都可以**抽象一层出来，提供一致的接口**，广为人知的有ACE,__Libevent__这些，他们都是跨平台的，而且他们**自动选择最优的I/O复用机制**，用户只需调用接口即可。说到这里又得说说2个设计模式，__Reactor and Proactor__。有一篇经典文章http://www.artima.com/articles/io_design_patterns.html值得阅读，Libevent是Reactor模型，ACE提供Proactor模型。实际都是对各种I/O复用机制的封装。
+
+===== Java nio包是什么I/O机制？ =====
+
+我曾天真的认为java nio封装的是IOCP。。现在可以确定，目前的__java本质是select()模型__，可以检查/jre/bin/nio.dll得知。至于java服务器为什么效率还不错。。我也不得而知，可能是设计得比较好吧。。-_-。
+
+=====================分割线==================================
+
+===== 总结一些重点： =====
+
+* 只有IOCP是asynchronous I/O，其他机制或多或少都会有一点阻塞。
+* select低效是因为每次它都需要轮询。但低效也是相对的，视情况而定，也可通过良好的设计改善
+* epoll, kqueue是Reacor模式，IOCP是Proactor模式。
+* java nio包是select模型。。 

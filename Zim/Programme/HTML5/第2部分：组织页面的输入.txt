@@ -1,0 +1,292 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-11T15:30:10+08:00
+
+====== 第2部分：组织页面的输入 ======
+Created Sunday 11 March 2012
+http://www.html5china.com/course/20120227_3511.html
+
+企业级机构的__管理、数据分析、营销策略__以及其他功能都很重要，然而，如果没有合格的数据窗口可提供给你的潜在客户使用的话——或是激发起用户的使用兴趣的话——那么促使站点访问者转化所必需的最初过程就是缺失的。**一种积极的、鼓励交互的、用户友好的体验**是机构的主要目标，而这种交互是需要你的努力来达成的。
+
+__交互的核心是站点的表单__，这些表单方便了与用户的互动交流，因此，最初引发网站构建的目标可通过转化站点访问者来推进。表单是活跃网站所有者或是代理商和网站用户之间的交互的核心因素，正因为如此，它们在设计和开发网站过程中就显得极为重要。
+
+核心的核心部分是__控件__——单选按钮、复选框、文本框、数字的微调控制器等等。对于与站点进行对话的网站用户来说，这些元素都是必不可少的。换句话说，没有__充分的功能控制__（在“机械”的控件操作和控件适合于给定任务两方面都是），就不可能进行对话，其结果就是，没有潜在的转化。
+
+对转化过程的关系做仔细的考虑是很有必要的，这其中包括了站点访问者和运行系统之间的交互的各个方面，**验证的速度、输入、认知、导航、页面的加载以及页面组装的方式**，所有的这些方面都对转化过程产生影响。随着HTML5规范的__多媒体特性__和所提供的__扩充的种种表单控件选项__一起到来的是验证的改进和增强，这两方面都在HTML5的把站点访问者转化成实际的站点用户的能力中做出了贡献。
+
+对于验证以及完善的基于web的计算——一个关键的安全资产，对于这两方面来说，HTML5是一个异常有力的工具。在设计和开发旨在招徕客户的网站时，其显得越发的重要。因此，它的使用对于维护一个好的转化率来说是必不可少的。如果你不能描绘出前景，那说明你有困惑；但如果你不能转化你所描绘的前景的话，那就得要求紧急迫降了。
+
+不过没关系，这里就能够提供帮助。HTML5的类型，比如说email和telephone，提供了更广泛的通信选项，其与HTML5的语义基础所赋予的结构化清晰度相结合，使得不会再有什么壁垒存在于你和其他一切的畅通对话之间。
+
+鉴于我们的__以网络为中心的世界__、随机性日益增强的全球经济的忙碌步伐、云计算的快步发展、移动技术使用的呈指数增长，以及跨平台的通信解决方案——既指商业的也指社会的——很明显，我们正站在一个__基于web的计算和通信__的美丽新世界的门槛上。这一世界是通信的许多元素与IT之间这种不断进化的联姻的函数和导数，同时也是一个高度竞争的全球社会的需要。
+
+===== 设计表单 =====
+在HTML5中，表单已经做了重大的修整，一些以前需要JavaScript编码的任务现在已经可以在不需要编码的情况下就很容易地完成。本文中的表单例子分析了HTML5的表单创新套件的用法，当然，这一过程的第一步是__规划表单__。
+
+你要开发的表单例子的布局如图1所示，你要开发表单页面的三个区域：**Header区、Form区和Footer区**。Header区包含了封装在< header>< /header>标签中的页面标题和副标题。在页面的底部，Footer区包含了放在< footer>< /footer>标签内的版权信息。我已经在这一文章系列的第一部分所提供的例子中讨论了Header区和Footer区的构造，如果你对< header>和< footer>标签不太熟悉的话，请参阅该篇文章。
+{{./1.gif}}
+图1. 表单页面的布局
+
+对这一表单的讨论重点放在四个标签上：
+
+1. < form>
+2. < fieldset>
+3. < label>
+4. < input>
+
+在HTML5中，两个新的属性被加入到了< form>标签中：__autocomplete和novalidate__。autocomplete属性启用了出现在诸如Google一类的站点中的**下拉建议列表**，novalidate属性**关掉表单的校验**，这在测试过程中是很有用的。< fieldset>标签有三个新的属性：disable、name和form。disable属性禁用< fieldset>，name属性设置< fieldset>的名称，form属性的值是是< fieldset>所属的一个或多个表单的ID。在HTML5中，< fieldset>可处在其所属的一个或多个表单的外部，当< fieldset>被置于表单的外部时，你必须要设置该< fieldset>标签的form属性，这样< fieldset>就可以正确地与一个或多个表单关联起来。
+
+定义**输入元素的类别**的< label>标签有一个新的属性：form，form属性的值是< label>所属的一个或多个表单的ID。< label>标签也可放置在表单的外部，因此这里的form属性也是用来把< label>标签和适当的表单关联在一起的。
+
+< input>标签有几个新的类型，以及一些新的属性，这些都**增强了表单的可用性**。HTML5引入了几个新的input类型，__目的是组织和分类数据__，复制出HTML5的整个语义路径。__形式应该服从内容__这句古训很适合于描述HTML5的表单功能。
+
+在HTML5中，表单的< input>域可以处在< form>标签的外部，form属性标识了输入域所属的一个或多个表单，其还可以通过引用form的ID来标识其所属的表单。表1给出了新的< input>类型。
+
+表1. 新的< input>类型
+
+color date datetime datetime-local month week time email number range search tel url
+
+表2. 新的< input>属性
+
+autocomplete autofocus  form formaction formenctype formmethod formnovalidate 　formtarget height 　max min multiple pattern 　placeholder required step
+
+在网页的创建过程中，你会用到这些类型和属性的大部分。
+
+===== 创建表单 =====
+图2所示的是Classical Music Place的网页，一个提供几个作曲家的作品的下载站点，它还允许古典音乐爱好者上传他们的古典作品录音，这就是你要创建的页面。
+{{./2.jpg}}
+图2. Classical Music Place的表单
+
+表单的结构从< form>标签开始，在该例子中，你用到了新的autocomplete属性，如下所示：
+
+< form id="orderForm" autocomplete="on" action="javascript:alertValues();" __method="get"__>
+
+这一< form>标签中还包含了一个JavaScript式的action，我们会在稍后的内容中谈到这一点。
+
+< form>标签包含了四个< fieldset>标签，其通过图2中的灰色区域很直观地划分了出来：Customer Info、Favorite Composer、Composers和Upload file(s)（译者注：原文为Name, Telephone, Email address, and date，疑有误）。         __< fieldset>标签分组了表单中的相似内容__，让我们看到的是各自分隔开的每个< fieldset>。
+
+第一个< fieldset>标签
+
+第一个< fieldset>标签包含了客户信息（参见图3），它有一个Name域，一个Telephone域，一个Email address域和一个Date域。**Name域有一个autofocus属性**，其可让你在无需用鼠标点击该域的情况下就可以开始输入文本。
+{{./3.jpg}}
+图3. 客户信息域
+
+第一个< fieldset>首先包含了一个__< legend>__，一个< label>和一个< input>标签，如清单1所示。Name域的类型是text，其有三个新的< input>属性：placeholder、autofocus和required。
+
+清单1. Name域
+
+< fieldset>
+< legend> Customer Info < /legend>
+< p>
+< label>Name:
+< input id="name" name="name" **type="text"** placeholder="Enter your name" 
+autofocus required size="50">
+< /label>
+< /p>
+
+autofocus确保在页面打开时，__输入焦点落在该域上__。这是一个促成页面只要一加载就获得焦点的功能，其允许用户立刻访问表单。placeholder属性把双引号中的文字以一种柔和的灰色文本的方式显示在域中，placeholder属性应该告诉用户该域要包含的内容，以及当该域为空时所显示的内容。然而，因为Name域还设置了autofocus，所以在进入页面时，你实际上并不能看到这一文本内容。需要注意的是，在图3中，Name域不会显示占位内容，而是有一个黄色的高亮外框。如果你在不输入数据的情况下移到另一个域上的话，占位内容就会显示出来。当autofocus属性和placeholder属性一起使用时，因为该域获得激活焦点的原因，占位内容就会隐而不见。
+
+required属性方便了作为提交表单的先决条件的域的__强制性填充__。对于text、search、URL、tel、email、password、日期选择器、number、复选框、单选按钮和file等类型来说，该属性都是有效的。
+
+Telephone域的类型是tel，其用到属性required、placeholder、size和pattern，如清单2所示。tel是一个文本域，目的是用来存放电话号码。在这一例子中，__电话有着一个必须严格遵守的模式限制__，因为除非是你使用了正确的字符模式，否则系统是不会让你提交的。电话的占位符内容存放了你的输入必须与之相匹配的模式。
+
+__模式（pattern）__模拟了传统的JavaScript正则表达式（regex）的功能，输入的内容必须要与所定义的正则表达式的模式结构相匹配才能通过校验。pattern属性可用在text、search、url、tel、email和password等类型上。
+{{./3.jpg}}
+清单2. Telephone域
+
+< p>
+< label>Telephone:
+< input id="tel" name="telephone" type="tel" placeholder="Pattern: 1-234-567-8910" 
+required size="50" pattern="([0-9]{1}(-[0-9]{3})(-[0-9]{3})(-[0-9]{4}))">
+< /label>
+< /p>
+
+Email address（邮件地址）域的类型是email，如清单3所示。__邮件地址是自动进行验证的__，无需使用模式：这一验证是HTML5的组成部分。如果邮件地址没有以正确的方式给出的话，表单就不能提交。
+{{./3.jpg}}
+清单3. Email address域
+
+< p>
+< label>Email address:
+< input id="email" name="email" type="email" placeholder="Enter your email address" 
+required size="50">
+< /label>
+< /p>
+
+这一< fieldset>的最后一项录入是Date域。date类型会在Opera浏览器中提供一个用于日期选择的__日历选择器__，但在Google Chrome中则是创建一个微调器，如图3所示。图4显示了Opera使用Date域的选择器作为显示的网页渲染。可以注意到，在Opera中，域设置框的边角不是圆形的，即使是使用了那种在Chrome中会使边角变圆的的式样表也是如此。
+{{./4.jpg}}
+图4. Date域
+
+清单4给出了用来创建日期选择器的代码。
+
+清单4. Date域
+
+< p>
+< label>Date: 
+< input type="date">
+< /label>
+< /p>
+< /fieldset>
+
+你可以生成任何日期的一个单子，你甚至可以把日期分解到小时一级。下面这些是你可以创建的日期类型：
+
+1. 日期：选择日、月和年
+2. 月份：选择月和年
+3. 星期：选择星期和年
+4. 时间：选择时间（小时和分钟）
+5. 日期时间：选择时间、日、月和年（UTC时间）
+6. 当地日期时间：选择时间、日、月和年（当地时间）
+
+===== 第二个< fieldset>标签 =====
+第二个< fieldset>标签包含了一个用到了list属性的< input>标签和一个< datalist>标签。list属性指明了输入域的< datalist>, < datalist>标签提供了一个输入域选项列表。list属性可用在这些< input>类型上：text、search、url、tel、email、日期选择器、number、range和color。
+
+< datalist>以下拉列表的方式做显示，如图5所示。这一截图是从Opera中获取的，在Chrome中，该列表只是显示成一个简单的文本框，没有把列表呈现给用户。
+{{./5.jpg}}
+图5. Favorites域
+
+清单5提供了创建Favorite Composer部分的域设置。
+
+清单5. Favorite Composer域
+
+< fieldset>
+< legend> Favorite Composer < /legend>
+< p>
+< label>
+< input type="text" name="favorites" l**ist="composers"**>
+**< datalist** id="composers">
+< option value="Bach">
+< option value="Beethoven">
+< option value="Brahms">
+< option value="Chopin">
+< option value="Mendelssohn">
+< /datalist>
+< /label>
+< /p>
+< /fieldset>
+
+===== 第三个< fieldset>标签 =====
+第三个< fieldset>标签显示了作曲家的一个列表，后面跟随着一个数字域，该域指明了每位列出的作曲家都提供了多少作品。图6显示该部分内容。
+{{./6.jpg}}
+图6. Composers域
+
+例如，Bach有五个作品，Beethoven有十个作品。清单6给出了每个作曲家作品个数的最大值，在你提交表单时，数字域不会接受超过最大值的数值。在提交时，该域通过提示你改正输入来响应不正确的、超出范围的值，这样它就能够遵照该域的可接受数值的限制。
+
+number类型创建了一个输入的微调域，其用到了min、max和step属性。默认的step值是1。min、max和step属性可用来做number、range和日期选择器的输入限制。max属性决定输入域所允许的最大值，min属性决定输入域所允许的最小值，step属性决定有效的递增值。
+
+清单6. Composer域
+
+< fieldset>
+< legend>Composers< /legend>
+< p>
+< label>
+Bach: < input name="form_number" id="form_number"__ type="number"__ min="1" max="5" >
+< /label>
+< /p>
+< p>
+< label>
+Beethoven: < input name="form_number" id="form_number" type="number" 
+min="1" max="10" >
+< /label>
+< /p>
+< p>
+< label>
+Brahms: < input name="form_number" id="form_number" type="number" min="1" max="7" >
+< /label>
+< /p>
+< p>
+< label>
+Chopin: < input name="form_number" id="form_number" type="number" min="1" max="10" >
+< /label>
+< /p>
+< p>
+< label>
+Mendelssohn: < input name="form_number" id="form_number" type="number" 
+min="1" max="4">
+< /label>
+< /p>
+
+< /fieldset>
+
+===== 第四个< fieldset>标签 =====
+第四个< fieldset>标签包含了__file类型__的< input>并用到了__属性multiple__，如图7所示。multiple属性指明了输入域可以从**数据列表或是文件列表**中选择多个值，用户可以选择多个上传的文件。
+{{./7.jpg}}
+图7. Upload域
+
+file类型和multiple属性的代码如清单7所示。
+
+清单7. Upload域
+
+< fieldset>
+< legend> Upload file(s) < /legend>
+< p>Upload one of your orchestra's file(s) for inclusion in our library< /p>
+< p>< label> 
+< input type="file" **multiple="multiple"** /> 
+< /label>
+< /p>
+< /fieldset>
+
+Submit按钮用到了height和width属性，如清单8所示。你使用这些属性来设置image输入类型的高和宽。在设置这些属性时，页面为图像预留的空间区域由这一预设的宽度和高度尺寸所强制执行的约束来确定，这种做法通过增强页面渲染的功效来使页面的加载变得更顺利。
+
+清单8. Submit按钮
+
+< input __type="image"__ src="submitbutton.png" kesrc="submitbutton.png" alt="Submit" width="100" height="45" />
+< /form>
+
+===== JavaScript和CSS3 =====
+__没CSS3的话，HTML5的渲染就无法完成__。而且，尽管HTML5已经排除了对一些JavaScript编码的需要，但JavaScript依然是一个很有用的工具。下面是用来创建例子表单的JavaScript代码和CSS3文件。
+
+JavaScript代码是一个返回三个必输入域的警告框，如清单9所示。尽管这里用到的JavaScript代码只有一行，但它被放置在一个单独的JavaScript文件中，遵循使用JavaScript的最佳做法。
+
+清单9. JavaScript代码的例子
+
+function alertValues()
+{
+alert("Customer information: " + "\n " + fullname.value + "\n " 
++ tel.value + "\n " + email.value); 
+}
+
+清单10展示了用来格式化例子表单的CSS3代码，这里不包括< header>和< footer>的信息。
+
+清单10. 例子表单的CSS3
+
+form {
+width: 550px;
+margin: 0 0 0 0 ;
+padding: 50px 60px;
+background-color: #2d2d2d;
+border-radius: 20px;
+}
+
+fieldset {
+padding: 0 20px 20px;
+margin: 0 0 30px ;
+border: 2px solid #ffffff;
+background: #B8B8B8 ;
+border-radius: 10px;
+}
+
+legend {
+color: #ffffff;
+background: #990033;
+font-size: 0.9em;
+font-weight: bold;
+text-align: left;
+padding: 5px;
+margin: 0;
+width: 10em;
+border: 2px solid #660033;
+border-radius: 5px;
+}
+
+label {
+display: block;
+float: left;
+clear: left;
+text-align: left;
+width: 100%;
+padding: .4em 0 0 0;
+margin: .15em 0 0 0;
+}
+
+结论
+
+切实的个人和机构的成功的关键是__沟通__。表单控件和一般网页的构造指南对这一过程来说很重要。HTML5提供了一盒子适合于这一任务的功能非常强大的工具。那些有为将来做准备的人——现在已经到时候了——将会受益，而那些没有做准备的人则将会受到这个世界一网化的（one-Web-world）、以网络为中心的全球化社会的步伐和需求的严重冲击。

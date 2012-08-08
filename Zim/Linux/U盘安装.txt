@@ -1,0 +1,45 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-19T11:21:49+08:00
+
+====== U盘安装 ======
+Created Monday 19 December 2011
+基本上有两种方法，前者会将U盘上的数据清除，而后者无损U盘上的数据：
+
+**方法1：**
+#dd if=<path to iso file>  of=/dev/sdx  bs=4M
+注意/dev/sdx为U盘设备的名称，不能用sdxn的分区形式，这是一个常见的错误(因为，需要将U盘的MBR里写入引导代码)。bs=4M是为了加快复制的速度。
+
+**方法2：**
+1)挂载U盘
+#mount /dev/sdb1 /mnt
+2)将ISO文件放到U盘根目录下
+#cp <path to iso file>  /mnt
+3)下载ISO文件对应版本的vmlinux和initrd
+   - 对于ubuntu而言，如果使用硬盘安装(即读取文件系统中的ISO文件)，应该下载源服务器上hd-media对应下的文件，如：
+    /ubuntu/dists/**oneiric**/main/installer-i386/current/images/__hd-media__/
+    注意：hd-media的版本应该与ISO的版本一致，如安装ubuntu11.10(oneiric) 时(不管是Desktop、alternative还是server版)
+     应该下载的是oneiric对应的hd-media
+   - 对于ubuntu而言，如果使用网络安装，则应该下载netboot目录下的mini.iso文件，然后从中提取vmlinux和initrd文件。
+       /ubuntu/dists/oneiric/main/installer-i386/current/images/__netboot__/
+  - 对于Redhat/CenOS/Fedora而言，应该下载源服务器上isolinux目录下的启动引导文件，如：
+    /fedora/linux/releases/**16**/Fedora/i386/os/__isolinux__/
+    /centos/**6.1**/os/i386/__isolinux__/
+4)将下载的vmlinux和initrd复制到U盘根目录中：
+#cp vmlinux initrd  /mnt
+5)在U盘上安装GRUB(首先确保，主机上安装有grub套件)
+#grub-install **--root-directory** /mnt  [[/dev/sdb]]
+grub会在/mnt下建立boot目录和相关的文件，注意最后面的参数是sdb而非sdbx，即指定的是优盘设备而非其分区(因为，我们要将grub bootloader安装到U盘的MBR中，而非其分区的boot sector中)。
+6)重启后，会进入GRUB的命令行界面，这是由于grub没有找到配置文件。我们要手动指定引导参数。
+#root (hd0, 2)    #具体是那个硬盘号和分区号，我们可以用TAB猜测。
+#kernel /vmlinuz
+#initrd /initrd
+7)安装界面中，**选择ISO文件即可**。(ubuntu会自动扫描各分区**根目录**下是否有ISO文件，fedora需手动指定本地安装)
+
+PS: 
+1.网上有很多教程是针对syslinux或isolinux引导程序的，它们完全可以用grub替换。
+2.直接将ISO解压，然后用其中的vmlinz和initrd引导不一定能成功(因为它们的文件中一般含有硬编码为光盘设备的代码)。
+3.最后的方法是下载提供的特殊版本的vmlinuz和initrd文件，它们一般支持读取硬盘中的ISO文件或网络安装。
+
+
+

@@ -1,0 +1,886 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-20T22:10:34+08:00
+
+====== 网页命名规则 ======
+Created Thursday 20 October 2011
+
+http://www.cnblogs.com/dingdingo/archive/2011/10/17/2215144.html
+
+===== CSS命名规则 =====
+
+　　头：header
+
+　　内容：content/containe
+
+　　尾：footer
+
+　　导航：nav
+
+　　侧栏：sidebar
+
+　　栏目：column
+
+　　页面外围控制整体布局宽度：wrapper
+
+　　左右中：left right center
+
+　　登录条：loginbar
+
+　　标志：logo
+
+　　广告：banner
+
+　　页面主体：main
+
+　　热点：hot
+
+　　新闻：news
+
+　　下载：download
+
+　　子导航：subnav
+
+　　菜单：menu
+
+　　子菜单：submenu
+
+　　搜索：search
+
+　　友情链接：friendlink
+
+　　页脚：footer
+
+　　版权：copyright
+
+　　滚动：scroll
+
+　　内容：content
+
+　　标签页：tab
+
+　　文章列表：list
+
+　　提示信息：msg
+
+　　小技巧：tips
+
+　　栏目标题：title
+
+　　加入：joinus
+
+　　指南：guild
+
+　　服务：service
+
+　　注册：regsiter
+
+　　状态：status
+
+　　投票：vote
+
+　　合作伙伴：partner
+
+===== XHTML文件中id的命名 =====
+
+(1)页面结构
+
+　　容器: container
+
+　　页头：header
+
+　　内容：content/container
+
+　　页面主体：main
+
+　　页尾：footer
+
+　　导航：nav
+
+　　侧栏：sidebar
+
+　　栏目：column
+
+　　页面外围控制整体布局宽度：wrapper
+
+　　左右中：left right center
+
+(2)导航
+
+　　导航：nav
+
+　　主导航：mainbav
+
+　　子导航：subnav
+
+　　顶导航：topnav
+
+　　边导航：sidebar
+
+　　左导航：leftsidebar
+
+　　右导航：rightsidebar
+
+　　菜单：menu
+
+　　子菜单：submenu
+
+　　标题: title
+
+　　摘要: summary
+
+(3)功能
+
+　　标志：logo
+
+　　广告：banner
+
+　　登陆：login
+
+　　登录条：loginbar
+
+　　注册：regsiter
+
+　　搜索：search
+
+　　功能区：shop
+
+　　标题：title
+
+　　加入：joinus
+
+　　状态：status
+
+　　按钮：btn
+
+　　滚动：scroll
+
+　　标签页：tab
+
+　　文章列表：list
+
+　　提示信息：msg
+
+　　当前的: current
+
+　　小技巧：tips
+
+　　图标: icon
+
+　　注释：note
+
+　　指南：guild
+
+　　服务：service
+
+　　热点：hot
+
+　　新闻：news
+
+　　下载：download
+
+　　投票：vote
+
+　　合作伙伴：partner
+
+　　友情链接：link
+
+　　版权：copyright
+
+=====  CSS+DIV的命名规则： =====
+
+　　登录条:loginBar
+　　标志:logo
+　　侧栏:sideBar
+　　广告:banner
+　　导航:nav
+　　子导航:subNav
+　　菜单:menu
+　　子菜单:subMenu
+　　搜索:search
+　　滚动:scroll
+　　页面主体:main
+　　内容:content
+　　标签页:tab
+　　文章列表:list
+　　提示信息:msg
+　　小技巧:tips
+　　栏目标题:title
+　　友情链接:friendLink
+　　页脚:footer
+　　加入:joinus
+　　指南:guild
+　　服务:service
+　　热点:hot
+　　新闻:news
+　　下载:download
+　　注册:regsiter
+　　状态:status
+　　按钮:btn
+　　投票:vote
+　　合作伙伴:partner
+　　版权:copyRight
+
+===== 1.CSSID的命名 =====
+　　外套:wrap
+　　主导航:mainNav
+　　子导航:subnav
+　　页脚:footer
+　　整个页面:content
+　　页眉:header
+　　页脚:footer
+　　商标:label
+　　标题:title
+　　主导航:mainNav(globalNav)
+　　顶导航:topnav
+　　边导航:sidebar
+　　左导航:leftsideBar
+　　右导航:rightsideBar
+　　旗志:logo
+　　标语:banner
+　　菜单内容1:menu1Content
+　　菜单容量:menuContainer
+　　子菜单:submenu
+　　边导航图标:sidebarIcon
+　　注释:note
+　　面包屑:breadCrumb(即页面所处位置导航提示)
+　　容器:container
+　　内容:content
+　　搜索:search
+　　登陆:login
+　　功能区:shop(如购物车，收银台)
+　　当前的current
+
+===== 2.样式文件命名 =====
+　　主要的:master.css
+　　布局版面:layout.css
+　　专栏:columns.css
+　　文字:font.css
+　　打印样式:print.css
+　　主题:themes.css
+
+说明：均为class，需要扩展，则在当前命名内以“_“(下划线)后缀自定名称。
+我习惯称列表页为list，新闻列表则为newslist，图片列表为piclist，
+内容页为view，
+/**/
+整体大框架：#wrapper
+大框架内：#inwrapper
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+顶部及banner：.top
+顶部及banner内：.intop
+Logo：.logo
+Banner：.banner
+导航：.menu
+导航内：.inmenu
+        .Menuul
+        .Menuul li
+        .Menuul li a
+下拉菜单：.inmenu_xiala
+          .Inmenu_xialaul
+          .Inmenu_xialaul li
+          .Inmenu_xialaul li a
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+主体内容：.mainWrapper
+主体内容内：.inmainwrapper
+左侧拦：.sideleft
+左侧内：.insideleft
+右侧栏：.sideright
+右侧内：.insideright
+中间：.sidecenter
+中间内：.insidecenter
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+底部：.foot
+底部内：.infoot
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*其他命名*/
+搜索：.search
+搜索内：.insearch
+搜索条：.searchselect
+搜索按钮：.serachbuttom
+输入文本框：.input
+.select
+
+/*表格样式*/
+表格整体框架：.listbox
+表格的宽度：.listbox-table
+表格头部文字样式：.listbox-header
+表格正文文字样式：.listbox-entry
+/*通用型*/
+通用：.GM/*这个有点郁闷,英文太差...*/
+通用内：.INGM
+通用左浮动：.GMfl(GM FLOAT LEFT)
+通用右浮动：.GMfr(GM FLOAT RIGHT)
+/*通用图片样式*/
+通用图片样式：.img
+/*清除浮动*/
+清除所有浮动：.clear
+清除左侧浮动：.clearleft
+清除右侧浮动：.clearright
+/*文字样式*/
+文字：.font
+/*新闻列表*/
+新闻列表：.fontnews
+/*View页字体总样式*/
+VIEW页字体：.fontview
+
+
+商　标：　　label
+标　题：　　title
+主导航：　　mainbav（globalnav）
+顶导航：　　topnav
+边导航：　　sidebar
+左导航：　　leftsidebar
+右导航：　　rightsidebar
+旗　志：　　logo
+标　语：　　banner
+菜单内容1： menu1 content
+菜单容量：　menu container
+子菜单：　　submenu
+边导航图标：sidebarIcon
+注释：　　　note
+面包屑：　　breadcrumb(即页面所处位置导航提示）
+容器：　　　container
+内容：　　　content
+搜索：　　　search
+登陆：　　　Login
+功能区：　　shop(如购物车，收银台)
+当前的　　　current
+报头：　　　masthead
+摘要, 概要　 summary或general
+左边的浮动照图片 photoleft
+右边的浮动图片 photoright
+标题　　　title
+条目底端　　　 entrybottom
+更多　　　 extended或.more
+容器背景 containerbg
+服务　　 service
+服务链接　　 servicelink
+线　　 line
+文本　　 text
+右边　　 rightside
+版权　　 copyright
+新闻　　 news
+书皮　　 wrapper
+介绍　　　　　　intro-part1
+专栏　　 column
+路径　　 pathways
+片断　　 section
+模块　　 module
+上导航　　 subnav
+2.另外在编辑样式表时可用的注释可这样写：
+
+<-- Footer -->
+内容区
+<-- End Footer -->
+
+3.样式文件命名
+
+主要的 master.css
+布局，版面 layout.css
+专栏 columns.css
+文字 font.css
+打印样式 print.css
+主题 themes.css
+
+4.样式表中的注示
+
+实例一
+/* GLOBAL --------------------------- */
+/* LINKS --------------------------- */
+/* FORMS --------------------------- */
+/* IDS --------------------------- */
+/* HEADER --------------------------- */
+/* COLUMN 1 --------------------------- */
+/* COLUMN 2 --------------------------- */
+/* CLASSES --------------------------- */
+
+实例二
+
+HTML
+
+实例三（网易）
+
+CSS
+#UrsLogin
+#LogoNav
+#Column
+#Content1
+#bNav
+#Copyright
+#UrsLogin
+#LogoNav
+#SearchArea
+#ChannelArea
+#HotNews
+#NewsCenter
+.keyword
+#MallArea
+#city
+#aboutus
+
+……………………
+常见命名
+
+包含 wrapper和container
+页头 header 或缩写为hd
+页尾 footer 或缩写为ft
+导航 nav
+您的位置 breadcrumbs
+二级导航 sub_nav
+侧栏 sidebar或side-column
+模块 module
+
+数据库中的命名规则
+
+数据库涉及字符规则
+
+采用26个英文字母（区分大小写）和0 －9这十个自然数，加上下划线_组成，共63个字符。不能出现其他字符（注释除外）。
+
+数据库对象命名规则
+
+数据库对象包括表、视图（查询）、存储过程（参数查询）、函数、约束。对象名字由前缀和实际名字组成，长度不超过30。前缀：使用小写字母。
+
+例如：表-tb 视图-vi 存储过程-sp 函数-fn
+
+实际名字
+
+实际名字尽量描述实体的内容，由单词或单词组合，每个单词的首字母大写，其他字母小写，不以数字和_开头。
+
+例如：表 User_Info 视图 UserList 存储过程 UserDelete
+
+因此，合法的对象名字类似如下。
+
+表 tbUser_Info、tbMessage_Detail
+
+视图 vi_MessageList
+
+存储过程 sp_MessageAdd
+
+数据库表命名规则
+
+字段由前缀和实际名字组成。实际名字中首单词一个系统尽量采取同一单词。
+
+前缀：使用小写字母tb，表示表。
+
+例如：tbMember　　　tbMember_Info　　　tbForum_Board　　　tbForum_Thread1
+
+字段命名规则
+
+数字、字符、日期/时间、lob(大对象)、杂项，字段由表的简称、下划线，实际名字加后缀组成。
+
+后缀：使用小写字母，代表该字段的属性。
+
+例如: 　User_Idint　　 　 User_Namestr　　 　 User_RegDatedtm
+
+视图命名规则
+
+字段由前缀和实际名字组成，中间用下划线连接。
+
+前缀：使用小写字母vi，表示视图。
+
+例如：vi_User　　　　vi_UserInfo
+
+存储过程命名规则
+
+字段由前缀和实际名字组成，中间用下划线连接。
+前缀：使用小写字母sp，表示存储过程。
+例如：sp_User
+
+数据库设计文档规则
+
+所有数据库设计要写成文档，文档以模块化形式表达。大致格式如下：
+
+　　'-------------------------------------------
+
+　　'　　表名：　　tbUser_Info　　
+
+　　'　　建立人：UAM_Richard
+
+　　'　　日期：　　2004-12-17
+
+　　'　　版本：　　1.0
+
+　　'　　描述：　　保存用户资料
+
+　　'　　具体内容：
+
+　　'　　UserId　　int，自动增量　　用户代码
+
+　　'　　UserName　　char(12)　　用户名字
+
+　　'　　......
+
+　　'--------------------------------------------
+CSS类及id中的命名规则
+
+　　Web开发人员可以通过创建CSS类及id名称并使用这些名称来对div以及其他的格式页面元素进行标识。对开发人员来说，在命名重新定义XHTML标记（tags）的CSS selectors时，必须保证其与预定义的标记准确匹配，但就类以及id选择器名称而言，则仁者见仁，智者见智。然而随心所欲的为这些类以及id命名则并不是个好的习惯。
+
+1、直观命名
+
+当在设计Web页面以及需要对一个div进行标识的时候，最自然的想法就是使用可以描述元素所在页面位置的词汇来对其命名。
+
+例如：top-panel
+
+　　　horizontal-nav
+
+　　　left-side
+
+　　　center-column
+
+　　　right-col
+
+这些是CSS以及XHTML类和id的有效命名方式。这些词汇简单并且能够使人顾名思义，因此满足了标识页面元素以及相应的CSS样式的需要。
+
+但问题是这样的名称同页面内容的特定表达方式相关联。这些命名参考了某种特定页面布局中的页面元素位置，因此在这样的布局之外使用就会显得不合适甚至造成理解混乱。这些命名没有涉及文档内容的结构。因此，下面给出了对CSS类以及ID命名更好的方法。
+
+2、结构化命名
+
+这些是CSS以及XHTML类和id的有效命名方式。这些词汇简单并且能够使人顾名思义，因此满足了标识页面元素以及相应的CSS样式的需要。 这些是CSS以及XHTML类和id的有效命名方式。这些词汇简单并且能够使人顾名思义，因此满足了标识页面元素以及相应的CSS样式的需要。
+
+有标记的相关信息都是用来描述文档的结构而不是外观。这样的特点使得我们可以通过简单的改变CSS的方式来对不同外观格式下的内容（content）以及标记（markup）进行重用。当你理解这种方式时，很容易就可以发现采用页面位置来为类以及id命名的方式在处理如音频（audio）等外观格式上显得非常不合适。因此，应当根据在文档中的使用目的而非出现位置来对类以及id进行结构化命名。
+
+可以按照如下所示的结构化方式来对类以及id名称命名：
+
+例如：branding
+
+　　　main-nav
+
+　　　subnav
+
+　　　main-content
+
+　　　sidebar
+
+这些名字同直观命名方式一样非常易懂，但他们描述了页面元素的作用而非位置。这使得代码更加符合使用纯粹的结构化标记（structural markup）的初衷，即开发人员可以在不改变标记的情况下对各种各样媒体下的显示格式进行处理。
+
+即使你不打算在其他的媒体上对Web页面进行格式修改，使用结构化命名方式还可以帮助你在日后的站点升级或重新设计中更为轻松。例如，结构化命名避免了当一个div同id right-column移动到页面左边后所带来的混乱。对div sidebar的采用这样的命名方式就显得更加适当，因为无论它出现在页面的哪一边，这个名字仍然对开发人员来说直观易懂。
+
+3、惯例
+
+Andy Clarke分析了40份由推崇标准化Web设计理念的开发人员所设计的Web站点的源代码。尽管类以及id名称很不统一，但是还是发现了一些频繁出现的常用名称。这里给出了最常用类/id名称的示例列表：
+
+例如：header
+
+　　　content
+
+　　　nav
+
+　　　sidebar
+
+　　　footer
+
+3.基于成员的命名规范
+基于成员的命名规范是指按照文件,文件夹的从属关系,通过归类的方法进行命名,这样可以使文件的排列具有较强的逻辑性.
+例如:一个图片文件是在鼠标点击之前为"file_on".而在点击后的图片文件命名为"file_off"根据这个类别命名.更加的清晰.
+
+4.基于属性的命名规范
+例如:装饰性小图片按照"<图片内容说明>_<颜色>_<图片尺寸>_<序号>.*"来表现.这个为"heart_red_401*334_1.jpg"
+
+5.基于序数的命名规范
+在网页中一般为了减少图片的下载时间把图片分隔成一小部分,组成一个整体图.这时可以用二维数组的方式命名.
+例如:     
+
+这个图片为"donghua_11.jpg"
+
+
+这个图片为"donghua_12.jpg"
+
+这个图片为"donghua_21.jpg"
+
+
+这个图片为"donghua_22.jpg"
+
+这些组成一幅图片.
+
+6.基于枚举的命名规范
+
+第一个为书的侧面为"ddd_cemian.jpg"
+第二个为书的封皮为"ddd_fengpi.jpg"
+第三个为书的封底为"ddd_fengdi.jpg"
+
+还有的网站上图片的欣赏也有不同的大小,可根据用户的意愿查看.
+
+例如:"ddd_cemian_401*334.jpg"和"ddd_cemian_1024*768.jpg"
+
+这些供大家建设网站参考.
+
+为避免代码冲突（这样做也会让你的代码更为通用），就要使用命名法则，这是一个很好的编程习惯。好啦，这里介绍一些常用的法则。
+
+◆命名变量、方法、以及属性
+
+变量、方法和属性的名称的第一个字母应该大写，并且名称应该能表达出它们的用途（或者说是意义）。
+
+变量
+.NET 命名
+匈牙利命名
+描述
+
+Cstring
+EmployeeName
+szName
+Name of an employee.
+
+Int
+AttendanceCounter
+nCounter
+A counter of type long.
+
+Long
+NumberOfBytes
+lBytes
+A long type variable stores bytes.
+
+
+有时我们习惯于在定义中使用下划线 "_"，例如： Add_Data(int a, int b). 按照新的命名法则，这不是一个好的编程习惯，虽然它并没有错。你应该将定义 Add_Data 改为 AddData。 这不是微软的标准，你也不是必须按照这些法则。但是，在一些地方你会明白下边这些法则的合理性。
+
+就我个人而言，我更喜欢匈牙利命名法。当然，变量也使用同样的法则。如果你记得匈牙利命名法的话，一个布尔型的变量定义以"b"打头，比如：
+
+BOOL bFlag = TRUE;
+
+
+新的法则不推荐使用Flag 和 "b"：
+
+bool IsFileFound = true;
+
+你可以浏览一下MSDN，那里边有更多有关新的法则的说明。
+
+
+◆命名组件以及集合（Assemblies）
+
+为避免代码冲突, 按照命名法则给你的库(在 .NET 中称为assembly)命名是一个良好的编程习惯。假定你是MindCracker 公司的，你在开发一个用于扩充C# database 类的库, 把它的名字命名为MindCracker.DatabaseAssembly.ADOSet 要比MyAssembly.Database.ADOSet好的多。
+
+再假定你的库有一个方法，它是从表中读取数据，并返回一个数据集。你如果取名为 DataSet return_data()的话，改为DataSet ReturnData()好啦.
+
+你还应该在命名中遵循一个统一的单词顺序。例如，你有俩个表，分别为Employee 和 Manager ，并且你还为它们分别定义了一个向表里边插入一条记录的方法， 那么方法名AppendEmployee 和 AppendManager 要比AppendEmployee 和 ManagerAppend要好。
+我更喜欢的二种方法，因为很容易清楚一个块儿结构和嵌套块儿结构。
+
+◆匈牙利命名法（efoxxx附）
+
+匈牙利命名法是一名匈牙利程序员发明的，而且他在微软工作了多年。此命名法就是通过微软的各种产品和文档传出来的。多数有经验的程序员，不管他们用的是哪门儿语言，都或多或少在使用它
+
+这种命名法的基本原则是：
+
+变量名＝属性＋类型＋对象描述
+
+即一个变量名是由三部分信息组成，这样，程序员很容易理解变量的类型、用途，而且便于记忆。
+
+下边是一些推荐使用的规则例子，你可以挑选使用，也可以根据个人喜好作些修改再用之。
+
+⑴属性部分：
+
+全局变量： g_
+
+常量 ： c_
+
+类成员变量： m_
+
+⑵类型部分：
+
+指针： p
+
+句柄： h
+
+布尔型： b
+
+浮点型： f
+
+无符号： u
+
+⑶描述部分：
+
+初始化： Init
+
+临时变量： Tmp
+
+目的对象： Dst
+
+源对象： Src
+
+窗口： Wnd
+
+将介绍匈牙利命名法，后面的例子里也会尽量遵守它和上面的代码风格。还是那句话，并不是要求所有的读者都要去遵守，但是希望读者作为一个现代的软件开发人员都去遵守它。
+
+a       Array                                 数组
+
+b       BOOL (int)                            布尔(整数)
+
+by      Unsigned Char (Byte)                  无符号字符(字节)
+
+c       Char                                  字符(字节)
+
+cb      Count of bytes                        字节数
+
+cr      Color reference value                 颜色(参考)值
+
+cx      Count of x (Short)                    x的集合(短整数)
+
+dw      DWORD   (unsigned long)                 双字(无符号长整数)
+
+f       Flags   (usually multiple bit values)   标志(一般是有多位的数值)
+
+fn      Function                              函数
+
+g_      global                                全局的
+
+h       Handle                                句柄
+
+i       Integer                               整数
+
+l       Long                                  长整数
+
+lp      Long pointer                          长指针
+
+m_      Data member of a class                一个类的数据成员
+
+n       Short int                             短整数
+
+p       Pointer                               指针
+
+s       String                                字符串
+
+sz      Zero terminated String                以0结尾的字符串
+
+tm      Text metric                           文本规则
+
+u       Unsigned int                          无符号整数
+
+ul      Unsigned long (ULONG)                 无符号长整数
+
+w       WORD (unsigned short)                 无符号短整数
+
+x,y     x, y coordinates (short)              坐标值/短整数
+
+v       void                                  空
+
+下边举例说明：
+
+hwnd： h表示句柄，wnd表示窗口，合起来为“窗口句柄”。
+
+m_bFlag： m表示成员变量，b表示布尔，合起来为：“某个类的成员变量，布尔型，是一个状态标志”。
+
+C# .net 命名规范
+一个好的命名规范如此难找，还是自己收藏一个比较好
+
+1 ADO.NET          命名规范          数据类型          数据类型简写          标准命名举例         
+Connection          con          conNorthwind         
+Command          cmd          cmdReturnProducts         
+Parameter       parm          parmProductID         
+DataAdapter      dad          dadProducts         
+DataReader      dtr          dtrProducts         
+DataSet          dst          dstNorthWind         
+DataTable        dtbl          dtblProduct         
+DataRow          drow          drowRow98         
+DataColumn         dcol          dcolProductID         
+DataRelation      drel          drelMasterDetail         
+DataView          dvw          dvwFilteredProducts        
+
+WinForm          Control          命名规范
+
+数据类型          数据类型简写          标准命名举例         
+Label            lbl          lblMessage         
+LinkLabel       llbl          llblToday         
+Button          btn          btnSave         
+TextBox          txt          txtName         
+MainMenu          mmnu          mmnuFile         
+CheckBox          chk          chkStock         
+RadioButton      rbtn          rbtnSelected         
+GroupBox          gbx          gbxMain         
+PictureBox       pic          picImage         
+Panel             pnl          pnlBody         
+DataGrid          dgrd          dgrdView         
+ListBox          lst          lstProducts         
+CheckedListBox    clst          clstChecked         
+ComboBox          cbo          cboMenu         
+ListView          lvw          lvwBrowser         
+TreeView          tvw          tvwType         
+TabControl          tctl          tctlSelected         
+DateTimePicker     dtp          dtpStartDate         
+HscrollBar          hsb          hsbImage         
+VscrollBar          vsb          vsbImage         
+Timer              tmr          tmrCount         
+ImageList          ilst          ilstImage         
+ToolBar           tlb          tlbManage         
+StatusBar          stb          stbFootPrint         
+OpenFileDialog      odlg          odlgFile         
+SaveFileDialog      sdlg          sdlgSave         
+FoldBrowserDialog   fbdlg          fgdlgBrowser         
+FontDialog          fdlg          fdlgFoot         
+ColorDialog          cdlg          cdlgColor         
+PrintDialog          pdlg          pdlgPrint        
+
+3          WebControl          命名规范
+
+数据类型          数据类型简写          标准命名举例         
+AdRotator          adrt          Example         
+Button             btn          btnSubmit         
+Calendar          cal          calMettingDates         
+CheckBox          chk          chkBlue         
+CheckBoxList       chkl          chklFavColors         
+CompareValidator   valc          valcValidAge         
+CustomValidator     valx          valxDBCheck         
+DataGrid           dgrd          dgrdTitles         
+DataList           dlst          dlstTitles         
+DropDownList       drop          dropCountries         
+HyperLink          lnk          lnkDetails         
+Image             img          imgAuntBetty         
+ImageButton      ibtn          ibtnSubmit         
+Label            lbl          lblResults         
+LinkButton       lbtn          lbtnSubmit         
+ListBox          lst          lstCountries         
+Panel            pnl          pnlForm2         
+PlaceHolder     plh          plhFormContents         
+RadioButton          rad          radFemale         
+RadioButtonList          radl          radlGender         
+RangeValidator          valg          valgAge         
+RegularExpression          vale          valeEmail_Validator         
+Repeater                    rpt          rptQueryResults         
+RequiredFieldValidator      valr          valrFirstName         
+Table              tbl          tblCountryCodes         
+TableCell          tblc          tblcGermany         
+TableRow          tblr          tblrCountry         
+TextBox            txt          txtFirstName         
+ValidationSummary    vals          valsFormErrors         
+XML                xmlc          xmlcTransformResults        
+
+.NET中的命名规则
+
+名称空间的命名　
+
+　　 命名名称空间的一般规则如下：
+　　 CompanyName.TechnologyName
+　　这样，我们看到的名称空间应该是这样的：　　
+　 　Microsoft.Office
+　　 PowerSoft.PowerBuilder 　 　　 　　 　　 　　 　　 　　 　　 　　 　　 　
+
+　　注意：这只是一个原则。第三方公司可以选择其它的名字。
+　　避免用公司名称或其它著名品牌的名称作为名称空间的前缀，这样会造成两个公布的名称空间有同一个名称的可能性。
+　　例如： 将微软提供的Office自动类命名为Microsoft.Office
+
+　　使用Pascal大写方式，用逗号分隔逻辑成分。
+　　例如：Microsoft.Office.PowerPoint
+
+　　如果你的品牌使用的是非传统大写方式，那么一定要遵循你的品牌所确定使用的大写方式，即使这种方式背离了通常的名称空间大写规则。
+　　例如：NeXT.WebObjects
+　　　　　ee.cummings
+
+
+类和类成分的命名
+
+　　类的命名原则是用名词或名词短语命名类，使用Pascal大写。减少类名中缩写的使用量。不要使用任何类前缀（比如C），不要使用带下划线的字符。
+　　例如：public class FileStream {}
+　　　　　 public class Button {}
+　　　　　 public class String {}
+
+CSS 类和ID的常用命名：
+
+网站头部:    head/header(头部) top（顶部）导航：   nanv 导航具体区分：topnav(顶部导航)、mainnav(主导航)、mininav(迷你导航)、textnav(导航文本)、subnav(子导航/二级导航)
+旗帜、广告和商标：logo（旗帜）、brand(商标)、banner(标语)
+搜索：sreach(搜索)、sreachbox(搜索框)、sreachbtn(搜索按钮)、sreachinput（搜索输入框）
+注册和登录：login(登录)、regsiter(注册)、userbox(用户名/通行证的文本框)、password(密码)
+布局、分栏和框：   layout(布局)、bigdiv(大div)、leftdiv(左分栏)、rightdiv(右分栏)、leftfloat(左浮动)、rightfloat(右浮动)、mainbox()、subpage(子页面/二级页面)
+页脚/底部：foot/footer(页脚/底部)、copyright(版权信息)、sitemap(网站地图)
+其他：content(内容)、skin(皮肤)、title(标题)、from(表单)、pic(图片)、news(新闻)、shop(购物区)、list(列表/清单)、newslist(新闻列表)、downloadlist(下载列表)、piclist(图片列表)、dropmenv(下拉菜单)、cor/corner(圆角)、homepage(首页)、crumb(当前位置导航)
+实际上上面的id命名我会经常用大小写和_来区分，比如主导航就是MainNav,如果还有必要在区分就是MainNav_1,MainNav_2等等。也可以使用"类型+变量名称"的规则来命名，比如写一个红色字体的class,可以
+.f_red {}(f是font 字体的缩写)。总之原则是：大小写、_、缩写，大大增强代码的可读性。
+
+另外我还经常使用"in"的写法做子divd的命名，写法in+父div,这样可以避免前面命名过了后面div不知道怎么去命名。比如intop、inbox、infrom、inlogin等等。

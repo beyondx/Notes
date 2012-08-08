@@ -1,0 +1,98 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T19:44:06+08:00
+
+====== VGA ======
+Created Sunday 27 March 2011
+
+ 1、从dmesg中查看
+geekard@geekard-laptop:~$ dmesg |grep video 
+[    0.328276] pci 0000:00:02.0: Boot video device 
+geekard@geekard-laptop:~$ dmesg |grep vga 
+[    0.273722] vgaarb: device added: PCI:0000:00:02.0,decodes=io+mem,owns=io+mem,locks=none 
+[    0.273736] vgaarb: loaded 
+[   15.595608] vga16fb: initializing 
+[   15.595613] vga16fb: mapped to 0xc00a0000 
+[   15.595617] vga16fb: not registering due to another framebuffer present 
+ geekard@geekard-laptop:~$ dmesg |grep 0000:00:02.0 
+[    0.251261] pci 0000:00:02.0: reg 10 32bit mmio: [0xf0400000-0xf047ffff] 
+[    0.251268] pci 0000:00:02.0: reg 14 io port: [0x3000-0x3007] 
+[    0.251274] pci 0000:00:02.0: reg 18 32bit mmio pref: [0xe0000000-0xefffffff] 
+[    0.251280] pci 0000:00:02.0: reg 1c 32bit mmio: [0xf0480000-0xf04bffff] 
+[    0.273722] vgaarb: device added: PCI:0000:00:02.0,decodes=io+mem,owns=io+mem,locks=none 
+[    0.328276] pci 0000:00:02.0: Boot video device 
+[   15.048400] i915 0000:00:02.0: PCI INT A -> GSI 16 (level, low) -> IRQ 16 
+[   15.048409] i915 0000:00:02.0: setting latency timer to 64 
+[   15.592136] [drm] Initialized i915 1.6.0 20080730 for 0000:00:02.0 on minor 0 
+   2、从/var/log/Xorg.0.log中查询到的信息：
+ PCI:*(0:0:2:0) 8086:27a2:103c:30d5 Intel Corporation Mobile 945GM/GMS, 943/940GML Express Integrated Graphics Controller rev 3, Mem @ 0xf0400000/524288, 0xe0000000/268435456, 0xf0480000/262144, I/O @ 0x00003000/8 
+(--) PCI: (0:0:2:1) 8086:27a6:103c:30d5 Intel Corporation Mobile 945GM/GMS/GME, 943/940GML Express Integrated Graphics Controller rev 3, Mem @ 0xf0500000/524288
+
+(II) intel(0): Creating default Display subsection in Screen section 
+	"Default Screen Section" for depth/fbbpp 24/32 
+(==) intel(0): Depth 24, (--) framebuffer bpp 32 
+(==) intel(0): RGB weight 888 
+(==) intel(0): Default visual is TrueColor 
+(II) intel(0): Integrated Graphics Chipset: Intel(R) 945GM 
+(--) intel(0): Chipset: "945GM" 
+(II) intel(0): Output VGA1 has no monitor section 
+(II) intel(0): Output LVDS1 has no monitor section 
+(II) intel(0): found backlight control interface /sys/class/backlight/acpi_video0 
+(II) intel(0): EDID for output VGA1 
+(II) intel(0): EDID for output LVDS1 
+(II) intel(0): Manufacturer: LPL  Model: e800  Serial#: 0 
+(II) intel(0): Year: 2007  Week: 0 
+(II) intel(0): EDID Version: 1.1 
+(II) intel(0): Digital Display Input 
+(II) intel(0): Max Image Size [cm]: horiz.: 30  vert.: 19 
+(II) intel(0): Gamma: 2.20 
+(II) intel(0): No DPMS capabilities specified 
+(II) intel(0): Supported color encodings: RGB 4:4:4 YCrCb 4:4:4 
+(II) intel(0): First detailed timing is preferred mode 
+(II) intel(0): redX: 0.584 redY: 0.347   greenX: 0.323 greenY: 0.542 
+(II) intel(0): blueX: 0.157 blueY: 0.145   whiteX: 0.312 whiteY: 0.328 
+(II) intel(0): Manufacturer's mask: 0 
+(II) intel(0): Supported detailed timing: 
+(II) intel(0): clock: 71.0 MHz   Image Size:  304 x 190 mm 
+(II) intel(0): h_active: 1280  h_sync: 1328  h_sync_end 1360 h_blank_end 1440 h_border: 0 
+(II) intel(0): v_active: 800  v_sync: 803  v_sync_end 809 v_blanking: 823 v_border: 0 
+(II) intel(0):  LGPhilipsLCD 
+(II)intel(0):  LP141WX3-TLB1
+
+II) intel(0): Printing probed modes for output LVDS1 
+(II) intel(0): Modeline "1280x800"x59.9   71.00  1280 1328 1360 1440  800 803 809 823 -hsync -vsync (49.3 kHz) 
+(II) intel(0): Modeline "1024x768"x60.0   65.00  1024 1048 1184 1344  768 771 777 806 -hsync -vsync (48.4 kHz) 
+(II) intel(0): Modeline "800x600"x60.3   40.00  800 840 968 1056  600 601 605 628 +hsync +vsync (37.9 kHz) 
+(II) intel(0): Modeline "640x480"x59.9   25.18  640 656 752 800  480 490 492 525 -hsync -vsync (31.5 kHz) 
+(II) intel(0): Output VGA1 disconnected 
+(II) intel(0): Output LVDS1 connected 
+(II) intel(0): Using exact sizes for initial modes 
+(II) intel(0): Output LVDS1 using initial mode 1280x800 
+(II) intel(0): Using default gamma of (1.0, 1.0, 1.0) unless otherwise stated. 
+(==) intel(0): video overlay key set to 0x101fe 
+(==) intel(0): DPI set to (96, 96)
+
+
+(==) Depth 24 pixmap format is 32 bpp 
+(II) intel(0): [DRI2] Setup complete 
+(**) intel(0): Kernel mode setting active, disabling FBC. 
+(**) intel(0): Framebuffer compression disabled 
+(**) intel(0): Tiling enabled 
+(**) intel(0): SwapBuffers wait enabled 
+(==) intel(0): VideoRam: 262144 KB 
+(II) intel(0): Attempting memory allocation with tiled buffers. 
+(II) intel(0): Tiled allocation successful. 
+(II) UXA(0): Driver registered support for the following operations: 
+(II)         solid 
+(II)         copy 
+(II)         composite (RENDER acceleration) 
+(==) intel(0): Backing store disabled 
+(==) intel(0): Silken mouse enabled 
+(II) intel(0): Initializing HW Cursor 
+(II) intel(0): No memory allocations 
+(II) intel(0): RandR 1.2 enabled, ignore the following RandR disabled message. 
+(==) intel(0): DPMS enabled 
+(==) intel(0): Intel XvMC decoder disabled 
+(II) intel(0): Set up textured video 
+(II) intel(0): Set up overlay video 
+(II)intel(0): direct rendering: DRI2 Enabled

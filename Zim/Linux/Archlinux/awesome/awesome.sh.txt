@@ -1,0 +1,36 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T20:23:03+08:00
+
+====== awesome.sh ======
+Created Sunday 27 March 2011
+
+把下面的内容放到主目录的.awesome.sh 文件中
+然后在目录/usr/share/Xsession下建一个启动项，这样开机的gdm界面中接可以选择awesome的桌面环境
+
+#! /bin/bash
+sleep 2 
+xsetroot -solid black &
+#启动屏保程序
+gnome-screensaver &
+#启用gnome的主题，否则你的awesome下的gnome程序会非常难看
+gnome-settings-daemon &    
+#电源管理程序
+gnome-power-manager &      
+#网络管理程序
+nm-applet &                           
+#自动更新程序
+update-notifier &                    
+exec /usr/bin/awesome
+
+建立gdm的启动项：
+ /usr/share/xsessions/awesome.desktop
+内容如下：
+[Desktop Entry]
+Encoding=UTF-8
+Name=awesome
+Comment=Leightweight tiling window manager
+Exec=/hoem/geekard/.awesome.sh
+Icon=awesome.png
+Type=XSession
+

@@ -1,0 +1,53 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-17T11:49:41+08:00
+
+====== Online Help ======
+Created Thursday 17 November 2011
+http://techbase.kde.org/Development/Architecture/KDE4/Providing_Online_Help
+
+=== KDE Architecture - Providing online help ===
+
+Making a program easy and intuitive to use involves a wide range of facilities which are usually called __online help__. Online help has several, partially conflicting goals: 
+* on the one, it should give the user answers to the question "__How __can I do a certain task?", 
+* on the other hand it should help the user __exploring__ the application and __finding__ features he doesn't yet know about. 
+
+It is important to recognize that this can only be achieved by offering** several levels** of help:
+
+* __Tooltips __are tiny **labels** that** pop up** over user interface elements when the mouse remains there longer. They are especially important for tool- bars, where icons are not always sufficient to explain the purpose of a button.
+* "What's this?" help is usually a longer and richer explanation of a widget or a menu item. It is also more clunky to use: In dialogs, it can be invoked in two ways: either by pressing Shift-F1 or by clicking on the question mark in the title bar (where the support of the latter depends on the window manager). The mouse pointer then turns into an arrow with a question mark, and the help window appears when a user interfact element has been clicked. "What's this?" help for menu items is usually activated by a button in the toolbar which contains an arrow and a question mark.  The problem with this approach is that the user can't see__ whether a widget provides help or not__. When the user activates the question mark button and doesn't get any help window when clicking on a user interface element, he will get frustrated very quickly.   The advantage of "What's this?" help windows as provided by Qt and KDE is that they can contain __rich text__, i.e. the may contain different fonts, bold and italic text and even images and tables. 
+
+* QWhatsThis screenshot{{~/sync/notes/zim/Linux/KDE/Online_Help/Qt3-whatsthis.png}}
+
+* Finally, every program should have a __manual__. A manual is normally viewed in __khelpcenter __by activating the help menu. That means, a complete additional application pops up and diverts the user from his work. Consequently, consulting the manual should only be necessary if other facilities like tooltips and what's this help are not sufficient. Of course, a manual has the advantage that it does not explain single, isolated aspects of the user interface. Instead, it can explain aspects of the application in a greater context. Manuals for KDE are written using the DocBook markup language. 
+
+From the programmer's point of view, Qt provides an easy to use API for online help. To assign a tooltip to widget, simply use its setToolTip() method.
+
+widget->setToolTip(i18n("This widget does something."))
+
+If the menu bars and tool bars are created using the action pattern, the string used as tooltip is derived from the first argument of the KAction constructor:
+
+action = new KAction(i18n("&Delete"), "editdelete",
+                     SHIFT+Key_Delete, actionCollection(), "del")
+
+Here it is also possible to assign a text which is shown in the status bar when the respective menu item is highlighted:
+
+action->setStatusText(i18n("Deletes the marked file"))
+
+The API for "What's this?' help is very similar. In dialogs, use the following code:
+
+widget->setWhatsThis(i18n("<qt>This demonstrates <b>Qt</b>'s"
+                        " rich text engine.<ul>"
+                        "<li>Foo</li>"
+                        "<li>Bar</li>"
+                        "</ul></qt>"))
+
+For menu items, use
+
+action->setWhatsThis(i18n("Deletes the marked file"))
+
+The invocation of khelpcenter is encapsulated in the __KToolInvocation__ class. In order to show the manual of your application, just use the static method:
+
+KToolInvocation::invokeHelp()
+
+This displays the first page with the table of contents. When you want to display only a certain section of the manual, you can give an additional argument to invokeHelp() determining the anchor which the browser jumps to.

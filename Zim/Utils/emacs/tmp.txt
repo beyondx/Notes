@@ -1,0 +1,194 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-16T16:12:13+08:00
+
+====== tmp ======
+Created Saturday 16 April 2011
+
+emacs C编程
+2007-04-25 14:50
+
+Emacs对于编辑程序有很多方便的功能，下面是在编辑C程序时常用到的一些功能。
+
+
+(add-hook 'c-mode-hook 'linux-c-mode)
+(add-hook 'c++-mode-hook 'linux-cpp-mode)
+;; 设置imenu的排序方式为按名称排序
+(setq imenu-sort-function 'imenu--sort-by-name)
+(defun linux-c-mode()
+;; 将回车代替C-j的功能，换行的同时对齐
+(define-key c-mode-map [return] 'newline-and-indent)
+(interactive)
+;; 设置C程序的对齐风格
+(c-set-style "K&R")
+;; 自动模式，在此种模式下当你键入{时，会自动根据你设置的对齐风格对齐
+(c-toggle-auto-state)
+;; 此模式下，当按Backspace时会删除最多的空格
+(c-toggle-hungry-state)
+;; TAB键的宽度设置为8
+(setq c-basic-offset 8)
+;; 在菜单中加入当前Buffer的函数索引
+(imenu-add-menubar-index)
+;; 在状态条上显示当前光标在哪个函数体内部
+(which-function-mode)
+)
+(defun linux-cpp-mode()
+(define-key c++-mode-map [return] 'newline-and-indent)
+(define-key c++-mode-map [(control c) (c)] 'compile)
+(interactive)
+(c-set-style "K&R")
+(c-toggle-auto-state)
+(c-toggle-hungry-state)
+(setq c-basic-offset 8)
+(imenu-add-menubar-index)
+(which-function-mode)
+)
+
+一此有用的快捷键：
+
+    C-c C-c 注释区域，此命令等同于M-x comment-region，但C-c C-c仅适用于C程序，而M-x comment-region适用于任何程序。
+    C-u C-c C-c :: 在c-mode下C-c C-c comment-region，C-u C-c C-c是uncomment-region.
+    C-M-\ 对齐一个区域，用些命令要先保证区域已经被选中，则用系统默认的对齐方式进行对齐。
+    C-c C-q 自动对齐一个函数。将光标停在一个函数体内，然后按这个键，可以自动将函数的内容按默认的对齐方式对齐。
+    TAB 重新缩进当前行
+    C-c . 设置缩进风格（按TAB键可列出可用的风格，缺省的为gnu，其缩进为2个字符；linux为8个；k&r为5个…）
+    M-/ 自动补齐（缓冲区中能找得到的串）
+    M-; 行尾加入注释
+    C-c C-e 扩展宏，察看当前宏的值
+    C-c C-\ 通过'\'连接多行代码
+
+子模式
+auto-state 当你输入时自动缩进，自动换行
+hungry-state 当你Backspace时，自动删除尽可能多的空白和空行
+
+    C-c C-t 同时转换(开/关)auto-state和hungry-state子模式
+    C-c C-a 转换 auto-state 子模式
+    C-c C-d 转换 hungry-state 子模式
+
+编译与调试
+
+    M-x compile 可以输入命令对程序文件进行编译，编译器的输出在一个另外一个子窗口中显示，将光标移到*compilation* 中的一行错误提示上击回车（或直接鼠标中键）即可在程序中定位错误。
+    M-x gdb RET 调试
+    C-x ` （出错信息中）下一个错误，一个窗口显示错误信息，另一个显示源码的出错位置
+    C-c C-c 转到出错位置
+
+启动gdb调试器后，光标在源码文件缓冲区中时：
+
+    C-x SPC 在当前行设置断点
+    C-x C-a C-s step
+    C-x C-a C-n next
+    C-x C-a C-t tbreak
+    C-x C-a C-r continue
+
+
+
+Etags 使用小结
+2007-04-25 14:53
+1. Etags 基础
+
+在emacs里可以用etags命令生成emacs专用的tags文件，有了此文件之后便可以使用一些emacs tags的命令，比如对于编辑C/C++程序的人员可以方便的定位一个函数的定义，或者对函数名进行自动补齐：
+[Code]
+find -name "*.h" -or -name "*.cpp" |xargs etags --members \
+--language=c++
+
+我在使用上述命令时未能成功，但以下命令可以
+[Code]
+find -name "*.cpp" -exec etags -a {} \;
+
+或
+[Code]
+find . -name "*.[chCH]" -print | etags -
+
+上述命令可以在当前目录查找所有的.h和.cpp文件并把它们的摘要提取出来做成TAGS文件，具体的etags的用法可以看一下etags的manual。
+
+在.emacs中加入这样的语句：
+[Code]
+(setq tags-file-name "~/sim973/src/TAGS")
+
+这样emacs就会自动读取这个tags文件的内容。
+
+几个重要的命令。
+
+    M-. 查找一个tag，比如函数定义类型定义等。
+    C-u M-. 查找下一个tag的位置
+    M-* 回到上一次运行M-.前的光标位置。
+    M-TAB 自动补齐函数名。
+
+2. 一些整合的快捷键
+
+易于编译和TAGS的使用，搜集自 zslevin 的帖子(LinuxForum GNU Emacs/XEmacs)
+
+    C-f5, 设置编译命令
+    f5, 保存当前窗口然后编译当前窗口文件
+
+[Code]
+(defun du-onekey-compile ()
+"Save buffers and start compile"
+(interactive)
+(save-some-buffers t)
+(compile compile-command))
+(global-set-key [C-f5] 'compile)
+(global-set-key [f5] 'du-onekey-compile)
+
+    F7, 查找 TAGS 文件（更新 TAGS 表）
+    C-F7, 在当前目录下生成包含所有递归子目录的 TAGS 文件（使用了shell中的find命令）
+    C-. 开个小窗查看光标处的 tag
+    C-, 只留下当前查看代码的窗口（关闭查看 tag 的小窗）
+    M-. 查找光标处的 tag，并跳转
+    M-, 跳回原来查找 tag 的地方
+    C-M-, 提示要查找的 tag，并跳转
+    C-M-. 要匹配的 tag 表达式（系统已定义）
+    Shift-Tab, C/C++ 和 lisp 等模式中补全函数名（一般情况下M-Tab被窗口管理器遮屏了）
+
+定义按键，在生成相应 tag 文件时，比如一个目录下所有的 *.cpp 和 *.h 文件使用这样的正则表达式 *.[ch]*，在下面的 C-F7 中可能会用到。
+[Code]
+(global-set-key [(f7)] 'visit-tags-table)    ; visit tags table
+(global-set-key [C-f7] 'sucha-generate-tag-table) ; generate tag table
+(global-set-key [(control .)] '(lambda () (interactive) (lev/find-tag t)))
+(global-set-key [(control ,)] 'sucha-release-small-tag-window)
+(global-set-key [(meta .)] 'lev/find-tag)
+(global-set-key [(meta ,)] 'pop-tag-mark)
+(global-set-key (kbd "C-M-,") 'find-tag)
+(define-key lisp-mode-shared-map [(shift tab)] 'complete-tag)
+(add-hook 'c-mode-common-hook    ; both c and c++ mode
+      (lambda ()
+      (define-key c-mode-base-map [(shift tab)] 'complete-tag)))
+
+上面定义的命令需要用到的函数：
+[Code]
+(defun lev/find-tag (&optional show-only)
+"Show tag in other window with no prompt in minibuf."
+(interactive)
+(let ((default (funcall (or find-tag-default-function
+(get major-mode 'find-tag-default-function)
+'find-tag-default))))
+(if show-only
+(progn (find-tag-other-window default)
+(shrink-window (- (window-height) 12)) ;; 限制为 12 行
+(recenter 1)
+(other-window 1))
+(find-tag default))))
+
+(defun sucha-generate-tag-table ()
+"Generate tag tables under current directory(Linux)."
+(interactive)
+(let
+((exp "")
+(dir ""))
+(setq dir
+   (read-from-minibuffer "generate tags in: " default-directory)
+   exp
+   (read-from-minibuffer "suffix: "))
+(with-temp-buffer
+(shell-command
+(concat "find " dir " -name \"" exp "\" | xargs etags ")
+(buffer-name)))))
+
+(defun sucha-release-small-tag-window ()
+"Kill other window also pop tag mark."
+(interactive)
+(delete-other-windows)
+(ignore-errors
+(pop-tag-mark)))
+
+

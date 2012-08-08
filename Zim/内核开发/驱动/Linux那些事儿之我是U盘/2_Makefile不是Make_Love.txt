@@ -1,0 +1,58 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-01T10:34:36+08:00
+
+====== 2 Makefile不是Make Love ======
+Created Sunday 01 July 2012
+
+从前在复旦,混了四年,没有学到任何东西,每天就是逃课,上网,玩游戏,睡觉.毕业的时候,身边的人读研的读研,出国的出国,找工作的吧,去麦肯锡的去麦肯锡,去IBM的去IBM.而自己却一无所长,没有任何技能,直到这时候才发现那四年欠了很多债,早知今日,何必当初.幸运的是,我还有一张复旦的文凭,依靠着这张文凭,混进了Intel.然而,工作以后,更是发现当初在校期间没有好好读书其实真是在欠债,当初没学,工作以后还是要学,的确是迟早要还的,逃是逃不掉的.
+
+基本上,Linux内核中每一个目录下边都有一个Makefile,Makefile和Kconfig就像一个城市的地图,地图带领我们去认识一个城市,而Makefile和Kconfig则可以让我们了解这个目录下面的结构.drivers/usb/storage/目录下边的Makefile内容如下:
+
+#
+# Makefile for the USB Mass Storage device drivers.
+#
+# 15 Aug 2000, Christoph Hellwig <hch@infradead.org>
+# Rewritten to use lists instead of if-statements.
+#
+
+EXTRA_CFLAGS    := -Idrivers/scsi
+
+obj-$(__CONFIG_USB_STORAGE__)       += usb-storage.o
+
+usb-storage-obj-$(CONFIG_USB_STORAGE_DEBUG)     += debug.o
+usb-storage-obj-$(CONFIG_USB_STORAGE_HP8200e)   += shuttle_usbat.o
+usb-storage-obj-$(CONFIG_USB_STORAGE_SDDR09)    += sddr09.o
+usb-storage-obj-$(CONFIG_USB_STORAGE_SDDR55)    += sddr55.o
+usb-storage-obj-$(CONFIG_USB_STORAGE_FREECOM)   += freecom.o
+usb-storage-obj-$(CONFIG_USB_STORAGE_DPCM)      += dpcm.o
+usb-storage-obj-$(CONFIG_USB_STORAGE_ISD200)    += isd200.o
+usb-storage-obj-$(CONFIG_USB_STORAGE_DATAFAB)   += datafab.o
+usb-storage-obj-$(CONFIG_USB_STORAGE_JUMPSHOT)  += jumpshot.o
+
+usb-storage-objs :=  scsiglue.o protocol.o transport.o usb.o /
+                        initializers.o $(usb-storage-obj-y)
+
+关于Kconfig文件,在故事的最后会介绍,此刻暂且不表,Kconfig文件比较长,就不贴出来了.但是通过看Kconfig文件,我们可以知道,除了CONFIG_USB_STORAGE这个编译选项是我们**真正需要**的以外,别的选项我们都可以不予理睬.比如,关于CONFIG_USB_STORAGE_DATAFAB,Kconfig文件中有这么一段,
+
+config USB_STORAGE_DATAFAB
+        bool "Datafab Compact Flash Reader support (EXPERIMENTAL)"
+        depends on USB_STORAGE && EXPERIMENTAL
+        help
+          Support for certain Datafab CompactFlash readers.
+          Datafab has a web page at <http://www.datafabusa.com/>.
+
+显然,这个选项和我们没有关系,首先这是**专门针对**Datafab公司的产品的,其次CompactFlash reader是一种flash设备,但这显然不是U盘,因为drivers/usb/storage这个目录里边的代码是__针对一类设备__的,不是某一种特定的设备,这一类设备就是usb mass storage设备,关于这类设备,有专门的文档进行介绍,有相应的spec,描述这类设备的通信或者物理上电特性上等方面的规范,U盘只是其中的一种,这种设备使用的通信协议被称为__Bulk-Only Transport协议__.再比如,关于CONFIG_USB_STORAGE_SDDR55这个选项,Kconfig文件中也有对应的一段,
+
+config USB_STORAGE_SDDR55
+        bool "**SanDisk** SDDR-55 SmartMedia support (EXPERIMENTAL)"
+        depends on USB_STORAGE && EXPERIMENTAL
+        help
+          Say Y here to include additional code to support the Sandisk SDDR-55
+          SmartMedia reader in the USB Mass Storage driver.
+很显然这是SanDisk的产品,并且是针对SM卡的,这也不是U盘,所以我们也都不去理睬了.事实上,很容易确定,只有CONFIG_USB_STORAGE这个选项是我们真正关心的,而它所对应的模块叫usb-storage,Makefile中最后一行也说了,
+
+usb-storage-objs :=  scsiglue.o protocol.o transport.o usb.o  initializers.o $(usb-storage-obj-y)
+这就意味着我们只需要关注的文件就是scsiglue.c,protocol.c,transport.c,usb.c,initializers.c以及它们同名的.h头文件.再次使用wc -l命令统计一下这几个文件,发现总长度**只有3701行**,比最初看到的12000多行少了许多,当时信心就倍增.
+
+不过需要特别注意的是,CONFIG_USB_STORAGE_DEBUG这个编译选项,它不是我们必须的,但是如果真的要自己修改或者调试usb-storage的代码,那么打开这个选项是很有必要的,因为它会负责打印一些调试信息,以后在源代码中我们会看到它的作用.

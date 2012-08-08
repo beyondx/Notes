@@ -1,0 +1,554 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-16T16:15:41+08:00
+
+====== 总结 ======
+Created Monday 16 May 2011
+
+发信人: happierbee (吾生也有涯，而知也无涯), 信区: Emacs
+标  题: 几种代码浏览工具总结
+发信站: 水木社区 (Fri Mar 21 09:24:51 2008), 转信
+
+http://learn.tsinghua.edu.cn:8080/2005211356/emacs/CodeBrowser.html
+
+Etags
+
+etags 是 emacs 中代码浏览的标准工具。在 emacs 中使用 etags 相关的命令
+之前需要先对源代码用 etags 程序生成 TAGS 文件。比如，对当前目录下所有
+c 源文件和头文件生成 TAGS 文件：
+
+etags *.[ch]
+
+再比如对当前目录及子目录下所有 pm 和 pl 文件生成 TAGS：
+
+find -name '*.p[ml]' -exec etags -a {} \;
+
+etags 支持的语言见下表：
+
+┏━━━━┯━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  语言  │                           tag                            ┃
+┠────┼─────────────────────────────┨
+┃ C      │ 函数, typedef, struct, union, enum, #define, #undef, 全  ┃
+┃        │ 局变量                                                   ┃
+┠────┼─────────────────────────────┨
+┃ C++    │ 参考 C 语言                                              ┃
+┠────┼─────────────────────────────┨
+┃ Perl   │ package, sub, my, local, our                             ┃
+┠────┼─────────────────────────────┨
+┃ Java   │ 所有 C++ 的 tag, interface, extends, implements          ┃
+┠────┼─────────────────────────────┨
+┃        │ \chapter, \section, \subsection, \subsubsection, \eqno,  ┃
+┃ LaTeX  │ \label, ref, \cite, \bibitem, \part, \appendix, \entry,  ┃
+┃        │ \index, \def,\newcommand, \renewcommand, \               ┃
+┃        │ newenvironment, \renewenvironment                        ┃
+┠────┼─────────────────────────────┨
+┃ lisp   │ defun, defvar, defconst 等 def                           ┃
+┠────┼─────────────────────────────┨
+┃ scheme │ def 和顶层的 set!                                        ┃
+┠────┼─────────────────────────────┨
+┃ html   │ title, h1, h2, h3, name=, id=                            ┃
+┗━━━━┷━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+Emacs 在任何时候都只能操作一个 tags 表，即变量 tags-file-name 对应的
+文件，所有相关的命令都是在这个选中的tags 表中进行查找。可以用
+visit-tags-table 命令设置 tags-file-name。但是据我的经验这种办法不但
+效率低，而且经常并不能修改成功（不知道是不是我的理解有错）。我的作法
+是设置 tags-table-list 变量：
+
+(setq tags-table-list '("./TAGS" "../TAGS" "../../TAGS"))
+
+这样设置的目的是依次在当前目录，上级目录，上上级目录中查找 TAGS 文件
+。一般情况下这个设置都是很能生效。
+
+etags 相关的命令见下表：
+
+┏━━━━━━━━━━━━┯━━━━┯━━━━━━━━━━━━━━━━━━┓
+┃          命令          │ 按键   │                功能                ┃
+┠────────────┼────┼──────────────────┨
+┃ find-tag               │ M-.    │ 查找包含此字符串的 tag             ┃
+┠────────────┼────┼──────────────────┨
+┃ pop-tag-mark           │ M-*    │ 跳回到前一次使用 M-. 的位置        ┃
+┠────────────┼────┼──────────────────┨
+┃ find-tag-regexp        │ C-M-.  │ 使用正则表达式查找 tag             ┃
+┠────────────┼────┼──────────────────┨
+┃ find-tag-other-window  │ C-x 4 .│ 在另一个窗口中显示查找到的 tag     ┃
+┠────────────┼────┼──────────────────┨
+┃ find-tag-other-frame   │ C-x 5 .│ 在另一个 frame 中显示查找到的 tag  ┃
+┠────────────┼────┼──────────────────┨
+┃ tags-search            │        │ 在 TAGS 中所有的文件中查找         ┃
+┠────────────┼────┼──────────────────┨
+┃ tags-query-replace     │        │ 在 TAGS 中所有的文件中替换         ┃
+┠────────────┼────┼──────────────────┨
+┃ tags-loop-continue     │ M-,    │ 继续前一次 tags-search 或          ┃
+┃                        │        │ tags-query-replace                 ┃
+┠────────────┼────┼──────────────────┨
+┃ list-tags              │        │ 显示文件中的 tags                  ┃
+┠────────────┼────┼──────────────────┨
+┃ tags-apropos           │        │ 显示 TAGS 中所有匹配的 tag         ┃
+┗━━━━━━━━━━━━┷━━━━┷━━━━━━━━━━━━━━━━━━┛
+
+
+如果你常用 etags，我写了一个扩展 tags-tree，有两个特性可能会吸引你：
+
+ 1. 使用树型图显示所有 tag
+ 2. 方便的更新文件中的 tag，只要在树图此按 G 就行了（需要安装 perl，
+    或者你自己写相同功能的程序）
+
+xcscope
+
+cscope 是只针对 C 及相关语言的代码浏览工具。在 emacs 使用 cscope 推荐
+使用 xcscope 库。cscope 库自带的就是 xcscope.el。
+
+与 etags 不同，在 emacs 使用 cscope 并不需要手动生成数据库（毕竟
+etags 是针对多种语言的工具，功能专一也就有可能更智能化）。当你第一次
+使用 xcscope 提供的命令时，如果没有找到数据库的话会自动为你生成数据库
+。 cscope 使用 cscope.out 或 cscope.files 作为找到数据库的标志。
+xcscope会从当前目录开始向此逐层查找这两个文件直到找到其中一个文件或到
+根目录为止。在没有找到数据库就会生成数据库。如果设置了
+cscope-initial-directory，那么就在这个目录中新建数据库，否则在当前目
+录中创建。可以用 C-c s a 修改 cscope-initial-directory，不过我不推荐
+修改这个变量。
+
+xcscope 把所有按键设定为 <C-c s + 字母>。
+
+比较常用有关查找的按键包括：
+
+┏━━━┯━━━━━━━━┯━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 按键 │     功能       │                    命令                      ┃
+┠───┼────────┼───────────────────────┨
+┃C-c ss│ 查找某个符号   │ cscope-find-this-symbol                      ┃
+┠───┼────────┼───────────────────────┨
+┃C-c sd│ 查找全局定义   │ cscope-find-global-definition                ┃
+┠───┼────────┼───────────────────────┨
+┃C-c sg│ 同 d，查找全   │ cscope-find-global-definition                ┃
+┃      │ 局定义         │                                              ┃
+┠───┼────────┼───────────────────────┨
+┃C-c sG│ 查找全局定义   │ cscope-find-global-definition-no-prompting   ┃
+┃      │ ，不提示输入   │                                              ┃
+┠───┼────────┼───────────────────────┨
+┃C-c sc│ 查找调用这个   │ cscope-find-functions-calling-this-function  ┃
+┃      │ 函数的函数     │                                              ┃
+┠───┼────────┼───────────────────────┨
+┃C-c sC│ 查看这个函数   │ cscope-find-called-functions                 ┃
+┃      │ 调用的函数     │                                              ┃
+┠───┼────────┼───────────────────────┨
+┃C-c st│ 查找字符串     │ cscope-find-this-text-string                 ┃
+┠───┼────────┼───────────────────────┨
+┃C-c se│ 查找正则表达式 │ cscope-find-egrep-pattern                    ┃
+┠───┼────────┼───────────────────────┨
+┃C-c sf│ 打开匹配的文件 │ cscope-find-this-file                        ┃
+┠───┼────────┼───────────────────────┨
+┃C-c si│ 查找头文件被   │ cscope-find-files-including-file             ┃
+┃      │ 使用的地方     │                                              ┃
+┗━━━┷━━━━━━━━┷━━━━━━━━━━━━━━━━━━━━━━━┛
+
+与浏览显示有关的按键包括：
+
+┏━━━┯━━━━━━━━━━━━━━━┯━━━━━━━━━━━━━━━┓
+┃ 按键 │            功能              │             命令             ┃
+┠───┼───────────────┼───────────────┨
+┃ C-c  │ 显示 *cscope* 缓冲区         │ cscope-display-buffer        ┃
+┃ s b  │                              │                              ┃
+┠───┼───────────────┼───────────────┨
+┃ C-c  │ 切换在查找命令后是否自动显   │ cscope-display-buffer-toggle ┃
+┃ s B  │ 示 *cscope* 缓冲区           │                              ┃
+┠───┼───────────────┼───────────────┨
+┃ C-c  │ 跳到下一个查找到的位置       │ cscope-next-symbol           ┃
+┃ s n  │                              │                              ┃
+┠───┼───────────────┼───────────────┨
+┃ C-c  │ 跳到前一个查找到的位置       │ cscope-prev-symbol           ┃
+┃ s p  │                              │                              ┃
+┠───┼───────────────┼───────────────┨
+┃ C-c  │ 跳到下一个查找到的文件       │ cscope-next-file             ┃
+┃ s N  │                              │                              ┃
+┠───┼───────────────┼───────────────┨
+┃ C-c  │ 跳到前一个查找到的文件       │ cscope-prev-file             ┃
+┃ s P  │                              │                              ┃
+┠───┼───────────────┼───────────────┨
+┃ C-c  │ 回到前一个跳转的位置         │ cscope-pop-mark              ┃
+┃ s u  │                              │                              ┃
+┗━━━┷━━━━━━━━━━━━━━━┷━━━━━━━━━━━━━━━┛
+
+这些按键用于管理数据库：
+
+┏━━━━┯━━━━━━━━━━┯━━━━━━━━━━━━━━━━━━━┓
+┃ 按键   │        功能        │                 命令                 ┃
+┠────┼──────────┼───────────────────┨
+┃ C-c sa │ 设置 initail       │ cscope-set-initial-directory         ┃
+┃        │ directory          │                                      ┃
+┠────┼──────────┼───────────────────┨
+┃ C-c sA │ 清除 initail       │ cscope-unset-initial-directory       ┃
+┃        │ directory          │                                      ┃
+┠────┼──────────┼───────────────────┨
+┃ C-c sL │ 创建文件列表       │ cscope-create-list-of-files-to-index ┃
+┃        │ cscope.files       │                                      ┃
+┠────┼──────────┼───────────────────┨
+┃ C-c sI │ 创建文件列表和索引 │ cscope-index-files                   ┃
+┠────┼──────────┼───────────────────┨
+┃ C-c sE │ 编辑文件列表       │ cscope-edit-list-of-files-to-index   ┃
+┠────┼──────────┼───────────────────┨
+┃ C-c sW │ 显示数据库目录     │ cscope-tell-user-about-directory     ┃
+┠────┼──────────┼───────────────────┨
+┃ C-c sS │ 同 W               │ cscope-tell-user-about-directory     ┃
+┠────┼──────────┼───────────────────┨
+┃ C-c sT │ 同 W               │ cscope-tell-user-about-directory     ┃
+┠────┼──────────┼───────────────────┨
+┃ C-c sD │ 跳到数据库目录     │ cscope-dired-directory               ┃
+┗━━━━┷━━━━━━━━━━┷━━━━━━━━━━━━━━━━━━━┛
+
+关于数据库目录的设定有一些需要说明的地方。如果数据库管理的项目比较多
+，最极端的情况就是只有一个数据库，放在根目录或在
+cscope-initial-directory，造成的问题是数据库太大，查找太慢，不相关信
+息较多。所以比较合适的设置是一个项目一个数据库。但是这又带来一个问题
+是项目之间很有可能是关联的，一个应用程序可能使用其它库。这时就需要通
+过设置 cscope-database-regexps 这个变量。
+
+按项目的大小或个人习惯，大致可以分成这几种情况：
+
+ 1. 源文件在一个公共目录中，把公共目录作数据库目录，子目录不应该有数
+    据库文件。
+ 2. 如果少量文件不在数据库目录管理范围内，可以把这些文件加到
+    cscope.files 文件列表中。
+ 3. 其它情况通过设置 cscope-database-regexps 来在一个项目中使用多个数
+    据库文件。
+
+cscope-database-regexps 形式如下：
+
+(REGEXP DBLIST [ DBLIST ... ])
+
+其中 REGEXP 用于匹配文件路径。比如 REGEXP 为 gedit，那么所有文件名全
+路径中含有 gedit 的都会使用 DBLIST。
+
+DBLIST 可以有下面四种形式：
+
+  ? ( DBDIR )
+  ? ( DBDIR ( OPTIONS ) )
+  ? ( t )
+  ? t
+
+DBDIR 是数据库目录，OPTIONS 是传递给 cscope 程序的参数。 (t) 表示需要
+进行上目录中查找数据库。 t 表示如果查找到这里如果已经找到数据库的就停
+止继续搜索。在这种情形下比较有用：子项目比较多，先在最可能的地方查找
+，再查找更多的地方。如果没有看懂，还是看这个变量的文档，作者给了很好
+的例子进行详细说明。
+
+这里给一个我的例子。我要看 gedit 这个项目的源代码，它用到 gtk 和 glib
+两个库。gedit 和这两个库中都有自己的数据库。这样可以设置
+cscope-database-regexps 为：
+
+(("gedit"
+  (t)
+  ("/home/ywb/softwares/source/gnome/gtk+-2.10.11/" ("-d"))
+  ("/home/ywb/softwares/source/gnome/glib-2.12.11/" ("-d"))))
+
+-d 选项告诉 cscope 不要更新数据库。这样在 gedit 目录里的源文件也可以
+查找到 gtk 和 glib 中的符号。
+
+Ebrowse
+
+ebrowse 是 emacs 自带的一个浏览 C++ 代码的工具。和 etags 一样，使用前
+需要用 ebrowse 程序产生 EBROWSE 文件，然后才能在 emacs 中用相应的命令
+进行浏览或查找。命令一般就是：
+
+ebrowse *.cpp *.h
+
+在生成 BROWSE 文件后直接打开就会进入 Tree Buffer。在这个缓冲区里显示
+的定义的各种 class，并用缩进显示类的继承树。
+
+Tree Buffer 中常用的按键：
+
+┏━━━┯━━━━━━━━━━━━━┯━━━━━━━━━━━━━━━━━┓
+┃ 按键 │           功能           │               命令               ┃
+┠───┼─────────────┼─────────────────┨
+┃ RET  │ 跳到类定义的文件中       │ ebrowse-find-class-declaration   ┃
+┠───┼─────────────┼─────────────────┨
+┃ SPC  │ 跳到类定义的文件中，并进 │ ebrowse-view-class-declaration   ┃
+┃      │ 入 view-mode             │                                  ┃
+┠───┼─────────────┼─────────────────┨
+┃ /    │ 读入类名，并跳到类所在位 │ ebrowse-read-class-name-and-go   ┃
+┃      │ 置                       │                                  ┃
+┠───┼─────────────┼─────────────────┨
+┃ n    │ 重复前一次的查找         │ ebrowse-repeat-member-search     ┃
+┠───┼─────────────┼─────────────────┨
+┃ -    │ 折叠节点                 │ ebrowse-collapse-branch          ┃
+┠───┼─────────────┼─────────────────┨
+┃ +    │ 展开节点                 │ ebrowse-expand-branch            ┃
+┠───┼─────────────┼─────────────────┨
+┃ *    │ 展开所有节点             │ ebrowse-expand-all               ┃
+┠───┼─────────────┼─────────────────┨
+┃ T f  │ 切换显示文件名           │ ebrowse-toggle-file-name-display ┃
+┠───┼─────────────┼─────────────────┨
+┃ T s  │ 只对当前行显示文件名     │ ebrowse-show-file-name-at-point  ┃
+┠───┼─────────────┼─────────────────┨
+┃ T w  │ 设置缩进                 │ ebrowse-set-tree-indentation     ┃
+┠───┼─────────────┼─────────────────┨
+┃ C-k  │ 删除在当前行上的类       │ ebrowse-remove-class-at-point    ┃
+┠───┼─────────────┼─────────────────┨
+┃ x    │ 显示统计信息             │ ebrowse-statistics               ┃
+┗━━━┷━━━━━━━━━━━━━┷━━━━━━━━━━━━━━━━━┛
+
+除此之外，一类用于查找类成员的命令设定按键为以 L 开头：
+
+┏━━━┯━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 按键 │                  类成员                    ┃
+┠───┼──────────────────────┨
+┃ L v  │ 实例变量（Instance member variables）      ┃
+┠───┼──────────────────────┨
+┃ L V  │ 实例成员函数（Instance member functions）  ┃
+┠───┼──────────────────────┨
+┃ L f  │ 静态变量（Static member variables）        ┃
+┠───┼──────────────────────┨
+┃ L F  │ 静态成员函数（Static member functions）    ┃
+┠───┼──────────────────────┨
+┃ L d  │ 友元函数（friend functions）               ┃
+┠───┼──────────────────────┨
+┃ L t  │ 类型（类作用域内定义的 enum 和 typedef）   ┃
+┗━━━┷━━━━━━━━━━━━━━━━━━━━━━┛
+
+这些信息默认显示在 Member Buffer 中。如果要显示在不同的 buffer 中，可
+以用 C-u 前缀来使用命令，文档中称为是 freeze。在 Member Buffer 中除了
+可以用前面这些按键切换显示的成员，还有一些常用按键：
+
+┏━━━┯━━━━━━┯━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 按键 │   功能     │                        命令                          ┃
+┠───┼──────┼───────────────────────────┨
+┃      │ 跳到成员   │                                                      ┃
+┃ RET  │ 定义的位   │ ebrowse-find-member-definition                       ┃
+┃      │ 置         │                                                      ┃
+┠───┼──────┼───────────────────────────┨
+┃      │ 跳到成员   │                                                      ┃
+┃ f    │ 声明的位   │ ebrowse-find-member-declaration                      ┃
+┃      │ 置         │                                                      ┃
+┠───┼──────┼───────────────────────────┨
+┃      │ 以         │                                                      ┃
+┃ SPC  │ view-mode  │ ebrowse-view-member-definition                       ┃
+┃      │ 跳到定义   │                                                      ┃
+┠───┼──────┼───────────────────────────┨
+┃      │ 以         │                                                      ┃
+┃ v    │ view-mode  │ ebrowse-view-member-declaration                      ┃
+┃      │ 跳到声明   │                                                      ┃
+┠───┼──────┼───────────────────────────┨
+┃ C c  │ 选择其它   │ ebrowse-switch-member-buffer-to-any-class            ┃
+┃      │ 类         │                                                      ┃
+┠───┼──────┼───────────────────────────┨
+┃ C b  │ 回到父类   │ ebrowse-switch-member-buffer-to-base-class           ┃
+┠───┼──────┼───────────────────────────┨
+┃ C d  │ 到子类     │ ebrowse-switch-member-buffer-to-derived-class        ┃
+┠───┼──────┼───────────────────────────┨
+┃      │ 下一个兄   │                                                      ┃
+┃ C n  │ 弟类       │ ebrowse-switch-member-buffer-to-next-sibling-class   ┃
+┃      │ (sibling)  │                                                      ┃
+┠───┼──────┼───────────────────────────┨
+┃      │ 前一个兄   │                                                      ┃
+┃ C p  │ 弟类       │ebrowse-switch-member-buffer-to-previous-sibling-class┃
+┃      │ (sibling)  │                                                      ┃
+┠───┼──────┼───────────────────────────┨
+┃      │ 切换是否   │                                                      ┃
+┃ D a  │ 显示成员   │ ebrowse-toggle-member-attributes-display             ┃
+┃      │ 属性       │                                                      ┃
+┠───┼──────┼───────────────────────────┨
+┃      │ 切换显示   │                                                      ┃
+┃ D b  │ 继承的类   │ ebrowse-toggle-base-class-display                    ┃
+┃      │ 及成员     │                                                      ┃
+┠───┼──────┼───────────────────────────┨
+┃      │ 切换是否   │                                                      ┃
+┃ D l  │ 显示完整   │ ebrowse-toggle-long-short-display                    ┃
+┃      │ 信息       │                                                      ┃
+┠───┼──────┼───────────────────────────┨
+┃ D r  │ 切换是否   │ ebrowse-toggle-regexp-display                        ┃
+┃      │ 显示全名   │                                                      ┃
+┠───┼──────┼───────────────────────────┨
+┃ D w  │ 设置名字   │ ebrowse-set-member-buffer-column-width               ┃
+┃      │ 宽度       │                                                      ┃
+┠───┼──────┼───────────────────────────┨
+┃ G v  │ 跳到输入   │ ebrowse-goto-visible-member                          ┃
+┃      │ 的成员处   │                                                      ┃
+┠───┼──────┼───────────────────────────┨
+┃      │ 类似 G v   │                                                      ┃
+┃      │ ，但是补   │                                                      ┃
+┃ G m  │ 全使用全   │ ebrowse-goto-visible-member/all-member-lists         ┃
+┃      │ 部的       │                                                      ┃
+┃      │ member     │                                                      ┃
+┠───┼──────┼───────────────────────────┨
+┃ G n  │ 重复前一   │ ebrowse-repeat-member-search                         ┃
+┃      │ 次查找     │                                                      ┃
+┠───┼──────┼───────────────────────────┨
+┃ TAB  │ 跳到 Tree  │ ebrowse-pop-from-member-to-tree-buffer               ┃
+┃      │ Buffer     │                                                      ┃
+┠───┼──────┼───────────────────────────┨
+┃      │ 类似 TAB   │                                                      ┃
+┃      │ ，但是光   │                                                      ┃
+┃ t    │ 标跳到当   │ ebrowse-show-displayed-class-in-tree                 ┃
+┃      │ 前浏览的   │                                                      ┃
+┃      │ 类         │                                                      ┃
+┗━━━┷━━━━━━┷━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+在用 D a 开启显示成员属性后，在每个成员之前尖括号内里显示了下列成员属
+性：
+
+┏━━━┯━━━━━━━━━━┓
+┃ 缩写 │       含义         ┃
+┠───┼──────────┨
+┃ T    │ template           ┃
+┠───┼──────────┨
+┃ C    │ extern "C" 声明    ┃
+┠───┼──────────┨
+┃ v    │ virtual            ┃
+┠───┼──────────┨
+┃ i    │ inline             ┃
+┠───┼──────────┨
+┃ c    │ const              ┃
+┠───┼──────────┨
+┃ 0    │ pure virtual       ┃
+┠───┼──────────┨
+┃ m    │ declared mutable   ┃
+┠───┼──────────┨
+┃ e    │ declared explicit  ┃
+┠───┼──────────┨
+┃ t    │ with throw list    ┃
+┗━━━┷━━━━━━━━━━┛
+
+根据成员的属性，在 Member Buffer 中提供一些过滤器：
+
+┏━━━━┯━━━━━━━━━━━━━━┓
+┃ 按键   │            功能            ┃
+┠────┼──────────────┨
+┃ F a u  │ 切换显示 public 成员       ┃
+┠────┼──────────────┨
+┃ F a o  │ 切换显示 protected 成员    ┃
+┠────┼──────────────┨
+┃ F a i  │ 切换显示 private 成员      ┃
+┠────┼──────────────┨
+┃ F v    │ 切换显示 virtual 成员      ┃
+┠────┼──────────────┨
+┃ F i    │ 切换显示 inline 成员       ┃
+┠────┼──────────────┨
+┃ F c    │ 切换显示 const 成员        ┃
+┠────┼──────────────┨
+┃ F p    │ 切换显示 pure virtual 成员 ┃
+┠────┼──────────────┨
+┃ F r    │ 移除所有过滤器             ┃
+┗━━━━┷━━━━━━━━━━━━━━┛
+
+除了在 Tree Buffer 和 Member Buffer 提供的这些浏览功能，Ebrowse 还提
+供在源代码文件中的浏览和补全按键。这些命令默认使用 C-c C-m 为前缀的按
+键。可以自己设置一个比较短的前缀：
+
+(setq ebrowse-global-prefix-key "\C-z")
+
+源文件中的 ebrowse 按键如下：
+
+┏━━━┯━━━━━━━━┯━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 按键 │      功能      │                    命令                    ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │ 跳到 member 的 │                                            ┃
+┃ C-m  │ 定义           │ ebrowse-tags-find-definition               ┃
+┃ f    │                │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │ 跳到 member 的 │                                            ┃
+┃ C-m  │ 声明           │ ebrowse-tags-find-declaration              ┃
+┃ F    │                │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │ 以 view-mode   │                                            ┃
+┃ C-m  │ 跳到 member 的 │ ebrowse-tags-view-definition               ┃
+┃ v    │ 定义           │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │ 以 view-mode   │                                            ┃
+┃ C-m  │ 跳到 member 的 │ ebrowse-tags-view-declaration              ┃
+┃ V    │ 声明           │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │ 在另一个窗口中 │                                            ┃
+┃ C-m  │ ，跳到 member  │ ebrowse-tags-find-definition-other-window  ┃
+┃ 4 f  │ 的定义         │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │ 在另一个窗口中 │                                            ┃
+┃ C-m  │ ，跳到 member  │ ebrowse-tags-view-definition-other-window  ┃
+┃ 4 F  │ 的声明         │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │ 在另一个窗口中 │                                            ┃
+┃ C-m  │ ，以 view-mode │ ebrowse-tags-find-declaration-other-window ┃
+┃ 4 v  │ 跳到 member 的 │                                            ┃
+┃      │ 定义           │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │ 在另一个窗口中 │                                            ┃
+┃ C-m  │ ，以 view-mode │ ebrowse-tags-view-declaration-other-window ┃
+┃ 4 V  │ 跳到 member 的 │                                            ┃
+┃      │ 声明           │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │ 在另一个 frame │                                            ┃
+┃ C-m  │ 中，跳到       │ ebrowse-tags-find-definition-other-frame   ┃
+┃ 5 f  │ member 的定义  │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │ 在另一个 frame │                                            ┃
+┃ C-m  │ 中，跳到       │ ebrowse-tags-view-definition-other-frame   ┃
+┃ 5 F  │ member 的声明  │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │ 在另一个 frame │                                            ┃
+┃ C-m  │ 中，以         │ ebrowse-tags-find-declaration-other-frame  ┃
+┃ 5 v  │ view-mode 跳到 │                                            ┃
+┃      │ member 的定义  │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │ 在另一个 frame │                                            ┃
+┃ C-m  │ 中，以         │ ebrowse-tags-view-declaration-other-frame  ┃
+┃ 5 V  │ view-mode 跳到 │                                            ┃
+┃      │ member 的声明  │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │ 在位置堆栈中返 │                                            ┃
+┃ C-m  │ 回前一个位置   │ ebrowse-back-in-position-stack             ┃
+┃ -    │                │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │ 在位置堆栈中向 │                                            ┃
+┃ C-m  │ 后一个位置     │ ebrowse-forward-in-position-stack          ┃
+┃ +    │                │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │ 列出所有位置进 │                                            ┃
+┃ C-m  │ 行选择，用空格 │ ebrowse-electric-position-menu             ┃
+┃ p    │ 确定           │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │                │                                            ┃
+┃ C-m  │ 查找正则       │ ebrowse-tags-search                        ┃
+┃ s    │                │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │ 查找 member 名 │                                            ┃
+┃ C-m  │ 字             │ ebrowse-tags-search-member-use             ┃
+┃ u    │                │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │                │                                            ┃
+┃ C-m  │ 查找并替换     │ ebrowse-tags-query-replace                 ┃
+┃ %    │                │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │ 重复上面三个命 │                                            ┃
+┃ C-m  │ 令             │ ebrowse-tags-loop-continue                 ┃
+┃ ,    │                │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │                │                                            ┃
+┃ C-m  │ 重复 tag 操作  │ ebrowse-tags-next-file                     ┃
+┃ n    │                │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │ 列出某个文件中 │                                            ┃
+┃ C-m  │ 所有的 member  │ ebrowse-tags-list-members-in-file          ┃
+┃ l    │                │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │                │                                            ┃
+┃ C-m  │ 模糊查找       │ ebrowse-tags-apropos                       ┃
+┃ a    │                │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │                │                                            ┃
+┃ C-m  │ 补全           │ ebrowse-tags-complete-symbol               ┃
+┃ TAB  │                │                                            ┃
+┠───┼────────┼──────────────────────┨
+┃ C-c  │ 列出某个类的   │                                            ┃
+┃ C-m  │ member         │ ebrowse-tags-display-member-buffer         ┃
+┃ m    │                │                                            ┃
+┗━━━┷━━━━━━━━┷━━━━━━━━━━━━━━━━━━━━━━┛
+
+还有一些工具没有涉及，global 的使用与前面这些很类似，我还没有体会到它
+的强大，所以没有用。semantic 这个怪物我也只是尝试了一下，太复杂了，没
+有详细的研究，所以也没有什么心得。
+
+--
+Documentation is like sex:
+when it's good, it's very, very good; and
+when it's bad, it's still better than nothing.        
+
+                                          -- Dick Brandon 

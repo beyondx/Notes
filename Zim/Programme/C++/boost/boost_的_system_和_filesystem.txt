@@ -1,0 +1,75 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-14T15:45:10+08:00
+
+====== boost 的 system 和 filesystem ======
+Created Tuesday 14 February 2012
+
+http://remonstrate.wordpress.com/2011/06/29/boost-%E7%9A%84-system-%E5%92%8C-filesystem/
+
+boost 的 system 为一些__常见的系统调用__提供了非全局变量（errno）的解决方案，主要是提供了一个 std::runtime_error 的子类 boost::system::system_error，这是一个跨平台的头文件 boost/system/system_error.hpp 里面包含的。
+
+boost 的 filesystem 就是建立在 system 上面的一个工具，方便在 C++ 程序里面访问文件系统（跨平台）。下面是一个简单的例子：
+
+01	#include <iostream>
+02	#include <boost/filesystem.hpp>
+03	using namespace boost::filesystem;
+04	 
+05	int
+06	main (int argc, char* argv[]) {
+07	  if (argc < 2) {
+08	    std::cout << "Usage: tut1 path\n";
+09	    return 1;
+10	  }
+11	  std::cout << argv[1] << " " << file_size(argv[1]) << '\n';
+12	  return 0;
+13	}
+
+这里的 boost::filesystem::filesize 就是一个用来获得文件大小的函数。
+
+事实上，有更多的所谓的 operational function：
+
+* absolute 取绝对路径
+* copy、copy_file、copy_directory 和 copy_symlink 进行复制
+* create_directory/create_directories、create_hard_link 和 create_symlink 用于创建需要的目录和连接
+* current_path 返回当前路径
+* exists 判断 path 是否存在
+* equivalent 判断两个文件的 file_status 是否相同
+* hard_link_count 硬连接数
+* is_directory 判断是否为目录，is_empty 是否空文件，is_other 别的类型，is_regular_file 是否为正常文件，is_symlink 是否符号链接
+* read_symlink 读符号链接
+* remove 删除和 remove_all 删除所有文件
+* rename 重命名
+* resize_file 改变文件大小
+* space 返回占用空间信息，status 返回 file_status
+* temp_directory_path 获得临时文件路径
+* unique_path 返回一个 UUID
+
+另外有一些支持的类，比如：
+
+* path 用来创建一个路径，比起一般的字符串，将有更多的功能，如判断是否绝对路径 is_absolute/is_relative 等函数，转换（make_absolute）或者替换扩展名（replace_extension）等；
+* filesystem_error __将对应的 errno 转换成为了 exception 机制__，前面的例子只需要换一下参数访问一个不存在的文件就会抛出异常；
+* 用于访问目录的 directory_entry 和__遍历目录__的 directory_iterator、directory_recursive_iterator。
+* file_status 用于获得文件的信息。
+* fstream 和 std::fstream 的区别在于使用 path 作为 constructor 的输入
+
+下面是一个稍微复杂一点的例子：
+01	#include <iostream>
+02	#include <boost/filesystem.hpp>
+03	 
+04	namespace bfs = boost::filesystem ;
+05	 
+06	int
+07	main (int, char**) {
+08	  for (bfs::recursive_directory_iterator it =
+09	         bfs::recursive_directory_iterator (bfs::current_path()) ;
+10	       it != bfs::recursive_directory_iterator() ; ++ it) {
+11	    const bfs::path& cp = it -> path() ;
+12	    std::cout << cp << '\t'
+13	              << (bfs::is_regular_file (cp) ?
+14	                  static_cast<int> (bfs::file_size (cp)) : -1) << std::endl ;
+15	  }
+16	  return 0;
+17	}
+
+这个还是很不错的，写代码都很简单了…

@@ -1,0 +1,306 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-13T20:38:38+08:00
+
+====== step by step 教你裁剪出一个Mini Linux LiveCD ======
+Created Friday 13 January 2012
+http://www.linuxsir.org/bbs/showthread.php?t=351353
+
+===== 一、编译内核 =====
+1、到下面这个网站下载内核源码：
+http://www.kernel.org/pub/linux/kernel/v2.6/
+（本例中采用2.6.28.8的内核）
+将下载好的内核放到主文件夹下
+
+2、打开“终端”，输入以下命令，解压内核：
+#tar xvf linux
+进入解压好的内核目录
+#cd linux-2.6.28.8
+下载__内核配置文件__（内核不是我配置的），并放到到主目录（感兴趣的可以自己来__裁剪内核__，但很花费时间）
+下载地址：http://www.namipan.com/d/17b6d6f3545...4db5095f140000
+把它重命名后并剪切到 linux-2.6.28.8文件夹下：
+#mv ~/mykernel.config ./.config
+
+3、编译内核的前期工作
+#sudo apt-get install build-essential
+#sudo apt-get install libncurses5-dev
+
+4、开始编译内核
+养成良好的习惯，编译前先做清理
+__#make mrproper__
+进入内核编译的界面
+#make menuconfig
+进入到配置菜单时，选择最下面的 Load an Alternate Configuration File,回车，选择OK再回车确定。此时就载入了老师的配置文件
+
+现在我们做一些调整
+选择Networking support
+找到 Wireless选项，去掉前面的星号（点一下空格就可以去掉或者选中模块）
+返回上级菜单，选择Device Drivers,回车
+选中USB support
+返回上级菜单，选择最后一项，保存我们的设定，即：Save an Alternate Configuration File
+选择OK后，在选择Exit，退出内核配置界面
+
+在终端里输入以下命令，开始编译内核：
+#make
+等待一段时间后，内核裁剪与编译就完成了    #注意，并没有安装
+
+===== 二、制作根文件系统 =====
+1、创建一个工作目录
+先返回我们的主目录
+#cd
+接着创建一个工作目录，并进入其中
+#mkdir mylinux
+#cd mylinux
+
+2、创建根文件系统的目录
+#mkdir -p dev etc home mnt/cdrom proc root tmp usr var
+
+改变一些文件夹的权限
+#__chmod 1777 tmp__
+
+3、**制作设备节点**
+我们直接从宿主机里复制
+#sudo cp -R /dev/cdrom ./dev/
+#sudo cp -R /dev/__console__ ./dev/
+#sudo cp -R /dev/loop0 ./dev/
+#sudo cp -R /dev/__null__ ./dev/
+#sudo cp -R /dev/__ram{0..9}__ ./dev/
+#sudo cp -R /dev/sda{0..9} ./dev/
+#sudo cp -R /dev/sda ./dev/
+#sudo cp -R /dev/sdb ./dev/
+#sudo cp -R /dev/tty{0..9} ./dev/
+#sudo cp -R /dev/__zero__ ./dev/
+
+__改变一些设备节点的权限和所有组群__
+#sudo chgrp disk dev/ram*
+#sudo chgrp tty dev/tty*
+
+4、用__busybox__补充我们的根文件系统
+下载busybox-1_13_1.tar.bz2，并放置到主文件夹下
+先返回我们的主目录
+#cd
+解压busybox,并进入到busybox的目录里
+#tar xvf busybox-1_13_1.tar.bz2
+#cd busybox-1_13_1/
+和配置内核一样,首先进入到配置界面
+#make menuconfig
+进入Busybox Settings
+进入Build Options
+选择Build Busybox as a __static binary__ (no shared libs),返回上一级菜单
+进入Installation Options
+选择Don't use /usr,返回上一级菜单
+返回到第一级菜单后，选择最后一项，保存我们的配置，即Save Configuration to an Alternate File
+接着退出菜单（Exit）
+在终端里输入以下命令，开始编译busybox：
+#make
+编译完后，安装（默认会被安装在busybox的___install文件夹__下）
+#make install
+
+5、整合跟文件系统
+#cp -R _install/* ~/mylinux/
+
+6、配置**系统的初始化**文件
+#cd ~/mylinux/etc
+#mkdir init.d
+
+编辑rcS文件
+#gedit init.d/rcS
+
+rcS的内容是：
+#! /bin/sh
+mount -o remount,rw /
+/bin/mount -a
+/etc/rc.local
+
+编辑好后保存退出
+改变rcS的权限
+#sudo chmod 777 init.d/rcS
+
+编辑inittab文件
+gedit inittab
+
+inittab文件的内容是：
+::sysinit:/etc/init.d/rcS
+tty1::respawn:/sbin/getty 38400 tty1
+# Stuff to do when restarting the init process
+::restart:/sbin/init
+# Stuff to do before rebooting
+::ctrlaltdel:/sbin/reboot
+
+编辑好后保存退出
+改变inittab的权限
+#sudo chmod 777 inittab
+
+编辑rc.local文件
+#gedit rc.local
+
+rc.local的内容是：
+uname -a
+
+编辑好后保存退出
+改变rc.local的权限
+#sudo chmod 777 rc.local
+
+编辑fstab文件
+#gedit fstab
+
+fstab文件的内容是：
+none /proc proc defaults 0 0
+/dev/cdrom0 /mnt/cdrom udf,iso9660 user,noauto,exec,utf8 0 0
+
+编辑好后保存退出
+改变fstab的权限
+#sudo chmod 777 fstab
+
+接着从宿主机拷贝有关用户的文件，以便登录时使用
+#cp /etc/passwd ./
+#cp /etc/group ./
+#sudo cp /etc/shadow ./
+
+用gedit命令分别编辑这三个文件（编辑shadow时，要加sudo）
+注意：编辑之前这些文件之前，请一定要在宿主机里设定好root的密码
+passwd、group、shadow这三个文件的内容只保留第一行，即有关root的信息，其他的都删掉
+其中passwd文件还要做一些修改：
+#gedit passwd
+
+把最后的“bash”改成“sh”
+修改后保存退出
+
+编辑profile文件
+
+profile文件的内容是：
+# /etc/profile: system-wide .profile file for the Bourne shells
+export PS1='\u@\h:\w\$ '
+echo
+# Set path
+PATH=/bin:/sbin:/usr/bin:/usr/sbin
+export PATH
+
+编辑好后保存退出
+
+
+__7、制作跟文件系统的镜像__
+先返回我们的主目录
+#cd
+
+建立一个8M的空间用来放我们的跟文件系统
+#__dd__ if=/dev/zero of=__initrd.img__ bs=1k count=8129
+将它格式化为ext2的文件系统，然后挂载
+#mke2fs -F -v -m0 initrd.img
+#sudo mkdir /mnt/initrd
+#sudo mount -o loop initrd.img /mnt/initrd
+
+接着把我们做好的文件系统复制进去：
+#sudo cp -av ~/mylinux/* /mnt/initrd
+复制完后，卸载initrd
+#sudo umount /mnt/initrd
+
+压缩根文件系统镜像：
+#__gzip__ -fv9 initrd.img
+#mv initrd.img.gz __./initrd.gz__
+
+到此，我们的就完成了根文件系统的制作
+
+===== 三、制作bootloader =====
+因为我们用的是LiveCD，所以我们就选用isolinux作为我们的bootloader
+到下面这个网站下载syslinux-3.80.tar.bz2
+http://www.kernel.org/pub/linux/boot/syslinux/
+下载好后把它放在主文件夹下
+解压，并进入解压后的目录：
+#tar xvf syslinux-3.80.tar.bz2
+
+建立一个临时文件夹，并把isolinux.bin拷进去
+#mkdir -p tmp/isolinux
+#cp syslinux-3.80/core/isolinux.bin tmp/isolinux/
+
+创建isolinux的配置文件
+#gedit tmp/isolinux/isolinux.cfg
+
+isolinux.cfg的内容是：
+DEFAULT /bzImage initrd=/initrd.gz
+
+__LABLE__ lucky_linux_V1.10.iso
+kernel __/bzImage__
+append initrd=/initrd.gz load_ramdisk=1 prompt_ramdisk=0 ramdisk_size=60000 rw __root=/dev/ram__
+
+编辑好后保存退出
+
+===== 4、整合并制作LiveCD =====
+#cp linux-2.6.28.8/arch/x86/boot/bzImage tmp/
+#cp initrd.gz tmp/
+#mkisofs -o lucky_linux_V1.10.iso -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table tmp/
+
+最后，在我们的主文件夹底下就生成了一个iso的光盘镜像
+至此，我们的LiveCD就做好了
+
+有待解决的问题：
+关于/etc/profile文件的配置
+
+== ==============勘误============= ==
+
+solinux.cfg的内容是：
+DEFAULT /bzImage initrd=/initrd.gz
+
+LABLE lucky_linux_V1.10.iso
+kernel /bzImage
+append initrd=/initrd.gz load_ramdisk=1 prompt_ramdisk=0 ramdisk_size=60000 rw root=/dev/ram
+-------------------------------------------------------
+这里有错。应该是
+append initrd=/initrd.gz load_ramdisk=1 prompt_ramdisk=0 ramdisk_size=60000 rw root=/dev/ram0
+不然会出现14楼所说的情况。
+
+还有
+rcS的内容是：
+#! /bin/sh
+mount -o remount,rw /
+/bin/mount -a
+/etc/rc.local
+
+我试过也出现14楼的情况，但改为
+#! /bin/sh
+/bin/mount -a
+mount -o remount,rw /
+/etc/rc.local
+就好了，不知道是不是这样。
+
+== ========在LiveCD中加入gcc ==
+http://www.linuxsir.org/bbs/showthread.php?t=351353
+EHLR1的安装盘就是这麽做滴~~
+
+下面给出加工具做法：
+export TARGET=/mnt/initrd
+1.不要编译静态bb。
+
+2.拷贝库：
+
+cp /lib/{ld-linux.so.2,libc.so.6,libm.so.6,libncursesw.so.*} $TARGET/lib
+mkdir $TARGET/usr/lib
+cp /usr/lib/libc.a $TARGET/usr/lib
+ln -sfv ../../lib/libc.so.6 $TARGET/usr/lib/libc.so
+cp /usr/lib/libgcc_s.so* $TARGET/usr/lib
+
+3.复制bu与gcc
+
+cp /usr/bin/{ar,as,ld,gcc} $TARGET/bin
+cp -R /usr/lib/gcc $TARGET/usr/lib
+cp /usr/lib/*crt* $TAREGT/usr/lib
+
+4.头文件
+
+mkdir $TARGET/include
+cp /usr/include/*.h $TARGET/usr/include
+cp -R /usr/include/{asm,linux} $TARGET/usr/include
+
+5.插入其他工具
+
+Step 1:插入ldd
+
+sed -e 's/bash/__ash__/g' </usr/bin/ldd >$TARGET/bin/ldd
+
+Step 2;插入其他程序
+
+先ldd然后拷库（就gcc麻烦！）
+
+使用这种办法，毫不夸张地说，64M initrd可以装入X（不带gcc）或可编译gcc
+
+

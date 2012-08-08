@@ -1,0 +1,69 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-19T20:16:51+08:00
+
+====== NOX install ======
+Created Thursday 19 May 2011
+http://noxrepo.org/noxwiki/index.php/NOX_Installation
+
+Contents
+    1 Dependencies
+        1.1 Debian/Ubuntu
+            1.1.1 Manual dependencies installation
+            1.1.2 apt-get
+        1.2 RedHat Enterprise Linux 6
+        1.3 Gentoo
+    2 Installation
+    3 Verify Installation
+
+===== Dependencies =====
+An unofficial list of dependencies can be found on the Dependencies page.
+
+==== Debian/Ubuntu ====
+These instructions are tested on Ubuntu 10.04.  Manual dependencies installation
+You can manually download the nox-dependencies package and get the updated information.
+wget http://openflowswitch.org/downloads/debian/binary/nox-dependencies.deb
+dpkg --info nox-dependencies.deb
+apt-get
+If you have root access and want apt-get to resolve the dependencies, you can all the following to your apt-get repositories list.
+cd /etc/apt/sources.list.d
+sudo wget http://openflowswitch.org/downloads/debian/nox.list
+sudo apt-get update
+sudo apt-get install nox-dependencies
+
+==== RedHat Enterprise Linux 6 ====
+While NOX has been built successfully on prerelease versions of RHEL6, we do not have a dependent package list or specific instructions at this time.
+We will update this after RHEL6 is actually released.
+
+==== Gentoo ====
+sudo emerge dev-lang/swig dev-libs/boost =dev-python/twisted-8.2.0-r2
+Then, add =dev-python/twisted-10.1.0 to package.mask to prevent upgrading to this version of twisted.
+
+===== Installation =====
+First, download the latest source code from the git repository and switch to the downloaded folder:
+
+   git clone git://noxrepo.org/nox
+   cd nox
+
+For a branch other than master, you need to see the remote branches and checkout a branch using the following commands. If you want the master(stable) branch, skip this step:
+
+   git branch -a
+   git checkout -b <name of your choice> origin/<remote branch name>
+
+To compile and install NOX:
+
+   ./boot.sh
+   mkdir build/
+   cd build/
+   ../configure
+   make -j 5
+
+The ../configure step checks for required dependencies. 'make -j 5' should work on a system with 1 GB of RAM; 'make -j' may work on systems with more RAM.
+
+If your dependencies are satisfied, this step should not give any errors. If it does, make sure you have installed the package which was found missing (or old). NOX compiles in six to seven minutes on a laptop with a 1.80 GHz CPU with 2GB RAM. The whole installation process (download code, install dependencies, and compile NOX) in Ubuntu 9.10 takes about 15-20 minutes maximum.
+Verify Installation
+
+Once compiled, the nox_core binary will be built in the src directory. Note that nox_core must be run from the build/src directory, and that the build directory must not be moved to a different place in the file system. You can verify that it has built properly by printing out the usage information:
+
+   cd src/
+   ./nox_core -h

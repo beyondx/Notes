@@ -1,0 +1,86 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-18T23:20:38+08:00
+
+====== 设置及转换 Emacs 文件系统的编码格式 ======
+Created Thursday 18 August 2011
+
+重装系统后，Emacs 打开以前的文件，都显示为乱码，着实吓了我一跳。这个时候千万不要慌张，也__不要随便地保存乱码__的文件。
+其实这只是 Emacs 读取文件的编码格式与你的文件格式不一样。我们可以用 M-x describe-coding-system 这个命令来查看一下 Emacs 是用什么编码来读取当前文件的。
+比如说我的 org 文件都是用 UTF-8 来保存的，而打开某个 org 文件显示乱码，用命令 M-x describe-coding-system 显示当前解读的编码为：
+
+  1 -- iso-latin-1-unix (alias: iso-8859-1-unix latin-1-unix)
+
+Emacs 错把 UTF-8 的编码解读成了 latin 编码格式，难怪会乱码！这个时候，有两种解决办法。
+    把 Emacs 的默认编码设置为 UTF-8。    在 .emacs 文件里放入下面这段代码：
+    
+    ;;set the default text coding system
+    (setq default-buffer-file-coding-system 'utf-8)
+
+    可是即使我加了上面这条语句，为什么 Emacs 依然显示 org 文件为乱码呢？
+    原来上面这一行，只是适用于__写文件__的情况(而且是__新__文件)。当你读取一个文件的时候，可能依然会显示出乱码，因为 Emacs 读文件也是按照一定的编码规律来解读文件的。我们再用命令 M-x describe-coding-system 仔细观察一下结果里面的内容，是不是有类似下面这样一段：
+
+      Priority order for recognizing coding systems when reading files:
+        1. iso-latin-1 (alias: iso-8859-1 latin-1)
+        2. utf-8 (alias: mule-utf-8)
+        3. iso-2022-7bit
+        4. iso-2022-7bit-lock (alias: iso-2022-int-1)
+        5. iso-2022-8bit-ss2
+        6. emacs-mule
+        7. raw-text
+        8. iso-2022-jp (alias: junet)
+        9. in-is13194-devanagari (alias: devanagari)
+        10. chinese-iso-8bit (alias: cn-gb-2312 euc-china euc-cn cn-gb gb2312)
+        11. utf-8-auto
+        12. utf-8-with-signature
+        13. utf-16
+        14. utf-16be-with-signature (alias: utf-16-be)
+        15. utf-16le-with-signature (alias: utf-16-le)
+        16. utf-16be
+        17. utf-16le
+        18. japanese-shift-jis (alias: shift_jis sjis cp932)
+        19. undecided
+
+    这就是 Emacs 在读文件时候的__解码顺序__！如果你的文件是以英文开头，自然会套用第一种方法。这个时候，我们还需要调整一下这个编码的先后次序。用命令 M-x prefer-coding-system 就可以调整这些顺序。调整完顺序，再打开 org 文件看一看，终于恢复原貌了。
+    如果你只是用命令 M-x prefer-coding-system 来设置，下次重启 Emacs 的时候，这个设置就会自动清除。如果需要每次都采用这个设置，可以把下面这行扔到 .emacs 里指定优先用 utf-8 来解码：
+
+    (prefer-coding-system 'utf-8)
+
+    另外一种解决乱码的办法，就是用命令 C-x <RET> r ( M-x revert-buffer-with-coding-system) 来用指定的编码重新读入这个文件。
+可是又来了一些问题。当以前一些文件不是用 UTF-8 来编码的时候，Emacs 默认用 UTF-8 来打开就会产生混乱。比如说我的 Muse 文件就是用编码
+
+  chinese-iso-8bit
+
+来保存的（至于为什么 Muse 会用这个编码，我也不知道），现在 Emacs 一打开 Muse 文档就乱码。
+虽然我可以用 M-x revert-buffer-with-coding-system 来用__指定编码__（这里即是 chinese-iso-8bit，当不清楚是那一种时就在几个chinese-及utf-8-间__地尝试__）重新正常地读入文件，但是因为我把默认的编码设为 UTF-8 了，Muse 文档发布成网页后，乱码问题依然存在。
+经过实践发现，最好的解决办法就是把 Muse 文档的编码__统一改为__ UTF-8 的编码格式。事实上，现在我们也没有不使用 UTF-8 编码的理由！
+需要修改显示为乱码的现有文件的编码格式，则可以用下面几个步骤：
+
+* 用命令 M-x revert-buffer-with-coding-system 来用指定编码(可能需要__多次尝试__)重新读入文件，以便正常显示；
+* 用命令 M-x describe-coding-system 查看一下当前的文件编码格式(正常显示的编码，一般情况下是__不一样__的，要不然不会乱码)是否和默认的 UTF-8 一样；
+* 如果不一样，就用命令 C-x <RET> c ( M-x universal-coding-system-argument ) 来设定__下一步__操作的编码格式，我们设定为 UTF-8，然后再用 C-c C-s 命令保存当前的文件(一般在通过第一步正常显示后，__随便对原文进行修改__如插入一空行，然后在执行第三步，这样C-s C-s 才能生效)。
+
+__注意__:这个命令在执行后,你按下__任何__按键.会生效一次. 之后,编码会立刻失效.但C-x C-s不受其影响, 因为其默认的保存编码是当前buffer所使用的编码
+
+这样，我们就完成了修改当前文件编码格式的任务。
+
+为了使以后生效，把下面的配置文件添加到.emacs中
+;;==============================================================================
+;;语言设置
+;;==============================================================================
+(set-language-environment 'Chinese-GB)
+(setq current-language-environment "Chinese-GBK") 
+(set-keyboard-coding-system 'utf-8)
+;;注意，这个很重要，一般网页的中文编码格式是GB2312不是utf-8因此
+;;复制到emacs过程中需要转换。
+(set-clipboard-coding-system 'euc-cn)
+(set-terminal-coding-system 'utf-8)
+(set-buffer-file-coding-system 'utf-8)
+(set-default-coding-systems 'utf-8)
+(set-selection-coding-system 'utf-8)
+(modify-coding-system-alist 'process "*" 'utf-8)
+(setq default-process-coding-system '(utf-8 . utf-8))
+(setq-default pathname-coding-system 'utf-8)
+(set-file-name-coding-system 'utf-8)
+(setq ansi-color-for-comint-mode t)
+(prefer-coding-system 'utf-8)

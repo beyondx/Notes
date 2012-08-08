@@ -1,0 +1,212 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-06T17:08:23+08:00
+
+====== task struct结构体 ======
+Created Tuesday 06 December 2011
+http://hi.baidu.com/wjq_qust/blog/item/5c19b50951f4ab246b60fbfa.html
+//进程描述符task_struct
+
+struct task_struct {
+
+
+volatile long** state**; /* -1 unrunnable, 0 runnable, >0 stopped */ //-1 不能运行 0 运行 >0 停止
+unsigned long **flags**; /* per process flags, defined below *///进程标志,在下面定义
+
+int **sigpending; **//进程上是否有待处理的信号
+
+mm_segment_t addr_limit; /* thread address space:进程地址空间
+
+0-0xBFFFFFFF for user-thead
+0-0xFFFFFFFF for kernel-thread
+
+*/
+
+volatile long** need_resched**; //调度标志,表示该进程是否需要重新调度,若非0,则当从内核态返回到用户态,会发生调度
+
+int lock_depth; /* Lock depth *///锁深度
+
+/* * offset 32 begins here on 32-bit platforms. We keep
+* all fields in a single cacheline that are needed for
+* the goodness() loop in schedule().*/
+long __counter__; //进程可运行的时间片值
+
+long **nice; /**/进程的基本时间片
+
+unsigned long policy; //进程的调度策略,有三种,实时进程:SCHED_FIFO,SCHED_RR;分时进程:SCHED_OTHER;
+
+struct mm_struct ***mm**; //进程内存管理信息
+struct mm_struct ***active_mm;**
+int processor;
+
+/* * cpus_runnable is ~0 if the process is not running on any
+* CPU. It's (1 << cpu) if it's running on a CPU. This mask
+* is updated under the runqueue lock.
+* * To determine whether a process might run on a CPU, this
+* mask is AND-ed with cpus_allowed.
+* 若进程不在任何CPU上运行，cpus_runnable 的值是0，否则是1。这个值在运行 队列被锁时更新；*/
+
+unsigned long cpus_runnable, cpus_allowed;
+
+/* * (only the 'next' pointer fits into the cacheline, but
+* that's just fine.)
+
+*/
+
+struct list_head __run_list; __//指向运行队列的指针
+unsigned long **sleep_time;** //进程的累计睡眠时间
+struct task_struct ***next_task, *prev_task;** //用于将系统中所有的进程连成一个双向循环链表,其根是init_task.
+
+struct list_head local_pages; //指向本地页面
+
+unsigned int allocation_order, nr_local_pages;
+
+/* task state */
+
+struct linux_binfmt *binfmt; //进程所运行的**可执行文件的格式**
+
+int **exit_code, exit_signal;**
+
+int pdeath_signal; /* The signal sent when the parent dies *///父进程终止是向子进程发送的信号
+/* ??? */
+
+unsigned long personality; //Linux可以运行由其他UNIX操作系统生成的符合iBCS2标准的程序
+
+int __did_exec:1;__ //按POSIX要求设计的布尔量,区分进程正在执行从父进程中继承的代码,还是执行由execve装入的新程序代码
+
+pid_t pid; //进程标识符,用来代表一个进程
+pid_t pgrp; //进程组标识,表示进程所属的进程组
+pid_t __tty_old_pgrp;__ //进程控制终端所在的组标识
+pid_t session; //进程的会话标识
+pid_t__ tgid;__
+
+/* boolean value for session group leader */
+
+int__ leader;__ //标志,表示进程是否为会话主管
+
+/*
+
+* pointers to (original) parent process, youngest child, younger sibling,
+* older sibling, respectively. (p->father can be replaced with
+* p->p_ppr->pid)
+*///指针指向（原始的）父进程，孩子进程，比自己年轻的兄弟进程，比自己年长的兄弟进程
+//（p->father能被p->p_pptr->pid代替)
+
+struct task_struct *p_opptr, *p_pptr, *p_cptr, *p_ysptr, *p_osptr;
+
+struct list_head__ thread_group;__ //线程链表
+
+/* PID hash table linkage. *///进程散列表指针
+
+struct task_struct** *pidhash_next;** //用于将进程链入HASH表pidhash
+struct task_struct **pidhash_pprev;
+wait_queue_head_t __wait_chldexit; __/* for wait4() *///wait4()使用
+struct completion *vfork_done; /* for vfork() */// vfork() 使用
+
+unsigned long __rt_priority;__ //实时优先级，用它计算实时进程调度时的weight值
+
+unsigned long it_real_value, it_prof_value, it_virt_value;
+unsigned long it_real_incr, it_prof_incr, it_virt_value;
+
+//it_real_value，it_real_incr用于REAL定时器，单位为jiffies。系统根据it_real_value //设置定时器的第一个终止时间。在定时器到期时，向进程发送**SIGALRM**信号，同时根据it_real_incr重置终止时间
+//it_prof_value，it_prof_incr用于Profile定时器，单位为jiffies。当进程运行时，不管在何种状态下，每个tick都使
+//it_prof_value值减一，当减到0时，向进程发送信号SIGPROF，并根据it_prof_incr重置时间
+//it_virt_value，it_virt_value用于Virtual定时器，单位为jiffies。当进程运行时，不管在何种状态下，每个tick都使
+//it_virt_value值减一，当减到0时，向进程发送信号SIGVTALRM，根据it_virt_incr重置初值。
+
+//Real定时器根据系统时间实时更新，不管进程是否在运行
+//Virtual定时器只在进程运行时，根据进程在用户态消耗的时间更新
+//Profile定时器在进程运行时，根据进程消耗的时（不管在用户态还是内核态）更新
+
+
+struct timer_list real_timer;//指向实时定时器的指针
+struct tms __times;__ //记录进程消耗的时间，
+unsigned long __start_time;__//进程创建的时间
+
+long per_cpu_utime[NR_CPUS], per_cpu_stime[NR_CPUS]; //记录进程在每个CPU上所消耗的用户态时间和核心态时间
+
+//内存缺页和交换信息：
+/* mm fault and swap info: this can arguably be seen as either mm-specific or thread-specific */
+//min_flt, maj_flt累计进程的次缺页数（Copy on Write页和匿名页）和主缺页数（从映射文件或交换设备读入的页面数）；
+//nswap记录进程累计换出的页面数，即写到交换设备上的页面数。
+//cmin_flt, cmaj_flt, cnswap记录本进程为祖先的所有子孙进程的累计次缺页数，主缺页数和换出页面数。在父进程
+//回收终止的子进程时，父进程会将子进程的这些信息累计到自己结构的这些域中
+
+unsigned long min_flt, maj_flt, nswap, cmin_flt, cmaj_flt, cnswap;
+
+int swappable:1; //表示进程的虚拟地址空间是否允许换出
+
+/* process credentials *////进程认证信息
+
+//uid,gid为运行该进程的用户的用户标识符和组标识符，通常是进程创建者的uid，gid //euid，egid为有效uid,gid
+//fsuid，fsgid为文件系统uid,gid，这两个ID号通常与有效uid,gid相等，在检查对于文件系统的访问权限时使用他们。
+//suid，sgid为__备份uid,gid__
+
+uid_t uid,euid,suid,fsuid;
+gid_t gid,egid,sgid,fsgid;
+
+int __ngroups;__ //记录进程在多少个用户组中
+gid_t groups[NGROUPS]; //记录进程所在的组
+
+kernel_cap_t cap_effective, cap_inheritable, cap_permitted;//进程的权能，分别是有效位集合，继承位集合，允许位集合
+
+int keep_capabilities:1;
+struct user_struct *user;
+
+/* limits */
+
+struct rlimit __rlim[RLIM_NLIMITS]; __//与进程相关的资源限制信息
+
+unsigned short used_math; //是否使用FPU
+char __comm[16]; __//进程正在运行的可执行文件名
+
+/* file system info *///文件系统信息
+
+int link_count, total_link_count;
+struct tty_struct __*tty; __/* NULL if no tty 进程所在的控制终端，如果不需要控制终端，则该指针为空*/
+unsigned int locks; /* How many file locks are being held */
+
+/* ipc stuff *///进程间通信信息
+
+struct sem_undo *semundo; //进程在信号灯上的所有undo操作
+struct sem_queue __*semsleeping;__ //当进程因为信号灯操作而挂起时，他在该队列中记录等待的操作
+/* CPU-specific state of this task *///进程的CPU状态，切换时，要保存到停止进程的task_struct中
+
+struct thread_struct thread;
+
+/* filesystem information文件系统信息*/
+
+struct fs_struct__ *fs;__
+
+/* open file information *///打开文件信息
+
+struct files_struct __*files;__
+
+/* signal handlers *///信号处理函数
+
+spinlock_t sigmask_lock; /* Protects signal and blocked */
+
+struct __signal_struct *sig;__ //信号处理函数，
+
+sigset_t __blocked;__ //进程当前要阻塞的信号，每个信号对应一位
+
+struct sigpending __pending;__ //进程上是否有待处理的信号
+
+unsigned long sas_ss_sp;
+size_t sas_ss_size;
+int (*notifier)(void *priv);
+void *notifier_data;
+sigset_t *notifier_mask;
+
+/* Thread group tracking */
+
+u32 parent_exec_id;
+u32 self_exec_id;
+
+/* Protection of (de-)allocation: mm, files, fs, tty */
+
+spinlock_t alloc_lock;
+/* journalling filesystem info */
+void *journal_info;
+
+};

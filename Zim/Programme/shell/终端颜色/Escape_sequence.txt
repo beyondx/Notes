@@ -1,0 +1,57 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-26T20:53:10+08:00
+
+====== Escape sequence ======
+Created Sunday 26 February 2012
+http://en.wikipedia.org/wiki/Escape_sequence
+
+An escape sequence is a series of characters used to **change the state of computers and their attached peripheral devices**. These are also known as __control sequences__, reflecting their **use in device control(主要是终端控制)**. Some control sequences are special characters that always have the same meaning. Escape sequences use an **escape character **to change the meaning of the characters which follow it, meaning that the characters can be i__nterpreted as a command__ to be executed rather than as data.
+
+Escape sequences are commonly used when a computer and a peripheral have __only a single channel through__ which to send information back and forth. If the device in question is __"dumb" __and can only do one thing with the information being sent to it (for instance, print it) then there is no need for an escape sequence. However most devices have more than one capability, and thus __need some way to distinguish information that is to be treated as data from information __that is to be treated as commands.
+
+==== 转义序列的作用 ====
+就是__提供并区分__设备控制信息，该信息**混合**在正常的输出信息中。
+
+An escape character is usually assigned to the __Esc key__ on a computer keyboard, and can be sent in other ways than as part of an escape sequence. For example, the Esc key may be used as an input character in editors such as EMACS, or for backing up one level in a menu in some applications. The Hewlett Packard HP 2640 terminals had a key for a "display functions" mode which would display graphics for all control characters, including Esc, to aid in debugging applications.
+
+If the **Esc key** and other keys that __send escape sequences are both supposed to be meaningful to an application__, an ambiguity arises, if a terminal or terminal emulator is in use. 
+
+In particular, when the application receives the ASCII escape character, it is not clear__ whether __that character is the result of the user pressing the **Esc key **or whether it is the** initial character **of an escape sequence (e.g., resulting from an arrow key press). The traditional method of resolving the ambiguity is to observe whether or not __another character quickly follows __the escape character. If not, it is assumed not to be part of an escape sequence. This heuristic can fail under some circumstances, but in practice it works reasonably well, especially with faster modern communication speeds.
+
+Escape sequences date back at least to the 1874 Baudot code.
+
+===== Contents =====
+    1 Modem control
+    2 Comparison with control characters
+    3 ASCII video data terminals
+    4 Use in DOS and Windows
+    5 See also
+
+===== Modem control =====
+
+The **Hayes command set**, for instance, defines a single escape sequence, __+++__. (In order not to interpret +++ which may be a part of data as the escape sequence the sender stops communication for one second before and after the +++) .When the modem encounters this in a stream of data, it switches from its __normal mode__ of operation which simply sends any characters to the phone, to a __command mode__ in which the following data is assumed to be a part of the command language. You can switch back to the online mode by sending the O command.
+
+modal ['məudəl] adj.模态的, 形态上的,情态的 
+
+The Hayes command set is **modal**, switching from command mode to online mode. This is not appropriate in the case where the commands and data will switch back and forth rapidly. An example of a non-modal escape sequence control language is the __VT100__, which used __a series of commands prefixed by the Control Sequence Introducer, escape-[__.
+
+===== Comparison with control characters =====
+
+A control character is__ a character __that, in isolation, has some control function, such as **carriage return** (CR).
+
+__Escape sequences__, by contrast, consist of an escape character or sequence which __changes the interpretation __of following characters.
+
+The earlier VT52 terminal used simple__ digraph__ commands like escape-A: in isolation, "A" simply meant the letter "A", but as part of the escape sequence "escape-A", it had a different meaning. The VT52 also supported parameters: it was not a straightforward control language encoded as substitution.
+
+===== Escape character vs control character =====
+Generally, an escape character is not a particular case of (device) control characters, nor vice versa. If we define__ control characters as non-graphic__, or as having a special meaning for an output device (e.g. printer or text terminal) then any escape character for this device is a control one. 
+But escape characters __used in programming (see below) are graphic__, hence are not control characters. Conversely most (but not all) of the ASCII "control characters" have some control function in isolation, therefore are not escape characters.
+
+===== ASCII video data terminals =====
+
+The VT100 terminal implemented the more sophisticated** ANSI standard** (now ECMA-48) for functions such as__ controlling cursor movement, character set, and display enhancements. __The Hewlett Packard HP 2640 series had perhaps the most elaborate escape sequences for** block and character** modes, __programming keys __and their soft labels, graphics vectors, and even saving data to tape or disk files.
+
+===== Use in DOS and Windows =====
+A utility, ANSI.SYS, can be used to enable the interpreting of the ANSI (ECMA-48) terminal escape sequences in a DOS command window in DOS or 16-bit Windows. The rise of GUI applications, which directly write to display cards, has greatly reduced the usage of escape sequences on Microsoft platforms, but they can still be used to create interactive random-access character-based screen interfaces with the character-based library routines such as printf without resorting to a GUI program.
+[edit] 

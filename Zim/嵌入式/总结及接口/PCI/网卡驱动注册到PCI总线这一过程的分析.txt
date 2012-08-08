@@ -1,0 +1,620 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-02T19:47:08+08:00
+
+====== 网卡驱动注册到PCI总线这一过程的分析 ======
+Created Monday 02 July 2012
+
+大家好，最近在看网络部分的代码，目前看到了网卡的初始化部分。书上讲到的内容主要是**网卡驱动程序对网卡自身的初始化部分**，即网卡驱动的probe函数是如何执行的，而很少讲到网卡是如何注册到系统中去的这一部分。
+
+现在的网卡大部分都是连接到PCI总线上的。因此，网卡驱动是如何连接到PCI总线，又是如何与网卡设备联系起来，网卡在注册的最后又是如何调用到该网卡 的probe函数的，这一个过程将在后面的文章中进行描述。整个文章分成两个部分，第一部分是讲解总线、设备以及驱动三者的联系，为第二部分具体讲解 PCI总线、网卡设备和驱动做一点铺垫。
+
+由于我在这方面也是初学，之所以想总结出来是想到在总结的过程中对自己的学习也是一个梳理的过程。所以有什么地方写得不好的，还请各位多多指正，非常感谢！也希望能在这里结识更多的朋友。
+
+
+===== 总线、设备和驱动 =====
+
+==== 1.1 简单介绍 ====
+Linux设备模型中三个很重要的概念就是总线、设备和驱动，即bus，device和driver。它们分别对应的数据结构分别为struct bus_type，struct device和struct device_driver。
+
+总线是处理器与一个或多个设备之间的通道，在设备模型中，所有的设备都通过总线相连。在最底层，Linux系统中的每一个设备都用device结构的一个实例来表示。而驱动则是使总线上的设备能够完成它应该完成的功能。
+
+在系统中有多种总线，如PCI总线、SCSI总线等。系统中的多个设备和驱动是__通过总线__让它们联系起来的。在bus_type中两个很重要的成员就是 struct kset drivers和struct kset devices。它分别代表了连接在这个总线上的两个链，一个是设备链表，另一个则是设备驱动链表。也就是说，通过一个总线描述符，就可以找到挂载到这条 总线上的设备，以及支持该总线的不同的设备驱动程序。
+
+==== 1.2 总线、设备与驱动的绑定 ====
+在系统启动时，它会对每种类型的总线创建一个描述符，并将使用该总线的设备链接到该总线描述符的devices链上来。也即是说在系统初始化时，它会__扫描连接了哪些设备__，并且为每个设备建立一个struce device变量，然后将该变量链接到这个设备所连接的总线的描述符上去。另一方面，每当加载了一个设备驱动，则系统也会准备一个struct device_driver结构的变量，然后再将这个变量也链接到它所在总线的描述符的drivers链上去。        
+
+对于设备来说，在结构体struct device中有两个重要的成员，一个是struct bus_type *__bus__，另一个是struct device_driver *__driver__。bus成员就表示该设备是链接到哪一个总线上的，而driver成员就表示当前设备是由哪个驱动程序所驱动的。对于驱动程序来说，在结构 体struct device_driver中也有两个成员，struct bus_type *bus和s__truct list_head devices__，这里的bus成员也是指向这个驱动是链接到哪个总线上的，而devices这个链表则是表示当前这个驱动程序可以去进行驱动的那些设备。 一个驱动程序可以支持一个或多个设备，而一个设备则只会绑定给一个驱动程序。
+
+对于device与device_driver之间建立联系的方式，主要有两种方式：
+
+第一种，在计算机启动的时候，总线开始扫描连接在其上的设备，为每个设备建立一个struct device变量并链接到该总线的devices链上，然后开始初始化不同的驱动程序，__驱动程序到它所在的总线的devices链上去遍历每一个还没有被 绑定给某个驱动的设备，然后再查看是否能够支持这种设备，如果它能够支持这种设备，则将这个设备与这个驱动联系起来__。即，将这个设备的device变量加到驱动的devices链上，同时让struct device中的device_driver指向当前这个驱动。
+
+第二种则是热插拔。也即是在系统运行时插入了设备，此时内核会去查找在该bus链上注册了 的device_driver，然后再将设备与驱动联系起来。设备与驱动根据什么规则联系起来，它们是如何被联系起来的代码我们将在后面的章节进行详细的 描述。
+
+==== 1.3 PCI总线 ====
+PCI是一种在CPU与I/O设备之间进行高速数据传输的一种总线。有很多设备都是使用PCI总线的，网卡就是其中之一。我们在前面讲了那些总线、设备与 驱动方面的知识，原因就在于网卡是连接到PCI总线上，所以**PCI总线、网卡设备以及网卡驱动**就成了我们研究网卡的一个很重要的线索，尤其是在网络的链路层部分。下图显示了在一个系统中PCI设备的一个框图：
+{{./1}}
+PCI子系统声明了一个bus_type结构，为__pci_bus_type__。它就是PCI总线的描述符。在这个变量上，链接了PCI设备以及支持PCI设备的驱动程序。
+
+==== 1.4 PCI设备与驱动 ====
+PCI设备通常由一组参数唯一地标识，它们被vendorID，deviceID和class nodes所标识，即设备厂商，型号等，这些参数保存在__pci_device_id__结构中。每个PCI设备都会被分配一个__pci_dev结构__变量，内核就用这 个数据结构来表示一个PCI设备。
+
+所有的PCI驱动程序都必须定义一个__pci_driver__结构变量，在该变量中包含了这个PCI驱动程序所提供的不同功能的函数，同时在这个结构中也包含了一个device_driver结构，这个结构定义了PCI子系统与PCI设备之间的接口。在注册PCI驱动程序时，这个结构将被初始化，同时这个 pci_driver变量会被链接到pci_bus_type中的驱动链上去。
+
+在pci_driver中有一个成员struct pci_device_id *id_table，它列出了__这个设备驱动程序所能够处理的所有PCI设备的ID值__。
+
+==== 1.5 PCI设备与驱动的绑定过程 ====
+下面描述一下对于PCI设备与驱动绑定的过程。首先在系统启动的时候，PCI总线会去__扫描__连接到这个总线上的设备，同时为每一个设备建立一个 pci_dev结构，在这个结构中有一个device成员，并将这些pci_dev结构链接到PCI总线描述符上的devices链。如下图所示：
+{{./2}}
+
+第二步是当PCI驱动被加载时，pci_driver结构体将被初始化，这一过程在函数__pci_register_driver__中：
+        drv->driver.bus = &pci_bus_type;
+        drv->driver.probe = pci_device_probe;
+
+最后会调用driver_register(&drv->driver)将这个PCI驱动挂载到总线描述符的驱动链上。同时在注册的过程 中，会根据pci_driver中的id_table中的ID值去查看该驱动支持哪些设备，将这些设备挂载到pci_driver中的devices链中 来。如下图所示：
+{{./3}}
+
+对于不同的设备，可能驱动程序也不一样，因此，对于上图中的Dev3，可能就需要另外一个驱动程序来对其进行驱动。所以当加载了Dev3的驱动程序时，其示意图如下图所示：
+{{./4}}
+上面这三个示意图就描述了总线、设备以及驱动在系统中是如何进行相互联系的。前面对于驱动注册这些函数的描述较为简单，因为网卡是一个PCI设备，因此在后面具体地讲到网卡注册时再来详细地讲解和PCI相关的注册等函数。
+
+==== 1.6 小结 ====
+本部分主要讲解了总线、设备以及驱动方面的一些知识，由于网卡是一个PCI设备，因此具体地讲到了一点PCI总线、PCI设备及相应的PCI驱动方面的知 识，但是由于PCI本身就是很大的一个子系统，因此这里不可能对其进行详细地讲解，在后面对网卡的分析中，将对网卡中涉及到的和PCI相关的部分进行讲解。
+
+===== 2. 网卡在PCI层的注册 =====
+
+==== 2.1 数据结构 ====
+前面第一章讲了总线、设备以及驱动方面的关系，也讲到了大多数网卡设备实际上是一个PCI设备。因此，本章就讲解网卡设备在注册时是如何注册到PCI总线上去的。在这里，以Intel的E100网卡驱动进行讲解。前面讲到每个PCI设备都由一组参数唯一地标识，这些参数保存在结构体pci_device_id中，如下所示：
+
+struct pci_device_id {
+        __u32 vendor, device;                /* Vendor and device ID or PCI_ANY_ID*/
+        __u32 subvendor, subdevice;        /* Subsystem ID's or PCI_ANY_ID */
+        __u32 class, class_mask;        /* (class,subclass,prog-if) triplet */
+        kernel_ulong_t driver_data;        /* Data private to the driver */
+};
+
+每个PCI设备驱动都有一个pci_driver变量，它描述了一个PCI驱动的信息，如下所示：
+
+struct pci_driver {
+        struct list_head node;
+        char *name;
+        const __struct pci_device_id__ *id_table;        /* must be non-NULL for probe to be called */
+        int  (*__probe__)  (struct pci_dev *dev, const struct pci_device_id *id);        /* New device inserted */
+        void (*remove) (struct pci_dev *dev);        /* Device removed (NULL if not a hot-plug capable driver) */
+        int  (*suspend) (struct pci_dev *dev, pm_message_t state);        /* Device suspended */
+        int  (*suspend_late) (struct pci_dev *dev, pm_message_t state);
+        int  (*resume_early) (struct pci_dev *dev);
+        int  (*resume) (struct pci_dev *dev);                        /* Device woken up */
+        int  (*enable_wake) (struct pci_dev *dev, pci_power_t state, int enable);   /* Enable wake event */
+        void (*shutdown) (struct pci_dev *dev);
+
+        struct pci_error_handlers *err_handler;
+        struct __device_driver__        driver;
+        struct pci_dynids dynids;
+
+        int multithread_probe;
+};
+
+每个PCI驱动中都有一个id_table成员变量，记录了当前这个驱动所能够进行驱动的那些设备的ID值。对于E100网卡驱动来说，它的pci_driver变量定义为：
+
+static struct pci_driver __e100_drive__r = {
+        .name =         DRV_NAME,
+        .id_table =     e100_id_table,
+        .probe =        e100_probe,
+        .remove =       __devexit_p(e100_remove),
+#ifdef CONFIG_PM
+        /* Power Management hooks */
+        .suspend =      e100_suspend,
+        .resume =       e100_resume,
+#endif
+        .shutdown =     e100_shutdown,
+        .err_handler = &e100_err_handler,
+};
+
+里面e100_id_table就表示该E100驱动所能够支持的PCI设备的ID号，其定义为：
+
+#define INTEL_8255X_ETHERNET_DEVICE(device_id, ich) {
+        PCI_VENDOR_ID_INTEL, device_id, PCI_ANY_ID, PCI_ANY_ID, 
+        PCI_CLASS_NETWORK_ETHERNET << 8, 0xFFFF00, ich }
+
+static struct pci_device_id e100_id_table[] = {
+        INTEL_8255X_ETHERNET_DEVICE(0x1029, 0),
+        INTEL_8255X_ETHERNET_DEVICE(0x1030, 0),
+        …
+        { 0, }
+};
+
+当PCI 层检测到一个PCI设备能够被某PCI驱动所支持时（这是通过函数pci_match_one_device来进行检测的），就会调用__这个PCI驱动上的 probe函数(其实先调用PCI BUS的probe函数，然后调用PCI Driver中的probe函数)__，在该函数中会对该特定的PCI设备进行一些具体的初始化等操作。比如对于E100设备驱动来说，其probe函数为 e100_probe。在这个函数中，会**对网卡设备进行初始化**。e100_probe主要就涉及到网卡设备net_device的初始化，我们现在先来关注一下从网卡注册一直到调用e100_probe这一个过程的整个流程。
+
+==== 2.2 E100初始化 ====
+E100驱动程序的初始化是在函数e100_init_module()中的，如下：
+
+static int __init e100_init_module(void)
+{
+        if(((1 << debug) - 1) & NETIF_MSG_DRV) {
+                printk(KERN_INFO PFX "%s, %s ", DRV_DESCRIPTION, DRV_VERSION);
+                printk(KERN_INFO PFX "%s ", DRV_COPYRIGHT);
+        }
+        return __pci_register_driver__(&e100_driver);
+}
+
+在这个函数中，调用了pci_register_driver()函数，对e100_driver这个驱动进行注册。
+
+==== 2.3 PCI注册 ====
+在前面我们已经看到，__PCI的注册就是将PCI驱动程序挂载到其所在的总线的drivers链，同时扫描PCI设备，将它能够进行驱动的设备挂载到driver上的devices链表上来__，这里，我们将详细地查看这整个流程的函数调用关系。
+
+pci_register_driver()->__pci_register_driver()
+
+/**
+* __pci_register_driver - **register a new pci driver**
+* @drv: the driver structure to register
+* @owner: owner module of drv
+* @mod_name: module name string
+* 
+* Adds the driver structure to the list of registered drivers.
+* Returns a negative value on error, otherwise 0. 
+* If no error occurred, the driver remains registered even if 
+* no device was claimed during registration.
+*/        
+int __pci_register_driver(struct pci_driver *drv, struct module *owner, const char *mod_name);
+        在函数中有几个初始化语句：
+        drv->driver.name = drv->name;
+        __drv->driver.bus__ = &pci_bus_type;
+        drv->driver.owner = owner;
+        drv->driver.mod_name = mod_name;
+
+即是将PCI设备中的driver变量的总线指向pci_bus_type这个总线描述符，同时设置驱动的名字等。pci_bus_type定义如下：
+
+struct bus_type pci_bus_type = {
+        .name                = "pci",
+        .match                = __pci_bus_match__,
+        .uevent                = pci_uevent,
+        .probe                = __pci_device_probe__,
+        .remove                = pci_device_remove,
+        .suspend        = pci_device_suspend,
+        .suspend_late        = pci_device_suspend_late,
+        .resume_early        = pci_device_resume_early,
+        .resume                = pci_device_resume,
+        .shutdown        = pci_device_shutdown,
+        .dev_attrs        = pci_dev_attrs,
+};
+
+然后再调用函数driver_register(&drv->driver);通过这个函数将这个PCI驱动中的struct device_driver driver成员变量注册到系统中去。
+pci_register_driver()->__pci_register_driver()->__driver_register()__
+
+driver_register()代码如下：
+
+/**
+* driver_register - register driver with bus
+* @drv:        driver to register
+*
+* We pass off most of the work to the bus_add_driver() call,
+* since most of the things we have to do deal with the bus
+* structures.
+*
+* The one interesting aspect is that we setup @drv->unloaded
+* as a completion that gets complete when the driver reference
+* count reaches 0.
+*/
+int driver_register(struct device_driver * drv)
+{
+        if ((drv->bus->probe && drv->probe) ||
+            (drv->bus->remove && drv->remove) ||
+            (drv->bus->shutdown && drv->shutdown)) {
+                printk(KERN_WARNING "Driver '%s' needs updating - please use bus_type methods ", drv->name);
+        }
+        klist_init(&drv->**klist_devices**, NULL, NULL);
+        init_completion(&drv->unloaded);
+        return __bus_add_driver__(drv);
+}
+
+klist_init()是为设备驱动的klist_devices成员进行初始化，这个klist_devices是一个对链表进行操作的包裹结构，它会链接这个驱动能够支持的那些设备。最后就调用bus_add_driver()函数。这个函数的功能就是将这个驱动加到其所在的总线的驱动链上。
+
+        pci_register_driver()->__pci_register_driver()->driver_register()->bus_add_driver()->__driver_attach()__
+
+ 在bus_add_driver()函数中，最重要的是调用driver_attach()函数，其定义如下：
+
+/**
+* driver_attach - try to bind driver to devices.
+* @drv:        driver.
+*
+* Walk the list of devices that the bus has on it and try to
+* match the driver with each one.  If driver_probe_device()
+* returns 0 and the @dev->driver is set, we've found a
+* compatible pair.
+*/
+int driver_attach(struct device_driver * drv)
+{
+        return __bus_for_each_dev__(drv->bus, NULL, drv, __driver_attach);
+}
+
+该函数__遍历这个驱动所在的总线上的所有设备，然后将这些设备与当前驱动进行匹配，以检测这个驱动是否能够支持某个设备，也即是将设备与驱动联系起来__。bus_for_each_dev函数是扫描在drv->bus这个总线上的所有设备，然后将每个设备以及当前驱动这两个指针传递给__driver_attach函数。
+
+pci_register_driver()->__pci_register_driver()->driver_register()->bus_add_driver()->driver_attach()->____driver_attach()__
+
+__driver_attach()函数是将驱动与设备联系起来的函数。
+
+static int __driver_attach(struct device * dev, void * data)   //dev为总线上的某个设备，data为驱动。
+{
+        struct device_driver * drv = data;
+
+        /*
+		* Lock device and try to bind to it. We drop the error
+		* here and always return 0, because we need to keep trying
+		* to bind to devices and some drivers will return an error
+		* simply if it didn't support the device.
+         *
+		* driver_probe_device() will spit a warning if there
+		* is an error.
+         */
+
+        if (dev->parent)        /* Needed for USB */
+                down(&dev->parent->sem);
+        down(&dev->sem);
+        if (!dev->driver)
+                __driver_probe_device__(drv, dev);
+        up(&dev->sem);
+        if (dev->parent)
+                up(&dev->parent->sem);
+
+        return 0;
+}
+
+在函数中有两条语句：
+
+        if (!dev->driver)
+                driver_probe_device(drv, dev);
+
+也即是判断当前设备是否已经注册了一个驱动，__如果没有注册驱动，则调用driver_probe_device()函数__。
+
+        pci_register_driver()->__pci_register_driver()->driver_register()->bus_add_driver()->driver_attach()->__driver_attach()->driver_probe_device()
+
+如下：
+/**
+* driver_probe_device - attempt to bind device & driver together
+* @drv: driver to bind a device to
+* @dev: device to try to bind to the driver
+*
+* First, we call the bus's match function, if one present, which should
+* compare the device IDs the driver supports with the device IDs of the
+* device. Note we don't do this ourselves because we don't know the
+* format of the ID structures, nor what is to be considered a match and
+* what is not.
+*
+* This function returns 1 if a match is found, an error if one occurs
+* (that is not -ENODEV or -ENXIO), and 0 otherwise.
+*
+* This function must be called with @dev->sem held.  When called for a
+* USB interface, @dev->parent->sem must be held as well.
+*/
+int driver_probe_device(struct device_driver * drv, struct device * dev)
+{
+        struct stupid_thread_structure *data;
+        struct task_struct *probe_task;
+        int ret = 0;
+
+        if (!device_is_registered(dev))
+                return -ENODEV;
+        if (drv->bus->match && !**drv->bus->match**(dev, drv))
+                goto done;
+
+        pr_debug("%s: Matched Device %s with Driver %s ",
+                 drv->bus->name, dev->bus_id, drv->name);
+
+        data = kmalloc(sizeof(*data), GFP_KERNEL);
+        if (!data)
+                return -ENOMEM;
+        data->drv = drv;
+        data->dev = dev;
+
+        if (drv->multithread_probe) {
+                probe_task = kthread_run(really_probe, data,
+                                         "probe-%s", dev->bus_id);
+                if (IS_ERR(probe_task))
+                        ret = really_probe(data);
+        } else
+                ret = **really_probe**(data);
+
+done:
+        return ret;
+}       
+
+该函数首先会调用__总线对应的match函数__，__以判断当前的PCI驱动能否支持该PCI设备__，如果可以，则继续往后面执行。drv->bus->match函数也即是pci_bus_type中的match成员变量，它为pci_bus_match函数。
+
+        pci_register_driver()->__pci_register_driver()->driver_register()->bus_add_driver()->driver_attach()->__driver_attach()->driver_probe_device()->__pci_bus_match()__
+
+/**
+* pci_bus_match - Tell if a PCI device structure has a matching PCI device id structure
+* @dev: the PCI device structure to match against
+* @drv: the device driver to search for matching PCI device id structures
+* 
+* Used by a driver to check whether a PCI device present in the
+* system is in its list of supported devices. Returns the matching
+* pci_device_id structure or %NULL if there is no match.
+*/
+static int pci_bus_match(struct device *dev, struct device_driver *drv)
+{
+        struct pci_dev *pci_dev = __to_pci_dev__(dev);   //struct pci_dev封装了struct device结构。
+        struct pci_driver *pci_drv = to_pci_driver(drv);
+        const __struct pci_device_id__ *found_id;
+
+        found_id = __pci_match_device__(pci_drv, pci_dev);
+        if (found_id)
+                __return 1__;  //若dev和drv匹配，则返回1.
+
+        return 0;
+}
+
+pci_bus_match函数的作用就是__将PCI设备与 PCI驱动进行比较以检查该驱动是否能够支持这个设备__。在函数的最前面是两个宏to_pci_dev和to_pci_driver。因为在函数执行的过程 中，虽然最开始传进来的是pci_driver结构与pci_dev结构，但是在执行的时候却取了这两个结构体中的device_driver和 device成员变量，所以现在就要通过这两个成员变量找到之前对应的pci_driver和pci_dev结构的地址。
+
+#define        to_pci_dev(n) container_of(n, struct pci_dev, dev)
+#define        to_pci_driver(drv) container_of(drv,struct pci_driver, driver)
+
+这两个宏在 3rd书上有相应的讲解，这里也就是找到E100的pci_driver：e100_driver以及该网卡设备的pci_dev结构。现在就要对它们进 行比较以看它们之间是否能够联系起来。这是通过函数pci_match_device实现的。
+
+        pci_register_driver()->__pci_register_driver()->driver_register()->bus_add_driver()->driver_attach()->__driver_attach()->driver_probe_device()->pci_bus_match()->pci_match_device()
+
+/**
+* pci_match_device - Tell if a PCI device structure has a matching PCI device id structure
+* @drv: the PCI driver to match against
+* @dev: the PCI device structure to match against
+*
+* Used by a driver to check whether a PCI device present in the
+* system is in its list of supported devices.  Returns the matching
+* pci_device_id structure or %NULL if there is no match.
+*/
+const **struct pci_device_id** *pci_match_device(struct pci_driver *drv,
+                                             struct pci_dev *dev)
+{
+        struct pci_dynid *dynid;    //pci_dynid的详细信息可以参考：[[../PCI设备的驱动架构.txt]]
+
+        /* Look at the __dynamic ids__ first, before the static ones */
+        spin_lock(&drv->dynids.lock);
+        list_for_each_entry(dynid, &drv->dynids.list, node) {
+                if (__pci_match_one_device__(&dynid->id, dev)) {
+                        spin_unlock(&drv->dynids.lock);
+                        return &dynid->id;
+                }
+        }
+        spin_unlock(&drv->dynids.lock);
+
+        return __pci_match_id__(drv->**id_table**, dev);
+}
+
+pci_match_one_driver函数的作用是将一个PCI设备与PCI驱动进行比较，以查看它们是否相匹配。如果相匹配，则返回匹配的pci_device_id结构体指针。此时，如果该PCI驱动已经找到了一个可以想符的PCI设备，则返回，然后再退回到之前的driver_probe_device函数中。在该函数最后将 调用really_probe函数。将device_driver与device结构体指针作为参数传递到这个函数中。下面几行是调用驱动或者总线的 probe函数来扫描设备。
+
+        pci_register_driver()->__pci_register_driver()->driver_register()->bus_add_driver()->driver_attach()->__driver_attach()->driver_probe_device()->__really_probe()__
+
+在函数really_probe()中：
+
+        if (dev->bus->probe) {
+                ret = __dev->bus->probe__(dev);
+                if (ret)
+                        goto probe_failed;
+        } else if (drv->probe) {
+                ret = drv->probe(dev);
+                if (ret)
+                        goto probe_failed;
+        }
+
+此时的dev->bus为pci_bus_type，其probe函数则对应为：pci_device_probe。
+
+        pci_register_driver()->__pci_register_driver()->driver_register()->bus_add_driver()->driver_attach()->__driver_attach()->driver_probe_device()->really_probe()->__pci_device_probe__()
+
+static int pci_device_probe(struct device * dev)  //pci bus的probe。
+{
+         int error = 0;
+         struct pci_driver *drv;
+         struct pci_dev *pci_dev;
+ 
+         drv = to_pci_driver(dev->driver);
+         pci_dev = to_pci_dev(dev);
+         pci_dev_get(pci_dev);
+         error = **__pci_device_probe**(drv, pci_dev);
+         if (error)
+                   pci_dev_put(pci_dev);
+ 
+         return error;
+}
+
+static int
+____pci_device_probe(struct __pci_driver__ *drv, struct __pci_dev__ *pci_dev)
+{
+         const struct pci_device_id *id;
+         int error = 0;
+ 
+         if (!pci_dev->driver && drv->probe) {
+                   error = -ENODEV;
+ 
+                   id = **pci_match_device**(drv, pci_dev);
+                   if (id)
+                            error = __pci_call_probe__(drv, pci_dev, id);
+                   if (error >= 0) {
+                            __pci_dev->driver = drv;__
+                            error = 0;
+                   }
+         }
+         return error;
+}
+同样，在该函数中会获得当前的PCI设备的pci_dev结构体指针以及PCI驱动程序的pci_driver结构体指针。分别使用宏 to_pci_dev和to_pci_driver。最后则调用函数__pci_device_probe。在该函数中还会调用函数 pci_call_probe，这是最后的函数
+
+        pci_register_driver()->__pci_register_driver()->driver_register()->bus_add_driver()->driver_attach()->__driver_attach()->driver_probe_device()->really_probe()->pci_device_probe()->__pci_device_probe()->pci_call_probe()
+
+static int pci_call_probe(**struct pci_driver *drv**, struct pci_dev *dev,
+                              const struct pci_device_id *id)
+{
+         int error;
+#ifdef CONFIG_NUMA
+         /* Execute driver initialization on node where the
+            device's bus is attached to.  This way the driver likely
+            allocates its local memory on the right node without
+            any need to change it. */
+         struct mempolicy *oldpol;
+         cpumask_t oldmask = current->cpus_allowed;
+         int node = pcibus_to_node(dev->bus);
+         if (node >= 0 && node_online(node))
+             set_cpus_allowed(current, node_to_cpumask(node));
+         /* And set default memory allocation policy */
+         oldpol = current->mempolicy;
+         current->mempolicy = NULL;    /* fall back to system default policy */
+#endif
+         __error = drv->probe(dev, id);    //调用PCI设备的probe函数，从而完成PCI设备驱动的注册和初始化。__
+#ifdef CONFIG_NUMA
+         set_cpus_allowed(current, oldmask);
+         current->mempolicy = oldpol;
+#endif
+         return error;
+}
+
+在此处就调用了pci_driver的probe函数，对于这里的E100驱动来说,__它的probe函数是最开始注册的e100_probe函数__，在该函数中会完成对网卡设备net_device的初始化等操作。
+
+       pci_register_driver()->__pci_register_driver()->driver_register()->bus_add_driver()->driver_attach()->__driver_attach()->driver_probe_device()->really_probe()->pci_device_probe()->__pci_device_probe()->pci_call_probe()->e100_probe()
+
+到这里，我们对网卡驱动的PCI层的初始化分析就告一个段落了，剩下的部分就是**网卡驱动对网卡设备本身的初始化**等操作。
+
+==== 2.4 函数调用流程图 ====
+在这里，为网卡在PCI层的注册画了一个函数调用的流程图，能够更直观地展现网卡从注册到调用其自身的网卡初始化的这一个函数调用过程。
+{{./5}}
+{{./6}}
+
+=== 补充一下，贴一下open函数的调用的笔记： ===
+
+ifconfig eth0 up 会导致 net_device->open被调用，内幕！
+        
+            # strace ifconfig eth0 up 2>&1 |less -N
+    
+可以看到，它是先用sockfd = socket(AF_INET, SOCK_DGRAM, 0)生成一个sockfd文件描述符，再ioctl(sockfd, SIOCSIFFLAGS, 加上IFF_UP标志)。 这样就导致了open方法的调用。
+
+socket文件描述符都是用socket(2)系统调用生成的：
+            
+ sys_socket() > sock_map_fd() > sock_attach_fd() : 
+
+                dentry->d_op = &sockfs_dentry_operations;
+                ...
+
+                init_file(file, sock_mnt, dentry, FMODE_READ|FMODE_WRITE, &socket_file_ops);
+                SOCK_INODE(sock)->i_fop = &socket_file_ops;
+        
+ (回忆一下，这个是不是就类似于ext3_iget()里头对inode->i_fop的赋值？)
+
+static const struct file_operations socket_file_ops = {
+                        .owner =        THIS_MODULE,
+                        .llseek =        no_llseek,
+                        .aio_read =        sock_aio_read,
+                        .aio_write =        sock_aio_write,
+                        .poll =                sock_poll,
+                        .unlocked_ioctl = sock_ioctl,
+                #ifdef CONFIG_COMPAT
+                        .compat_ioctl = compat_sock_ioctl,
+                #endif
+                        .mmap =                sock_mmap,
+                        .open =                sock_no_open,        /* special open code to disallow open via /proc */
+                        .release =        sock_close,
+                        .fasync =        sock_fasync,
+                        .sendpage =        sock_sendpage,
+                        .splice_write = generic_splice_sendpage,
+                        .splice_read =        sock_splice_read,
+                }
+其unlocked_ioctl = sock_ioctl，那么我们沿着sock_ioctl走下去：
+                
+                sock_ioctl() --switch到了default--> dev_ioctl() > --SIOCSIFFLAGS--> dev_ifsioc() 
+                > dev_change_flags() :
+                        
+                        if ((old_flags ^ flags) & IFF_UP) {IFF_UP/* Bit is different  ? */
+                                ret = ((old_flags & IFF_UP) ? dev_close : dev_open)(dev);
+
+如果是设置了IFF_UP，就调用dev_open；如果是清除了IFF_UP，就调用dev_close。 看dev_open里的：
+                
+                ret = dev->open(dev);
+        
+        就在此时，struct net_device的open方法被调用。
+
+=== 2). remove函数何时被调用？ ===
+            
+            当pci_dev消失时(设备被拔出)，或者module被rmmod时。
+
+            pci_unregister_driver() > driver_unregister() > driver_detach() > __device_release_driver():
+
+                if (dev->bus && dev->bus->remove)
+                        __dev->bus->remove__(dev);
+                else if (drv->remove)
+                        __drv->remove__(dev);
+           
+对pci设备来说，这里的dev->bus就是&pci_bus_type，参考1)中的定义，我们知道其remove函数是
+pci_device_remove():
+
+                        struct pci_dev * pci_dev = to_pci_dev(dev);
+                        struct pci_driver * drv = pci_dev->driver;
+
+                        if (drv) {
+                                if (drv->remove)
+                                        __drv->remove__(pci_dev);
+                                pci_dev->driver = NULL;
+                        }
+
+=== 增加/删除一个PCI device时的情景。 ===
+(只有boot时的enumeration和hotplug两种情况可能导致设备出现与消失)
+
+pci device的发现：
+
+                      [ pci_scan_slot() > pci_scan_single_device() > pci_scan_device() > pci_device_add() ]
+
+
+ pci_bus_add_devices() > pci_bus_add_device() > device_add() > bus_attach_device() :
+                        
+                        int __device_attach__(struct device *dev)
+                        {
+                                int ret = 0;
+
+                                down(&dev->sem);
+                                if (dev->driver) {
+                                        ret = device_bind_driver(dev);
+                                        if (ret == 0)
+                                                ret = 1;
+                                        else {
+                                                dev->driver = NULL;
+                                                ret = 0;
+                                        }
+                                } else {
+                                        ret = __bus_for_each_drv__(dev->bus, NULL, dev, __device_attach); //遍历总线上上注册的所有驱动，判断是否和自己匹配。
+                                }
+                                up(&dev->sem);
+                                return ret;
+                        }
+
+也就是说，如果已经有了dev->driver这个值，那么就直接bind上去；如果没有，那么：
+                        
+                        bus_for_each_drv() > __device_attach() > driver_probe_device() > really_probe()
+
+此后发生的情形就和从pci_register_driver()一直调用到really_probe()的一样了。
+
+=== remove: ===
+=======
+pci_remove_bus_device() > pci_destroy_dev() > pci_stop_dev() > device_unregister() > device_del() > bus_remove_device() > device_release_driver() > __device_release_driver() :
+
+                        static void __device_release_driver(struct device *dev)
+                        {
+                                struct device_driver *drv;
+
+                                drv = dev->driver;
+                                if (drv) {
+                                        driver_sysfs_remove(dev);
+                                        sysfs_remove_link(&dev->kobj, "driver");
+
+                                        if (dev->bus)
+                                                blocking_notifier_call_chain(&dev->bus->p->bus_notifier,
+                                                                             BUS_NOTIFY_UNBIND_DRIVER,
+                                                                             dev);
+
+                                        if (dev->bus && dev->bus->remove)
+                                                __dev->bus->remove__(dev);
+                                        else if (drv->remove)
+                                                __drv->remove__(dev);
+                                        devres_release_all(dev);
+                                        dev->driver = NULL;
+                                        klist_remove(&dev->knode_driver);
+                                }
+                        }
+
+注意，如果可以，首先尝试调用pci_bus_type的remove方法(a.k.a pci_device_remove)，否则调用device_driver的remove方法。

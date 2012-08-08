@@ -1,0 +1,32 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-05T13:14:27+08:00
+
+====== ath5k dump ======
+Created Sunday 05 August 2012
+
+[root@mpc8315erdb /home]# 
+irq 48: nobody cared (try booting with the "irqpoll" option)
+Call Trace:
+[dfff7f00] [c0007ac8] 0xc0007ac8 (unreliable)
+[dfff7f40] [c0054b58] 0xc0054b58
+[dfff7f60] [c0054e98] 0xc0054e98
+[dfff7f90] [c0052ec4] 0xc0052ec4
+[dfff7fd0] [c0052ff0] 0xc0052ff0
+[dfff7fe0] [c00555c8] 0xc00555c8
+[dfff7ff0] [c000cd3c] 0xc000cd3c
+[c03b3eb0] [c0005534] 0xc0005534
+[c03b3ee0] [c000eb80] 0xc000eb80
+--- Exception: 501 at 0xc00085c8
+    LR = 0xc00085c8
+[c03b3fa0] [c0008590] 0xc0008590 (unreliable)
+[c03b3fc0] [c036d7a0] 0xc036d7a0
+[c03b3ff0] [00003438] 0x003438
+handlers:
+[<e199ba00>] 0xe199ba00
+__Disabling IRQ #48__
+[root@mpc8315erdb /home]# 
+
+这是由于PCB板子上的中断线是漏极开漏的，但是没有加上拉电阻，这样就一直处于低电平。
+kernel启动后，认为是外部产生的中断，所以执行ath5k的中断代码，该代码会查找设备的中断状态
+寄存器，但是读到的值为空(因为设备其实并没有产生中断)。所以提示nobody cared。

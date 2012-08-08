@@ -1,0 +1,49 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-14T11:15:02+08:00
+
+====== Is your build environment sane ？ ======
+Created Thursday 14 June 2012
+http://railsmonkey.net/2010/05/is-your-build-environment-sane/
+
+Is your build environment ‘sane’…?
+
+By Matthew Savage
+
+I’ve been testing a Varnish reverse-proxy/cache setup this weekend to try to resolve the ’80%’ of the problems I’ve been dealing with across our websites.
+
+Because I seem to have an aversion to spending extra moneys to run up test servers (ok look, we’re a small business, and while EC2 is affordable I seem to have a problem where I forget to shut down our instances when I’m done with them – this can become expensive), so I’ve been running Ubuntu 9.10 and 10.04 in both Parallels and VMWare Fusion to test this varnish setup, and at the same time (I’ve been sidetracked halfway through) upgrading our production environments to Ubuntu 10.04.
+
+In Parallels things were more or less fine, though I was running into some unexpected issues with running the CPU high (100%) while doing some cache-less bench testing. For whatever reason though I decided to swap over to using VMWare with 10.04 (who says we need consistency?).
+
+The install of Ubuntu 10.04 is pretty much straight forward, but where I did run into problems was running my auto-build scripts which sets up our stack (REE, Passenger, nginx et al). Regardless of what I tried REE would always die during its install process, right on the ‘checking whether build environment is sane‘ test – in fact the exact error is:
+1	__checking whether build environment is sane__… configure: error: __newly created file is older than distributed files!__
+2	__Check your system clock__
+
+Yes, this is a really really helpful error message. Especially when you check the time and verify that its correct, and synced up with NTP.
+
+So lets look into this a little bit. The ‘sane’ check is doing a few things. It writes out the latest timestamp to a file, then it runs ls and checks the timestamp of the file – if the times are different or something breaks then the environment is not considered ‘sane’, this could be an issue with your coretools or your system clock or what ever… pick an option, then pull out your hair.
+
+But, in my case – running on VMWare – my coretools were completely fine, but the system clock was a little… funky… even after kicking off an ntpupdate there was still some issues – a very very tiny miniscule offset, but enough to make my environment ‘insane’.
+
+You can confirm this yourself actually, by running the following:
+1	for i in `seq 1 60`
+2	do
+3	date
+4	done
+
+Take not of what the first time printed out is… then, 1 hour later, check the final time – it should be exactly the same, but one hour later. In my case I had 20:39:22, and at the end it was 21:39:23 – yes, its a whole 1 second, but in this case it made a difference.
+
+So, whats the whole point to this? Well, I do have a fix, its actually really simple. Install the VMWare tools. No really, its that simple.
+
+    From the VMware tools Virtual Machine menu, choose Install VMware Tools
+    Run the following commands:
+
+1	sudo -s
+2	mount /dev/dvd /cdrom
+3	cd /cdrom
+4	tar zxvf VMwareTools-8.2.3-204229.tar.gz -C /tmp
+5	cd /tmp/vmware-tools-distrib
+6	./vmware-install.pl # (and follow the prompts)
+
+Hopefully this will help anyone else also bashing their head against this brick wall, if not, m’eh, I don’t mind the writing ;)

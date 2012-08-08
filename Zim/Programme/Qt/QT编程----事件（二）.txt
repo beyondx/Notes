@@ -1,0 +1,248 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-07T20:32:53+08:00
+
+====== QT编程----事件（二） ======
+Created Wednesday 07 March 2012
+http://blog.csdn.net/jianchi88/article/details/7025819
+
+===== eventFilter  事件过滤器 =====
+
+Qt事件模型一个真正强大的特色是__一个QObject 的实例能够管理另一个QObject 实例的事件__。 
+
+一个CustomerDialog的小部件。CustomerDialog 包含一系列QLineEdit. 现在，我们想**用空格键来代替Tab**，使焦点在这些QLineEdit间切换。 
+
+一个解决的方法是__子类化QLineEdit__，重新实现__keyPressEvent()__，并在keyPressEvent()里调用**focusNextChild()**。像下面这样： 
+
+void MyLineEdit::keyPressEvent(QKeyEvent *event) 
+
+{ 
+     if (event->key() == Qt::Key_Space) { 
+         focusNextChild(); 
+     } else { 
+         **QLineEdit::keyPressEvent**(event); 
+     } 
+} 
+
+上述做法有一个缺点。如果CustomerDialog里有很多不同的控件（比如QComboBox,QEdit,QSpinBox），我们就必须子类化这么多控件。这是一个烦琐的任务。 
+
+一个更好的解决办法是： 让CustomerDialog去__管理他的子部件的按键事件__，实现要求的行为。我们可以__使用事件过滤器__。 
+
+一个事件过滤器的安装需要下面2个步骤： 
+
+1， 调用installEventFilter（）__注册需要管理的对象__。 
+2，在eventFilter() 里处理需__要管理的对象的事件__。 
+
+一般，推荐在CustomerDialog的**构造函数中**注册被管理的对象。像下面这样： 
+
+CustomerInfoDialog::CustomerInfoDialog(QWidget *parent) : QDialog(parent)
+
+{     ...    
+
+     firstNameEdit->installEventFilter(this);
+     lastNameEdit->installEventFilter(this);
+     cityEdit->installEventFilter(this);
+     phoneNumberEdit->installEventFilter(this);
+
+} 
+
+一旦，事件管理器被注册，发送到firstNameEdit，lastNameEdit，cityEdit，phoneNumberEdit的事件将__首先发送到eventFilter()__。 
+
+下面是一个 eventFilter()函数的实现： 
+
+bool CustomerInfoDialog::__eventFilter__(QObject *target, QEvent *event) 
+{ 
+     if (target == firstNameEdit || target == lastNameEdit 
+             || target == cityEdit || target == phoneNumberEdit) { 
+         if (__event->type() __== __QEvent::KeyPress__) { 
+             QKeyEvent *keyEvent =** static_cast<QKeyEvent *>**(event); 
+             if (__keyEvent->key() __== Qt::Key_Space) { 
+                 focusNextChild(); 
+                 return__ true; __
+             } 
+         } 
+     } 
+    ** return** QDialog::eventFilter(target, event); 
+} 
+
+在上面的函数中，我们首先检查目标部件是否是 firstNameEdit，lastNameEdit，cityEdit，phoneNumberEdit。接着，我们判断事件__是否是按键事件__。如果事件是按键事件，我们**把事件转换为QKeyEvent**。接着，我们判断是否按下了空格键，如果是，我们调用focusNextChild()，**把焦点传递给下一个控件**。然后，返回，true__通知Qt，我们已经处理了该事件。__ 
+
+**如果返回false的话，**__Qt继续将该事件发送给目标控件__**，结果是一个空格被插入到QLineEdit中。 **
+
+如果目标控件不是 QLineEdit,或者按键不是空格键，我们将把事件传递给__基类的eventFilter()函数__。
+
+===== Qt提供5个级别的事件处理和过滤：  =====
+
+1，重新实现__事件函数__。 比如： mousePressEvent(), keyPressEvent(),   paintEvent() 。 这是最常规的事件处理方法。
+2，重新实现QObject::__event()__.  这一般用在Qt没有提供该事件的处理函数时。也就是，我们**增加新的事件时**。
+3，安装事件过滤器 
+4，在 QApplication 上安装事件过滤器。 QApplication 上的事件过滤器将__捕获应用程序的所有事件__，而且第一个获得该事件。也就是说事件在发送给其它任何一个event filter之前发送给QApplication的event filter。 
+5，重新实现QApplication 的 __notify()__方法. 
+
+
+
+**Qt使用 notify()来分发事件**。要想在任何事件处理器捕获事件之前捕获事件，唯一的方法就是重新实现QApplication 的 notify()方法。 
+
+在创建了过滤器之后，下面要做的是**安装这个过滤器**。安装过滤器需要调用installEventFilter()函数。这个函数的签名如下：
+
+　void QObject::installEventFilter ( QObject * filterObj ) 
+
+这个函数是QObject的一个函数，因此可以安装到任何QObject的子类，并不仅仅是UI组件。这个函数接收一个QObject对象，**调用了这个函数安装事件过滤器的组件会调用filterObj定义的eventFilter()函数**。
+
+例如，textField->installEventFilter(obj)，则__如果有事件发送到textField组件时，会先调用obj->eventFilter()函数，然后才会调用textField->event()。__
+
+也可以把事件过滤器安装到QApplication上面，这样就可以__过滤所有的事件__，已获得更大的控制权。不过，这样做的后果就是会降低事件分发的效率。
+
+如果一个组件安装了多个过滤器，则__最后一个安装的会最先调用__，类似于堆栈的行为。
+
+pushButton2 = new QPushButton( this, "pushButton2" );
+pushButton2->setGeometry( QRect( 200, 160, 111, 31 ) );
+pushButton2->installEventFilter( this ); 
+
+bool Form1::__eventFilter__( QObject *o, QEvent *e )
+{
+   if( pushButton2==o )
+     {
+        if ( e->__type()__ == QEvent::KeyPress )
+ {
+            QKeyEvent *k = (QKeyEvent *)e;
+            qDebug( "eat key press %d", **k->key()** );
+            return __TRUE;__         
+}
+
+  if ( e->type() == QEvent::MouseButtonPress )
+     {
+            QMouseEvent *k = (QMouseEvent *)e;
+            qDebug( "eat Mouse  press " );
+            return TRUE;        
+     } 
+   else {
+         return FALSE;
+        }
+    }
+   else
+         return__ QWidget::eventFilter__( o, e );   
+}
+
+bool Form1::event(QEvent * event)
+
+{
+    if (event->type() == QEvent::KeyPress)
+    {
+        QKeyEvent *keyEvent = (QKeyEvent *) event;
+        if (keyEvent->key() == Key_A)
+        {
+            qDebug("--cut  the  Key_A--\n");
+            return true;
+        }
+    }
+    return __QWidget::event(event)__;
+}
+
+===== 事件的产生 =====
+
+QT应用程序可以产生自定义的事件，或是__预定义类型，或是自定义类型__。 这可以通过创建QEvent类或它的**子类的实例**，并且调用QApplication:postEvent()或QApplication::sendEvent()来实现。
+
+这两个函数需要一个 QObject* 与一个QEvent * 作为参数，假如你调用postEvent(),你必须用 new 操作符来创建__事件对象__，Qt会它被处理后帮你删除它。
+
+假如你用sendEvent(), 你应该在栈上来创建事件。
+
+下面举两个例子：
+
+一是posting 事件：
+
+QApplication::postEvent(mainWin, new   QKeyEvent(QEvent::KeyPress,Key_X,'X',0,"X"));
+
+二是sending 事件：
+
+QKeyEvent event(QEvent::KeyPress, Key_X, 'X', 0,"X");
+QApplication::sendEvent(mainWin, &event);
+
+Qt应用程序**很少直接调用**postEvent()或是sendEvnet()，因为大多数事件会在必要时__被Qt或是窗口系统自动产生__。在大多数的情况下，**当你想发送一个事件时，Qt已经为你准备好了一个更高级的函数来为你服务**。（例如update()与repaint())。
+
+为了提高qt程序的自定义特性，可以显式得采用程序实现事件的发送。
+
+===== 重绘事件 paintEvent() =====
+
+当窗口被其他窗口覆盖后，再次重新显示时，系统将产生__ spontaneous 事件__来请求重绘，事件循环最终从事件队列中捡选这个事件并把它__分发到那个需要重画的widget__。 
+
+当我们调用 QWidget::update() 时，产生的是__ Posted 重绘事件__ .
+当我们调用 QWidget::repaint() 时，产生的是 Sent 重绘事件 .
+
+posting 相对于sending的一个优势是，它给了**Qt一个压缩(compress)事件的机会**。假如你在一个widget上连续地调用update() 十次，因update()而产生的这十个事件，将会自动地被合并为一个单独的事件，但是QPaintEvents事件附带的区域信息也合并了。
+
+可压缩的事件类型包括：**paint,move,resize,layout hint,language change。**
+
+最后要注意，可以在任何时候调用QApplication::sendPostedEvent()，强制Qt产生一个对象的posted事件。
+
+Qt 系统还提供了一个
+
+=====  QCustomEvent 类 =====
+，用于用户自定义事件，这些自定义事件可以利用 QThread::postEvent() 或者QApplication::postEvent() 被发给各种控件或其他 QObject 实例。
+
+QWidget 类的子类可以通过 QWidget::customEvent() 事件处理函数方便地接收到这些自定义的事件。
+
+需要注意的是：QCustomEvent 对象在创建时都带有一个__类型标识 id __以定义事件类型，为了避免与 Qt 系统定义的事件类型冲突，该 id 值应该**大于枚举类型 QEvent::Type **中给出的 "User" 值。 
+
+演示如何post一个定制事件的代码片段：
+
+const QEvent::Type MyEvent = (QEvent::Type)1234;
+  ...
+QApplication::postEvent(mainwin, new **QCustomEvent(MyEvent)**);
+
+事件必须是QCustomEvent类型(或子类）的。
+
+构造函数的参数是__事件的类型__，1000以下被Qt保留。其他可被程序使用**。为处理定制事件类型，要重新实现customEvent()函数**：
+
+void MyWin::customEvent(QCustomEvent *event)
+
+    {
+        if (event->type() == MyEvent) {
+            myEvent();
+        } else {
+            Qwidget::customEvent(event);
+        }
+    }
+
+QcustomEvent类有一个void *的成员，可用于特定的目的。你也可以子类化QCustomEvent，加上别的成员。
+
+===== 一些事件类型可以被传递 =====
+。这意味着假如**目标对象不处理一个事件**，Qt会试着寻找另外的事件接收者。用新的目标来调用QApplication::notify()。
+
+举例来讲，key事件是传递的，假如拥有焦点的Widget不处理特定键，Qt会分发相同的事件给父widget,然后是父亲的父亲，直到最顶层widget。
+
+可被传递的事件**可以“接收”或是“忽略”这个事件**。假如事件被处理,这个事件将不会再被传递。否则Qt会试着查找另外的事件接收者。
+
+大部分qt对象对事件的__处理缺省情况下是“接收”__，在QWidget中的__缺省实现是调用“忽略”__,假如你希望接收事件，你需要做的是**重新实现事件handler**，避免调用QWidget的实现。假如你想“忽略”事件，只需简单地传递它到QWidget的实现。
+
+下面的代码演示了这一点：
+
+void MyWidget::keyPressEvent(QKeyEvent *event)
+    {
+        if (event->key() == Key_Escape) {
+            doEscape();
+        } else {
+            QWidget::keyPressEvent(event);
+        }
+    }
+
+在上面的例子里，假如用户按了"ESC"键，我们会调用doEscape()并且事件被“**接收”**了（这是缺省的情况），事件不会被传递到父widget,假如用户按了别的键，则调用QWidget的缺省实现。
+
+void QWidget::keyPressEvent(QKeyEvent *event)
+    {
+        event->ignore();
+    }
+此处调用ignore()，事件会被传递到**父widget**中去。
+
+以上假设基类都是QWidget,然而，同样的规则也可以应用到别的层次中，只要用其他基类代替QWidget即可。
+
+举例来说：
+
+ void MyLineEdit::keyPressEvent(QKeyEvent *event)
+    {
+        if (event->key() == Key_SysReq) {
+            doSystemRequest();
+        } else {
+            QLineEdit::keyPressEvent(event);
+        }
+    }

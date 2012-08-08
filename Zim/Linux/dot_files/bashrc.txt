@@ -1,0 +1,20 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T20:19:29+08:00
+
+====== bashrc ======
+Created Sunday 27 March 2011
+
+Sunday 27/03/2011
+# Check for an interactive session
+[ -z "$PS1" ] && return
+PS1='[\u@\h \W]\$ '
+
+alias ls='ls --color=auto'
+alias wnc="wicd-client &>/dev/null &"
+alias ff="firefox &>/dev/null &"
+alias cl="clear"
+alias vim="gvim"
+alias curl="curl -4"
+alias vpdf="apvlv &"
+alias fm="pcmanfm &>/dev/null &"

@@ -1,0 +1,26 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-31T15:46:00+08:00
+
+====== Qt学习之路(10)Meta-Object系统 ======
+Created Monday 31 October 2011
+
+原创作品，允许转载，转载时请务必以超链接形式标明文章 原始出处 、作者信息和本声明。否则将追究法律责任。http://devbean.blog.51cto.com/448512/199472
+
+前面说过，Qt使用的是自己的预编译器，它提供了对C++的一种扩展。利用Qt的信号槽机制，就可以把彼此独立的模块相互连接起来，不需要实现知道模块的任何细节。
+ 
+为了达到这个目的，Qt提出了一个Meta-Object系统。它提供了两个关键的作用：信号槽和内省。
+ 
+面向对象程序设计里面会讲到Smalltalk语言有一个元类系统。所谓元类，就是这里所说的Meta-Class。如果写过HTML，会知道HTML标签里面也有一个<meta>，这是用于说明页面的某些属性的。同样，Qt的Meta-Object系统也是类似的作用。内省又称为反射，允许程序在运行时获得类的相关信息，也就是meta-information。什么是meta-information呢？举例来说，像这个类叫什么名字？它有什么属性？有什么方法？它的信号列表？它的槽列表？等等这些信息，就是这个类的meta-information，也就是“元信息”。这个机制还提供了对国际化的支持，是QSA(Qt Script for Application)的基础。
+ 
+标准C++并没有Qt的meta-information所需要的动态meta-information。所以，Qt提供了一个独立的工具，moc，通过定义Q_OBJECT宏实现到标准C++函数的转变。moc使用纯C++实现的，因此可以在任何编译器中使用。
+
+这种机制工作过程是：
+ 
+首先，Q_OBJECT宏声明了一些QObject子类必须实现的内省的函数，如metaObject()，tr(),qt_metacall()等；
+ 
+第二，Qt的moc工具实现Q_OBJECT宏声明的函数和所有信号；
+ 
+第三，QObject成员函数connect()和disconnect()使用这些内省函数实现信号槽的连接。
+ 
+以上这些过程是qmake，moc和QObject自动处理的，你不需要去考虑它们。如果实现好奇的话，可以通过查看QMetaObject的文档和moc的源代码来一睹芳容。

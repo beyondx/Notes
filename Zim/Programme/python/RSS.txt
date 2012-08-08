@@ -1,0 +1,38 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-19T16:37:55+08:00
+
+====== RSS ======
+Created Wednesday 19 October 2011
+
+代码发芽网做RSS的两个类，Django做RSS真方便 
+http://fayaa.com/code/view/149/
+
+#coding=utf-8
+#参照: http://www.djangoproject.com/documentation/syndication_feeds/
+
+from django.contrib.syndication.feeds import Feed
+from fayaa.coding.models import Codee, CodeeComment
+
+class LatestCodees(Feed):
+    title = "代码发芽网最新代码"
+    __link__ = "/code/feeds/codees/"   #本feed对应的地址
+    description = "来自代码发芽网( http://www.fayaa.com/code/ )的最新代码"
+
+    def items(self):
+        return Codee.objects.order_by('-create_time')[:15]
+
+    def__ item_link(__self, item):     #每个条目的URL地址
+        return "http://www.fayaa.com/code/view/%d/" % item.id
+
+class LatestComments(Feed):
+    title = "代码发芽网最新评论"
+    link = "/code/feeds/comments/"
+    description = "来自代码发芽网(http://www.fayaa.com/code/)%E7%9A%84%E6%9C%80%E6%96%B0%E8%AF%84%E8%AE%BA"
+
+    def items(self):
+        return CodeeComment.objects.order_by('-create_time')[:15]
+
+    def item_link(self, item):
+        return "http://www.fayaa.com/code/view/%d/" % item.codee.id
+

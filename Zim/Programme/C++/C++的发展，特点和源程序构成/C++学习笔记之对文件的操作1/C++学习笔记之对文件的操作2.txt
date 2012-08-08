@@ -1,0 +1,141 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-06T21:14:45+08:00
+
+====== C++学习笔记之对文件的操作2 ======
+Created Saturday 06 August 2011
+===========================功能展示==========================
+
+==== 打开文件的方式 ====
+
+      当我们想要打开的文件不存在的时候，一般地，ofstream类的对象会默认地自动创建一个文件。而如果我们想要打开的文件是存在的，那么就会调用ofstream的构造函数或者是调用open()函数进行打开。下面，我们来看一下MSDN上面是如何定义open()函数的：
+
+首先是函数原型：
+
+void open(
+    const char *_Filename,
+    ios_base::openmode _Mode = ios_base::in | ios_base::out,
+    int _Prot = (int)ios_base::_Openprot
+);
+void open(
+    const char *_Filename,
+    ios_base::openmode _Mode
+);
+void open(
+    const wchar_t *_Filename,
+    ios_base::openmode _Mode = ios_base::in | ios_base::out,
+    int _Prot = (int)ios_base::_Openprot
+);
+void open(
+    const wchar_t *_Filename,
+    ios_base::openmode _Mode
+);
+
+接下来是参数的说明：
+
+_Filename
+The name of the file to open.
+打开文件名
+
+_Mode
+One of the enumerations in ios_base::openmode.
+文件的打开方式（在ios_base::openmode中定义）
+
+_Prot
+The default file opening protection.
+默认进行文件打开时的保护
+
+OK，我们再来看看ios_base::openmode中定义的打开方式：
+
+ios::in, to permit extraction from a stream.
+打开文件进行读操作，即读取文件中的数据
+
+ios::out, to permit insertion to a stream.
+打开文件进行写操作，即输出数据到文件中
+
+ios::app, to seek to the end of a stream before each insertion.
+打开文件之后文件指针指向文件末尾，只能在文件末尾进行数据的写入
+
+ios::ate, to seek to the end of a stream when its controlling object is first created.
+打开文件之后文件指针指向文件末尾，但是可以在文件的任何地方进行数据的写入
+
+ios::trunc, to delete contents of an existing file when its controlling object is created.
+默认的文件打开方式，__若文件已经存在，则清空文件的内容__
+
+ios::binary, to read a file as a binary stream, rather than as a text stream.
+打开文件为二进制文件，否则为文本文件
+
+      好了，open()函数的用法全部列举出来了。下面就针对ios_base::binary的二进制打开方式，我们在来谈一谈二进制文件的输出方式和文本文件的输出方式。
+
+      ① 文本形式输出到文件，我们完全可以在open函数的mode选项中调用
+     ios::out|ios::app
+
+      好了，上面这句话说的就是将数据依次输出。注意，这里用的是依次，原因就是我们采用了app(append)模式，此表示在文件末尾继续写入文件，这就实现了数据的挨个写入 ^_^。一个完整的程序例子如下：
+01	#include <iostream>
+02	#include<fstream>
+03	using namespace std;
+04	const int num=20;
+05	struct people
+06	{
+07	    char name[num];
+08	    double weight;
+09	    int tall;
+10	    int age;
+11	    char sex;
+12	};
+13	int main()
+14	{
+15	    people pe={"李勇",78.5,181,25,'f'};
+16	    ofstream fout("people.txt",ios::out|ios::app);
+17	    fout<<pe.name<<" "<<pe.age<<" "<<pe.sex<<" "<<pe.tall<<" "<<pe.weight<<" "<<"\n";
+18	    fout.close();
+19	    ifstream fin("people.txt");
+20	    char ch[255];
+21	    fin.getline(ch,255-1,0);
+22	    cout<<ch;
+23	    fin.close();
+24	    return 0;
+25	}
+
+　　输出如下：
+{{./1.png}}
+      我们可以看到，people.txt文件中的内容和命令行中的一样。
+
+    
+
+  ② 二进制形式输出到文件 为了能够让其用二进制方式输出文件，我们只需要把上面程序的第16行和17行换做
+1	ofstream fout("people.txt",ios::binary);
+2	fout.write((char*)&pe,sizeof pe);
+
+　　程序的第1行中的标志binary用于开启二进制模式，第2行调用了__write函数__。该函数有两个参数，第一个是要写入数据的首地址，在这里是结构体pe的地址，而第二个参数是要写入的字符数目，这里我们用sizeof来计算pe的字符数。具体程序如下：
+01	#include <iostream>
+02	#include<fstream>
+03	using namespace std;
+04	const int num=20;
+05	struct people
+06	{
+07	    char name[num];
+08	    double weight;
+09	    int tall;
+10	    int age;
+11	    char sex;
+12	};
+13	int main()
+14	{
+15	    people pe={"李勇",78.5,181,25,'f'};
+16	    ofstream fout("people.txt",ios::binary);
+17	 __   fout.write((char*)&pe,sizeof pe);__
+18	    fout.close();
+19	    people pe1={"张玲",65.4,165,62,'m'};
+20	    ifstream fin("people.txt",ios::binary);
+21	 __   fin.read((char*)&pe1,sizeof pe1);__
+22	    cout<<pe1.name<<" "<<pe1.age<<" "<<pe1.sex<<" "<<pe1.tall<<" "
+23	        << pe1.weight <<" "<<"\n";
+24	    fin.close();
+25	    return 0;
+26	}
+
+      我们再来看看这个东东的输出，我们可以看到，以txt文档打开文件时候，会产生乱码。这就是因为txt文件是以文本方式打开的，所以我们看到的都是乱码。如下图：
+{{./2.png}}
+呼呼，以上就是我自认的自己不是很懂的C++关于如何操作文件的记录，到这里了~~全文完 ^_^
+分类: C++拾遗

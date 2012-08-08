@@ -1,0 +1,98 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-27T21:22:20+08:00
+
+====== 为 ARM Linux 制作根文件系统 ======
+Created Sunday 27 November 2011
+http://www.cppblog.com/jb8164/archive/2008/02/19/42937.html
+根文件系的组成:目录、Shell、库、脚本
+(1)目录
+   根文件系统要包含的目录：/dev /lib /etc、/proc
+   /dev:设备文件系统的挂接点
+   /lib:用于存放动态链接库
+   /etc:用来存放初始化脚本和其他配置文件的
+   /proc:用来挂载存放系统信息虚拟文件系统
+
+(2)Shell
+   Shell 就是 Busybox，从网上下载来 busybox-1.9.1.tar.gz
+   解压缩以后找到 Makefile 里面的 ARCH 和 CROSS_COMPILE，改成：
+
+   ARCH   ?= arm
+   CROSS_COMPILE ?= /usr/local/arm/3.3.2/bin/arm-linux-
+
+   当然 CROSS_COMPILE 由你自己的编译器位置决定，然后:
+
+   # make menuconfig
+   # make
+   # make install
+
+   默认是安装在 Busybox 下的 _install 目录里,然后我们就可以在 Busybox
+   生成的 Shell 基础上建根文件系统了， 以命令示之，如下:
+
+   # mkdir /home/jianbw/rootfs
+   # cd /home/jianbw/busybox/_install
+   # cp -r ./ /home/jianbw/rootfs
+
+   # cd /home/jianbw/rootfs
+   # mkdir dev
+   # mkdir etc
+   # mkdir lib
+   # mkdir proc
+   # mkdir sys
+   # mkdir tmp
+
+   以 root 身份执行(可通过 su 切换):
+   # cd dev
+   # mknod -m 660 console c 5 1
+   # mknod -m 660 null c 1 3
+
+(3)库
+   可拷贝开发板自带的文件系统的库，如果开发板的文件系统是映像，只需把映像挂载
+   在某个目录下访问即可。假设映像为 demo.cramfs，以命令示之，如下:
+
+   # mkdir /home/jianbw/demo
+   # mount -o loop demo.cramfs /home/jianbw/demo
+   # cd /home/jianbw/demo/lib
+   # cp -r ./ /home/jianbw/rootfs/lib
+
+(4)脚本
+   要使 Shell 正常工作, 还要设置初始化脚本。
+
+   首先是 /etc/inittab:
+   # Startup the system
+   null::sysinit:/bin/mount -o remount,rw /
+   null::sysinit:/bin/mount -t proc proc /proc
+   null::sysinit:/bin/mount -a
+   null::sysinit:/bin/hostname -F /etc/hostname# Now run any rc scripts
+   ::sysinit:/etc/init.d/rcS                   # Now invoke shell
+   ::askfirst:/bin/ash                         # Logging junk
+   null::sysinit:/bin/touch /var/log/messages
+   null::respawn:/sbin/syslogd -n -m 0
+   null::respawn:/sbin/klogd -n                # Stuff to do for the 3-finger salute
+   ::ctrlaltdel:/sbin/reboot                        # Stuff to do before rebooting
+   null::shutdown:/usr/bin/killall klogd
+   null::shutdown:/usr/bin/killall syslogd
+   null::shutdown:/bin/umount -a -r
+   null::shutdown:/sbin/swapoff -a
+
+   其次设置文件系统的挂载表 /etc/fstab:
+   # <file system> <mount pt> <type> <options>                       <dump> <pass>
+   /dev/root          /                  ext2      rw,noauto                           0      1
+   proc                 /proc           proc     defaults                               0      0
+   devpts              /dev/pts       devpts  defaults,gid=5,mode=620      0      0
+   tmpfs                /tmp            tmpfs    defaults                             0      0
+   sysfs                 /sys             sysfs     defaults                             0      0
+   
+
+   再设置 /etc/init.d/rcS:
+   # Start udev
+   /bin/mount -t tmpfs tmpfs /dev
+   /sbin/udevd --daemon
+   /sbin/udevstart  # Configure net interface
+   /sbin/ifconfig lo 127.0.0.1 up
+   /sbin/route add -net 127.0.0.0 netmask 255.0.0.0 lo
+   /sbin/ifconfig eth0 192.168.2.25 netmask 255.255.255.0
+   /sbin/route add default gw 192.168.2.1
+
+(5)生成根文件系统映像
+   # mkcramfs rootfs rootfs.cramfs

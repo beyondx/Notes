@@ -1,0 +1,74 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-02T18:29:38+08:00
+
+====== Interview with Dennis M. Ritchie ======
+Created 星期四 02 六月 2011
+http://www.linuxfocus.org/English/July1999/article79.html
+This is an interview with Dennis M. Ritchie. The man who was one of the developers of C and the Unix OS.
+
+ 
+Who is Dennis M. Ritchie?
+
+Some people become important because they change history, others make history. Dennis Ritchie belongs to the second group of people. When most of us were still learning to walk, he developed the "C" language, the most used programming language. It is not necessary to stress the relevance of this contribution to the mankind.
+
+But it was not enough for him. Dennis Ritchie and Ken Thompson developed the Unix operating system, i.e. The Operating System. Yes, He created UNIX.
+
+He has not stop working on computers and operating systems, and as a result, Plan 9 and Inferno were developed by the group of researchers under his leadership.
+
+His work has been recognized by numerous computer organizations: ACM award for the outstanding paper of 1974 in systems and languages; IEEE Emmanuel Piore Award (1982), Bell Laboratories Fellow (1983); Association for Computing Machinery Turing Award (1983); C&C Foundation award of NEC (1989): IEEE Hamming Medal (1990), etc.
+
+Currently, Dennis M. Ritchie is head of the System Software Research department in the Computing Science Research Center of Bell Labs/Lucent Technologies in Murray Hill, NJ.
+
+ 
+Interview part
+
+LF: The same way many children want to be Superman, you are the idol of many C programmers and UNIX fans (among others) over the globe. How does it feel being adored by thousand of UNIX and C programmers? It's completely impossible to imagine ourselves today without UNIX nor C. When you created C and began to work on UNIX, did you expect it would be 'THE FUTURE' of Computer Science?
+
+Dennis: These two questions are much the same, and ones that are often asked. Obviously the rewards and appreciation that I and my colleagues have received are very pleasant, and we do feel that we have helped create something of real value. But no, we did not really expect that this would be "the future" or even anticipate the eventual influence of the work. It was taken up in the spirit of "let's build something useful" and in the meantime do the work needed to help others take part. It's important to keep in mind that although the whole Unix and C or C++ segment is significant, the world of computer science and technology and real products is much larger. This is true both in the academic direction of the study of programming languages, and in the big-money area of software.
+
+LF: If UNIX is the present and the past of the Operating Systems, C could be considered without doubt 'THE LANGUAGE', despite all the Object-Oriented languages that have appeared in the last years. How do you see C++ and Java, and the often flame wars between C and C++ programmers?
+C has been characterized (both admiringly and invidiously) as a portable assembly language, and C++ tries to lift its level to object orientation and a more abstract approach to programming.
+
+Dennis: C++ benefited enormously from C, because C had a fairly large acceptance even before the growth of C++, and C++ could use C both as a base to build a new language and as a tool to create its compilers. C has been characterized (both admiringly and invidiously) as a portable assembly language, and C++ tries to lift its level to object orientation and a more abstract approach to programming. The faults of both (in recently emerging standards) seem to be excessive ornamentation and accumulation of gadgetry. They both have a certain spirit of pragmatism, of trying to understand what's really needed. Java is manifestly a C++ descendant, at once cutting away some of the C legacy having to do with pointers, and adding the idea (not so new, but maybe now really feasible) of machine-independent object files. Now that it's been caught up in machinations between Sun and Microsoft (and also has its own problems with ornamentation) it's hard to guess where things will go.
+
+LF: Now a hypothetical question: From todays perspectives and after so many years of C experience, Is there anything different you would have done if you had to design C from scratch?
+
+Dennis: Finding a way (given the limitations of the time) to insist on what has been in the ANSI/ISO standard for some time: complete declaration of the types of function arguments, what the 1989 C standard calls function prototypes. There are many smaller details that are more messy than they should have been. For example, the meaning of the word "static", which is confusingly used for several purposes. I'm still uncertain about the language declaration syntax, where in declarations, syntax is used that mimics the use of the variables being declared. It is one of the things that draws strong criticism, but it has a certain logic to it.
+
+LF: While C is a well established and completely defined language, operating systems are still very much in evolution. New ideas come as hardware gets faster and cheaper. What are the future key issues that will be at the basis of OS design? In particular, what is your opinion concerning micro-nano-kernels versus monolithic designs?
+
+Dennis: I don't think this is really an interesting issue, framed that way. I do strongly prefer environments for applications that provide a structured, common name-space and mechanisms for accessing resources, along the lines of Unix (I include Linux here), Plan 9, Inferno. It looks to me that the idea of micro- or nano-kernels didn't really become important in real use, at least as the basis for general-purpose systems. In practice, what seems to happen is that the micro-kernel becomes specialized to the macro-system on top of it. It might remain a useful tool for internal structuring of a system, but doesn't really live on its own. Of course (the world being complicated) there are cases where very simple operating systems are useful for small, appliance devices that aren't intended for general-purpose use, whether desktop or machine room.
+
+LF:UNIX is by now an operating system with a long history. It was also created many years ago and since then the capabilities and requirements of networks, hardware, services and applications have evolved enormously. What are the current limitations or handicaps of UNIX in face of present and near future user demands?
+
+Dennis: I don't see any fundamental, technological ones, in terms of the basic system API ("system calls"). There is of course an enormous commercial/political issue in terms of jousting between the Unix commercial vendors and now between the various "free" Unix suppliers, including Linux and *BSD.
+
+LF: Recently there is a great deal of concern with the approaching year 2000 and the potential for a melt down of the Internet due to the infamous Y2K bug. Do you believe there is any foundation in the apocalyptic predictions made by some experts?
+
+Dennis: No intelligent comment on this, really. I will not be flying at 23:59 31 December 1999, but since I have not been near an airplane at New Year at any time in my life, this fact probably has little to do with Y2K.
+
+LF: This wouldn't be a complete interview if we don't mention Inferno, the operating system you are currently working on. What were the main reasons to design a totally new operating system, together with Limbo, its own programming language? Also why Inferno/Limbo if there is JavaVM/Java? In other words, What Inferno has to offer that Java lacks?
+
+Dennis: The Inferno work was the brainchild of Phil Winterbottom and Rob Pike, and it started just before the Java bandwagon (publicity machine) emerged. Java did have its own predecessor (internally called Oak), but at the time Inferno was hatched there was not yet any reason to think that the phenomenon would emerge, and although we became aware of Java, it was still somewhat unformed. I think it's one of those odd convergences that a venerable technology idea (a language implemented by a portable virtual machine) was revived both by Sun and by us. That said, the Inferno idea was from the start more interesting in terms of OS technology (a language and an OS that would work both on raw, and very cheap, minimal hardware, and also identically as an application under Windows or Unix or Linux). At the same time one has to give Sun credit for hooking better into the vastly explosive WWW/browser market.
+
+LF: It seems to us that the future of Limbo as a programming language is tied to the expansion and popularity of Inferno as an operating system. Does it make sense to port Limbo to other operating systems? Or is its design and objectives too dependent on Inferno?
+
+Dennis: Technologically, Limbo is not particularly dependent on Inferno. Realistically, it is indeed dependent, simply because a new language depends on an environment in which it is used.
+
+LF: Taking a look to your career at Bell Labs, it seems that you have worked at every moment in the projects you really liked, and I presume this is also true with Inferno. Am I wrong asserting that you really enjoyed your work with UNIX and C design?
+
+Dennis: I have indeed enjoyed my career at Bell Labs (which continues).
+
+LF: I cannot avoid making a comparison between you and all the people that is currently working on non-profit projects for free, just because they like it - although I am sure they wouldn't refuse money for the work they do for free. Can you see yourself involved in projects like Linux, or similar, if you were not at Bell Labs? How do you see all these people from inside an innovative research lab with many years of experience on your shoulders? Since our magazine is mainly for Linux users we cannot forget to ask you a questions about Linux. First of all, what is your opinion about all the Linux momentum, and the decision of many companies to start developing software for it (Bell Labs, for example: Inferno has its own port to Linux)?
+
+Dennis: Let me put these questions together. I think the Linux phenomenon is quite delightful, because it draws so strongly on the basis that Unix provided. Linux seems to be the among the healthiest of the direct Unix derivatives, though there are also the various BSD systems as well as the more official offerings from the workstation and mainframe manufacturers. I can't help observing, of course, the "free source" Unix-derived world seems to be suffering from exactly the same kind of fragmentation and strife that occurred and is still occurring in the commercial world.
+
+LF: And the Big question about Linux. Have you ever used Linux? Well, If so, what's your opinion of it?
+I very much admire Linux's growth and vigor.
+
+Dennis: I haven't actually used it for real--in the sense of depending on it for my own day-to-day computing--, I am afraid to admit. My own computational world is a strange blend of Plan 9, Windows, and Inferno. I very much admire Linux's growth and vigor. Occasionally, people ask me much the same question, but posed in a way that seems to expect an answer that shows jealousy or irritation about Linux vs. Unix as delivered and branded by traditional companies. Not at all; I think of both as the continuation of ideas that were started by Ken and me and many others, many years ago.
+
+LF: And Microsoft.... What do you think about the monopoly this company currently has over desktop computing? In the past sci-fi films depicted a world dominated by macro-computers that rule all aspects of our daily life. The current reality has showed us a different picture. Computers, in many respects, have been relegated to a simple appliance. You, who developed a operating system thought for programmers, who lived all that sci-fi scene, and who imagined the actual computing situation, how do you imagine the future of computing? What place do you think has Inferno and Linux in it?
+
+Dennis: That's two questions. Microsoft does have some sort of monopoly over desktop computing, but that's not the only interesting computing in the world. Both alternate ways of supplying software (like Linux) and bits of the world that don't get in the news as much as Windows or browser wars (like very high-performance computing, very reliable computing, very small computing) will all have a place. I trust that both Linux and Inferno will prosper.

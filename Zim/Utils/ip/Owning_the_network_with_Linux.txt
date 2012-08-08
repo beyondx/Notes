@@ -1,0 +1,195 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-12T16:36:24+08:00
+
+====== Owning the network with Linux ======
+Created Thursday 12 July 2012
+http://people.debian.org/~ultrotter/talks/dc10/networking.html
+
+Owning the network with Linux
+
+And scaring proprietary-only people, in the process!
+
+Guido Trotter <ultrotter@debian.org>
+
+Debian, Google, Ganeti, and such
+
+===== Once upon a time =====
+
+* Expensive proprietary devices ran the network
+* Linux started being used on servers, in the data centres
+* Managers, Windows, and Unix sysadmins were scared
+* ...
+* But network people felt safe
+
+===== Why this talk =====
+
+* Networking is fun
+* Documentation is scarce, fragmented, and outdated
+* I was too lazy to write documentation myself ;)
+
+===== A few precautions =====
+
+* Yes, you can do this at home
+But if you want to do it in a corporation:
+
+* Don't propose it during coffee or lunch
+* Make sure your networking people are seated
+* Understand the consequences
+* Enjoy the lack of documentation, be ready to experiment :)
+
+===== Old reliables =====
+
+//# Interfaces://
+//ip addr add 192.168.3.1/24 dev eth0//
+//ip link set eth0 up//
+//# Bridging://
+//brctl addbr br0//
+//brctl addif br0 eth0//
+//brctl show//
+//# Routing://
+//ip route//
+//echo 1 > /proc/sys/net/ipv4/conf/all/forwarding//
+//echo 1 > /proc/sys/net/ipv6/conf/all/forwarding//
+
+===== Overview =====
+
+VLANs
+Tunneling
+Policy routing and asymmetric routing
+Routing daemons and anycast
+Load balancing
+Network namespaces
+VLAN Tagging
+
+Get access to multiple ethernets, over a single port
+Useful, for example, for:
+Acting as a router/firewalling bridge with only one ethernet interface
+Insulating VMs by connecting them to different network segments
+# your switch must be either very dumb, or quite helpful
+ip link add link eth0 name eth0.3 type vlan id 3
+ip addr add 192.168.3.1/24 dev eth0.3
+ip link set eth0.3 up
+# ...and now play with it (bridge it, route it, etc)
+Tunneling
+
+Transmitting IP over IP
+Creating overlay networks
+Allows mobility, changing the network shape, etc
+Basic tunneling
+
+On host0 (172.16.15.33):
+
+ip tunnel add gre0 mode gre local 172.16.15.33 \
+  remote 172.16.22.9 key 42 dev eth0
+ip addr add 192.168.4.1 peer 192.168.4.2 dev gre0
+ip link set gre0 up
+On host1 (172.16.22.9):
+
+ip tunnel add gre0 mode gre local 172.16.22.9 \
+  remote 172.16.15.33 key 42 dev eth0
+ip addr add 192.168.4.2 peer 192.168.4.1 dev gre0
+ip link set gre0 up
+Unbound tunneling
+
+# on each hostN (<ipN>):
+ip tunnel add gre0 mode gre key 42 dev eth0
+ip addr add 192.168.4.<N>/24 dev gre0
+ip link set gre0 up
+
+# for multicast, add to tunnel add:
+#   local <ipN> remote 224.66.66.66
+
+# for neighbor table lookup:
+ip neigh replace 192.168.4.<N> lladdr <ipN> \
+    nud permanent dev gre0
+
+# Also doable via a specialized arpd (eg. opennhrp)
+Policy routing
+
+Maintain different routing tables (statically or dynamically)
+Route different packets according to a different routing table
+Choose depending on source interface, addresses, or iptables rules
+For example route your virtual machine packets differently than the host's
+"Basic" policy routing
+
+ip rule add dev gre0 table 100
+ip rule add dev tun0 table 100
+
+ip route replace table 100 proto static \
+  192.168.4.0/24 dev gre0
+ip route replace table 100 proto static \
+  192.168.5.0/24 dev gre0 via 192.168.4.254 onlink
+# Default routing via gateway
+ip route replace table 100 proto static default \
+  dev gre0 via 192.168.4.254 onlink
+More policy routing
+
+# Policy routing specific packets:
+ip rule add fwmark 100 table 100
+iptables -t mangle -I OUTPUT -d 192.168.4.0/24 \
+  -p icmp --icmp-type fragmentation-needed \
+  -j MARK --set-mark 100
+
+# Asymmetric policy routing
+ip route replace table 100 proto static \
+  throw 192.168.0.0/16
+Routing daemons
+
+Integrate with your network's dynamic topology
+Acquire routes
+Push routes
+For hosted VMs
+For NBMA networks we're a gateway for
+For anycast services we run or load balance
+Quagga
+
+apt-get install quagga
+look at /usr/share/doc/quagga/examples/
+test it with multiple VMs running it
+try different routing protocols (usually you want OSPF or BGP)
+interact with it with static routes, or your own daemon
+Anycast
+
+Running an IP service in multiple locations
+Decreases latency, increases availability
+Just publish the route from more than one place
+...yes, it's that easy.
+Load balancing
+
+Can be done in-kernel thanks to the LVS infrastructure
+http://www.linuxvirtualserver.org/
+Worst name ever? ;)
+Good documentation, though, for once!
+Can load balance via NAT, Tunneling, or Direct Routing
+Network namespaces
+
+Make a process (and its children) see network interfaces of its own.
+Can be done passing CLONE_NEWNET to clone()
+For more on namespaces:
+lxc automates lots of this for you
+Check CLONE_NEW* under clone(2)
+Network namespaces
+
+# shell1:
+lxc-unshare -s NETWORK -- /bin/bash
+ip link set lo up
+# ...wait for shell2...
+ip addr add 192.168.4.2 peer 192.168.4.1 dev veth1
+ip link set veth1 up
+
+# In the meantime, on another shell (shell2):
+ip link add name veth0 type veth \
+  peer name veth1 netns <pid>
+ip addr add 192.168.4.1 peer 192.168.4.2 dev veth0
+ip link set veth0 up
+Userspace fun
+
+OpenVPN: encrypted ip or ethernet tunnels
+VDE: userspace virtual switch
+socat: 'nc' on steroids
+Q&A
+
+Did I miss anything?
+Do you have suggestions/hints?
+Any other question? (won't promise to have an answer) :)

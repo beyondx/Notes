@@ -1,0 +1,142 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-04T12:21:54+08:00
+
+====== Irssi How to ======
+Created Sunday 04 March 2012
+http://lnote.blogbus.com/logs/8182581.html
+
+
+irssi 是一款 linux 下面的 irc 聊天软件，它是基于console下面的，所以不需要 x 界面的支持，并且支持 plugin 扩展功能，在 irc 软件里面，它用起来感觉还是很不错的。
+
+===== == 安装 irssi == =====
+
+在 ArchLinux 下面，使用下面得命令即可安装 irssi 。如果需要使用 nicklist 插件，那么同时需要安装 screen 这个软件。
+
+    pacman -S irssi screen
+
+===== == 启动、退出 irssi == =====
+
+启动 irssi 的方法也很简单，执行下面的命令即可。启动之后会看到一些提示内容。
+
+    screen irssi
+
+如果要退出 irssi ，可以在下面的输入框输入 **“/quit [退出原因]**” 命令，其中退出原因可以不写。
+
+===== == 删除内置的一些 server 和 network 列表 == =====
+
+默认情况下， irssi 会给你设置一些 server 和 network 列表，可以使用下面的命令来查看。
+
+    /network list
+    /server list
+    /channel list
+
+这些都可以先删掉，如果你想保留的话，可以跳过这一步。
+
+    /network remove [network_name]
+    /server remove [server_name]
+    /channel remove [chan_name]
+
+删掉之后比较清爽，呵呵。我喜欢这样。
+
+===== == 添加自己的 server 和 network 列表 == =====
+
+这里以 linuxsir 的 archlinux 的 irc 频道为例来介绍一下。__服务器__是 irc.oftc.net ，__端口__是6667，__频道__是 #arch-cn。
+
+先添加 network 。 oftc 可以注册用户名，方法后面再说。下面命令中的 autosendcmd 后面的内容就是和服务器验证用户名的命令，如果你没这个需求，可以直接删掉那些内容。
+
+    /network add -autosendcmd "/^msg nickserv identify passwd;wait 2000" OFTC
+
+接下来添加 server 。其中的 **-auto** 选项可以让 irssi 启动的时候就自动连接这个 server 。
+
+    /server add -auto -network OFTC irc.oftc.net 6667
+
+接下来添加自动加入的 channel 。 auto 参数同上。
+
+    /channel add -auto #arch-cn  OFTC
+
+ok ，这就都添加完了，可以使用前面提到的**list命令**来查看添加的列表是否正确。退出 irssi 之后，重新启动， irssi 应该已经在自动连接 server ，并且连接之后还能自动加入刚才添加的频道了。
+
+irssi 里面切换标签用的是__ alt+数字__ ，界面下面会提示哪个 window 是 active 的，按 alt+那个数字就可以切换过去。
+
+===== == 注册用户名 == =====
+
+irc 里面修改昵称的命令是 “/nick new_nick”，设置好自己的 nick 之后，还可以__在 oftc 注册__，这样以后别人使用你这个昵称的时候，你可以抢回来。:)
+
+注册昵称的命令如下。 password 改成密码， e-mail 改成邮箱。
+
+    /msg nickserv register password E-mail
+
+注册之后，以后可以使用下面的命令来告诉 oftc 你是谁。可以看到这个命令在前面出现过，就是添加 network 的时候，如果按照本文提示的那样做了的话，每次启动 irssi 连接到这个 network 所属的 server 之后，会自动执行这个命令。
+
+    /msg nickserv identify password
+
+其他的一些注册用户名相关的信息可以通过 “/msg nickserv help” 来查看。
+
+作了上面这些操作之后， irssi 用起来已经基本很顺手了。其他的一些 irc 命令可以自己去发现，或者上 irc 问其他的用户。
+
+===== == 显示 nicklist 列表 == =====
+
+用一段时间会发现， irssi 里面查看当前有哪些用户在聊天不是很方便。这里需要安装一个 nicklist 插件，地址是这里，保存到 ~/.irssi/scripts 目录下面，然后在这个目录下面新建一个 autorun 目录，然后将 nicklist.pl 在那个目录下做一个链接，这么做的目的是使得 irssi 启动的时候就可以加载 nicklist.pl 这个插件。
+
+ok ，重新启动 irssi ，然后在频道里面执行一下“/nicklist screen” 命令，右边是不是出来 nicklist 了？
+
+===== == 消息通知 == =====
+
+使用一段时间就会发现，有时候 irc 里面有人和你说话的时候没有提示，不像即时通讯软件那样会弹出一个窗口提醒你。 irssi 通过插件可以来实现这个。
+
+下载 beep 插件，放到 .irssi/scripts 目录下面，然后在 irssi 中使用下面的命令加载这个插件。
+
+/script load beep_beep.pl
+
+执行之后会在1号窗口看到加载成功与否的提示。加载之后 irssi 就多了两个参数可以设置， beep_flood 和 beep_cmd ，可以使用 /set 命令来设置他们。 beep_flood 的单位是毫秒，所以1000表示1秒。
+
+设置完毕这些之后，还需要设置一下哪些情况下通知你，就是 beep_msg_level 这个参数。这个参数可以设置的内容可以用 /help levels 来查看。
+
+     
+        CRAP          - ?
+        MSGS          - Match messages privately sent to you.
+        PUBLIC        - Match messages sent to public channels.
+        NOTICES       - Match NOTICE messages.
+        SNOTES        - Match server notices.
+        CTCPS         - Match CTCP messages.
+        ACTIONS       - Match CTCP actions.
+        JOINS         - Match join messages.
+        PARTS         - Match part messages.
+        QUITS         - Match quit messages.
+        KICKS         - Match kick messages.
+        MODES         - Match mode changes.
+        TOPICS        - Match topic changes.
+        WALLOPS       - Match wallops.
+        INVITES       - Match invite requests.
+        NICKS         - Match nickname changes.
+        DCC           - DCC related messages.
+        DCCMSGS       - Match DCC chat messages.
+        CLIENTNOTICE  - Irssi's notices.
+        CLIENTCRAP    - Miscellaneous irssi messages.
+        CLIENTERROR   - Irssi's error messages.
+        ALL           - All previous message levels combined.
+        HILIGHT       - Match highlighted messages.
+        NOHILIGHT     - Don't check a message's highlighting.
+        NO_ACT        - Don't trigger channel activity.
+        NEVER         - Never ignore, never log.
+        LASTLOG       - Never ignore, never log.
+
+我的设置是 “MSGS DCC INVITES HILIGHT” 。设置好之后也可以把它放到 autorun 里面去自动加载。
+
+如果单纯设置 beep_cmd 这种方式你不满足的话，可以自己修改那个脚本，这里有我写的一篇 irssi_script_howto。
+
+===== == 其他的一些设定 == =====
+
+使用”/ctcp user_name version”命令可以查看对方的一些信息，各个软件返回的信息不太一样，例如 xchat 自己的版本，还会返回操作系统的一些信息， chatzllia 也会返回自己的版本信息。默认情况下， irssi 也是返回自己的版本，但是我们可以自己定制一下 :)
+执行 “/set” 命令，你会看到会返回很多信息，这些都是 irssi 的设置项，可以设置 theme 什么的，要设置 ctcp version 的返回信息，需要设置 ctcp_version_reply 这个选项， “/set ctcp_version_reply :)” 就可以了。对方查看的时候，只能看到:)这个返回信息。
+
+在 irssi 里面，如果用 screen 启动的话，翻页使用的是 page down/page up 按键。
+
+== 参考资料 ==
+
+irssi的官方网站上面的 文档 很详细，建议去看看。本文就是参考 Startup HOWTO 里面的 Server and channel automation 而写。
+
+ 
+
+转自 http://blog.wdicc.com/wordpress/irssi-how-to 

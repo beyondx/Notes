@@ -1,0 +1,7 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-26T20:09:07+08:00
+
+====== 终端颜色 ======
+Created Sunday 26 February 2012
+

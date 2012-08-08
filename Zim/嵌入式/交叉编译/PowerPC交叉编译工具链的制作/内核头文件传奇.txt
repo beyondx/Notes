@@ -1,0 +1,100 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-14T22:13:52+08:00
+
+====== 内核头文件传奇 ======
+Created Saturday 14 January 2012
+http://www.linuxsir.org/bbs/thread303531.html
+做 LFS 是不是很累了？OK，让我先来讲一段八卦故事，放松放松神经，然后再继续冒险吧。。。
+
+在 Linux 2.2/2.4 的纯真年代，内核头文件一直保持着 Unix 世界的"KISS"传统，只需将内核源码树中的头文件直接复制到 /usr/include 中即可使用，一切都是那么 Simple and Stupid ...
+
+但是随着 2.6 系列内核的发布，事情开始变得混乱和复杂起来。首先是内核开发者宣布强烈反对直接使用"未净化"的"原始"内核头文件，他们建议使用发行版提供的"经过净化的"内核头文件。于是各种发行版开始"八仙过海，各显神通"，由于"净化"方法各不相同，结果就是每个发行版都有着自己与众不同的内核头文件。更为严重的是，内核开发者甚至推荐编译 Glibc 的头文件也要使用发行版提供的"经过净化的"内核头文件。由于 Glibc 和 Kernel 是整个系统的根基，这样一来 Linux 便像传统的 Unix 那样开始走向分裂。
+
+另一件哭笑不得的事情是，虽然内核开发者强烈推荐使用发行版提供的"经过净化的"内核头文件，但是 Glibc 的开发者却不买账，他们推荐使用"未净化"的"原始"内核头文件来编译 Glibc ，两个开发组一直坚持各自的见解，互不妥协！另外，两个开发组在应当由谁提供内核头文件的问题上意见也不一致：内核开发组认为应当由发行版的制作者提供，而 Glibc 开发组认为应当由内核开发组提供。结果就是"神仙打架，凡人遭殃"，虽然对 Debian 这种大型发行版来说，提供自己独有的"经过净化的"内核头文件不会成为多大的负担，但是对于那些没有能力或精力的小心发行版制作者和我们这些 DIY fans 来说却是一场灾难！要么直接使用其他发行版的成果，要么自力更生；前者让人心有不甘(没有了 DIY 的原汁原味)，后者让人望而生畏(有几个人知道啥叫"净化"?怎么净化?)。
+
+危机时刻总会有英雄的出现，就在一片恐慌之际，一个叫"linux-libc-headers"项目组诞生了！他们向我们这些"凡人"们提供了安全的、普遍适用的、"经过净化的"内核头文件，真是及时雨啊！天空重新晴空万里……然而好景不长，由于精力和人力有限，该项目在发布了 2.6.12.0 版本之后，遗憾的离开了这个世界。这样一来，2.6.12 以上版本的内核新特性(比如新的系统调用)和 ABI/API 的变化就无法反映出来，对于我们这些 DIY fans 来说，世界重回混沌……
+
+俗话说，"合久必分，分久必合"，大概是内核开发组意识到了如果继续固执己见将不可避免的导致混乱以及重蹈 Unix 逐渐走向分裂的覆辙，于是从 2.6.18 版本开始，内核开发组担负起了维护一份统一的、"经过净化的"内核头文件的职责(窃以为这原本就是他们的责任)。现在获取"经过净化的"内核头文件又变得简单起来，只要在内核源码树中使用 make headers_install 即可，而且不用再担心更新问题。对于我们这些 DIY fans 来说，又可以重新 Day Day Happy 了。
+
+不过，由于磨合需要时间。目前 Glibc-2.4 以下的版本都无法配合这种新式头文件编译成功。不过偶相信前途一片光明……
+----------------------------
+不建议自动覆盖以前的内核头，而是手动彻底删除原来的内核头(rm -fr /usr/include/{asm,linux})，之后再安装新的内核头。
+根据 Glibc 的 FAQ ，编译 Glibc 时使用的内核头文件版本可以比实际运行 Glibc 的内核版本高。比如用于编译 Glibc 的内核头文件版本为 2.6.22 ，但是实际运行 Glibc 的可以是 2.6.16 版本的内核(编译 Glibc 时必须使用 --enable-kernel=2.6.16 而不能使用 --enable-kernel=2.6.22 )。允许这样做的好处是即使将来把内核升级到 2.6.22 也不需要重新编译 Glibc 了。另一方面，如果实际运行的内核版本比头文件版本高，那么新内核的新特性(主要是系统调用)将无法使用。
+不过自己升级内核头(不使用发行版提供的头)的话，还是很危险的，保险的做法是把系统从Glibc开始全部重新编译一遍，不过这样一来你的Debian还是Debian吗？
+这也就是为什么内核头不统一将会导致Linux走向分裂的原因。
+
+---------------------------
+内核升级到 2.6.22 以后还是要重新编译 glibc 的吧? 不需要用 --enable-kernel=2.6.22 编译一下吗?
+  	rickxbx 当前离线   	回复时引用此帖
+旧 07-05-26, 11:38 	第 11 帖
+csfrank 帅哥
+ 
+csfrank 的头像
+ 
+ 
+注册会员  
+  注册日期: Jun 2005
+  我的住址: 上海
+  帖子: 534
+  精华: 20
+ 
+	
+不需要，Glibc会自动检测的。
+--enable-kernel=2.6.16 的意思是编译出来的Glibc只能运行在2.6.16及以上版本的内核上。这个选项并不是用来指定内核头版本的，内核头的版本在 /usr/include/linux/version.h 文件中，由configure脚本自动识别。
+当然，在使用新内核头的情况下，为了兼容老版本内核，编译出来的Glibc体积要大一些。
+
+----------------------------------
+嘿嘿，详细说来，如果你使用 2.6.22 的头，又使用 --enable-kernel=2.6.16 的话，编译过程是这样的：
+首先，configure 脚本会检查 /usr/include/linux/version.h 文件发现头的版本是 2.6.22 ，
+然后再看看 --enable-kernel=2.6.16 发现你要求它最低兼容 2.6.16 的内核(也就是编译出来的Glibc最低可以运行在2.6.16内核上，当然也能运行在2.6.22上)，
+接着检查当前正在运行中的内核版本，它必须是2.6.16或以上版本，否则configure会失败。
+
+然后在编译过程中，如果在头文件中检测到不被2.6.16支持但却被2.6.22内核支持的特性时，会编译一些兼容性检测代码到二进制结果中，用于在将来Glibc的运行时检测内核版本：如果将来运行Glibc的内核是2.6.16就不使用新特性，如果是2.6.22就启用新特性，如果低于2.6.16就干脆**。
+当然为了维持这种兼容性，编译出来的二进制文件会稍微大一些，运行速度也会稍微慢一些。
+
+不过有一点我也没搞清楚，那就是Glibc的编译系统是如何知道某个特性是在哪个版本的内核中添加的？也许内核头文件中有每个特性最早被在哪个版本的内核中添加进来的标记也说不定，这个细节我没研究过。
+
+不知道我这个解释是不是足够清楚了？
+
+-------------------
+呵呵, 已经很清楚了. 谢谢
+
+不过glic能够动态地根据内核版本来开启关闭某些功能特性还是蛮神奇的
+-------------------
+嘿嘿，分久必合！
+偶相信 make headers_install 将会一统江湖
+目前各大发行版还没有一个能够占有绝对统治地位，因此也就没有一个敢于在分裂的道路上走的太远。
+所以基本上可以认为商业发行版将会"若即若离"，而社区版本则会尽可能遵循统一的标准。
+最终的结果估计还是会大一统或者接近大一统的。
+在这一点上，偶觉得 BSD 做的很到位，非常到位！
+---------------------
+我也不知道，不过看看 README 的内容：
+
+README in llh:
+
+The linux-libc-headers (llh) package (available at
+http://ep09.pld-linux.org/~mmazur/linux-libc-headers/) contains headers
+that export linux abi to userspace. These headers are a heavily modified and
+cleaned up version of what comes with original linux tarball. See the FAQ
+for more details.
+
+Userland usefulness is achieved by removing kernel only parts (which often
+generate errors) and using code provided by libc where possible (this allows
+to avoid collisions when both linux and libc headers define the same structure
+or constant). Unfortunately libc dependency might result in functionality loss
+since libcs aren't always in sync with what kernel provides. If such a case
+occurs please send a bug report to the maintainer (see AUTHORS file) and, if
+possible, a workaround will be added. Do note that since llh is primarily for
+2.6 based kernels we assume glibc to be at least version 2.3.3 (as far as I
+know this version wasn't released officially but is being used by many current
+linux distributions). Glibc is not a requirement though - llh is known to work
+with other implementations of standard C library - but obviously is a
+priority, so be prepared to send a bugreport if using something else.
+In case you're wondering why take such an approach if it's obvious that it
+might generate problems. Well, according to my knowledge there is consensus
+among kernel hackers as to how userland headers should look like, but
+unfortunately proper implementation (and wider adoption) will take time and
+something that just plain works (in most cases anyway) is needed now.
+
+

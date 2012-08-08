@@ -1,0 +1,282 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-30T21:26:31+08:00
+
+====== ltib(3)在嵌入式系统中实现nfs服务器 ======
+Created Wednesday 30 November 2011
+
+http://www.osow.org/wiki/Ltib%283%29%E5%9C%A8%E5%B5%8C%E5%85%A5%E5%BC%8F%E7%B3%BB%E7%BB%9F%E4%B8%AD%E5%AE%9E%E7%8E%B0nfs%E6%9C%8D%E5%8A%A1%E5%99%A8
+
+NAS系统需要支持NFS协议，这时的NAS作为NFS的服务器，客户端通过NFS协议登录NAS来存取数据。
+
+===== 1.安装nfs-utils =====
+
+nfs-utils是nfs服务器端的用户程序。
+
+在LTIB当前目录下，使用下面命令进入LTIB配置界面。
+
+**$./ltib --configure**
+
+进入“package list”。选中nfs-utils
+
+保存退出，LTIB会将nfs-utils编译并部署在文件系统的/usr/sbin下。
+
+==== 2.配置Linux内核 ====
+
+在LTIB当前目录下，使用下面命令进入LTIB配置界面。
+
+$./ltib –configure
+
+选中“[]Configure the kernel”选项。这样在LTIB**配置过程中**会进入Linux内核配置。在内核配置界面，
+
+进入“File systems”，进入“Network File systems”，选中
+
+<*> Provide NFSv3 server support选项；
+
+<*> NFS server support选项；
+
+<*> Provide NFS server over TCP support。
+
+==== 3.编写nfs启动脚本 ====
+
+启用nfs服务器的过程需要配置相关参数，再启动相关应用程序。通过编写一个nfs启动脚本，并将其添加到配置文件的**启动列表**中，实现系统开机自动启动nfs服务器。
+
+/etc/rc.d/init.d/nfs代码：
+# !/bin/sh 
+
+nfsd="/usr/sbin/rpc.nfsd"
+
+mountd="/usr/sbin/rpc.mountd"
+
+exportfs="/usr/sbin/exportfs"
+
+portmap="/sbin/portmap"
+
+
+    Number of servers to be started by default 
+
+[ -z "$RPCNFSDCOUNT" ] && RPCNFSDCOUNT=4
+
+
+    Get the initial values for the input sock queues at the time of running the script. 
+
+if [ "$TUNE_QUEUE" = "yes" ]; then
+
+　　RMEM_DEFAULT=`/sbin/sysctl -n net.core.rmem_default`
+
+　　RMEM_MAX=`/sbin/sysctl -n net.core.rmem_max`
+
+　　# 256kb recommended minimum size based on SPECsfs NFS benchmarks
+
+　　[ -z "$NFS_QS" ] && NFS_QS=262144
+
+fi
+
+case "$1" in
+
+　start)
+
+　　$portmap
+
+　　# Start daemons.
+
+　　# Apply input queue increase for nfs server
+
+　　if [ "$TUNE_QUEUE" = "yes" ]; then
+
+　　　　/sbin/sysctl -w net.core.rmem_default=$NFSD_QS >/dev/null 2>&1
+
+　　　　/sbin/sysctl -w net.core.rmem_max=$NFSD_QS >/dev/null 2>&1
+
+　　fi
+
+　　echo "Starting NFS services"
+
+　　$exportfs -r
+
+　　echo -n "Starting NFS daemon: "
+
+　　$nfsd $RPCNFSDCOUNT
+
+　　echo
+
+　　[ -n "$MOUNTD_PORT" ]
+
+　　&& RPCMOUNTDOPTS="$RPCMOUNTDOPTS -p $MOUNTD_PORT"
+
+　　echo -n "Starting NFS mountd: "
+
+　　$mountd $RPCMOUNTDOPTS
+
+　　echo
+
+　　touch /var/lock/nfs
+
+　　# reset input queue for rest of network services
+
+　　if [ "$TUNE_QUEUE" = "yes" ]; then
+
+　　　　/sbin/sysctl -w net.core.rmem_default=$RMEM_DEFAULT >/dev/null 2>&1
+
+　　　　/sbin/sysctl -w net.core.rmem_max=$RMEM_MAX >/dev/null 2>&1
+
+　　fi
+
+　　;;
+
+　　stop)
+
+
+　　# Stop daemons.
+
+　　echo -n "Shutting down NFS mountd: "
+
+　　killall -9 rpc.mountd
+
+　　echo
+
+　　echo -n "Shutting down NFS daemon: "
+
+　　killall -9 nfsd
+
+　　echo
+
+
+　　# Do it the last so that clients can still access the server
+
+　　# when the server is running.
+
+　　echo -n "Shutting down NFS services: "
+
+　　$exportfs -au
+
+　　rm -f /var/lock/nfs
+
+
+　　killall portmap
+
+　　;;
+
+　restart)
+
+　　$0 stop
+
+　　$0 start
+
+　　;;
+
+　reload)
+
+　　$exportfs -r
+
+　　touch /var/lock/nfs
+
+　　;;
+
+　*)
+
+　　echo "Usage: nfs {start|stop|restart|reload}"
+
+　　exit 1
+
+esac
+
+
+exit 0
+
+
+===== 打开LTIB当前目录的下的config/userspace/ =====
+**sysconfig.lkc**
+
+===== 文件，添加如下代码。 =====
+
+
+config SYSCFG_START_NFSD
+
+　　depends PKG_PORTMAP && PKG_NFS_UTILS
+　　bool "start nfs server"
+　   default y
+　　help
+　　　　Before enabling the NFS server, please check /etc/exports
+
+
+这样在LTIB配置界面下的T**arget System Configuration Option**选项里就添加了开机启动nfs服务器的选项。
+
+打开LTIB当前目录下的dist/lfs-5.1/sysconfig/__sysconfig.spec__ 文件，添加SYSCFG_START_NFSD 宏的定义。
+
+
+if [ "$SYSCFG_START_NFSD" = "y" ]
+　　then
+　　　　nfs=nfs
+fi
+
+
+打开LTIB当前目录的下的config/platform/mpc837xerdb/merge/**etc/rc.d/rc.conf**文件，做如下修改：
+
+在all_services= line末尾添加“nfs”；
+在all_services_r= line起始添加“nfs”
+在cfg_services and cfg_services_r.添加“$nfs”
+
+
+手动启动或停止nfs服务器的命令分别是：
+
+    ./etc/rc.d/init.d/nfs start 
+    ./etc/rc.d/init.d/nfs stop 
+
+===== 4.nfs配置文件 =====
+
+nfs的配置文件是/etc/exports，在该配置文件中添加如下代码：
+
+/sharec *(rw,root_squash)
+/mnt/md/public 192.168.1.1/192.168.1.255(rw,root_squash)
+
+
+说明：该配置文件有三列。第一列是nfs服务器开放的本地的共享文件夹路径；第二列是指nfs客户端地址（*表示任意地址，192.168.1.1/192.168.1.255表示该网段地址）；第三列是访问属性。
+
+===== 5.使用nfs =====
+
+在Linux下使用nfs协议挂载nfs服务器上的共享文件夹。首先，建立挂载目录
+
+    mkdir /mnt/nfs 
+
+然后，挂载
+
+    mount –t nfs –o tcp 192.168.1.102:/share /mnt/nfs 
+
+其中
+
+mount 挂载命令
+
+–t nfs 挂载文件系统类型为nfs
+
+–o tcp 使用基于tcp协议的nfs（或–o udp 使用基于udp协议的nfs）
+
+192.168.1.102:/share nfs服务器IP地址和共享文件夹路径
+
+/mnt/nfs 挂载目录
+
+挂载完成后，可以使用dd命令写入和读出一个文件进行nfs访问测试。
+
+写入：
+
+[root@fedora8 nfs]# dd if=/dev/zero of=1GB_20100412 bs=10M count=100
+
+100+0 records in
+
+100+0 records out
+
+1048576000 bytes (1.0 GB) copied, 92.1231 s, 11.4 MB/s
+
+读取：
+
+[root@fedora8 nfs]# dd if=1GB_20100412_tcp_bs1M of=/dev/null bs=1M count=1000
+
+1000+0 records in
+
+1000+0 records out
+
+1048576000 bytes (1.0 GB) copied, 105.538 s, 9.9 MB/s
+
+卸载nfs的命令是：
+
+    umount /mnt/nfs 

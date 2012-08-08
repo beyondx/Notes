@@ -1,0 +1,60 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-19T17:07:22+08:00
+
+====== emacs编码系统 ======
+Created Friday 19 August 2011
+
+
+
+   2后来发现
+在http://www.linuxsir.org/bbs/showthread.php?t=237956中有：
+
+
+除了转换非 ASCII 字符的不同表示之外，编码系统还进行换行符的转换。Emacs 处理三种文件中换行的方式：新行符，回车换行，或者仅仅回车。
+
+C-h C coding <RET>
+描述编码系统 coding
+C-h C <RET>
+描述当前使用的编码系统
+M-x list-coding-systems
+显示所有支持的编码系统的列表
+
+命令 C-h C(describe-coding-system) 显示特定编码系统的信息。您可以指定编码系统名称作为参数；或者，不指定参数，它将描述当前使用的各种编码系统，包括当前缓冲区、默认值，以及识别编码系统的优先级列表(参见识别编码)。
+
+要显示所有支持的编码系统，输入 list-coding-systems。列表中包含了各种编码系统的信息，包括用在状态行中的代表字母(参见状态行)。
+
+当 Emacs 无法自动选择正确的编码系统时，您可以用这些命令来指定一个：
+C-x <RET> f coding <RET>
+使用编码系统 coding 来查看当前缓冲区中的文件。
+C-x <RET> c coding <RET>
+指定下一个命令的编码系统为 coding。
+C-x <RET> k coding <RET>
+设置键盘输入的编码系统为 coding。
+C-x <RET> t coding <RET>
+设置终端输出的编码系统为 coding。
+C-x <RET> p input-coding <RET> output-coding <RET>
+使用编码系统 input-coding 和 output-coding 作为当前缓冲区中子进程的输入和输出。
+C-x <RET> x coding <RET>
+在窗口系统中与其它程序传递选中文本时使用编码系统 coding。
+C-x <RET> X coding <RET>
+在窗口系统中与其它程序传递下一次选中文本时(仅一次)使用编码系统 coding。
+
+经过复制网页的文本到emacs发现开始不能识别，保存时还提示找不到合适的coding（prefer 中设置的）。保存后再打开时就正确了。通过C-h C 查寻该缓冲区的字符编码。发现是iso-2022-8bit-ss2-unix 的，而prefer中没有设置该项。
+通过增加prefer coding后。保存时，果然没有提示了。
+但还是出现粘贴的时候是乱码。必须保存后才可以。（这时我都有写一个函数的想法了）
+
+
+
+3 还有几个参数没有设置，
+set-buffer-file-coding-system
+set-selection-coding-system
+setq default-process-coding-syste
+分别设置了一下发现是set-selection-coding-system 是原因所在。
+设置了
+(set-selection-coding-system 'iso-2022-8bit-ss2-dos)
+(set-clipboard-coding-system 'iso-2022-8bit-ss2-dos)
+后果然就ok了
+
+其实(set-selection-coding-system ) 与 (set-clipboard-coding-system )都是指定一个值，设定一个就可以了。如果两个都设置了，就不要矛盾。
+

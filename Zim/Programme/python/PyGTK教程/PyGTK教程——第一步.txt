@@ -1,0 +1,255 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-30T17:55:55+08:00
+
+====== PyGTK教程——第一步 ======
+Created 星期四 30 六月 2011
+
+PyGTK教程——第一步
+发表于：2011年5月4日 | 归档于: PyGTK Tutorial, Python | 标签: PyGTK, Python, 教程, 翻译
+
+本文为《PyGTK tutorial》翻译的第二篇，上一篇链接为http://www.yeezi.org/2011/05/pygtk-tutorial-pygtk-indroduction.html
+
+在本教程的这部分里，我们将进行我们编程的第一步。我们将创建示例程序。
+
+>>简单的例子
+
+第一个代码示例是一个非常简单的
+
+Center.py
+01	#!/usr/bin/python
+02	# ZetCode PyGTK tutorial
+03	#
+04	# This is a trivial PyGTK example
+05	#
+06	# author: jan bodnar
+07	# website: zetcode.com
+08	# last edited: February 2009
+09	import gtk
+10	class PyApp(gtk.Window):
+11	    def __init__(self):
+12	        super(PyApp, self).__init__()                  
+13	 
+14	        self.connect("destroy", gtk.main_quit)
+15	        self.set_size_request(250, 150)
+16	        self.set_position(gtk.WIN_POS_CENTER)
+17	        self.show()
+18	PyApp()
+19	gtk.main()
+
+这段代码展示了一个位于屏幕中心的窗口。
+import gtk
+
+我们导入gtk模块。在这里，我们用对象来创建GUI应用程序。
+class PyApp(gtk.Window):
+
+我们的程序基于PyApp类，它继承自Window。
+def __init__(self):
+super(PyApp, self).__init__()
+
+这是构造函数，它初始化我们的程序。它也通过super()函数回调它的父构造函数。
+self.connect("destroy", gtk.main_quit)
+
+我们连接destroy信号到main_quit()函数。当我们点击窗口标题栏的关闭按钮或者按下ALt+F4，destroy信号将会被调用。窗口将会被销毁，但是程序没有被停止。如果你从命令行启动这个例子，你会看到这种情况。我们通过调用main_quit()函数退出程序，这是很好的做法。
+self.set_size_request(250, 150)
+
+我们设置窗口的尺寸为250×150px.
+self.set_position(gtk.WIN_POS_CENTER)
+
+这一行使窗口位居屏幕的中心。
+self.show()
+
+现在我们显示这个窗口。这个窗口直到我们调用show()方法，才会是可见的。
+PyApp()
+gtk.main()
+
+我们创建了我们的程序的实例，并且开始了主循环。
+
+>>图标(Icon)
+
+在下一个示例中，我们将显示程序的图标。大多数的窗口管理器会在窗口标题栏左上角和任务栏上显示图标。
+
+Icon.py
+01	#!/usr/bin/python
+02	# ZetCode PyGTK tutorial
+03	#
+04	# This example shows an icon# in the titlebar of the window
+05	#
+06	# author: jan bodnar# website: zetcode.com
+07	# last edited: February 2009
+08	 
+09	import gtk, sys
+10	 
+11	class PyApp(gtk.Window):
+12	    def __init__(self):
+13	        super(PyApp, self).__init__()
+14	 
+15	        self.set_title("Icon")
+16	        self.set_size_request(250, 150)
+17	        self.set_position(gtk.WIN_POS_CENTER)
+18	 
+19	        try:
+20	            self.set_icon_from_file("web.png")
+21	        except Exception, e:
+22	            print e.message
+23	            sys.exit(1)
+24	 
+25	        self.connect("destroy", gtk.main_quit)
+26	 
+27	        self.show()
+28	 
+29	PyApp()
+30	gtk.main()
+
+以上代码示例展示了程序图标。
+self.set_title("Icon")
+
+我们为这个窗口设置一个标题。
+self.set_icon_from_file("web.png")
+
+set_icon_from_file()方法是为窗口设置一个图标。图片被从磁盘当前工作目录被加载。
+
+Figure: Icon
+{{./icon.png}}
+>>按钮(Buttons)
+
+在下个例子中，我们将进一步提高我们的PyGTK库编程技巧。
+
+Buttons.py
+01	#!/usr/bin/python
+02	 
+03	# ZetCode PyGTK tutorial
+04	#
+05	# This example shows four buttons
+06	# in various modes
+07	#
+08	# author: jan bodnar
+09	# website: zetcode.com
+10	# last edited: February 2009
+11	 
+12	import gtk
+13	 
+14	class PyApp(gtk.Window):
+15	    def __init__(self):
+16	        super(PyApp, self).__init__()
+17	 
+18	        self.set_title("Buttons")
+19	        self.set_size_request(250, 200)
+20	        self.set_position(gtk.WIN_POS_CENTER)
+21	 
+22	        btn1 = gtk.Button("Button")
+23	        btn1.set_sensitive(False)
+24	        btn2 = gtk.Button("Button")
+25	        btn3 = gtk.Button(stock=gtk.STOCK_OPEN)
+26	        btn4 = gtk.Button("Button")
+27	        btn4.set_size_request(80, 40)
+28	 
+29	        fixed = gtk.Fixed()
+30	 
+31	        fixed.put(btn1, 20, 30)
+32	        fixed.put(btn2, 100, 30)
+33	        fixed.put(btn3, 20, 80)
+34	        fixed.put(btn4, 100, 80)
+35	 
+36	        self.connect("destroy", gtk.main_quit)
+37	 
+38	        self.add(fixed)
+39	        self.show_all()
+40	 
+41	PyApp()
+42	gtk.main()
+
+我们在窗口上展示了4个不同的按钮。我们将看见容器部件（container widgets）和子部件（child widgets）之间的不同，并且将会更改子部件的一些属性（properties ）。
+btn1 = gtk.Button("Button")
+
+一个Button就是一个子部件。子部件被放置在容器内。
+btn1.set_sensitive(False)
+
+我们使这个按钮不敏感（insensitive）。这意味着，我们不能点击它了，它也不能被选择、聚焦等。这个部件图形化地变灰。
+btn3 = gtk.Button(stock=gtk.STOCK_CLOSE)
+
+第三个按钮在它的区域里显示了一个图片。PyGTK库中有一个内置的图片库，我们可以使用它。（此处可以参考The gtk Class Reference）
+btn4.set_size_request(80, 40)
+
+这里我更改了按钮的尺寸。
+fixed = gtk.Fixed()
+
+Fixed部件是一个不可见的容器部件（container widget）。它的用途是用来包含其它子部件。
+fixed.put(btn1, 20, 30)
+fixed.put(btn2, 100, 30)
+...
+
+这里我们将按钮部件放置到fixed容器部件。
+self.add(fixed)
+
+我们设置Fixed容器成为我们的Window部件的主容器。
+self.show_all()
+
+要么我们调用show_all()方法，要么就对每个部件，包括容器，调用show()方法。
+
+Figure: Buttons
+{{./buttons.png}}
+>>提示文本(Tooltip)
+
+一个提示文本（Tooltip）就是在应用程序中对一个部件用途的建议。它能够被用来提供额外的帮助。
+
+Tooltips.py
+01	#!/usr/bin/python
+02	 
+03	# ZetCode PyGTK tutorial
+04	#
+05	# This code shows a tooltip on
+06	# a window and a button
+07	#
+08	# author: jan bodnar
+09	# website: zetcode.com
+10	# last edited: February 2009
+11	 
+12	import gtk
+13	 
+14	class PyApp(gtk.Window):
+15	 
+16	    def __init__(self):
+17	        super(PyApp, self).__init__()
+18	 
+19	        self.set_title("Tooltips")
+20	        self.set_size_request(250, 200)
+21	        self.set_position(gtk.WIN_POS_CENTER)
+22	 
+23	        self.connect("destroy", gtk.main_quit)
+24	 
+25	        self.fixed = gtk.Fixed()
+26	        self.add(self.fixed)
+27	 
+28	        button = gtk.Button("Button")
+29	        button.set_size_request(80, 35)     
+30	 
+31	        self.fixed.put(button, 50, 50)
+32	 
+33	        self.set_tooltip_text("Window widget")
+34	        button.set_tooltip_text("Button widget")
+35	 
+36	        self.show_all()
+37	 
+38	PyApp()
+39	gtk.main()
+
+在这个例子中，我们对一个窗口和一个按钮各设置了一个提示文本（tooltip）。
+self.set_tooltip_text("Window widget")
+button.set_tooltip_text("Button widget")
+
+用set_tooltip_text()方法做这项工作。
+
+Figure: Tooltips
+{{./tooltips.png}}
+在这章中，我们用PyGTK编程库创建了第一个程序。
+
+本文翻译部分原文地址：http://www.zetcode.com/tutorials/pygtktutorial/firststeps/
+
+PS：本文大体上以翻译原文为主，添加了少量的参考链接，以帮助查找相关的详细文档。
+
+PS2：暴汗( ⊙ o ⊙ )啊！Python缩进全都没有了，想办法解决中，╮(╯▽╰)╭。。。
+
+缩进问题请参考下一篇日志，有能同时解决缩进和高亮的童鞋，请告知，不胜感激~
+
+NND，问题解决了，但是很麻烦，请参考http://article.yeeyan.org/view/119553/94844 ，我用的是Syntax Highlighter and Code Colorizer for WordPress

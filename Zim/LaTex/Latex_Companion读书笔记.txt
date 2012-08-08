@@ -1,0 +1,180 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-09-26T20:18:40+08:00
+
+====== Latex Companion读书笔记 ======
+Created Monday 26 September 2011
+http://simon-guo.blogspot.com/2009/01/latex.html
+
+===== LaTeX基本操作 =====
+\hyphenation{word list} %断字命令；
+\showthe\topmargin %显示某个参数的数值或者内容；
+
+在tex编译过程中出现行溢出(overflow hbox)是由于断字程序不知道在何处进行断字，可以使用如下命令来减少这样的问题，
+\sloppy这样会降低断字标准，使输出不如默认状态下的输出出色，可以使用\fussy命令来回复到原始状态；
+如果想查看哪一行发生了行溢出，可以在文档类中加入[draft]参数。
+\frontmatter \mainmatter \& \backmatter \appendix修改文章的页码标记方式
+	\frontmatter %在文章正文之前使用罗马数字标记页码；
+	\mainmatter %文章正文用阿拉伯数字标记；
+	\backmatter %文章的结尾部分用
+\label \ref \pageref %用来生成文章的标记和引用；
+
+===== 列表： =====
+\itemize \enumberate \description \list %可以通过参数改变列表的编号；
+\flushleft \flushright \center %段落的对齐方式；
+\quote \verse \quotation %引用命令；
+\verbatim 和 verbatim 这个package； %逐字打印命令和软件包；
+\verbatiminput{filename} %可以将Ascii文件嵌入到当前文件中来；
+\tabular \longtabular \supertabular %表格命令；
+表格和图片的浮动体环境可以将图片或者表格放置到合适的位置
+
+页面的格式：\pagestyle %页面格式主要包括页码的显示位置和页眉的显示方式等；
+	normal
+	headings
+	no
+	myheadings %自定义显示方式；
+\markboth{leftPage}{rightpage} %分别标记左右页眉；
+fancy %需要用到fancyhdr 这个package；
+用法如下：
+	\fancyhf{} % delete current setting for header and footer
+	\fancyhead[LE,RO]{\bfseries\thepage}
+	\fancyhead[LO]{\bfseries\rightmark}
+	\fancyhead[RE]{\bfseries\leftmark}
+
+使用\fancyhdr来定制文档的页眉和页脚；
+\rightmark %当前的节名；
+\leftmark %当前的章名；
+\chaptermark \sectionmark \subsectionmark命令用来定义\leftmark和\rightmark;
+
+===== 和LaTeX相关的文件扩展名： =====
+.tex LaTeX源文件；
+.sty Package 文件；
+.dtx 文档化的TeX文件；
+.ins .dtx的安装文件；
+.dvi 设备无关文件；
+.log 编译时的信息；
+.toc 生成目录需要的文件，改文件存储了章节标题；
+.lof 生成图片列表的文件；
+.lot 生成表格列表的文件；
+.aux 一个向下次编译传递信息的辅助文件；改文件通常还包含交叉引用信息；
+.idx 生成索引用到的辅助文件；
+
+===== LaTeX扩展： =====
+新建命令\newcommand{name}[num][defaultA, defaultB]{definitions}
+num用来指定命令能接受的参数的个数，如果不给定，新建的命令将不会接受任何参数；
+如果num不为0，则必须给定num个数的参数，如果参数为空，必须加一个{}，并存在num个{}；
+defaultA和defaultB用来定义一个optional的参数，如果参数的个数小于num，则会使用optional的参数；
+\newcommand %命令不能创建已经存在的命令，如果要修改现有的命令可以使用\renewcommand命令来实现；
+\providecommand %命令用来创建命令，如果该命令已经存在则其将被忽略；
+
+===== 新建环境 =====
+\newenvironment{name}[num]{before}{after}
+before 和after分别是该命令开始和结尾的定义；
+\newenvironment的用法和\newcommand的用法比较类似；
+
+可以将自己定义的命令和环境放到一个文件中，其他文件就可以以package的形式来引用在该文件中定义的命令
+Package的定义如下：
+\ProvidePackage{demo}
+\newcommand{cmd1}{}
+\newcommand{cmd2}{}
+\newenvironment{env1}{\beforecmd}{\endcmd}
+
+===== 字体操作 =====
+字体： %如果遇到既要改变字体也要改变字号的情况，则应首先改变字号的大小；然后改变字体；
+\textrm{...} roman \textsf{...} sans serif
+\texttt{...} typewriter
+\textmd{...} medium \textbf{...} bold face
+\textup{...} upright \textit{...} italic
+\textsl{...} slanted \textsc{...} small caps
+\emph{...} emphasized \textnormal{...} document font
+
+===== 字体尺寸： =====
+\tiny tiny font
+\scriptsize very small font
+\footnotesize quite small font
+\small small font
+\normalsize normal font
+\large large font
+\Large larger font
+\LARGE very large font
+\huge huge
+\Huge largest
+
+===== 字体的绝对大小： =====
+\tiny 5pt 6pt 6pt
+\scriptsize 7pt 8pt 8pt
+\footnotesize 8pt 9pt 10pt
+\small 9pt 10pt 11pt
+\normalsize 10pt 11pt 12pt
+\large 12pt 12pt 14pt
+\Large 14pt 14pt 17pt
+\LARGE 17pt 17pt 20pt
+\huge 20pt 20pt 25pt
+\Huge 25pt 25pt 25pt
+
+字体使用的建议：文档中字体使用的越多，文档越漂亮；
+
+===== 文档对象的间隔 =====
+修改行距：
+\linespread{factor} 例如\linespread{1.6}产生2倍行距；
+\baselinestretch{num} %改变行间距；
+\ziju{num} %中文（CCT）改变字间距的方式，该命令不会影响英文的字距；
+
+===== 设置首行缩进和段落间距： =====
+\setlength{parindent}{0pt} %设置首行缩进为0；
+\setlength{parskip}{1ex} %设置段落间距为1ex；
+\ccwd %一个汉字的宽度，在中文（CCT）环境中使用；
+
+===== 单词和句子之间的距离 =====
+水平距离\hspace{length} %可以用该命令插入一个水平间距；
+垂直距离\vspace{length} %该命令可以用来改变两个段落之间的垂直间距；
+\stretch{length} %定义一个将一行宽度充满的橡皮长度；系统会根据当前的状态赋值；
+\bigskip 和\smallskip %获得一个预定义的垂直距离；
+
+===== 修改页面布局 =====
+页面的布局是通过一系列的参数来控制的，我们可以通过修改这个参数的数值来修改页面布局；
+页面布局参数主要有：
+\hoffset %正文的水平偏移；
+\voffset %正文的垂直偏移；
+\oddsidemargin %奇数页正文和侧栏之间的距离；
+\evensidemargin %偶数页正文和侧栏之间的距离；
+\topmargin %
+\headheight
+\headsep
+\textheight
+\textwidth
+\marginparsep
+\marginparwidth
+\footskip
+
+===== 修改页面参数的命令有： =====
+\setlength{parameter}{length}
+\addtolength{parameter}{length}
+
+===== LaTeX中的盒子操作 =====
+\parbox[pos]{width}{text} %将段落放到一个盒子中；
+\makebox[width][pos]{text} %将文本放到一个width宽度位于pos的盒子中；
+\framebox[width][pos]{text} %和\makebox命令类似，不同之处在于盒子内部的文本有矩形框；
+\raisebox{lift}[depth][height]{text} %用来控制盒子在垂直方向的距离；
+\rule[lift]{width}{height} %用来生成水平方向和垂直方向的线条；
+
+===== 文章结构命令 =====
+\part{} %部分；
+\chapter{} %章；
+\section{} %
+\subsection{}
+\subsubsection{}
+\paragraph{} %段落
+\subparagraph{} %子段落；
+
+解读sty|cls文件 %风格，样式文件定义；
+article.sty %文章风格；
+- art10.sty %10pt;
+- art11.sty %11pt;
+- art12.sty %12pt;
+article.cls %2e版本的article样式文件；
+- size10.clo %10pt，对应art10.sty;
+- size11.clo %11pt, 对应art11.sty;
+
+===== 常用\LaTeXe工具包 =====
+\usepackage{indenrst} %首行缩进工具包；indenrst.sty; 

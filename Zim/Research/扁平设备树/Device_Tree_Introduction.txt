@@ -1,0 +1,20 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-06T19:41:35+08:00
+
+====== Device Tree Introduction ======
+Created Monday 06 August 2012
+http://www.devicetree.org/Main_Page
+
+__The Device Tree is a data structure for describing hardware__. Rather than hard coding every detail of a device into an operating system, many aspect of the hardware can be described in a data structure that is passed to the operating system at boot time. The device tree is used both by **Open Firmware**, and in **the standalone Flattened Device Tree (FDT)** __form__.
+
+The data structure itself is **a simple tree of named nodes and properties**. Nodes contain properties and child nodes. Properties are simple **name-value pairs**. The structure can hold any kind of data.
+
+However, in order to be useful, device tree data must be laid out in a structure that operating systems can understand. A "bindings" is a description of how a device is described in the device tree. Bindings for a lot of devices are well established and documented. You can read about them in the existing ePAPR and IEEE 1275 (OpenFirmware) documentation.
+This site documents bindings not covered by either the ePAPR or IEEE 1275 specifications. If you need to describe a new device in the device tree, then you should document your binding on this site.
+
+Documentation Format
+
+In almost all cases, bindings are identified by a specific __'compatible'__ property value in the device tree. Bindings are documented by creating a new page using the string "Compatible=" followed by the compatible value as the page name (ie. "Compatible=fsl,mpc5200"). Each binding page specifies the properties and child nodes that are expected and/or allowed for the binding.
+
+Bindings are grouped into categories to make them easy to find an understand. Categories exist for types of devices (serial, Ethernet, framebuffer, etc), vendor companies, bus attachement, among others. See the Special:Categories page for the current list of categories. This is also a good place to start looking for existing bindings.

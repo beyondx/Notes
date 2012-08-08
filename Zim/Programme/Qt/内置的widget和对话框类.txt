@@ -1,0 +1,36 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-21T11:39:10+08:00
+
+====== 内置的widget和对话框类 ======
+Created Monday 21 November 2011
+
+按钮: QPushButton, QToolButton, QCheckBox, QRadioButton
+
+单页容器: QGroupBox, QFrame
+
+多页容器: QTabWidget, QToolBox
+
+显示条目: QListView, QTreeView, QTabView
+
+显示: QLabel, QLCDNumber, QProgress, QTextBrowser
+
+输入: QSpinBox, QDoubleSpinBox, QComboBox, QDateEdit, QTimeEdit, QDateTimeEdit, QScrollBar, QSlider, QTextEdit, QLineEdit, QDial
+
+反馈对话框: QInputDialog, QProgressDialog, QMessageBox, QErrorMessage
+
+颜色和字体对话框: QColorDialog, QFontDialog
+
+文件和打印对话框: QPageSetupDialog, QFileDialog, QPrintDialog
+
+滚动条QScrollBar的基类为 QAbstractScrollArea
+
+Qt提供富文本(rich text), 支持多格式文本
+
+QLabel支持纯文本, HTML, 图像
+
+QTextBrowser为只读QTextEdit, 可支持带格式文本, 相对于QLabel, 可以用于显示大量的文本内容, 提供滚动条, 键盘和鼠标可以控制浏览.
+
+QLineEditor支持validator, QTextEditor为QAbstractScrollArea的派生类, 可以输入大量的文本. 可以设置输入纯文本还是富文本(rich text)
+
+QLineEditor和QTextEditor都和剪贴板相关联。

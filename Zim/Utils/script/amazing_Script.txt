@@ -1,0 +1,41 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-28T11:33:53+08:00
+
+====== amazing Script ======
+Created Monday 28 November 2011
+http://linux.byexamples.com/archives/279/record-the-terminal-session-and-replay-later/
+
+I have read this at linuxinsight, which is amazing. You can actually record down your typing, screen output even you are running __ncurses cli__, all the **data** will store into a file and the **timing** will be into another file. With this two files, you can have__ scriptreplay__ to replay it all with the correct timing.
+
+===== Recording goes like this =====
+
+//script -t 2> tutorial.timing -a tutorial.session//
+
+type ‘exit’ to end the recording.
+
+===== Replay goes like this =====
+
+//scriptreplay tutorial.timing tutorial.session//
+
+Both session and timing file is readable, if you do not need to be replay, just do
+
+//script -a tutorial.txt//
+
+You might be asking what have script did? logged your input as well as screen output? That means the password will be recorded as well when you do sudo? The answer is NO, script save __only the things that is visible to you__, not your keyboard hit. Same things goes to scriptreplay, it just play what ever is recorded, __no real command executing during replay__.
+
+I found that generating and replay with two files (session and timing files) is a bit messy. Therefore I created a bash script to cater that, I name it as script.sh. it will be creating only one file (it is just a dirty trick, read the bash script you will understand), replay and record uses script.sh is convenience.
+
+To record,
+
+./script.sh -r
+
+To play,
+
+./script.sh -p
+
+Get script.sh and try it out. Remember to chmod +x after extract from the tar ball.
+
+Oh ya, I included my output file here – matrix, download it and try to play with script.sh.
+
+./script.sh -p matrix

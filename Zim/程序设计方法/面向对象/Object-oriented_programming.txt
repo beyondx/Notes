@@ -1,0 +1,74 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-16T14:31:43+08:00
+
+====== Object-oriented programming ======
+Created Thursday 16 February 2012
+
+http://en.wikipedia.org/wiki/Object-oriented_programming
+
+Object-oriented programming (OOP) is __a programming paradigm__ using **"objects" **–** data structures** consisting of **data fields** and **methods **together with their **interactions** – to design applications and computer programs. Programming techniques may include features such as **data abstraction, encapsulation, messaging, modularity, polymorphism, and inheritance.** Many modern programming languages now support OOP, at least as an option.
+
+===== Contents =====
+
+    1 Overview
+    2 History
+    3 Fundamental features and concepts
+        3.1 Decoupling
+    4 Formal semantics
+    5 OOP languages
+        5.1 OOP in dynamic languages
+    6 Design patterns
+        6.1 Inheritance and behavioral subtyping
+        6.2 Gang of Four design patterns
+        6.3 Object-orientation and databases
+        6.4 Real-world modeling and relationships
+        6.5 OOP and control flow
+        6.6 Responsibility- vs. data-driven design
+    7 Criticism
+    8 See also
+    9 References
+    10 Further reading
+    11 External links
+
+===== Overview =====
+
+Simple, non-OOP programs may be **one "long" list of statements** (or commands). More complex programs will often group smaller sections of these statements into __functions__ or subroutines each of which might perform __a particular task__. With designs of this sort, it is common for some of the program's data to be 'global', i.e. accessible from any part of the program. As programs grow in size, allowing any function to **modify any piece of data **means that bugs can have wide-reaching effects.
+
+In contrast, the object-oriented approach encourages the programmer to place data where it is__ not directly accessible__ by the rest of the program. Instead, the data is accessed by calling specially written functions, commonly called __methods__, which are either bundled in with the data or inherited from "class objects." These act as the intermediaries for retrieving or modifying the data they control. The programming construct that combines data with a set of methods for accessing and managing those data is called an__ object__. The practice of using subroutines to examine or modify certain kinds of data, however, was also quite commonly used in non-OOP modular programming, well before the widespread use of object-oriented programming.
+
+An object-oriented program will usually contain different types of objects, __each type corresponding to a particular kind of complex data__ to be managed or perhaps to __a real-world object or concept__ such as a bank account, a hockey player, or a bulldozer. A program might well contain multiple copies of each type of object, one for each of the real-world objects the program is dealing with. For instance, there could be one bank account object for each real-world account at a particular bank. Each copy of the bank account object would be alike in the methods it offers for manipulating or reading its data, but the data inside each object would differ reflecting the different history of each account.
+
+Objects can be thought of as wrapping their data within a set of functions designed to ensure that the data are used appropriately, and to assist in that use. The object's methods will typically include c**hecks and safeguard**s that are specific to the types of data the object contains. An object can also offer simple-to-use, standardized methods for performing particular operations on its data, while concealing the specifics of how those tasks are accomplished. In this way alterations can be made to the internal structure or methods of an object without requiring that the rest of the program be modified. This approach can also be used to offer standardized methods across different types of objects. As an example, several different types of objects might offer print methods. Each type of object might implement that print method in a different way, reflecting the different kinds of data each contains, but all the different print methods might be called in the same standardized manner from elsewhere in the program. These features become especially useful when more than one programmer is contributing code to a project or when the goal is to reuse code between projects.
+
+Object-oriented programming has roots that can be traced to the 1960s. As hardware and software became increasingly complex, manageability often became a concern. Researchers studied ways to maintain software quality and developed object-oriented programming in part to address common problems by **strongly emphasizing discrete,  reusable units of programming logic**[citation needed].     The technology __focuses on data rather than processes__,     with programs composed of __self-sufficient modules__ ("classes"), each instance of which ("objects") contains all the information needed to manipulate its own data structure ("members"). This is in contrast to the existing modular programming that had been dominant for many years that **focused on the function of a module**, rather than specifically the data, but equally provided for code reuse, and self-sufficient reusable units of programming logic, enabling collaboration through the use of linked modules (subroutines). This more conventional approach, which still persists, tends to **consider data and behavior separately.**
+
+An object-oriented program may thus be__ viewed as a collection of interacting objects__, as opposed to the conventional model, in which a program is seen as a list of tasks (subroutines) to perform. In OOP, each object is capable of__ receiving messages, processing data, and sending messages to other objects__. Each object can be viewed as an independent "machine" with __a distinct role or responsibility__. The actions (or "methods") on these objects are closely associated with the object. For example, OOP data structures tend to "carry their own operators around with them" (or at least "inherit" them from a similar object or class) - except when they have to be serialized.
+
+===== History =====
+The terms "objects" and "oriented" in something like the modern sense of object-oriented programming seem to make their first appearance at MIT in the late 1950s and early 1960s. In the environment of the artificial intelligence group, as early as 1960, "object" could refer to identified items (LISP atoms) with properties (attributes);[1][2] Alan Kay was later to cite a detailed understanding of LISP internals as a strong influence on his thinking in 1966.[3] Another early MIT example was Sketchpad created by Ivan Sutherland in 1960-61; in the glossary of the 1963 technical report based on his dissertation about Sketchpad, Sutherland defined notions of "object" and "instance" (with the class concept covered by "master" or "definition"), albeit specialized to graphical interaction.[4] Also, an MIT ALGOL version, AED-0, linked data structures ("plexes", in that dialect) directly with procedures, prefiguring what were later termed "messages", "methods" and "member functions".[5][6]
+
+Objects as a formal concept in programming were introduced in the 1960s in Simula 67, a major revision of Simula I, a programming language designed for **discrete event simulation**, created by Ole-Johan Dahl and Kristen Nygaard of the Norwegian Computing Center in Oslo.[7] Simula 67 was influenced by SIMSCRIPT and C.A.R. "Tony" Hoare's proposed "record classes".[5][8] Simula introduced the notion of classes and instances or objects (as well as subclasses, virtual methods, coroutines, and discrete event simulation) as part of an explicit programming paradigm. The language also used automatic garbage collection that had been invented earlier for the functional programming language Lisp. Simula was used for physical modeling, such as models to study and improve the movement of ships and their content through cargo ports. The ideas of Simula 67 influenced many later languages, including Smalltalk, derivatives of LISP (CLOS), Object Pascal, and C++.
+
+The Smalltalk language, which was developed at Xerox PARC (by Alan Kay and others) in the 1970s, introduced the term object-oriented programming to represent the pervasive use of objects and messages as the basis for computation. Smalltalk creators were influenced by the ideas introduced in Simula 67, but Smalltalk was designed to be a fully dynamic system in which classes could be created and modified dynamically rather than statically as in Simula 67.[9] Smalltalk and with it OOP were introduced to a wider audience by the August 1981 issue of Byte Magazine.
+
+In the 1970s, Kay's Smalltalk work had influenced the Lisp community to incorporate object-based techniques that were introduced to developers via the Lisp machine. Experimentation with various extensions to Lisp (like LOOPS and Flavors introducing multiple inheritance and mixins), eventually led to the Common Lisp Object System (CLOS, a part of the first standardized object-oriented programming language, ANSI Common Lisp), which integrates functional programming and object-oriented programming and allows extension via a Meta-object protocol. In the 1980s, there were a few attempts to design processor architectures that included hardware support for objects in memory but these were not successful. Examples include the Intel iAPX 432 and the Linn Smart Rekursiv.
+
+Object-oriented programming developed as the dominant programming methodology in the early and mid 1990s when programming languages supporting the techniques became widely available. These included Visual FoxPro 3.0,[10][11][12] C++[citation needed], and Delphi[citation needed]. Its dominance was further enhanced by the rising popularity of graphical user interfaces, which rely heavily upon object-oriented programming techniques. An example of a closely related dynamic GUI library and OOP language can be found in the Cocoa frameworks on Mac OS X, written in Objective-C, an object-oriented, dynamic messaging extension to C based on Smalltalk. OOP toolkits also enhanced the popularity of event-driven programming (although this concept is not limited to OOP). Some[who?] feel that association with GUIs (real or perceived) was what propelled OOP into the programming mainstream.
+
+At ETH Zürich, Niklaus Wirth and his colleagues had also been investigating such topics as data abstraction and modular programming (although this had been in common use in the 1960s or earlier). Modula-2 (1978) included both, and their succeeding design, Oberon, included a distinctive approach to object orientation, classes, and such. The approach is unlike Smalltalk, and very unlike C++.
+
+Object-oriented features have been added to many existing languages during that time, including Ada, BASIC, Fortran, Pascal, and others. Adding these features to languages that were not initially designed for them often led to problems with compatibility and maintainability of code.
+
+More recently, a number of languages have emerged that are primarily object-oriented yet compatible with procedural methodology, such as Python and Ruby. Probably the most commercially important recent object-oriented languages are Visual Basic.NET (VB.NET) and C#, both designed for Microsoft's .NET platform, and Java, developed by Sun Microsystems. Both frameworks show the benefit of using OOP by creating an abstraction from implementation in their own way. VB.NET and C# support cross-language inheritance, allowing classes defined in one language to subclass classes defined in the other language. Developers usually compile Java to bytecode, allowing Java to run on any operating system for which a Java virtual machine is available. VB.NET and C# make use of the Strategy pattern to accomplish cross-language inheritance, whereas Java makes use of the Adapter pattern[citation needed].
+
+Just as procedural programming led to refinements of techniques such as structured programming, modern object-oriented software design methods include refinements[citation needed] such as the use of design patterns, design by contract, and modeling languages (such as UML).
+
+===== Fundamental features and concepts =====
+See also: List of object-oriented programming terms
+
+A survey by Deborah J. Armstrong of nearly 40 years of computing literature identified a number of "quarks", or fundamental concepts, found in the strong majority of definitions of OOP.[13]
+
+Not all of these concepts are to be found in all object-oriented programming languages. For example, object-oriented programming that uses classes is sometimes called class-based programming, while prototype-based programming does not typically use classes. As a result, a significantly different yet analogous terminology is used to define the concepts of object and instance.
+
+Benjamin C. Pierce and some other researchers view as futile any attempt to distill OOP to a minimal set of features. He nonetheless identifies fundamental features that support the OOP programming style in most object-oriented languages:[14]

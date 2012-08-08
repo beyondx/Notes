@@ -1,0 +1,462 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-11T14:37:07+08:00
+
+====== 第1部分：初试锋芒 ======
+Created Sunday 11 March 2012
+
+http://www.html5china.com/course/20120227_3510.html
+
+HTML5是一种设计来__组织web内容的语言__，其目的是通过创建__一种标准的和直观的UI标记语言__来把web设计和开发变得容易起来。HTML5提供了各种**切割和划分**页面的手段，其允许你创建的切割组件不仅能用来逻辑地组织站点，而且能够赋予网站聚合的能力。 HTML5可谓是“信息到网站设计的映射方法”，因为它体现了信息映射的本质，__划分信息，并给信息加上标签，使其变得容易使用和理解__。这是HTML5富于表现力的**语义和实用性**美学的基础，HTML5赋予设计者和开发者各种层面的能力来向外发布各式各样的内容，从简单的文本内容到丰富的、交互式的多媒体无不包括在内。
+
+HTML5提供了高效的数据管理、绘制、视频和音频工具，其促进了web上的和便携式设备的**跨浏览器应用**的开发。HTML5是驱动__移动云计算服务__方面的发展的技术之一，因为其允许更大的灵活性，支持开发非常精彩的__交互式网站__。其还引入了新的标签（tag）和增强性的功能，其中包括了一个优雅的结构、表单的控制、API、多媒体、数据库支持和显著提升的处理速度等。
+
+HTML5中的新标签都是能高度关联唤起的，__标签封装了它们的作用和用法__。HTML的过去版本更多的是使用非描述性的标签，然而，HTML5拥有**高度描述性的、直观的标签**，其提供了丰富的能够立刻让人识别出内容的内容标签。例如，被频繁使用的< div>标签已经有了两个增补进来的< section>和< article>标签。 < video>、< audio>、< canvas>和< figure> 标签的增加也提供了对特定类型内容的更加精确的描述。
+
+===== HTML5提供了： =====
+1. 确切描述了其旨在要包含的内容的__标签__
+2. 增强的网络通信
+3. 极大改善了的__常用存储__
+4. 运行后台进程的 Web Worker
+5. 在本地应用和服务器之间建立__持续连接__的WebSocket接口
+6. 更好的存储数据检索方式
+7. 加快了的页面保存和加载速度
+8. 对使用CSS3来管理GUI的支持，这意味着HTML5可以是__面向内容的__
+9. 改进了的浏览器表单处理
+10. 基于SQL的数据库API，其允许客户端的__本地存储__
+11. 画布和视频，可在无需安装第三方插件的情况下添加__图形和视频__
+12. Geolocation API规范，其通过使用智能手机定位功能来纳入移动云服务和应用
+13. 增强型的表单，其降低了下载JavaScript代码的这种必要性，允许在移动设备和云服务之间进行更多高效的通信。 
+
+HTML5创建了一种更吸引用户的体验：使用HTML5设计的页面__能够提供类似于桌面应用的体验__。HTML5还通过把API功能和无处不在的浏览器结合起来的的方式提供了增强的多平台开发。通过使用HTML5，开发者能够提供一种顺畅地跨越各个平台的现代应用体验。
+
+当你说HTML5这个词的时候，你使用了一个简短的词来表达__一种持续的创新__。新的标记、新的一套方法，以及一个基于HTML5和它的两个与之互为补充的同仁：__CSS3和JavaScript__之间的相互作用的通用开发框架，这是以客户为中心的处理现象的应用的核心。除了HTML5技术的技巧和方法的许多桌面部署之外，HTML5还可以在功能丰富的web移动电话浏览器中实施——移动电话浏览器是一个正在增长的市场，Apple iPhone、Google Android和运行Palm webOS的手机的普及以至于无处不在就可以证明这一点。
+
+HTML5的强大功能中很重要的一面是__信息的映射__——或说是__内容块化__（content blocking）。如果你愿意的话——这种做法会产生一种容易理解得多的处理过程。你可以看到，通过日益增加对web处理这一领域的控制，这一工具在设计和开发方面已经变得多么的高效。
+
+HTML5预示着这样一些情况的出现，即其在文本层面上有着更高效的语义处理，以及在表单构造和用法上有着更强大的控制。所有的这些特性和HTML5创新的其他许多细微之处是这一越来越占统治地位的范式的基础。许多机构实体，商业的和其他的——甚至许多根本不把信息的处理和通信作为他们的主要机构活动的组织——都不同程度地被这一不断增长的现象的发展所侵袭。
+
+HTML5并不是一盏神灯，不会有精灵出现。然而，它的技术和方法资产使得其成为了一件次好的东西，仅次于擦亮一盏神灯这件事情。
+
+===== 规划页面 =====
+你将要创建一个简单的web页面。在这一过程中，我会讨论几个HTML5中引入的新标签。为了创建一个高效的并且是有实效的web页面，你必须要**制定一个计划**，考虑一下想要打造的所有组件。你创建的网页将会有如图1所示的**高层设计**，页面的设计包含了一个Header区、一个Navigation区、一个包含了三个Section区和一个Aside区的Article区，以及最后的一个Footer区。该页面的设计目标是在Google的Chrome浏览器中工作，其消除了一些视觉上的混乱，这些混乱带来的是浏览器兼容问题的调整，同时也妨碍到了对基础结构的理解。我们的目标是创建出一个清晰地描述了新的HTML5标签的用法的页面，展示如何使用它们来创建格式良好的代码和优雅的页面设计。
+{{./1.gif}}
+图1. Acme United的网页的规划
+
+在创建这一页面的过程中，我会涉及CSS3，我需要用它来正确地渲染HTML5网页。CSS3对于HTML5页面的的风格、导航和一般观感来说是必不可少的，它的一些属性组，你可以在WsSchool的CSS3参考站点（参见参考资料一节）上找到这些属性，其中包括了一些很有用的元素，比如说background、font、marquee和animation等。
+
+不过，在开始构造页面之前，你需要学习一些新的HTML5的标签。
+
+===== Header区 =====
+Header区的例子包含了**页面标题和副标题**，< header>标签被用来创建页面的Header区的内容。除了网页本身之外，< header>标签还可以包含关于< section>和< article>的公开信息。这里创建的网页有该页面的一个Header区，这在高层设计中有给出，以及一个位于Article和Section区内部的Header区。清单1提供了一个< header>标签标记的例子。
+
+清单1. < header>标签的例子
+
+< header>
+< h1>标题文字< /h1>
+< p> 文本或是图像可放在这里< /p>
+< p> Logo通常也放在这个地方< /p>
+< /header>
+
+< header>标签还可以包含一个< hgroup>标签，如清单2所示。< hgroup>标签把标题分组放在一起，使用< h1>到< h6>这些标题分级来在此处显示主标题和子标题。
+
+清单2. < hgroup>标签的例子
+
+< header>
+< hgroup>
+< h1>主标题< /h1>
+< h2>子标题 < /h2>
+< /hgroup>
+< p> 文本或是图像可放在这里< /p>
+< /header>
+
+===== Navigation区 =====
+你可以使用< nav>标签来创建页面的Navigation区。< nav>元素定义了一个专门用于导航的区域，< nav>标签应该用做__主站点的导航__，而不是用来放置被包含在页面的其他区域中的链接。Navigation区可以包含诸如清单3所示的代码。
+
+清单3. < nav>标签的例子
+
+< nav>
+< ul>
+< li>< a href="#" kesrc="#">Home< /a>< /li>
+< li>< a href="#" kesrc="#">About Us< a>< /li>
+< li>< a href="#" kesrc="#">Our Products< /a>< /li>
+< li>< a href="#" kesrc="#">Contact Us< /a>< /li>
+< /ul>
+< /nav>
+
+===== Article和Section区 =====
+你设计的页面包含了一个Article区，该区域存放了**页面的实际内容**。你使用< article>标签来创建这一区域，该标签定义的内容可独立于页面中的其他内容使用。例如，如果想创建一个RSS源（RSS feed）的话，那么你可以使用< article>来唯一标识该内容。< article>标签标识了可被删除、可被放置在另一上下文中，并且是可被完全理解的内容。
+
+Acme United规划中的Article区包含了三个Section区，可使用< setction>标签来创建这几个区域。< section>包含了web内容的相关组件区域，< section>标签——以及< article>标签——可以包含页眉、页脚，或是其他需要用来完成该部分内容的组件。< section>标签用于**分组的内容**，< section>标签和< article>标签通常以一个< header>为开始并以一个< footer>结束，标签的内容则放在这两者之间。
+
+< section>标签也可以包含< article>标签，就像< article>标签可以包含< section>标签一样。< section>标签应该用来分组相类似的信息，而< article>标签则应该是用来放置诸如一篇文章或是博客一类的信息，这些内容可在不影响内容含义的情况下被删除或是被放置到新的上下文中。< article>标签，正如它的名称所暗示的那样，提供了一个完整的信息包。相比之下，< section>标签包含的是有关联的信息，但这些信息自身不能被放置到不同的上下文中，因为这样的话其所代表的含义就会丢失。
+
+< article>和< section>标签的用法例子请参见清单4。
+
+清单4. < article>标签和< section>标签的例子
+
+< article>
+< section>
+Content
+< /section>
+< section>
+Content
+< /section>
+< /article>
+< section>
+< article>
+Content
+< /article>
+< article>
+Content
+< /article>
+< /section>
+
+===== 图像元素 =====
+< section>和< article>标签这两者，以及< header>和< footer>标签都可以包含< figure>标签，你使用该标签来加入图像、图表和照片。
+
+< figure>标签可以包含< figcaption>，该标签相应的包含了包含在< figure>标签中的图形的标题，其允许你输入描述，把图形和内容更加紧密的关联起来。清单5提供了一个< figure>和< figcaption>标签结构的例子。
+
+清单5. < figure>和< figcaption>标签的例子
+
+< figure>
+< img src="/figure.jpg" kesrc="/figure.jpg" width="304" height="228" alt="Picture">
+< figcaption>Caption for the figure< /figcaption>
+< /figure>
+
+===== 媒体元素 =====
+< section>和< article>标签还可以包含各种媒体元素，HTML5提供的标签立刻就传达了其内容的意思。媒体元素，比如说音乐和视频，以前只能嵌入，但现在能够被更精准地标识出来。
+
+< audio>标签标识了声音内容，比如说音乐或是任何的其他音频流。< audio>标签有一些属性用来控制音频的内容、何时以及如何播放等方面的情况，这些属性分别是：src、preload、control、loop和autoplay。在清单6给出的例子中，只要页面一加载音频就开会播放，其会持续播放，所提供的控制可以让用户停止或是重新开始播放音频。
+
+清单6. < audio>标签的例子
+
+< audio src="MyFirstMusic.ogg" kesrc="MyFirstMusic.ogg" __controls__ autoplay loop>
+Your browser does not support the audio tag.
+< /audio>
+
+< video>标签允许你播放视频片段或是流化视觉媒体。其拥有< audio>标签所有的属性，另外再加上三个：poster、width和height。当视频正在加载或是视频处于完全没有加载的糟糕情况中时，poster属性可让你找出**一张图像**来应付着先。
+
+清单7提供了一个< video>标签结构的例子
+
+清单7. 标签的例子
+
+< video src="MyFirstMovie.ogg" kesrc="MyFirstMovie.ogg" controls="controls">
+Your browser does not support the video tag
+< /video>
+
+< video>和< audio>标签可以包含< source>标签，该标签定义了< video>和< audio>标签的多媒体资源。使用这一元素，你可以__指定替代的视频或是音频文件__，然后浏览器就可以基于它的媒体类型或是所支持的编解码器来从中进行选择。清单8中有两种选择，如果文件的WMA版本不能在所使用的浏览器中播放的话，就再尝试MP3版本。否则的话就显示信息，这样用户就知道为什么音频不可用了。
+
+清单8. < source>标签的例子
+
+< audio>
+< source src="/music/good_enough.wma" kesrc="/music/good_enough.wma" type="audio/x-ms-wma">
+< source src="/music/good_enough.mp3" kesrc="/music/good_enough.mp3" type="audio/mpeg">
+< p>Your browser does not support the HTML 'audio' element.< /p>
+< /audio>
+
+< embed>标签定义了可带入到页面中的**嵌入式内容**——例如， 一个Adobe Flash SWF文件的插件。清单9包含了type属性，标明嵌入的资源为Flash文件。
+
+清单9. < embed>标签的例子
+
+< embed src="MyFirstVideo.swf" kesrc="MyFirstVideo.swf" type="application/x-shockwave-flash" />
+
+除了src和type属性之外，< embed>标签还拥有height和width属性。
+
+===== Aside区 =====
+Acme United规划中的Aside区可通过使用< aside>标签来创建。这一标签被看作是用来**存放补充内容**的地方，这些内容不是其所补充的一篇连续文章的组成部分。在杂志上，插入语（aside）通常被用来突出文章本身所制造的一个观点。< aside>标签包含的内容可被删除，而这不会影响到包含了该内容的文章、章节或是页面所要传达的信息。
+
+清单10提供了< aside>标签用法的一个例子。
+
+清单10. < aside>标签的例子
+
+< p>My family and I visited Euro Disney last year.< /p>
+< aside>
+< h4>Disney in France< /h4>
+< p>Besides Euro Disney, there is a Disneyland in California.< /p>
+< /aside>
+
+===== Footer区 =====
+< footer>元素包含了与页面、文章或是部分内容有关的信息，比如说文章的作者或是日期。作为页面的页脚，其有可能包含了版权或是其他重要的法律信息，如清单11所示。
+
+清单11. < footer>标签的例子
+
+< footer>
+< p>Copyright 2011 Acme United. All rights reserved.< /p>
+< /footer>
+
+===== 构建页面 =====
+现在你已经了解了需要用来创建一个HTML5页面的基本标签，让我们开始构建你的页面。你会为Acme United构建一个网页，完成后的页面如图2所示，该页面可以下载供你使用（参见下载一节）。
+{{./2.jpg}}
+图2. Acme United的网页
+
+那么，让我们把页面装配起来吧。首先要处理的是这个**< !doctype>**，在HTML5中，< !doctype>被简化了：所有你需要记住就是html。这不仅是简化了这一标签的条目，而还把它变得__更适应未来的发展__。需要注意的是，它不是被称为html5，就只是html。不管来来去去的有多少个HTML版本，< !doctype>可以一直都是html。
+
+< html>标签包含了所有除了< !doctype>标签之外的其他HTML元素，其他的每一个元素都必须嵌套在< html>和< /html>标签之间，参见清单12。
+
+清单12. < !doctype>标签的例子
+
+< !doctype html>
+< html lang="en">
+
+在指出了html和语言为英语之后，你就可以使用< head>元素，该元素可以包含**脚本**、浏览器**支持信息**、**样式表链接**、**meta信息**和其他的初始化函数。你可以在head这一区域中使用这些标签：
+
+1. < base>
+2. < link>
+3. < meta>
+4. < script>
+5. < style>
+6. < title>
+
+< title>标签存放文档的实际标题，这是一个__必需的__< head>区元素，它的内容就是你在浏览该页面时会在浏览器的顶端看到的标题。清单13中的< link>标签标识了会被用来渲染HTML5页面的CSS3样式表，样式表的文件名为main-stylesheet.css。
+
+清单13. < head>标签的例子
+
+__< head>__
+< title>HTML5 Fundamentals Example< /title>
+< link rel="stylesheet" href="main-stylesheet.css" kesrc="main-stylesheet.css" />
+< /head>
+
+接下来你会用到< body>标签，后面跟着< header>和< hgroup>标签，这已经在前面介绍过。本例中的< h1>区域包含了虚构公司的名称：Acme United，< h2>区域包含了让你知晓**副标题**是“A Simple HTML5 Example”的信息，清单14显示了这一标记。
+
+清单14. < body>标签和< header>标签的例子
+
+< body >
+__< header>__
+__< hgroup>__
+< h1>Acme United< /h1>
+< h2>A Simple HTML5 Example< /h2>
+< /hgroup>
+< /header>
+
+到目前为止，被用来设置页面的CSS3如清单15所示。首先，你建立页面的字体，然后量身定做页面的主体，明确主体的维度，然后设计header段结构的第一级和第二级标题标签，这些是你要给页面使用的header。
+
+清单15. CSS3例子1
+
+* {
+font-family: Lucida Sans, Arial, Helvetica, sans-serif;
+}
+
+body {
+width: 800px;
+margin: 0em auto;
+}
+
+header h1 {
+font-size: 50px;
+margin: 0px;
+color: #006;
+}
+
+header h2 {
+font-size: 15px;
+margin: 0px;
+color: #99f;
+font-style: italic;
+}
+
+清单16展示了< nav>标签 ，其目的是处理主站点的导航。
+
+清单16. < nav>例子
+
+__< nav>__
+< ul>
+< li>< a href="#" kesrc="#">Home< /a>< /li>
+< li>< a href="#" kesrc="#">About Us< /a>< /li>
+< li>< a href="#" kesrc="#">Contact Us< /a>< /li>
+< /ul>
+< /nav>
+
+HTML5还有一个< menu>标签——一个给一些设计者和开发者带来混乱的标签。这一混乱源于**导航条通常被称为“导航菜单”**。< menu>标签在HTML的4.01版本中被弃用，但在HTML5中又死里复生，目的是用来增强交互性。它不应该用来做主导航。唯一应该用来做主导航的标签是< nav>标签，你迟一些就会在本例中用到< menu>标签。
+
+导航的格式化问题由CSS3来处理。清单17中给出的每个< nav>标签的定义都代表了< nav>标签内的< ul>和< li>元素的一个特定状态。
+
+清单17. CSS3例子2
+
+nav ul {
+list-style: none;
+padding: 0px;
+display: block;
+clear: right;
+background-color: #99f;
+padding-left: 4px;
+height: 24px;
+}
+nav ul li {
+display: inline;
+padding: 0px 20px 5px 10px;
+height: 24px;
+border-right: 1px solid #ccc;
+}
+
+nav ul li a {
+color: #006;
+text-decoration: none;
+font-size: 13px;
+font-weight: bold;
+}
+
+nav ul li a:hover {
+color: #fff;
+}
+
+接下来是Article区，这一区域由< article>标签来定义，其中包括了其自己的< header>信息。包含在< article>中的< section>也包含了一个自己的的< header>标签，参见清单18。
+
+清单18. < article>和< section>的例子
+
+< article>
+__< header>__
+< h1>
+< a href="#" kesrc="#" title="Link to this post" rel="bookmark">Article Heading< /a>
+< /h1>
+< /header>
+< p> Primum non nocere ad vitam Paramus . . . < /p>
+__< section>__
+< header>
+< h1>This is the first section heading< /h1>
+< /header>
+< p>Scientia potentia est qua nocent docentp . . .< /p>
+< /section>
+
+清单19展示了渲染这一格式的CSS3标记，可以注意到，段落、header和section区的定义都定义在包含了它们的< article>标签上。这里定义的< h1>标签和页面级别定义的< h1>标签有着不同的格式。
+
+清单19. CSS3例子3
+
+article__ >__ header h1 {
+font-size: 40px;
+float: left;
+margin-left: 14px;
+}
+
+article > header h1 a {
+color: #000090;
+text-decoration: none;
+}
+
+article > section header h1 {
+font-size: 20px;
+margin-left: 25px;
+}
+
+article p {
+clear: both;
+margin-top: 0px;
+margin-left: 50px;
+}
+
+< article>中包含的第二个< section>标签包含了与第一个< section>相同的基本信息，但这一次你要用到一个< aside>、一个< figure>、一个< menu>和一个< mark>标签，参见清单20。
+
+这里使用< aside>标签来表示的信息并非是围绕着它的那些连续内容的组成部分。< figure>标签包含了一个Stonehenge的图片。< section>标签还包含了一个< menu>标签，该标签被用来创建使用了四个缪斯女神的名字来命名的按钮。当某个按钮被点击时，其提供相应缪斯女神的的信息。< mark>标签被用在< p>标签中，以此来突出显示veni、vidi和vici等词。
+
+清单20. < article>和< section>的例子
+
+< section>
+< header>
+< h1>Second section with mark, aside, menu & figure< /h1>
+< /header>
+__< p __class="next-to-aside"> . . . < mark>veni, vidi, vici< /mark>. Mater . . .< /p>
+< aside>
+< p>This is an aside that has multiple lines. . . .< /p>
+< /aside>
+< menu label="File">
+< button type="button" onClick="JavaScript:alert('Clio . . .')">Clio< /button>
+< button type="button" onClick="JavaScript:alert('Thalia . . .')">Thalia< /button>
+< button type="button" onClick="JavaScript:alert
+('Urania . . .')">Urania< /button>
+< button type="button" onClick="JavaScript:alert
+('Calliope . . .')">Calliope< /button>
+< /menu> 
+< figure>< img src="stonehenge.jpg" kesrc="stonehenge.jpg" alt="Stonehenge" width="200" height="131"/>
+< figcaption>Figure 1. Stonehenge< /figcaption>
+< /figure>
+< /section>
+
+这一部分的CSS3包括了一个新的< p>标签的定义，该标签有着比为页面所设的宽度更小的宽度。这种改动允许aside浮在右边而又不会遮盖到文字。清单21显示了这一标记。
+
+清单21. CSS3例子4
+
+article p.next-to-aside {
+width: 500px;
+}
+
+article > section figure {
+margin-left: 180px;
+margin-bottom: 30px;
+}
+
+article > section > menu { 
+margin-left: 120px;
+} 
+
+aside p { 
+position:relative;
+left:0px;
+top: -100px;
+z-index: 1;
+width: 200px; 
+float: right;
+font-style: italic; 
+color: #99f;
+} 
+
+===== 视频部分的元素 =====
+
+这是< article>的最后一个组件：视频部分。例子视频是ogg格式的，在页面被载入后就自动播放，不断循环，并提供暂停和播放控制。在当前的许多实际情况中，ogg视频使用的是ogv（v表示视频）扩展名，如清单22所示。< audio>标签以同样的方式工作。
+
+清单22. < article>和< section>的例子
+
+< section>
+< header>
+< h1>This is a video section< /h1>
+< /header>
+< p>< video src="http://people.xiph.org/~maikmerten/demos/BigBuckBunny.ogv" kesrc="http://people.xiph.org/~maikmerten/demos/BigBuckBunny.ogv" 
+controls autoplay loop>
+< div class="no-html5-video">< p>This video will work in 
+Mozilla Firefox or Google Chrome only. < /p>
+< /div>
+< /video>< /p>
+< /section>
+< /article>
+
+清单23提供了video部分的CSS3定义。
+
+清单23. CSS3例子5
+
+article > section video {
+height: 200px;
+margin-left: 180px;
+}
+
+article > section div.no-html5-video{
+height: 20px;
+text-align: center;
+color: #000090;
+font-size: 13px;
+font-style: italic;
+font-weight: bold ;
+background-color: #99f;
+} 
+
+页面的页脚和结束部分如清单24所示。
+
+清单24. < footer>标签的例子
+
+< footer>
+< p>Copyright: 2011 Acme United. All rights reserved.< /p>
+< /footer>
+< /body>
+< /html> 
+
+页脚的CSS3如清单25所示。
+
+清单25. CSS3例子5
+
+footer p {
+text-align: center;
+font-size: 12px;
+color: #888;
+margin-top: 24px;
+}
+
+===== 结论 =====
+网页的构建完成结束了这一多部分组成的系列的第一部分。本篇文章的目的是介绍新的HTML5机制。HTML5不仅是HTML4的一个升级：它还是__一种新的数字化通信方式__。借助于CSS3和JavaScript的功能，HTML5接近于在一个伪包中为开发者提供了全部的一切。如果你愿意从已有的大量的HTML5信息中吸取你所需的内容来，并把它们用到我们的常见做法中的话，那么你将会加入到这一个由称职的的HTML5多媒体web设计者和开发者组成的正在不断壮大的军团中。这一系列的下一篇文章将着眼于如何编写和格式化HTML5的表单。

@@ -1,0 +1,213 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-10T21:00:30+08:00
+
+====== Refer VS Pointer ======
+Created Sunday 10 April 2011
+http://www.eetimes.com/discussion/programming-pointers/4023307/References-vs-Pointers
+References vs. Pointers
+Dan Saks
+3/15/2001 1:04 PM EST
+References vs. Pointers
+Knowing how references really differ from pointers should help you decide when to use references and when to stick with pointers.
+
+In C++, references provide many of the same capabilities as pointers. Although most C++ programmers seem to develop some intuition about when to use references instead of pointers, and vice versa, they still encounter situations where the choice isn't so clear. If you'd like to develop a reasonably consistent philosophy about using references, it really helps to know exactly how references differ from pointers. Those differences are my subject this month.
+
+More than skin deep
+
+A reference, like a pointer, is an object that you can use to refer indirectly to another object. A reference declaration has essentially the same syntactic structure as a pointer declaration. The difference is that while a pointer declaration uses the * operator, a reference declaration uses the & operator. For example, given:
+
+int i = 3;
+
+then:
+
+int *pi = &i;
+
+declares pi as an object of type "pointer to int" whose initial value is the address of object i. On the other hand:
+
+int &ri = i;
+
+declares ri as an object of type "reference to int" referring to i. The difference between pointer and reference declarations is noteworthy, but it's not the basis for deciding to use one over the other. The real basis for the choice is the difference in appearance between references and pointers when you use them in expressions.
+
+The big difference between pointers and references is that you must use an explicit operator-the * operator-to dereference a pointer, but you don't use an operator to dereference a reference. For example, once the previous declarations are in place, the indirection expression *pi derefences pi to refer to i. In contrast, the expression ri-without any operators at all-dereferences ri to refer to i. Thus, an assignment such as: *p = 4;
+
+changes the value of i to 4, as does the assignment:
+
+ri = 4;
+
+This difference in appearance is significant when you're choosing between pointers and references for function parameter types and return types. This is especially true in functions that declare overloaded operators.
+
+In my first column on references, I illustrated this point with the example of defining a ++ operator for an enumeration type.1 In C++, the built-in ++ operator does not apply to enumerations. For example, given just:
+
+enum day
+{
+Sunday, Monday, ...
+};
+
+day x;
+
+the expression ++x does not compile. If you want it to, you must define a function named operator++ which accepts a day as an argument.
+
+Invoking ++x should change the value in x. Therefore, declaring operator++ with a parameter of type day, as in:
+
+day operator++(day d);
+
+won't have the desired effect. This function passes its argument by value, which means the function sees a copy of the argument, not the argument itself. For the function to alter the value of its operand, it must pass that operand either by a pointer or by a reference.
+
+Passing the argument by a pointer, as in:
+
+day *operator++(day *d);
+
+would let the function alter the value of the day by storing the incremented value into *d. However, you would then invoke the operator using an expression such as ++&x, which doesn't look right.
+
+The proper way to define operator++ is with a reference as the parameter type, as in:
+
+day &operator++(day &d)
+{
+d = (day)(d + 1);
+return d;
+}
+
+Using this function, expressions such as ++x have the proper appearance as well as the proper behavior.
+
+Passing by reference is not just the better way to write operator++, it's the only way. C++ doesn't really give you a choice here. A declaration such as:
+
+day *operator++(day *d);
+
+does not compile. Every overloaded operator function must either be a member of a class, or have a parameter of type T, T &, or T const &, where T is a class or enumeration type. In other words, every overloaded operator must accept an argument of a class or enumeration type. A pointer, even to an object of class or enumeration type, doesn't count. C++ does not let you overload operators that redefine the meaning of operators for built-in types, including pointer types. Thus, you cannot declare:
+
+int operator++(int i); // error
+
+which attempts to redefine the meaning of ++ for int, nor can you declare:
+
+int *operator++(int *i); // error
+
+which attempts to redefine ++ for int *.
+
+References vs. const pointers
+
+In my last column, I explained that C++ doesn't let you declare a "const reference" because a reference is inherently const.2 In other words, once you bind a reference to refer to an object, you cannot rebind it to refer to a different object. There's no notation for rebinding a reference after you've declared the reference. For example:
+
+int &ri = i;
+
+binds ri to refer to i. Then an assignment such as:
+
+ri = j;
+
+doesn't bind ri to j. It assigns the value in j to the object referenced by ri, namely, i.
+
+In short, whereas a pointer can point to many different objects during its lifetime, a reference can refer to only one object during its lifetime. Some people claim that's a significant difference between references and pointers. I'm not sold on the idea. Maybe this is a difference between references and pointers, but it's not a difference between references and const pointers. Again, once you bind a reference to an object, you can't change it to refer to something else. Since you can't change the reference after you bind it, you must bind the reference at the beginning of its lifetime. Otherwise, the reference will never be bound to anything and will be useless, if not downright dangerous.
+
+All of the statements in the previous paragraph apply to const pointers just as much as they do to references. (I'm talking about "const pointers" here, not about "pointers to const.") For example, a reference declaration at block scope must have an initializer, as in:
+
+void f()
+{
+int &r = i;
+...
+}
+
+Omitting the initializer produces a compile-time error:
+
+void f()
+{
+int &r; // error
+...
+}
+
+A const pointer declaration at block scope must also have an initializer, as in:
+
+void f()
+{
+int *const p = &i;
+...
+}
+
+Omitting the initializer is just as much an error:
+
+void f()
+{
+int *const p; // error
+...
+}
+
+In my opinion, the fact that you can't rebind a reference is no more a difference between references and pointers than that which exists between const pointers and non-const pointers.
+
+Null references
+
+Appearances aside, const pointers differ from references in one subtle but significant way. A valid reference must refer to an object; a pointer need not. A pointer, even a const pointer, can have a null value. A null pointer doesn't point to anything.
+
+This difference suggests that you should use a reference as a parameter type when you want to insist that the parameter refer to an object. For example, let's revisit the swap function, which accepts two int arguments and swaps the value of its first argument with the value of its second argument. For example:
+
+int i, j;
+...
+swap(i, j);
+
+leaves the value that was in i in j, and the value that was in j in i. You could write this function as:
+
+void swap(int *v1, int *v2)
+{
+int temp = *v1;
+*v1 = *v2;
+*v2 = temp;
+}
+
+so that a call looks like: swap(&i, &j);
+
+This interface suggests that either or both arguments might be a null pointer. The suggestion is misleading. For example, the consequences of calling: swap(&i, NULL);
+
+are likely to be unpleasant. Defining the function with reference parameters, as in:
+
+void swap(int &v1, int &v2)
+{
+int temp = v1;
+v1 = v2;
+v2 = temp;
+}
+
+clearly suggests that a call to swap should provide two objects whose values will be swapped. As an added bonus, calls to this function look nicer without the &s cluttering things up:
+
+swap(i, j);
+
+Greater safety?
+
+Some people take the fact that a reference can't be null to mean that references are somehow safer than pointers. They may be a little safer, but I don't think they're a lot safer. Although a valid reference can't be null, an invalid one can be null. In fact, there's a ton of ways programs can produce invalid references, not just null references. For example, you can define a reference so that it refers to the object addressed by a pointer, as in:
+
+int *p;
+...
+int &r = *p;
+
+If the pointer happens to be null at the time of the reference definition, the reference is a null reference. Technically, the error is not in binding the reference, but in dereferencing the null pointer. Dereferencing a null pointer produces undefined behavior, which means lots of things could happen, and most of them aren't good. It's likely that, when the program binds reference r to *p (the object that p points to), it won't actually dereference p. Rather, it will just copy the value of p to the pointer that implements r. The program will keep running only to have the error manifest itself more overtly sometime later during program execution. Oh joy.
+
+The following function shows another way to produce an invalid reference:
+
+int &f()
+{
+int i;
+...
+return i;
+}
+
+This function returns a reference to local variable i. However, the storage for i vanishes as the function returns. Thus, the function returns a reference to deallocated storage. The behavior is the same as returning a pointer to a local variable. Some compilers do detect this particular error at compile time. However, you can disguise the sin so it will go undetected.
+
+I like references. There are good reasons to use them instead of pointers. But, if you expect that using references will make your program significantly more robust, you're likely to be disappointed.
+
+My bad
+
+In my last column, I explained that although you can't define a "const reference" directly you can do it indirectly through a typedef. I gave this example:
+
+typedef int &ref_to_int;
+...
+int_ref const r = i;
+
+That second line should have been:
+
+ref_to_int const r = i;
+
+Dan Saks is a high school track coach and the president of Saks & Associates, a C/C++ training and consulting company. He is also a consulting editor for the C/C++ Users Journal. He served for many years as secretary of the C++ standards committee. You can write to him at dsaks@wittenberg.edu.
+
+References
+
+    Saks, Dan. "Introduction to References," Embedded Systems Programming, January 2001, p. 81.
+    Saks, Dan. "References and const", Embedded Systems Programming February 2001, p. 73. 
+
+Return to April ESP Index 

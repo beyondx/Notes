@@ -1,0 +1,68 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-07T09:51:01+08:00
+
+====== 类（四、类的组合） ======
+Created Sunday 07 August 2011
+
+1 #include<iostream>
+2 #include<cmath> //sqrt()函数的头文件；__c++的类应当先定义后使用__，在两个类互相引用时（循环依赖），可用__前向引用声明：class ***__;
+3 using namespace std;
+4 class Point {
+5 public:
+6 Point(int xx=0,int yy=0) {
+7 x=xx;
+8 y=yy;
+9 }
+10 Point(Point &p) {
+11 x=p.x;
+12 y=p.y;
+13 cout<<"calling the copy constructor of Point..."<<endl;
+14 }
+15 int getX();
+16 int getY();
+17 private:
+18 int x,y;
+19 };
+20 int Point::getX() {
+21 return x;
+22 }
+23 int Point::getY() {
+24 return y;
+25 }
+26 /*------------------------类的组合-------------------*/
+27 class Line {
+28 public:
+29 __Line(Point pp1,Point pp2);__
+30 Line(Line &l);
+31 double getLen();
+32 private:
+33 __Point p1,p2;__
+34 double len;
+35 };
+36 /*---------------------组合类的构造函数---------------*/
+37 Line::Line(Point pp1,Point pp2):__p1(pp1),p2(pp2)__ { //p1(pp1)表示用pp1来初始化p1,注意中间用逗号隔开；
+__//注意：必须要用“初始式”的形式对对像成员进行初始化。__
+38 double x=static_cast<double> (pp1.getX()-pp2.getX()); /__/static_cast为强制类型转换；__
+39 double y=static_cast<double> (pp1.getY()-pp2.getY());
+40 len=sqrt(x*x+y*y);
+41 }
+42 double Line::getLen() {
+43 return len;
+44 }
+45 /*----------------------组合类的复制构造函数-------------*/
+46 Line::Line(Line &l):p1(l.p1),p2(l.p2) {
+47 len=l.getLen();
+48 cout<<"calling the copy constructor of Line..."<<endl;
+49 }
+50 int main() {
+51 Point mypt1(1,1),mypt2(4,5);
+52 Line line(mypt1,mypt2);
+53 Line line1(line);
+54 cout<<"the first line'lengh is :"<<endl;
+55 cout<<line.getLen()<<endl;
+56 cout<<"teh second line'lengh is :"<<endl;
+57 cout<<line1.getLen()<<endl;
+58 return 0;
+59 }
+

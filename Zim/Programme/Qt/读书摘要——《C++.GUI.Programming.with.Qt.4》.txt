@@ -1,0 +1,795 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-08T10:49:14+08:00
+
+====== 读书摘要——《C++.GUI.Programming.with.Qt.4》 ======
+Created Thursday 08 March 2012
+
+作者：Love Katherine
+
+原文地址：http://blog.csdn.net/lovekatherine/archive/2007/07/27/1710980.aspx
+ 
+
+===== Chapter 1  Getting Started =====
+
+Qt中的每个类，都有一个对应的同名头文件，其中**包含其类定义**。例如要使用QApplication类，则需要在程序中添加" #include <QApplication>"
+
+QApplication类用于管理__应用程序范围内的资源__。其构造函数需要main函数的argc和argv作为参数。
+
+ widget被**创建时都是不可见的**(always created hidden)。**widget中可容纳其它widget**。
+   
+Qt中的widget在有用户行为或__状态改变__时会emit signal。 signal可以和slot函数连接在一起(connect)，这样当有signal被emit时，对应的slot函数会被自动调用。
+
+QWidget类的构造函数需要一个** QWidget * 指针**作为参数，表示其parent widget(默认值为0，即不存在parent widget)。在parent widget被删除时，Qt会自动删除其所有的child widget。
+
+Qt中有三种Layout Manager 类：QHBoxLayout，QVBoxLayOut，QGridLayOut。基本模式是将widget添加进LayOut，__由Layout自动接管widget的尺寸和位置__。
+
+启动Qt程序时可以通过 -style. 参数改变程序的**默认显示风格**。
+
+
+===== Chapter 2 Creating Dialogs =====
+
+2.1    Subclassing Dialog
+
+    Qt中所有dialog的基类是QDialog。QDialog派生自QWidget。
+
+
+    Qt中所有定义了signal或slot的类，在其类定义的开始处都要使用Q_OBJECT宏。Qt中的signal关键字实际上是宏定义。类似的，slots关键字也是宏定义。
+
+    Qt所提供的类分为若干模块：QtGui，QtNetWork，QtOpenGL，QtSql， QtSvg和QtXml等。
+
+   QObject::tr()函数将输入的字符串转换为其他语言(国际化)。对所有用户可见的字符串都使用tr()函数是一个良好的习惯。
+
+   Buddy：两个widget A和B，若A拥有快捷键，当用户按下该快捷键时，程序的输入焦点自动转移到B上，则称B是A的buddy。
+
+   QWidget::close()是一个slot，其默认行为是使对应的widget隐藏不可见，但并不删除该widget。
+
+    Layout 中可包含widget和其他layout。通过嵌套使用QHBoxLayOut、QVBoxLayOut、QGridLayOut，可以构造非常复杂的dialog。值得注意的是：layout manager 类并不属于widget。实际上，它派生自QLayout，而QLayout又派生自QObject。
+
+   QWidget::sizeHint()返回一个widget()的理想大小(ideal size)。
+
+    emit关键字是Qt特有的，用于产生signal。
+
+    MOC(Meta-Object-Compiler): 对于所有使用了Q_OBJECT宏的类，在编译时都需要通过MOC的处理，否则会出现链接错误。解决该错误的办法也很简单，重新执行qmake以更新makefile，然后重新编译。
+
+       
+2.2    Signal and Slot in Depth
+
+   Signal & Slot机制是Qt的根基。
+
+    Slot和普通的C++类成员函数几乎完全一致；可以是virtual的，可以被重载，可以是public、protected或private的，而且也可所以被其他成员函数直接调用。
+
+    signal与slot之间的关联可以是一对一、一对多或多对一。
+
+    signal和signal之间也可以被关联，此种情况与signal-slot的区别在于，当第一个sigal被emit时，第二个signal也被emit。
+
+    可以调用disconnect()来解除signal 与slot之间的关联，通常情况下很少需要显式调用disconnect()，因为对象被删除时Qt会自动移除与其相关的关联。
+
+    sigal-slot或signal-signal这样的关联，要求二者具备相同的参数列表；若signal比slot中的参数多，多余的参数会被忽略。
+
+   思维定势：signal-slot机制只能用于widget。实际上signal-slot机制是由QObject实现的，并不仅局限于GUI编程，可以用于任何QObject子类。
+
+
+2.3    Rapid Dialog Design
+
+    使用Qt Designer创建的form最终被转换为C++代码。
+
+    qmake工具能够检测到interface file(*.ui files)，并调用uic，即Qt的user interface compiler。uic将.ui文件转换为C++代码，并存放在形式为ui_xxx.h的文件中。该文件中给出了dialog对应类的完整定义，并包含一个 setupUi()成员函数，用于初始化form。
+
+    注意，由uic创建的这个类未派生自任何Qt class。
+
+    Qt的 parent-child机制是由QObject实现的。当创建一个对象时若指定了parent，则parent将该对象添加至其 childern list。当parent被删除时，Qt会遍历其childern list并删除每个child，该过程会递归进行。这一机制极大的简化了内存管理，降低了内存泄露的风险——程序员只需显式的删除通过new创建并且没有parent的对象。
+
+    对于widget，parent还有一层附加的意义：chidl widget 是显示在parent widget的范围之内的。如果删除parent widget，不仅child widget从内存中被释放，在屏幕上也会消失。
+
+   QDialog::accept()将dialog的返回值设为QDialog::Accepted(值为1)，而QDialog::reject()将返回值设为QDIalog::Rejected(值为0)。
+
+
+2.5    Dynamic Dialogs
+
+    Dynamic Dialog指的是程序在运行时根据.ui文件创建的dialog。这样的dialog不是通过uic将.ui转换为C++代码，而是在运行时使用QUiLoader类装载.ui文件。
+
+    可以使用QObject::findChild<T> ()来访问form的child widget。
+   
+    要使用QUiLoader，需要在Qt程序的.pro文件中添加以下内容：CONFIG  += uitools
+
+    Dynamic dialog允许在不重新编译程序的前提下更改form的布局。
+
+
+
+
+Chapter 3 Creating Main Windows
+
+
+
+3.1    Subclassing QMainWindow
+
+    应用程序的主窗口是通过创建QMainWindow的派生类来完成的。QMainWindow和QDialog一样，都是派生自QWidget。
+
+   closeEvent()是由QWidget提供的一个虚函数，在用户关闭窗口时会被自动调用。
+
+   setCentralWidget()将某个Widget设置为主窗口的central widget， 而central widget意味着在显示时会占据主窗口的中央位置。
+
+    Qt下的GUI 编程支持多种图形格式。可以使用多种方式为应用程序提供图像，最常见的包括：
+
+    1).    将图像存储在文件中，运行时加载之。
+    2).    在源码中include XPM文件(XPM文件也是合法的C++文件)。
+    3).    利用Qt的资源机制。
+
+    Qt的资源机制比之运行时加载更方便，并对所有支持的图像格式都能良好工作。
+
+    为了利用Qt的资源机制，需要创建一个资源文件，并在.pro文件中对应添加一行来对资源文件进行标识。例如：
+
+    RESOURCES＝ spreadsheet.qrc
+
+    资源文件本身采用了简单的XML格式。它被编译进程序的可执行文件，因此不会被丢失。在对资源进行定位时，使用路径前缀":/"，例如“ :/images/icon.png "。资源本身可以是任何类型的文件。
+
+3.2    Creating Menus and Toolbars
+
+    Qt通过引入Action这一概念简化了对menu和toolbar的编程。一个Action可以被添加到任意数量menu和toobar中。
+
+    在Qt中对menu和toolbar的编程涉及到三个步骤：
+
+    1).    创建并设置Action
+    2).    创建menu，并在其中添加Action
+    3).    创建toolbar，并在其中添加Action
+   
+    Action的创建是通过QAction类来实现的，对每个Action，可以为其设置accelerator，parent，shortcut key， 可见性以及status tip等属性，并可以通过调用connect()为ACtion设置被触发要执行的操作。
+
+    QTableWidget的基类QAbstraceItemView提供了selectAll()这个slot。
+
+    QApplication类提供了aboutQt()这个slot，可以通过全局变量qApp(一个类型为QApplication *的指针)来使用之。
+
+    在Qt中，menu由QMenu类的实例表示。而Qmenu是要被放入QMenuBar之中的。函数QMainWindow::menuBar()返回一个类型为QMenuBar * 的指针。QMenuBar::addMenu()根据指定文本创建一个QMenu widget并将其添加进MenuBar中。QMenu::addAction()则为Menu添加Action。
+
+    任意Qt Widget都可以具备相关的一系列QAction。通过调用QWidget::addAction() ，可以为Widget添加Action。这一特性可用来创建上下文菜单。
+
+3.3    Setting Up the Status Bar
+
+   QMainWindow::statusBar()返回一个指向status bar的指针；status bar 在statusBar()第一次被调用时被创建。
+
+
+3.4    Implementing The Menu
+
+
+   QMessageBox::Defalut修饰符使得被修饰的Button成为默认Button，而QMessage::Escape修饰符则使得Esc键自动触发被修饰的Button。
+   
+   QMessageBox::warning()用于弹出提示对话框。该函数属于Qt提供的static convenicence function
+
+static convenience function
+
+   QFileDialog::getOpenFileName()可用于从用户处获得文件名——该函数弹出一个文件选择对话框，要求用户选择一个文件，并返回文件名，或者在用户选择"Cancel"时返回空字符串。该函数的第一个参数是其parent widget。对于dialog和其他widget，parent-child关系的意味是不完全相同的。一个dialog永远是一个独立的窗口，但是如果它拥有parent，则默认在parent之上居中显示。
+   
+    当用户发出关闭窗口的操作时，Qwidget::close()这个slot会被调用，该slot向对应的widget发送close event。重新实现QWidget::closeEvent()能够拦截这个event，以便确定是否真的要关闭窗口，防止误操作。
+
+    每个QWidget都有一个windowModified属性，在窗口文档被修改时应该被设为True，否则被设为false。
+
+   QString::arg()函数将字符串中编号最低的"%n"用参数进行替换，并返回替换后的字符串。
+   
+    每个Action都可以拥有一个类型为QVariant的关联数据。
+   
+    Qt中的qobject_cast<T>()机制对于动态库也可以正常工作。
+
+
+
+3.5    Using Dialog
+
+   modeless window——one that runs independently of any other windows in the application
+
+    对于modeless dialog ，当其被弹出时，可能处于三种情况：
+
+    1).    这是该对话框第一次被激活
+    2).    该对话框之前曾被激活，但用户又将其关闭
+    3).    该对话框之前曾被激活，而且仍可见
+
+    show() 将一个隐藏窗口变为可见，而activateWIndow()则将窗口的状态变为active。
+
+   model window——pops up when invoked and blocks the application，preventing any other processing or interactions until it is closed.
+
+    一个dialog若是用show()来激活，则是modeless dialog；若通过exec()来激活，则是model dialog。此外，还可以调用setModel()来设置dialog的显示模式。
+
+    QDialog::exec() 的返回至在dialog被确认时为true，否则为false。
+
+    在栈上创建 model dialog是一种良好的编程惯例，因为在使用完后就不再需要，而model dialog会在作用域结束后自动被销毁。
+
+    由于多数应用程序的About box 都是高度雷同的，Qt中提供了一个方便的static convenicence functionQMessage::about()，该函数和QMessageBox::warning()很相似。
+
+
+3.6    Storing Setting
+
+    Qt中是通过QSettings类来将应用程序的设置信息存储到平台相关的位置——windows下存入注册表中，unix中存在文本文件中。
+
+    QSettings的构造函数包含两个参数，分别是organization's name 和 application's name ，Qt使用这两个参数来对应用程序的设置信息进行定位。
+
+    QSettings以key-value pair的形式存储信息。
+
+3.7    Multiple Documents
+
+    要想实现多文档程序，首先必须要通过new在堆上创建主窗口，而不是在栈上创建主窗口。
+
+    QAplication::closeAllWindows() 这个slot完成的操作是关闭应用程序所有的窗口，除非其中某个窗口拒绝了close event。程序员不需要担心未保存的修改，因为这会由QWidget::closeEvent()负责处理。
+
+    通过在MainWindow的构造函数中调用setAttribute()函数来设置Qt::WA_DeleteOnClose属性，可以要求Qt在窗口被关闭时将其自动销毁。
+
+    Qt在其可用所有平台上都支持SDI和MDI程序的创建。
+
+
+3.8    Splash Screnns
+
+    在Qt中为程序添加splash screen非常简单，可通过QSplashScreen类来实现。
+
+    通常情况下，与splash screen相关的代码都放在main()中，出现在调用QApplication::exec()之前。
+
+
+Chapter 4 Implementing Application Functionality
+
+
+4.1    The Central Widget
+
+    QMainWindow的中央区域可以被任何类型的widget占据。
+
+
+4.2    Subclassing QTableWidget
+
+    QTableWidget会自动创建QTableWidgetItem来存储用户的输入。
+
+    QTableWidgetItem类并不是widget，而是一个纯粹的data class。
+
+    QTabeWidget::setItermProtype()可以设置在获得用户输入的情况下自动创建哪种cllass。
+
+
+4.3    Loading and Saving
+
+    QFile ＆ QDataStream
+
+   QFile的析构函数负责将打开的文件关闭。
+
+   QDataStream类具有很强的通用性，可作用于QFile，QBuffer，QProcess，QTcpSocket，QUdpSocket。
+
+    Qt还提供了一个QTextStream类用于专门读写文本文件。
+
+
+4.6    Subclassing QTableWidgetItem
+
+    每个QTableWidgetIterm中可存储若干数据，这是通过个QVariant来实现的。每一个QVariant对象都以某个role来存储某一类数据，常用的role有Qt::EditRole和Qt::DiaplayRole。
+
+    QVarinant对象可以存放多种类型的变量值，并提供向其他类型转型的函数接口。
+
+    使用默认构造函数创建的QVariant对象被视为invalid variant。
+
+
+Chapter 5. Creating Custom Widgets
+
+
+    用户自定义的控件可以通过继承现有的Qt控件实现，也可以直接从QWidget继承来实现。
+
+5.1    Customizing Qt Widgets
+
+5.2    Subclassing QWidget
+
+
+    通过对QWidget进行派生，并重新编写其部分event handler来进行绘图和响应用户操作，程序员可以实现对widget的外观和行为的完全控制。
+
+    Qt的内置Widget如QLabel、QPushButton、QTabelWidget等，就是以这种方式实现的。
+
+    宏Q_PROPERTY()用来为widget声明和添加自定义属性。
+
+    每个属性的定义都对应一个数据类型(任何被QVarinat支持的类型都可以)，一个read function以及可选的write function。
+
+    对于包含自定义属性的类，Q_OBJECT和Q_PROPERTY()这两个宏都是必备的。
+
+   QImage类以一种硬件无关的方式存储图像信息。
+
+    Qt中提供了两个类型用于存储色彩信息：QRgb和QColor。
+
+    QRgb其实是一个typedef，用于存放32-bit的像素信息。
+    QColor则是一个提供了许多接口函数的类，在Qt中广泛的用于存储色彩。
+
+   QWidget::update()函数用于对widget进行强制性的重绘。
+   QWidget::updateGeometry()用于告知包含该widget的layout：该widget的size hint已发生变化，layout会自动进行调整。
+
+    通过调用QWidget::update()和QWidget::repaint()，可以强制性的产生一个 paint event，两者的却别在于repaint()导致立即重绘，而update()只是将一个paint event放入event queue中。
+
+    如果对update()进行连续多次调用，Qt会将连续的paint event压缩合并为一个paint event，以防止图像抖动。
+
+    每个widget都拥有一个palette，用于设置widget中在什么情况下使用什么色彩，如背景色、文本色等。
+
+    widget的palette由三个color group组成：active ，inactive ，disabled。
+
+    QWidget::palette()以QPalette的形式返回widget的palette，而clolor group则通过枚举类型QPalette::ColorGroup指定。
+
+
+5.3    Intergrating  Custom Widgets with Qt Designer
+
+    要像在Qt Designer中使用自定义widget的话，必须要让Qt Designer能够了解到它们的存在。
+
+    有两种机制：promotion approach＆plugin approach
+
+    promotion approach 很容易也很省时，但缺点是自定义widget的自定义属性在Qt Designer中是不可见和不可访问的，而使用plugin approach时则不存在这些问题。
+
+    plugin approach要求创建一个Qt Designer 可以在运行时加载的plugin library，以用于创建widget的实例。由于Qt的MOC机制，Qt Designer可以动态获取widget的property list。
+
+    要使用plugin approach ，首先要对QDesignCustomWidgetInterface进行派生，并重写某些虚函数。
+
+   Q_INTERFACES()宏用于告知Qt该类实现了哪个interface。
+
+    在实现plugin class的源文件尾部，必须使用Q_EXPORT_PLUGIN2()宏使得该plugin对Qt Designer可见、可用。该宏的第一个参数是plugin的名字，第二个参数是实现该plugin的class name。
+
+
+5.4    Double Buffering
+
+    QWidget::style()返回用于绘制该widget时所使用的style。Qt中的style都是QStyle的派生类。同一应用程序中的 widget一般都使用相同的style，然而可以调用QWidget::setStyle()来进行widget层次的特别设置。
+
+
+
+
+Chatper 6 Layout Management
+
+
+6.1    Laying Out Widgets on a Form
+
+    Qt提供的的基本的Layout Manager包括：QHBoxLayout，QVBoxLayout，QGridLayout和QStackLayout。
+
+    Qt中其它能完成Layout management功能的类包括 QSplitter，QScrollArea，QMainWindow和QWorkspace。
+
+    Qt中管理child widget的layout共有三种方式：absolute positioning， manual layout和layout managers。
+
+   Absolute positioning：即由程序员通过hard-coded的形式管理child widget的位置和尺寸。
+
+   Manual Layout：child widget的位置依然由程序员通过hard-coded的方式确定，而尺寸与父窗口的大小成一定比例，而不是完全的hard-coded。这种方式通过对form的resizeEvent()进行再实现来对child widget的定位。
+
+    最重要的三个Layout Manger是QHBoxLayout，QVBoxLayout，QGridLayOut，他们都是派生自QLayout
+
+    QGridLayout的使用略微有些复杂，它工作在一个由Cell组成的二维grid上。对于QGridLayout，为其添加widget的方式如下：
+
+    layout->addWidget(widget，row ，colum，rowSpan，columnSpan)
+
+    其中widget为待添加的child widget， row和clomun确定该widget所占据空间中左上角那个Cell的位置坐标，rowSpan和columnSpan则指定widget的大小，这两个参数的的缺省值为1。
+
+   addStretch()向Layout Manager中添加“占位符”。
+
+    每个widget都有自己的size policy，由其告知layout 系统如何处理该widget外形上的stretch或是shrink。Qt中widget的size policy是通过QSizePolicy类来表示的。每个QSizePolicy由水平和竖直两组size policy组成，最常见的值包括：
+
+    Fixed    Minimum    Maximum    Prefered    Expanding
+
+    除了上述两组size policy外，QSizePolicy中还存储水平和竖直方向的stretch factor，该值用来表明在form尺寸扩展时widget随之扩展的比率。
+
+   
+6.2    Stacked Layouts
+
+   QStackLayout类可以管理多个page，但每次只显示其中之一，而将其他page向用户隐藏。
+
+    QStackLayout类本身是不可见的。
+
+    为了方便起见，Qt中包含有QStackedWidget类，即一个内置了QStackedLayout的QWidget。
+
+
+6.3    Splitter
+
+    类QSplitter是一个能包含其他widget的widget。QSplitter中包含的widget按顺序排列，并被splitter handle相互分隔开。
+
+    QSplitter通过构造函数中的参数来来决定是水平方向还是竖直方向。
+
+    不同于前面介绍的Layout Mangener们只是负责处理widget的layout而自身没有可视化的表示，QSplitter派生自QWidget，因此可以同其它widget一样的被使用。
+
+    QSplitter类提供了存储自身状态的两个函数：savestate()和restorestate()。
+
+6.4    Scrolling Areas
+
+   QScrollArea类提供了1个可滑动的viewport和2个滑动条。
+
+    QScrollArea的使用方法是调用其提供的setWidget()函数，将希望为其添加滑动条的widget添加。QScrollArea自动将添加进来的widget的parent设定为其viewport，而其viewpoint可通过QScrollArea::viewport()进行访问。
+   
+    QScrollArea的多数功能是通过继承QAbstraceScrollArea类而获得的。而诸如QTextEdit和 QAbstractIterView这样的类是派生自QAbstractScrollArea的，因此不需要将其用QScrollArea类包裹起来以获得scroll bar。
+
+     
+6.5    Dock Widgets and Toolbars
+
+    在Qt中，dock widget是通过QDockWidget类来实现的。
+
+    每个dock widget都有自己的title bar。
+
+    从Qt4开始，toolbar拥有自己专属的显示空间，而不再是如之前的版本中允许dock widget与其分享。
+
+    对一个widget调用setAllowedArea()可以指定允许在那些dock areas上放置该widget。
+
+6.6    Multiple Document Interface
+
+    Qt中，编写MDI程序是通过使用QWorkspace类，将其作为程序的central widget，并把每个文档窗口都作为QWorkspace的child。
+
+   Qt程序的命令行参数中与Qt相关的参数，会由QApplication的构造函数负责自动移除掉，不会传递给Qt程序的main()函数。
+
+
+Chapter 7 Event Processing
+
+
+    Qt中大多数event都是作为对用户操作的响应而产生的，但也有一些是系统内部独立生成的。
+
+    在使用Qt进行编程时，通常很少需要考虑event，因为Qt中的widget会在有重要事件发生时emit signal。Event在我们要编写自定义widget或是要修改现有Qt widget的特性时，则变得很重要。
+
+   不要在概念上将event和signal两个概念混淆。当程序员操纵使用widget时，signal是需要关注的对象；而当程序员需要实现一个widget时，event则是需要关注的对象。
+
+    例如，当使用QPushButton时，我们更关注其提供的clicked() signal 而不是导致该signal被QPushButton emit的低层次的鼠标或键盘event。但是如果我们要自己实现一个类似于QPushButton的类，那就轮到我们编写代码来处理鼠标和键盘操作，并在必要时emit clicked() signal。
+   
+7.1    Reimplementing Event Handles
+
+    Qt中，每个event都是一个派生自QEvent的对象。Qt中包含超过100种的event，每种event有一个enum value进行标识。
+
+   QEvent::type()返回event type。
+
+    所有event都是通过其对应类中的event()函数，来向对象发送通告的；这个event()函数继承自QObject。QWidget中 event()的实现是将最常见类型的event转发给对应的event handlers，例如mousePressEvent()，keyPress-Event，painEvent()。
+
+    键盘event对应的event handler是keyPressEvent()和keyReleaseEvent()。
+
+    QKeyEvent::modifiers()
+
+    Tab键和Shift+Tab键的处理有些特殊，它们不是由keyPressEvent()负责处理，而是在QWidget::event()中进行处理，而且发生在调用keyPressEvent()之前，处理方式是将输入焦点按照链中的顺序向后或向前传递。
+
+    实现key binding的更高层次的实现方式是利用QAction。QAction类内部使用了QShortCut类来实现key binding。
+
+   QObject::startTimer()用于创建定时器，并返回相应的ID。QObject支持多个定时器同时存在。
+   killTimer()用于销毁定时器，参数为定时器的ID。
+
+    Timer event位于底层，实现定时功能更简单的方式是使用QTimer类，QTimer会定期的emit timeout() siganl。
+
+
+7.2    Installing Event Filter
+
+    Qt的evnet model中很强大的一个特性，就是可以设定某个对象来监控另外一个对象，后者所有的event在对其可见前都要先通过前一个对象的监控和处理。
+
+    Qt中设置event filter涉及到两步操作：
+
+    1.    在要被监控的对象中调用installEventFilter()来完成对监控者的注册。
+    2     在监控者的eventFilter()中对被监控者的event进行处理。
+
+    Qt的event model中，一个event若未得到处理(event handler的返回值为false)，则Qt会负责将该event向上传递，即交由其parent负责处理
+
+
+    Qt中对event的处理可以分为下面5个层次：
+
+    1.    对某个特定的event handler进行重实现。
+    2.    对Widget中的QObject::event()进行重实现，这样在event被传递给特定的event handler之前就得到了处理。
+    3.    为某个对象安装event filter
+    4.    为QApplication object安装filter，这样可以监控应用程序中所有对象收到的所有event，在进行debug是非常有用。
+    5.    派生QAapplication的子类，并对notify()进行重实现。Qt调用notify()来发送event的。这是捕获所有event的唯一方法。
+
+7.3    Staying Responsive During Intensive Processing
+
+    在完成耗时操作的同时，还要保证程序能够对用户操作正常相应，常见的解决机制是多线程。
+
+   一种简单的解决方案是在耗时操作的过程中有规律的调用QApplication::processEvnets()。该函数通知Qt处理pending events，处理结束后再将控制权返回至调用者。
+
+    Qt中的进度对话框是由QProgressDialog类来实现的。
+
+    除了使用多线程和进度对话框外，还存在一种完全不同的处理耗时操作的方法：操作只在程序空闲(无用户交互)时再进行，而不是立刻开始执行。
+
+    这种方法可以利用0-milisecond timer来实现，每次定时器触发时，检查是否有pending event，若无则继续好事操作，若有则处理event，完成与用户的交互。
+
+
+
+Chapter 9 Drag and Drop
+
+9.1    Enabling Drag and Drop
+
+    默认情况下，QTextEdit这个widget接受来自于其他程序的文本拖拽的；如果用户将一个文件拖拽至其上，它会将文件名插入显示文本。可以调用setAcceptDrops()来允许或禁止接受拖拽。
+
+   dragEnterEvent()，该函数在用户将一个对象拖(drag)至widget之上时被调用，其参数为QDragEnterEvent类型的指针。
+   
+    默认情况下，widget不接受用户的拖拽行为;若对该指针调用acceptProposedAction()，则是告知Qt允许该widget接受用户的拖拽行为，Qt会通过改变鼠标形状来提示用户。
+
+
+   dropEvent()，该函数在用户将一个对象拽(drop)至widget之上时被调用，参数为QDropEvent类型的指针。
+
+    QWidget类还提供了dragMoveMent()和dragLeaveEvent()这两个函数，但对于大多数应用而言不需要对其进行再实现。
+
+
+   mousePressEvent(): 鼠标被按下时该函数被调用
+
+   mouseMoveEvent():鼠标保持按下的状态且移动时，该函数被调用。
+
+    QDrag类使用QMimeData类来存储与拖拽操作相关的信息。
+
+
+   
+9.2    Supporting Custom Drag Types
+
+    可以从以下三种机制中进行选择：
+
+    1.    在源这一边调用QMimeData::setData()，将信息存储在QByteArray中，而在接受者这一方，调用QMimeData::data()将信息提取出来。
+
+    2.     对QMimeData进行派生，在子类中对formats()和retrieveData()这两个函数进行重新实现，来处理自定义数据。
+
+    3.     如果拖拽动作发生在一个应用程序的内部，那么可以对QMimeData进行派生，将信息存储在该子类中。
+
+    QMimeData::formats()返回其支持的MIME类型列表。
+
+    QMimeData::retrieveData()将某个指定MIME类型的数据以QVariant的形式返回。QMimeData所提供 text()、html()、urls()、data()等接口函数，都是依靠retrieveData()来完成底层操作的。
+
+
+9.3    Clipboadr Handling
+
+    Qt中通过QApplication::clipboard()来获得对QClipboard的指针。对系统clipboard的写操作通过 setText()，setImage或setPixmap()完成，而读操作则通过text()，image()和pixmap()来完成。
+
+   QClipboard::setMimeData()
+
+   QClipboard::MimeData()
+   
+    QClipboard::supportsSelection() 在X11平台下返回true，其他环境下返回fasle。
+
+    如果希望每当clipboard中的内容发生变动时收到通知，可以利用Qt提供的QClipboard::dataChanged()这个slot
+
+
+Chapter 10    Item View Classes
+
+
+
+    MVC机制：Model-View-Controller
+
+    Qt中提供一种模仿MVC的model/viewer机制。
+
+    Qt中的delegate这个抽象概念与Controller略微不同，它负责为item的生成和编辑提供良好的控制。   
+   
+   Qt为每种类型的view都提供了默认的delegate，这对于大多数应用程序已经足够了，通常情况下程序员不需要考虑delegatd的问题。
+
+    可以为一个model注册两个或更多的view，Qt自动保持多个view之间数据的同步和一致性，当数据在某个view中被修改后，会自动在其他相关view中反映出来。
+
+    大多数情况下，程序向用户提供的item的数量并不庞大，因此可以简单的使用Qt内置的item view clas(QListWidget，QTableWidget和QtreeView)，而没有必要使用Qt提供的model/view 机制。但对于成员数量很大的数据集，采用model/view机制则是明智的选择。   
+
+
+10.1    Using Item View Convenience Classes
+
+    QListWidget
+
+    QListWidget中包含多个roles，每个都与一个QVariant变量关联。最常用的roles由Qt::DisplayRole，Qt::EditRole，Qt::IconRole
+对于上述role，Qt都提供了方便的接口函数用于读写数据。程序员还可以对role进行自定义，通过Qt::UserRole或更大的数值进行标识。
+
+   默认情况下QListWidget是只读的，需要调用QAbstractItemView::setEditTriggers()为其设定能引发编辑操作的动作。
+
+    QTableWidget
+
+   默认情况下QTableWidget是允许编辑的，可以调用QAbstractItemView::setEditTriggers(QAbstractItemView::NoEditTriggers)来禁止编辑。
+
+    QtreeWidget
+
+   默认情况下，QtreeWidget是只读的。
+
+   
+10.2    Using Predefined Models
+
+    Qt提供的预定义model有以下几种：
+
+   QStringListModel                  存储一组字符串
+
+   QStandardItemModel            存储任意层次结构的数据
+
+   QDirModel                           对文件系统进行封装
+
+   QSqlQueryModel                   对SQL的查询结果集进行封装
+
+   QSqlTableModel                    对SQL中的table进行封装
+
+   QSqlRelationalTableModel      对带有foreign key的SQL table进行封装
+
+   QSortFilterProxyModel            对另一个model执行sort and/or filter
+
+
+
+    model中存放的每项数据都有相应的"model index"，由QModelIndex类来表示。
+
+    每个index由三个部分构成：row，column和表明所属model的指针。对于一维的list model，column部分永远为0。
+
+    在model/view 机制中，对数据的操作都是通过model执行的，而model负责保证在数据发生变动时view自动更新。
+
+   QDirModle::mkdir()——创建文件夹的工作可以通过QDir类来完成，不过QDirModel提供了工作于QModelIndex之上更方便的函数。
+   
+    不同于其它model，QSortFilterProxyModel对一个已有的model进行封装，并完成数据在底层modle和view之间的传递。
+
+   setSourceModel()
+
+
+10.3    Implementing Custom Models
+
+    model中的每项数据都有对应的index和一组称为“role”的属性，其中最常用的有Qt::DisplayRole和Qt::EditRole。
+
+    对于list和table这两类model，其中每个元素的parent都是root，即表示为一个invalid QModelIndex。
+
+    而对于tree model，某些元素的parent为root，而有些元素的parent为model中的其它元素。
+
+    Qt中提供了几种model 基类，包括 QAbstractListModel，QAbstractTableModel和QAbstractItemModel ，其中QAbstractItemModel是另外两者的基类，用于支持范围很广的modles，包括具备递归层次结构的；而 QAbstractListModel用于支持一维数据集，QAbstractTableModel用于支持二维数据集。
+
+    实际上要创建只读的自定义model的话，并不是件困难的事情。
+
+    要自定义只读的table model的话， 需要重新实现rowCount()，columnCount()和data()这三个函数。
+
+   createIndex()用于创建并返回一个model index
+
+   flags()被model用于表示可以对数据执行的操作(例如，是否可编辑)，从QAbstractTableModel继承而来的默认实现是返回Qt::ItemSelectable | Qt::ItemIsEnabled
+
+   qDeleteALl()对一个含有指针的容器进行迭代，并对其中每个指针元素执行delete操作。
+
+10.4    Implementing Custom Delegates
+
+   view中的每个item是由delegate负责显示和编辑的，在大多数情况下，view默认的delegate足够满足用户需求。
+   
+   setItemDelegate()为view指定其delegate。
+
+    QItemDelegate & QAbstractItemDelegate
+
+    要提供一个允许编辑的自定义delegate，我们必须对createEditor()，setEditorData()，setModelData()进行重新实现，而且还必须重新实现paint()以改变item的显示。
+
+    QTimeEdit & QTime
+   
+    当用户开始编辑操作时，view会调用createEditor()来创建一个Editor，然后调用setEditorData()来用item的当前值对Editor进行初始化。
+
+
+
+
+Chapter 11 Container Class
+
+
+    Qt提供的容器类的最大优点在于平台无关性和隐式共享特性
+
+
+11.1    Sequentail Containers
+
+QVector<T>array-like data structure(在尾部插入数据时效率很高，而在中间和头部插入数据时开销很大)。
+
+    QVector提供了[]运算符
+
+    QVector可以用<<运算符代替append()函数。
+
+    QVector中的基本类型及指针被初始化为0。
+
+
+QLinkedList<T>
+
+    QLinkedList不提供[]运算符，所以必须通过迭代器来对其进行遍历。
+
+   
+QList<T>  array-list:综合了QVector<T>和QLinkedList<T>最重要的优点：
+
+   支持[]运算符
+   
+    在头部或尾部的插入/删除操作很迅速，而尺寸在1000以下时，在中间的插入/删除操作也很迅速。
+   
+   通常情况下，QList是最合适的通用型容器。
+   
+QStringList: QList<QString>的子类，在Qt中的API中被广泛使用
+
+
+QStack<T>和QQueue<T>是Qt提供的两个convenience subclasses，QStack<T>实际上是一个额外提供了push()，pop()top()接口的QVector，而 QQueue<T>实际是一个额外提供了enqueue()和dequeue()和head()的QList。
+
+
+    容器中可以放置的类必须拥有default constructor、copy constructor和assignment operator(显式定义或由编译器生成)
+
+    注意，派生自QObject的类不符合上述要求，因为其不具备copy constructor和assignment operator；解决方法是在容器中存储对象指针而不是对象本身。
+
+    容器中所存放的元素本身也可以是容器，即可以嵌套——不过需要注意将连续的尖括号用空格分隔开，以免编译器误认为>>运算符。
+
+   
+Iterator
+
+    Qt支持两种风格的迭代器——Java-style和STL-style
+   
+    Java-style的迭代器更容易使用，而STL-style的迭代器可以同Qt和STL中的算法联合使用，更为强大。
+
+    Java-style. Iterator   
+
+    每个sequential容器类，都有两个Java-style的迭代器类型：只读迭代器和读写迭代器。
+
+    在使用Java-style的迭代器时，要清楚的第一件事情就是：迭代器并不直接指向容器中的元素，而是指向元素之前或之后的位置。迭代器被初始化时指向容器中第一个元素之前；若迭代器的右侧有元素存在，hasNext()函数返回true；next()函数返回位于迭代器右侧的元素，并将迭代器向右方移动一个元素的位置；hasPrevious()和previous()函数执行反方向的操作。
+   
+    remove()函数总是删除最近一次被跳过的那个元素。
+   
+    setValue()函数总是对最近一次被跳过的那个元素执行更新操作
+   
+    insert()函数在迭代器当前指向的位置处插入新元素，并将迭代器指向新元素及其后续元素之间的位置。
+   
+    STL-style. Iterator
+
+    每个sequential容器类，都有两个STL-style的迭代器类型：Container<T>::iterator和Container<T>::const_iterator。
+   
+    容器的begin()函数返回一个指向容器中头部元素的iterator，而end()返回指向容器中尾部元素之后位置的iterator；
+    在容器为空时，begin()和end()的结果相同。
+
+    通常通过调用isEmpty()来检查容器是否为空，而不是通过比较begin()和end()的结果。
+   
+    可以对STL-style的iterator使用+、-、*这三个运算符，类似于指针的用法。
+   
+    某些Qt函数的返回值是容器类；如果需要使用STL-style的迭代器来对这样的返回值进行遍历，必须保存返回值的一个副本，并在副本上完成遍历，否则会可能会导致所谓的"dangling iterator"。
+   
+    注意，若使用java-style的只读迭代器，在这种情况下会隐式的完成复制的工作，保证迭代器总是在副本上进行遍历操作。
+   
+implicit sharing(copy on write)
+
+    Qt中的implicit sharing机制的美妙之处在于它鼓励程序员在返回对象时采用传值这种简明的方式而不是引用或指针。
+   
+    STL与此相反，鼓励程序员使用non-const引用来传递vector以避免将函数返回值的复制开销。
+   
+    Qt中所有的容器都采用了implicit sharing机制；此外很多其他类QByteArray，QBrush，QFont，QImage，QString也采用了该机制——这保证这些类在以传值方式进行传递时有很高的效率，无论是作为参数还是函数返回值。
+   
+    在Qt提供的implicit sharing机制下，对vector或list执行只读操作时，采用at()而不是[]运算符是一个更好的选择。
+   
+    类似的，尽可能的使用constBegin()和constEnd()以避免不必要的拷贝操作。
+   
+foreach syntax
+
+    foreach在进入循环体时自动复制容器的副本并在此副本上进行迭代，因此如果迭代过程中有通过迭代器对容器的修改操作的话，并不会影响循环的进行，循环结束后容器的内容也不会发生变化。
+   
+    当然，如果在foreach循环中直接使用[]运算符对容器进行写操作的话，容器的内容自然会发生变化。
+           
+    foreach中支持break和continue语句
+   
+
+
+11.2    Associative Containers
+
+QMap
+
+    QMap中的key-value对是升序排列的
+   
+    插入和删除操作中都可以使用[]运算符，其下标为key；为避免创建不必要的空值，推荐用vlaue()而不是[]从QMap中取值。
+   
+    QMap<K，T>中的K和T除了要求具备默认构造函数、拷贝构造函数和赋值运算符外，K还必须支持operator <，因为这样才能实现前面提到的升序排列。
+   
+    keys() & values()
+   
+    QMap的特性是单值；QMultiMap<K，T>则支持同一关键字下多值的存在，插入操作由insertMulti()完成
+   
+QHash
+
+    QHash提供的接口和QMap很相似
+   
+    QHash<K，T>中的K要符合的额外要求：支持operator ==，并且K可用全局函数qHash()来计算hash value
+   
+    QHash通常是单值的，而QMultiHash则通过insertMulti()支持多值插入。
+   
+
+QCache<K，T> & QSet<K>
+
+   
+    遍历associative containr的最简单方法是使用Java-style的迭代器
+   
+   foreach syntax也可用于assocaitive container
+   
+
+11.3    Generic Algorithms
+
+    头文件<QAlgorithms>中声明了一组全局模板函数，用于实现作用于容器的基本算法；多数算法都通过STL-style的迭代器来完成。
+   
+   STL头文件<algorithm>中的函数，即可作用于Qt容器，也可作用于STL容器。
+   
+    qFind()，qBinaryFind()，qFill()，qCopy()，qSort()，qStableSorg()，qDeleteAll()，qSwap()
+   
+    需要注意的是，qDeleteAll()只对包含指针的容器有意义，该函数将释放所有对象，但并不删除容器中的指针。
+   
+
+11.4    Strings，Byte Arrays，and Variants
+
+
+    QString，QByteArray和QVariant这三个类和容器类有很多相似之处，在某些场合下可作为容器类的替代品；和容器类一样，这三个类也应用了implicit sharing 机制
+   
+QString   
+   
+    QString中存放的是16-bit的Unicold值。
+   
+    从概念上，QString可以看成是QVector<QChar>。
+   
+    QString提供+/+=运算符以及append()函数用于合并字符串
+   
+    QString提供的sprintf()函数，与C++标准库中的sprintf支持相同的参数格式。
+   
+   QString提供的arg()函数，是比sprintf()更好的选择，因为它保证类型安全，支持unicode。
+   
+   QString::number(): number->string
+   QString::setNum(): number->string
+   
+    反向的转换接口：toInt()，toLongLong()，toDouble()等，这些函数都有一个可选参数——bool类型的指针，若转换失败则将该bool变量置为true，否则置false.
+   
+    mid()函数返回指定区间内的子串；left()和right()函数则分别返回左子串和右子串
+   
+    QString的indexOf()函数可用于文本匹配，返回所匹配子串的起始下标；匹配失败时返回值为-1。
+   
+    startsWith()和endsWith()函数可用于判断字符串的首部和尾部是否符合某种模式。
+   
+    QString在进行比较时是大小写�

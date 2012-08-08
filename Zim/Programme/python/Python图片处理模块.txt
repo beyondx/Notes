@@ -1,0 +1,250 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-23T20:46:47+08:00
+
+====== Python图片处理模块 ======
+Created Sunday 23 October 2011
+http://2goo.info/blog/panjj/other/2011/03/30/511
+
+平时用Python做web开发，上传图片是难免的，但直接拿PIL的函数来处理，总感觉有点繁琐，能不能封装些功能函数，让web上传处理图片更简便些。看了壑塥峈的《使用PIL调整图片分辨率》，得到了启发，他写的模块，主要是方便本地图片的批量处理，所以在他原来的基础上修改了一下，让它在开发web中使用。
+ 
+在Django中，很容易得到file控件的值，比如file = request.FILES.get("photo",None),我就从这里出发，开始修改，把类修改成接受file参数和路径参数path，然后通过传入图片尺寸的方法，处理并保存图片，最后返回上传图片名字列表list，不多说，看看Django的views用法便知：
+
+from django.conf import settings
+frommyproject.common.graphicsimportGraphics
+ 
+defindex(request,template_name='apptest/picprocessor.html'):
+    template_var=dict()
+    ifrequest.method=='POST':
+        file=request.FILES.get("photo",None)
+        iffile:
+            path=os.path.join(settings.MEDIA_ROOT,'apptest')
+            resizer=Graphics(file,path)
+            template_var["filename"]=resizer.run_cut((150,100),(300,200),(50,50),)
+            
+returnrender_to_response(template_name,template_var,context_instance=RequestContext(request))
+
+ 
+使用该模块，你仅仅需要传入上传地址（绝对地址）和HttpRequest.FILES，初始化一下里面的Graphics类，然后使用类的方法，指定需要的尺寸tuple即可返回上传图片的名字。
+ 
+Graphics类里有几个方法 是外部调用的，分别是run_cut，run_zoom_w，run_zoom_h和run_thumbnail。
+ 
+run_cut:是根据你提供的尺寸，对原图片进行剪切，原图片比例和你指定的尺寸比例不相等时，程序会以原图中心为准放大缩小剪切成你需要的尺寸，图片不会拉伸。需要传入一个或多个尺寸tuple，如(150,100),(300,200),(50,50)
+ 
+run_zoom_w:是根据你提供的宽度，等比列缩放。方法需要传入一个或多个宽度tuple，如 150,100,200,300
+
+run_zoom_h:是根据你提供的高度，等比列缩放。方法需要传入一个或多个高度tuple，如 150,100,200,300
+ 
+run_thumbnail:是传统的缩略图方法，需要传入一个或多个尺寸tuple，如(150,100),(300,200),(50,50)
+ 
+这三个方法，能把原图处理成多种尺寸规格，也就是说能同时处理并上传成 多张不同尺寸的图片。图片处理的时候，全部采用Image.ANTIALIAS抗锯齿的过滤属性，保存的图片质量暂时定在100，这些都是为了保证剪切图片的时候，最大降低失真度，这样出来的图片体积就稍微大些了。图片的名字组合方式：uuid+"_"+w+"_"+h.jpg，如：ae5c011e-5e98-11e0-96e6-001a6bd081a2-600-400.jpg
+ 
+具体的实现方法：
+
+#coding:utf-8
+"""图片上传后端处理"""
+__modify__ = '2goo.info'
+__email__ ='nmgkjdxjsj@gmail.com'
+VERSION = "Graphics v0.1 build 2011-03-27"
+
+import os,Image,ImageFile,uuid
+
+class Graphics:    
+    def __init__(self,uploadedfile,targetpath):
+        '''初始化参数'''
+        self.uploadedfile=uploadedfile
+        self.targetpath = targetpath
+
+    def check_folder(self):
+        '''检查目标文件夹是否存在，不存在则创建之'''
+        if not os.path.isdir(self.targetpath):
+            os.mkdir(self.targetpath)
+        return self.targetpath
+
+    def pic_info(self, img):
+        '''获取照片的尺寸和确定图片横竖版'''
+        w, h = img.size
+        if  w>h:
+            return w, h, 0  #横版照片
+        else:
+            return w, h, 1  #竖版照片
+
+    def comp_ratio(self, x, y):
+        '''计算比例.'''
+        x = float(x)
+        y = float(y)
+        return float(x/y)
+
+    def pic_cut(self, image, p_w, p_h):
+        '''根据设定的尺寸，对指定照片进行像素调整
+        图形不会变形 如果指定尺寸比例和原图比例不
+        相等时，最大范围剪切'''
+        #获取指定照片的规格，一般是1024,768       
+        img = image   
+        w, h, isVertical = self.pic_info(img)
+        #判断照片横竖，为竖版的话对调w,h
+        if isVertical:
+            p_w, p_h = p_h, p_w
+
+        #如果照片调整比例合适，直接输出
+        if self.comp_ratio(p_h, p_w) == self.comp_ratio(h, w):
+            target = img.resize((int(p_w), int(p_h)),Image.ANTIALIAS)#hack:高保真必备！                            
+            # ANTIALIAS: a high-quality downsampling filter
+            # BILINEAR: linear interpolation in a 2x2 environment
+            # BICUBIC: cubic spline interpolation in a 4x4 environment
+            return target
+
+        #比例不合适就需要对照片进行计算，保证输出照片的正中位置
+        #算法灵感来源于ColorStrom
+        if self.comp_ratio(p_h, p_w) > self.comp_ratio(h, w):
+            #偏高照片的处理
+            #以高为基准先调整照片大小
+            #根据新高按比例设置新宽
+            p_w_n = p_h * self.comp_ratio(w,h) 
+            temp_img = img.resize((int(p_w_n), int(p_h)),Image.ANTIALIAS)
+
+            #获取中间选定大小区域
+            c = (p_w_n - p_w)/2 #边条大小
+            box = (c, 0, c+p_w, p_h) #选定容器
+            #换成crop需要的int形参数
+            box = tuple(map(int, box)) 
+            target = temp_img.crop(box)
+
+            return target
+
+        else:
+            #偏宽的照片
+            #以宽为基准先调整照片大小
+            p_h_n = p_w * self.comp_ratio(h, w)  # 根据新宽按比例设置新高
+            temp_img = img.resize((int(p_w), int(p_h_n)),Image.ANTIALIAS)
+
+            #获取新图像
+            c = (p_h_n - p_h)/2
+            box = (0, c, p_w, c+p_h)
+            box = tuple(map(int, box))
+            target = temp_img.crop(box)
+
+            return target
+        
+    def pic_zoom_w(self, image, p_w):
+        '''根据设定的宽度，对指定照片进行像素缩放 图形不会变形
+        图形比例不变 高度根据指定的宽度等比列放大缩小'''
+        #获取指定照片的规格，一般是1024,768       
+        img = image   
+        w, h, isVertical = self.pic_info(img)
+        p_h=p_w * self.comp_ratio(h, w)
+        temp_img = img.resize((int(p_w), int(p_h)),Image.ANTIALIAS)
+        
+        box = (0, 0, p_w, p_h)
+        box = tuple(map(int, box))
+        target = temp_img.crop(box)
+
+        return target
+    
+    def pic_zoom_h(self, image, p_h):
+        '''根据设定的高度，对指定照片进行像素缩放 图形不会变形
+        图形比例不变 宽度根据指定的高度等比列放大缩小'''
+        #获取指定照片的规格，一般是1024,768       
+        img = image   
+        w, h, isVertical = self.pic_info(img)
+        p_w=p_h * self.comp_ratio(w, h)
+        temp_img = img.resize((int(p_w), int(p_h)),Image.ANTIALIAS)
+        
+        box = (0, 0, p_w, p_h)
+        box = tuple(map(int, box))
+        target = temp_img.crop(box)
+
+        return target   
+
+    #外部调用方法
+    def run_cut(self,quality=80,*args):
+        '''运行调整照片尺寸进程 接纳规格列表，每个规格为一个tuple'''
+        parser = ImageFile.Parser()  
+        for chunk in self.uploadedfile.chunks():  
+            parser.feed(chunk)  
+        img = parser.close()
+        list=[]
+        uuid_str=str(uuid.uuid1())
+        try:
+            for std in args:
+                w, h = std[0], std[1]  #获取照片的规格               
+                filename=uuid_str+"-"+str(w)+"-"+str(h)+'.jpg'      
+                opfile = os.path.join(self.check_folder(),filename)
+                
+                tempimg = self.pic_cut(img,int(w), int(h))
+                tempimg.save(opfile, 'jpeg',quality=quality)
+                list.append(filename)
+            return list
+        except:
+            pass       
+    
+    def run_zoom_w(self,*args):
+        '''运行图形缩放 接纳图形宽度tuple列表，每个宽度为一个整数'''
+        parser = ImageFile.Parser()  
+        for chunk in self.uploadedfile.chunks():  
+            parser.feed(chunk)  
+        img = parser.close()
+        list=[]
+        uuid_str=str(uuid.uuid1())
+        w, h, isVertical = self.pic_info(img)
+        try:
+            for woh in args:#获取照片的宽度              
+                th=int(float(woh) * self.comp_ratio(h,w))
+                #生成唯一的图片名字     
+                filename=uuid_str+"-"+str(woh)+"-"+str(th)+'.jpg'
+                #图片路径+图片名字     
+                opfile = os.path.join(self.check_folder(),filename)           
+                tempimg=self.pic_zoom_w(img,int(woh))                
+                tempimg.save(opfile, 'jpeg',quality=80)
+                list.append(filename)
+            return list
+        except:
+            pass
+        
+    def run_zoom_h(self,*args):
+        '''运行图形缩放 接纳图形高度tuple列表，每个高度为一个整数'''
+        parser = ImageFile.Parser()  
+        for chunk in self.uploadedfile.chunks():  
+            parser.feed(chunk)  
+        img = parser.close()
+        list=[]
+        uuid_str=str(uuid.uuid1())
+        w, h, isVertical = self.pic_info(img)
+        try:
+            for woh in args:#获取照片的高度                
+                tw=int(float(woh) * self.comp_ratio(w,h))
+                filename=uuid_str+"-"+str(tw)+"-"+str(woh)+'.jpg'   
+                opfile = os.path.join(self.check_folder(),filename)                    
+                tempimg=self.pic_zoom_h(img,int(woh))
+                tempimg.save(opfile, 'jpeg',quality=80)
+                list.append(filename)
+            return list
+        except:
+            pass
+        
+    def run_thumbnail(self,*args):
+        '''传统的生成缩略图 接纳规格列表，每个规格为一个tuple'''
+        parser = ImageFile.Parser()  
+        for chunk in self.uploadedfile.chunks():  
+            parser.feed(chunk)  
+        img = parser.close()
+        list=[]
+        uuid_str=str(uuid.uuid1())
+        try:
+            for std in args:
+                #获取照片的规格            
+                w, h = std[0], std[1]
+                #生成唯一的图片名字         
+                filename=uuid_str+"-"+str(w)+"-"+str(h)+'.jpg'
+                #图片路径+图片名字
+                opfile = os.path.join(self.check_folder(),filename)
+                tempimg=img.copy()
+                tempimg.thumbnail((int(w), int(h)),Image.ANTIALIAS)
+                tempimg.save(opfile, 'jpeg',quality=80)
+                list.append(filename)
+            return list
+        except:
+            pass
+
+
+有好的建议，别忘了告诉我。该模块，会慢慢完善

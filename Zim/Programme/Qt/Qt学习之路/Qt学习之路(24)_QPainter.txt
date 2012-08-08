@@ -1,0 +1,83 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-04T17:21:04+08:00
+
+====== Qt学习之路(24) QPainter ======
+Created Friday 04 November 2011
+
+原创作品，允许转载，转载时请务必以超链接形式标明文章 原始出处 、作者信息和本声明。否则将追究法律责任。http://devbean.blog.51cto.com/448512/235332
+
+多些大家对我的支持啊！有朋友也提出，前面的几节有关event的教程缺少例子。因为event比较难做例子，也就没有去写，只是把大概写了一下。今天带来的是新的部分，有关Qt的2D绘图。这部分不像前面的内容，还是比较好理解的啦！所以，例子也会增加出来。
+ 
+有人问豆子拿Qt做什么，其实，豆子就是在做一个Qt的画图程序，努力朝着Photoshop和GIMP的方向发展。但这终究要经过很长的时间、很困难的路程的，所以也放在网上开源，有兴趣的朋友可以来试试的呀…
+
+ 
+Qt的绘图系统允许使用相同的API在屏幕和打印设备上进行绘制。整个绘图系统基于QPainter，QPainterDevice和QPaintEngine三个类。
+ 
+QPainter用来执行绘制的操作；QPaintDevice是一个**二维空间的抽象**，这个二维空间可以由QPainter在上面进行绘制；QPaintEngine提供了画笔painter在不同的设备上进行绘制的统一的接口。QPaintEngine类用在QPainter和QPaintDevice之间，并且通常对开发人员是透明的，除非你需要自定义一个设备，这时候你就必须重新定义QPaintEngine了。
+ 
+下图给出了这三个类之间的层次结构(出自Qt API 文档)：
+ {{./1.png}}
+
+===== QPainter =====
+ 
+这种实现的主要好处是，所有的绘制都遵循着同一种绘制流程，这样，添加可以很方便的添加新的特性，也可以为不支持的功能添加一个默认的实现方式。另外需要说明一点，Qt提供了一个独立的QtOpenGL模块，可以让你在Qt的应用程序中使用OpenGL功能。该模块提供了一个OpenGL的模块，可以像其他的Qt组件一样的使用。它的不同之处在于，它是使用OpenGL作为显示技术，使用OpenGL函数进行绘制。对于这个组件，我们以后会再介绍。
+ 
+通过前面的介绍我们知道，Qt的绘图系统实际上是说，**使用QPainter在QPainterDevice上面进行绘制，它们之间使用QPaintEngine进行通讯**。好了，下面我们来看看怎么使用QPainter。
+ 
+首先我们定义一个组件，同前面的定义类似：
+ 
+class PaintedWidget : public QWidget
+{
+public:
+        PaintedWidget();
+
+protected:
+        void paintEvent(QPaintEvent *event);
+};
+ 
+这里我们只定义了一个构造函数，并且重定义paintEvent()函数。从名字就可以看出，这实际上是一个事件的回调函数。请注意，一般而言，Qt的事件函数都是protected的，所以，如果你要重写事件，就需要继承这个类了。至于事件相关的东西，我们在前面的内容已经比较详细的叙述了，这里不再赘述。
+ 
+构造函数里面主要是一些大小之类的定义，这里不再详细说明：
+ 
+PaintedWidget::PaintedWidget()
+{
+        resize(800, 600);
+        setWindowTitle(tr("Paint Demo"));
+}
+ 
+我们关心的是paintEvent()函数的实现：
+ 
+void PaintedWidget::paintEvent(QPaintEvent *event)
+{
+**        QPainter painter(this);**
+        painter.drawLine(80, 100, 650, 500);
+        painter.setPen(Qt::red);
+        painter.drawRect(10, 10, 100, 400);
+        painter.setPen(QPen(Qt::green, 5));
+        painter.setBrush(Qt::blue);
+        painter.drawEllipse(50, 150, 400, 200);
+}
+ 
+为了把我们的程序运行起来，下面是main()函数：
+ 
+int main(int argc, char *argv[])
+{
+        QApplication app(argc, argv);
+        PaintedWidget w;
+        w.show();
+        return app.exec();
+}
+ 
+ 
+运行结果如下所示：
+ {{./2.png}}
+ 
+首先，我们声明了一个QPainter对象。注意，我们在这个**函数的栈空间**建立了对象，因此不需要delete。
+ 
+QPainter接收一个QPaintDevice*类型的参数。QPaintDevice有很多子类，比如**QImage，以及QWidget**。注意回忆一下，QPaintDevice可以理解成**要在哪里去画**，而现在我们希望在这个widget上画，因此传入的是this指针。
+ 
+QPainter有很多以draw开头的函数，用于各种图形的绘制，比如这里的drawLine，drawRect和和drawEllipse等。具体的参数请参阅API文档。下图给出了QPainter的draw函数的实例，本图来自C++ GUI Programming with Qt4, 2nd Edition.
+ {{./3.png}}
+ 
+好了，今天先到这里，我们将在下面一章中继续对这个paintEvent()函数进行说明。

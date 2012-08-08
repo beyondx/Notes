@@ -1,0 +1,63 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-28T11:31:15+08:00
+
+====== Using script ======
+Created Monday 28 November 2011
+http://www.linuxhowtos.org/Tips%20and%20Tricks/using_script.htm
+
+This tip shows you how to use script as a way to store or share __everything printed __during a terminal session. This can be a great way to remotely demonstrate command-line Linux to a less experienced user. Alternatively, it's a good way to keep a record of everything you do (or did) for a specific session.
+
+First we'll look at keeping a record of everything. The can be done by just issuing the command script. The output of your session will be written to a file named **typescript**. If you want to specify a file other than the default, use script file where file is the name of the file storing the session.
+
+===== Code Listing 1: Creating a script session =====
+
+% script  
+Script started, file is typescript  
+% uptime  
+ 13:27:53 up 89 days,  3:50,  1 user,  load average: 0.27, 0.35, 0.29  
+% uname -srvmpio  
+Linux 2.4.20-gentoo-r4 #1 SMP Fri May 9 08:54:35 EDT 2003 i686 Intel(R) Xeon(TM)  
+ CPU 2.00GHz GenuineIntel GNU/Linux  
+% exit  
+Script done, file is typescript
+
+The session file can be reviewed later with a** pager **such as more, less, or cat.
+
+===== Code Listing 2: Viewing a script session =====
+
+% more typescript  
+Script started on Wed Aug  6 13:27:47 2003  
+% uptime  
+ 13:27:53 up 89 days,  3:50,  1 user,  load average: 0.27, 0.35, 0.29  
+% uname -srvmpio  
+Linux 2.4.20-gentoo-r4 #1 SMP Fri May 9 08:54:35 EDT 2003 i686 Intel(R) Xeon(TM)  
+ CPU 2.00GHz GenuineIntel GNU/Linux  
+% exit  
+  
+Script done on Wed Aug  6 13:28:01 2003
+
+Now we'll look at__ sharing a terminal session__. The easiest way to do this is combining script with mkfifo (which creates a **named pipe**). Note that you need to use the __-f__ option (script -f) to flush output after** each write**. This way, the terminal can be written to by User A and viewed in (near) real time by User B.
+
+Code Listing 3: User A's terminal
+
+% mkfifo demo; script -f demo  
+Script started, file is demo  
+% echo 'Hello World'  
+Hello World  
+% exit  
+Script done, file is demo  
+
+ 
+
+Note: User A's terminal will __wait for input until User B issues the cat command__ (or accesses the named pipe).
+
+Code Listing 4: User B's terminal
+
+% cat demo  
+Script started on Wed Aug  6 13:48:51 2003  
+% echo 'Hello World'  
+Hello World  
+% exit  
+  
+Script done on Wed Aug  6 13:49:04 2003

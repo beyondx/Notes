@@ -1,0 +1,20 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-03T21:05:12+08:00
+
+====== ltib ======
+Created Friday 03 August 2012
+
+1. 安装rpm-org和cpio软件包
+	yoaurt -S rpm-org cpio
+
+2. 改变/opt目录可写
+	sudo chmod -R 777 [[/opt]]
+
+3. 安装：
+	perl-net-http和perl-lwp-protocol-https
+
+4.执行/usr/sbin/visudo命令，在打开的文件中添加
+	geekard ALL = NOPASSWD: /bin/rpm, /opt/freescale/ltib/usr/bin/rpm
+	
+5. 

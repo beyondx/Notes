@@ -1,0 +1,60 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-05T16:53:55+08:00
+
+====== Modular programming ======
+Created Friday 05 August 2011
+
+Modular programming is a software design technique that increases the extent to which **software is composed of separate, interchangeable components,** called modules by** breaking down program functions into modules**, each of which accomplishes** one function and contains everything necessary to accomplish this**.[1] Conceptually, modules represent a __separation of concerns__, and improve maintainability by enforcing **logical boundaries** between components. Modules are typically incorporated into the program through **interfaces**.[2] A module interface expresses the elements that are __provided and required__ by the module. The elements defined in the interface are detectable by other modules. The **implementation** contains the working code that corresponds to the elements declared in the interface.
+
+==== Contents ====
+
+    1 Language support
+    2 Key aspects
+    3 Implementation
+    4 History
+    5 See also
+    6 References
+
+==== Language support ====
+
+Languages that formally support the module concept include Ada, BlitzMax, COBOL, Component Pascal, D, Erlang, F, Fortran, Haskell, IBM/360 Assembler, IBM RPG, MATLAB, ML, Modula-2, Morpho, Oberon, OCaml, Pascal, Perl, PL/1, Python, and Ruby. The IBM System i also uses Modules in CL, COBOL, and RPG when programming in the Integrated Language Environment (ILE). Modular programming can be performed even where the programming language lacks explicit syntactic features to support named modules.
+
+Software tools can create modular code units from groups of components. **Libraries **of components built from separately compiled modules can be combined into a whole by using a **linker**.
+
+==== Key aspects ====
+
+With modular programming, __concerns are separated such that no (or few) modules depend upon other modules of the system[dubious – discuss]. To have as few dependencies as possible is the goal[dubious – discuss].__
+
+When creating a modular system, instead of creating a monolithic application (where the smallest component is the whole), several smaller modules are built (and usually compiled) separately that, when composed together, will construct the executable application program. A just in time compiler may perform some of this construction "on-the-fly" at run time.
+
+This makes modular designed systems, if built correctly, far more__ reusable__ than a traditional monolithic design, since all (or many) of these modules may then be reused (without change) in other projects. This also facilitates the "__breaking down__" of projects (through "__divide and conquer__") into several smaller projects. Theoretically, a modularized software project will be more easily assembled by large teams, since no team members are creating the whole system, or even need to know about the system as a whole. They can focus just on the **assigned smaller task** (this, it is claimed, counters the key assumption of The Mythical Man Month – making it actually possible to add more developers to a late software project – without making it later still).
+
+==== Implementation ====
+
+__Message passing __has, more recently, gained ground over the earlier, more conventional, __"Call" interfaces__, becoming the more dominant linkage between separate modules as an attempt to solve the "versioning problem" (sometimes experienced when using interfaces for communication between the modules).
+
+==== History ====
+
+Traditional programming languages have been used to support modular programming - since at least the 1960s. Modular programming is a loosely defined concept with no official definition. It is, in essence, simply a programming technique[dubious – discuss]. Exactly where modularized programming ends, and Dynamically Linked Libraries or Object-oriented programming starts in this context is subjective. It might be defined as the natural predecessor of OOP, or an evolutionary step beyond it - depending upon viewpoint.
+[edit] See also
+
+    Architecture description language
+    Cohesion
+    Constructionist design methodology, a methodology for creating modular, broad Artificial Intelligence systems
+    Component-based software engineering
+    Coupling
+    David Parnas
+    Information hiding (encapsulation)
+    Library (computing)
+    List of system quality attributes
+    Snippet (programming)
+    Structured programming
+
+[edit] References
+
+    ^ Jürgen Haas. "Modular programming". http://www.about.com/: About.com. "Modular programming is a programming style that breaks down program functions into modules, each of which accomplishes one function and contains all the source code and variables needed to accomplish that function. Modular programming is a solution to the problem of very large programs that are difficult to debug and maintain. By segmenting the program into modules that perform clearly defined functions, you can determine the source of program errors more easily. Object-orientated programming languages, such as SmallTalk and HyperTalk, incorporate modular programming principles."
+    ^ Seif Haridi; Nils Franzén. "7. Modules and Interfaces". http://www.mozart-oz.org/documentation/index.html: Mozart Documentation. "Modules, also known as packages, are collection of procedures and other values1 that are constructed together to provide certain related functionality. A module typically has a number of private procedures that are not visible outside the module and a number of interface procedures that provide the external services of the module."
+
+    O2 Software Process
+

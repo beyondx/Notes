@@ -1,0 +1,138 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-14T10:05:55+08:00
+
+====== GNU Automake ======
+Created Thursday 14 June 2012
+
+GNU Automake
+For version 1.3, 3 April 1998
+David MacKenzie and Tom Tromey
+
+@dircategory GNU admin @direntry * automake: (automake). Making Makefile.in's
+@dircategory Individual utilities @direntry * aclocal: (automake)Invoking aclocal. Generating aclocal.m4
+Copyright (C) 1995, 96 Free Software Foundation, Inc.
+
+这是GNU Automake文档的第一版，
+并且是针对GNU Automake 1.3的。
+
+自由软件基金会出版
+59 Temple Place - Suite 330,
+Boston, MA 02111-1307 USA
+
+Permission is granted to make and distribute verbatim copies of this manual provided the copyright notice and this permission notice are preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this manual under the conditions for verbatim copying, provided that the entire resulting derived work is distributed under the terms of a permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual into another language, under the above conditions for modified versions, except that this permission notice may be stated in a translation approved by the Free Software Foundation.
+
+只要版权声明和本许可声明保留在所有副本中，您就被授权制作和发行本手册的 原文副本。
+只要整个最终派生工作按照与本手册相同的许可声明发行，您就被授权按照与 发行原文相同的条件复制和发行本手册的修改版本。
+除了本许可声明应该使用由基金会批准的译文之外，您被授权按照与上述修改 版本相同的条件复制和发行本手册的其它语言的译文。
+本文档由王立翻译。 1999.12.17
+译者在此声明：不对任何由译文错误或者对译文的误解承担任何责任。
+
+===== 介绍 =====
+
+__Automake是一个从文件`Makefile.am'自动生成`Makefile.in' 的工具__。每个`Makefile.am'基本上是__一系列make的宏定义__ （make规则也会偶尔出现）。生成的`Makefile.in's服从GNU Makefile标准。
+
+GNU Makefile标准文档（参见GNU编码标准中的‘Makefile惯例’节） 长、复杂，而且会发生改变。Automake的目的就是解除个人GNU维护者维护Makefile的负担 （并且让Automake的维护者来承担这个负担）。
+
+典型的Automake输入文件是一系列简单的宏定义。处理所有这样的文件以创建 `Makefile.in'。在一个项目（project）的__每个源代码目录中通常包含一个 `Makefile.am'。__
+
+Automake在几个方面对一个项目做了限制；例如它假定项目使用Autoconf （参见Autoconf手册），并且对`configure.in'的内容施加了某些限制。
+
+为生成`Makefile.in'，Automake需要perl。 但是由Automake创建的发布完全服从GNU标准，并且在创建中不需要perl。
+
+请把关于Automake的建议和bug发送到 automake-bugs@gnu.org。
+
+===== 通用性概念 =====
+
+一些基本概念将有助于理解Automake是如何工作的。
+
+==== 1. 通用操作 ====
+
+Automake读入`Makefile.am'并且生成`Makefile.in'。 在`Makefile.am'中定义的一些宏和目标（targets）指挥automake生成更多特定的代码；例如一个`bin_PROGRAMS'宏定义将生成一个需要被编译、连接的可执行程序目标。
+
+`Makefile.am'中的__宏定义和目标被复制到生成的文件中__。这使得你可以把__任何符合makefile语法规则的代码__添加到生成的`Makefile.in'文件中。例如，Automake的发布包含了非标准的cvs-dist目标，Automake的维护者用它从他的版本控制系统中创建发布版本。
+
+Automake不能识别GNU对make的扩展。在`Makefile.am'中使用这些扩展将导致错误或者令人不解的行为。
+
+Automake试图明智地把注释和相邻的目标（或者变量定义）关联起来。
+
+在`Makefile.am'中定义的目标通常覆盖了所有由automake 自动生成的拥有相似名字的目标。虽然Automake提供了这一功能，但最好避免使用它， 因为有些时候生成的规则将是十分特别的。
+
+类似地，__在`Makefile.am'中定义的变量将覆盖任何通常由automake 创建的变量定义__。该功能比覆盖目标定义的功能要常用得多。需要警告的是许多由 automake生成的变量都被认为是内部使用的，并且它们的名字可能在未来 的版本中改变。
+
+在检验变量定义的时候，Automake将递归地检验定义中的变量引用。例如，如果Automake 在如下片断中搜索`foo_SOURCES'的内容。
+
+xs = a.c b.c foo_SOURCES = c.c $(xs)
+
+它将把文件`a.c'、 `b.c'和 `c.c'作为`foo_SOURCES' 的内容。
+
+Automake还允许给出不被复制到输出中的注释；所有以`##'开头的行 将被Automake彻底忽略。
+
+作为惯例，`Makefile.am'的第一行是：
+
+## Process this file with automake to produce Makefile.in
+
+==== 2. 深度 ====
+
+automake支持三种目录层次： “flat”、“shallow”和“deep”。
+
+* 一个flat（平）包指的是__所有文件__都在一个目录中的包。为这类包提供的`Makefile.am' 缺少宏SUBDIRS。这类包的一个例子是termutils。
+* 一个deep（深）包指的是所有的源代码都被储存在子目录中的包；顶层目录主要包含配置信息。GNU cpio 是这类包的一个很好的例子，GNU tar也是。deep包的顶层`Makefile.am'将包括宏SUBDIRS，但没有定义需要创建的对象的宏(**所有的对象如可执行程序和库文件都是在SUBDIRS中的makefle.am中定义的**)。
+* 一个shallow（浅）包指的是主要的源代码储存在顶层目录中，而各个部分（典型的是库）则储存在子目录中的包。Automake本身就是这类包（GNU make也是如此，它现在已经不使用automake）。这样顶层的makefile.am既包括SUBDIRS宏，__也包括__创建对象的宏定义（使用的是顶层目录的源代码）。
+
+==== 3. 严格性 ====
+
+Automake的目的是用于维护GNU包，它为适应那些希望使用它的人做出 了一些努力，但并不指望应用所有的GNU惯例。
+
+按照这个目标，Automake支持三级严格性---__严格性指的是Automake 将如何检查包所服从的标准__。
+
+可用的严格性级别有：
+
+* `foreign'（外来）
+    Automake将仅仅检查那些为保证正确操作所必需的事项。例如，尽管GNU标准指出 文件`NEWS'必须存在，在本方式下，并不需要它。该模式名来自于Automake 是被设计成用于GNU程序的事实的；它放松了标准模式的操作规则。 
+* `gnu'
+   Automake将尽可能地检查包是否服从GNU标准。这是__缺省设置__。 
+* `gnits'
+  Automake将按照还没有完成的Gnits标准进行检查。它们是基于GNU标准的，但更加详尽。除非你是Gnits标准的参与奉献者，我们建议您在Gnits标准正式出版之前 不要使用这一选项。 
+
+关于严格性级别的精确含义的详细说明，参见--gnu 和--gnits的效果
+
+==== 4. 统一命名机制 ====
+
+Automake__变量通常服从统一的命名机制__，以易于确定如何创建和安装程序（和其它派生对象）。 这个机制还支持//在运行configure的时候//确定应该创建那些对象。
+
+在运行make时，某些变量被用于确定应该创建那些对象。 这些变量被称为__主（primary）变量__。例如，主变量PROGRAMS 保存了需要被编译和连接的程序的列表。另一组变量用于确定应该把创建了的对象安装在哪里。这些变量在主变量之后命名， 但是含有一个前缀以指出那个标准目录将作为安装目录。__标准目录名__在GNU标准中给出 （参见GNU编码标准中的`为Directory Variables'节）。 Automake用pkglibdir、pkgincludedir和 pkgdatadir扩展了这个列表；除了把`@PACKAGE@'附加 其后之外，与非`pkg'版本是相同的。 例如，pkglibdir被定义为$(datadir)/@PACKAGE@.
+
+对于每个主变量，还有一个__附加变量__，它的名字是在主变量名之前加一个`EXTRA_'。 该变量用于储存根据configure的运行结果，可能创建、也可能不创建 的对象列表。引入该变量是因为Automake必须静态地知道需要创建的对象的完整列表 以创建在所有情况下都能够工作的`Makefile.in'。
+
+例如，在配置时刻cpio确定创建哪些程序。一部分程序被安装在bindir， 还有一部分程序被安装在sbindir：
+
+EXTRA_PROGRAMS = mt rmt 
+bin_PROGRAMS = cpio pax 
+sbin_PROGRAMS = @PROGRAMS@
+
+定义没有前缀的主变量（比如说PROGRAMS）是错误的。
+
+在构造变量名的时候，通常省略后缀`dir'；因此我们使用 `bin_PROGRAMS'而不是`bindir_PROGRAMS'.
+
+不是每种对象都可以安装在任何目录中。Automake将记录它们以试图找出错误。Automake还将诊断目录名中明显的拼写错误。
+
+有时标准目录--即使在Automake扩展之后---是不够的。特别在有些时候，为了清晰 起见，把对象安装到预定义目录的子目录中是十分有用的。为此，Automake允许你 扩展可能的安装目录列表。如果__定义了一个添加了后缀`dir'的变量__ （比如说`zardir'），则给定的前缀（比如`zar'） 就是合法的。
+
+例如，在HTML支持成为Automake的一部分之前，你可以使用它安装原始的HTML文档。
+
+htmldir = $(prefix)/html html_DATA = automake.html
+
+特殊前缀__`noinst'__表示根本不会安装这些有问题的对象。
+
+特殊前缀__`check'__表示仅仅在运行make check 命令的时候才创建这些有问题的对象。
+
+可能的主变量名有__`PROGRAMS'、`LIBRARIES'、 `LISP'、`SCRIPTS'、`DATA'、 `HEADERS'、`MANS'和`TEXINFOS'__。
+
+派生变量是如何命名的
+
+有时Makefile变量名是从用户提供的某些文本中派生而来的。例如程序名被重写 到Makefile宏名中。Automake把这些文本规范化，以使它可以不必服从Makefile的变量名规则。__在名字中除了字母、数字和下划线之外的所有字符都将用下划线代替__。 例如，如果你的程序被命名为sniff-glue，那么派生出的变量名 将是sniff_glue_SOURCES，而不是sniff-glue_SOURCES。

@@ -1,0 +1,101 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-06T14:20:31+08:00
+
+====== Qt-Embedded的移植 ======
+Created Tuesday 06 March 2012
+
+http://book.51cto.com/art/200708/53782.htm
+
+Qt/Embedded的__底层图形引擎完全依赖于FrameBuffer__，因此在移植时需考虑目标平台的__Linux内核版本和FrameBuffer驱动程序(基于LCD控制器)__的实现情况，包括**分辨率和颜色深度**等在内的信息。当前嵌入式CPU大多__内部集成LCD控制器__，并支持多种配置方式。Qt/Embedded能够较好地**根据系统已有的FrameBuffer驱动接口**构建上层的图形引擎。
+
+Qt/Embedded图形引擎中的__图形绘制操作__函数都是由源代码目录src/kernel/中的src/kernel/qgfxreaster_qws.cpp所定义的QgfxRasterBase类发起的声明。对于设备更加底层的抽象描述，则在src/kernel目录qgfx_qws.cpp的Qscreen类中给予相应定义。这些是对FrameBuffer设备直接操作的基础，包括__点、线、区域填充、alpha混合和屏幕绘制__等函数均在其中定义实现。在FrameBuffer驱动程序调试通过后，配置Qt/Embedded的编译选项，可以保证Qt/Embedded的图形引擎正常工作。
+
+Qt/Embedded中的**输入设备**，同样分为__鼠标类与键盘类__。其中鼠标设备在源码目录中的src/kernel/qwsmouse_qws.cpp中实现，从该类中又重新派生出一些特殊鼠标类设备的实现类。当然也可以**根据具体的硬件驱动程序实现的接口**，实现类似的接口函数。
+
+Qt/Embedded中对于键盘响应的实际函数位于src/kernel/qkeyboard_qws.cpp中，在qkeyboard_qws.h中，定义了键盘类设备接口的基类QWSKeyboardHandler。具体的__键盘硬件接口依然要建立在键盘驱动程序基础上__，移植时**需要根据键盘驱动程序从该类派生出实现类**，实现键盘事件处理函数processKeyEvent()即可。
+
+Qt/Embedded内部对于字符集的处理采用了UNICODE编码标准。Qt/Embedded同时支持两种对于其他编码标准（如GB2312和GBK）的支持方式：静态编译和动态插件装载。通过配置config.h文件添加相应的编码支持宏定义，可以获得其他编码标准向UNICODE的转换支持，从而在Qfont类中得以转换与显示。由于UNICODE涵盖了中文部分，所以Qt/Embedded对中文支持也非常好。
+
+Qt/Embedded能够支持TTF、PFA/PFB、BDF和QPF字体格式。由于自身采用UNICODE编码方式对字符进行处理，在一定程度上导致了使用的字体文件体积增大。为了解决这一问题，Qt/Embedded采用了QPF格式，用makeqpf等工具可以将TTF等格式的字体转换至QPF格式。Qt的移植编译过程大体如下几步。
+
+（1）**为主机编译**qvfb(qt virtual frame buffer)。
+
+[root@linuxj root]#cd /root/host-tools
+[root@linuxj host-tools]#tar -zxvf qvfb-1.0.tar.gz
+[root@linuxj host-tools]#cd qvfb-1.0
+[root@linuxj host-tools]#./configure
+[root@linuxj host-tools]#make    
+
+（2）**为主机**编译qte-2.3.7。(qt embedded)
+
+[root@linuxj root]#cd /root/host-tools
+[root@linuxj host-tools]#tar -zxvf qt-embedded-2.3.7.tar.gz
+[root@linuxj host-tools]#cd qt-2.3.7
+[root@linuxj qt-2.3.7]#export QTDIR=$PWD
+[root@linuxj qt-2.3.7]#export QTEDIR=$QTDIR
+[root@linuxj qt-2.3.7]#export PATH=$QTDIR/bin:$PATH
+[root@linuxj qt-2.3.7]#export LD_LIBRARY_PATH=$QTDIR/lib:$LD_LIBRARY_PATH
+[root@linuxj qt-2.3.7]#./configure -qvfb -depths 16 -qconfig local -thread
+[root@linuxj qt-2.3.7]#make   
+
+（3）为目标机编译qte-2.3.7。
+
+[root@linuxj root]#cd /root/arm-tools
+[root@linuxj arm-tools]#tar -zxvf qt-embedded-2.3.7.tar.gz
+[root@linuxj arm-tools]#cd qt-2.3.7
+[root@linuxj qt-2.3.7]#export QTDIR=$PWD
+[root@linuxj qt-2.3.7]#export QTEDIR=$QTDIR
+[root@linuxj qt-2.3.7]#export PATH=$QTDIR/bin:$PATH
+[root@linuxj qt-2.3.7]#export LD_LIBRARY_PATH=$QTDIR/lib:$LD_LIBRARY_PATH
+[root@linuxj qt-2.3.7]#cp /root/linux-PXA/gui/qt/qconfig-local.h src/tools/
+[root@linuxj qt-2.3.7]#./configure -xplatform linux-arm-g++ **-no-qvfb** **-depths 16** -qconfig local –thread
+
+[root@linuxj qt-2.3.7]#make
+
+（4）编译qte应用程序。
+
+[root@linuxj demo]#export TMAKEDIR=/root/host-tools/tmake-1.13
+[root@linuxj demo]#export PATH=$PATH:$TMAKEDIR/bin
+[root@linuxj demo]#export TMAKEPATH=$TMAKEDIR/lib/linux-arm-g++
+[root@linuxj demo]#cp -a /root/linux-omap/gui/qt/linux-arm-g++ $TMAKEDIR/lib/ 
+[root@linuxj demo]#tmake -o Makefile demo.pro 
+
+
+（5）__编译tslib__。
+
+[root@linuxj tslib]#./autogen.sh
+[root@linuxj tslib]#./configure --host=arm-linux --build=i686-pc-linux-gnu 
+--prefix=/root/linux-PXA/rootfs/tempfs --enable-inputapi=no
+[root@linuxj tslib]#make
+[root@linuxj tslib]#make install   
+
+（6）编译qtopia。
+
+[root@linuxj root]#cd /home/host
+[root@linuxj host]#tar -zxvf e2fsprogs-1.35.tar.gz
+[root@linuxj host]#tar -zxvf qt-embedded-2.3.7.tar.gz
+[root@linuxj host]#tar -zxvf qtopia-free-1.7.0.tar.gz
+[root@linuxj host]#cd e2fsprogs-1.35
+[root@linuxj e2fsprogs-1.35]#./configure --enable-elf-shlibs
+[root@linuxj e2fsprogs-1.35]#make
+
+[root@linuxj root]#cd qt-2.3.7
+[root@linuxj qt-2.3.7]#cp ../qtopia-1.7.0/src/qt/qconfig-qpe.h src/tools/
+[root@linuxj qt-2.3.7]#export QTDIR=$PWD
+[root@linuxj qt-2.3.7]#./configure -qvfb -qconfig qpe -depths 16 -system-jpeg-gif
+[root@linuxj qt-2.3.7]#make sub-src
+[root@linuxj qt-2.3.7]#cp /root/host-tools/qt-2.3.7/bin/uic bin/
+
+[root@linuxj root]#cd /home/host/qtopia-1.7.0
+[root@linuxj qtopia-1.7.0]#export QPEDIR=$PWD
+[root@linuxj qtopia-1.7.0]#export PATH=$QPEDIR/bin:$QTDIR/bin:$PATH
+[root@linuxj qtopia-1.7.0]#cd include
+[root@linuxj include]#ln -s ../../e2fsprogs-1.35/lib/uuid uuid
+[root@linuxj include]#cd /home/host/qtopia-1.7.0/lib
+[root@linuxj lib]#ln -s ../../e2fsprogs-1.35/lib/libuuid.so.1.2 libuuid.so
+[root@linuxj lib]#cd src
+[root@linuxj src]#./configure
+[root@linuxj src]#make
+
+经过上述6步的成功编译，就可以在平台上运行qtopia了。这里推荐大家试着移植topia PDA和qtopia Phone版本。移植方法基本一样，不过对于不同的应用，qtopia的这几个产品有所不同。

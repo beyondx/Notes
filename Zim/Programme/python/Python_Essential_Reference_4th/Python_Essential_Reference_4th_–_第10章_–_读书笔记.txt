@@ -1,0 +1,144 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-05T14:49:50+08:00
+
+====== Python Essential Reference 4th – 第10章 – 读书笔记 ======
+Created 星期二 05 七月 2011
+1、python解析器的参数：
+-i 当程序执行完毕后，进入交互模式。
+-O 优化模式
+-OO 进一步优化模式
+-v 详细现实
+-x 跳过py文件的第一行
+
+2、另外，python会解析一些环境变量，例如：
+PYTHONPATH 模块搜索的路径，会被插入到 sys.path
+PYTHONIOENCODING 对于stdin、stdout和stdout的方式？
+PYTHONOPTIMIZE -O参数
+
+3、当在命令行只输入python，不加任何py文件时，进入交互模式。>>>提示输入新的一行语句。…表示目前处于多行语句下。这些数值可以通过环境变量sys.ps1和sys.ps2来设置。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> print sys.ps1
+>>>
+>>> print sys.ps2
+...
+
+4、上一次的计算结果用下划线“_”代替。
+
+5、如何直接执行py脚本（而不加python）？类似于shell，在第一行加入python的位置指令。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+例如test.py文件
+#!/usr/bin/env python
+......
+
+执行时：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+chmod u+x test.py
+./test.py
+
+6、第三方包和模块路径：sys.path，此外还有site目录，也在sys.path中记录了。
+
+7、在安装包时，可以只将其安装在用户目录下，例如~/.local或者~/.local/lib/python2.x/site-packages，这可以通过python setup.py install –user来完成。
+
+8、需要使用未来版本中的，但当前又不支持的功能，通过future：
+from __future__ import division
+
+9、当有未捕获的SystemExit异常时，或者信号SIGTERM，SIGHUP时，会释放所有对象的引用和命名空间，如果有调用__del__()。
+但很多时候，__del__()并不会被调用，我们可以自己编写释放资源的函数，并利用atexit模块，在退出事件上注册它。这可以保证：在退出时一定会执行cleanup()
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+import atexit
+ 
+def cleanup():
+    print "Exiting..."
+    #Do something
+    #close(f)
+    #...
+ 
+atexit.register(cleanup)
+
+执行：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+python ./cln.py
+ 
+Exiting...
+
+10、也可以使用os._exit(status)来退出程序，它将直接使用exit()系统调用。liheyuan@cliheyuan@coder4-pc:/media/WIN7/Documents and Settings/liheyuan/Desktop$ iconv -f gbk -t utf8 ./python第10章.txt
+1、python解析器的参数：
+-i 当程序执行完毕后，进入交互模式。
+-O 优化模式
+-OO 进一步优化模式
+-v 详细现实
+-x 跳过py文件的第一行
+
+2、另外，python会解析一些环境变量，例如：
+PYTHONPATH 模块搜索的路径，会被插入到 sys.path
+PYTHONIOENCODING 对于stdin、stdout和stdout的方式？
+PYTHONOPTIMIZE -O参数
+
+3、当在命令行只输入python，不加任何py文件时，进入交互模式。>>>提示输入新的一行语句。…表示目前处于多行语句下。这些数值可以通过环境变量sys.ps1和sys.ps2来设置。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> print sys.ps1
+>>>
+>>> print sys.ps2
+...
+
+4、上一次的计算结果用下划线“_”代替。
+
+5、如何直接执行py脚本（而不加python）？类似于shell，在第一行加入python的位置指令。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+例如test.py文件
+#!/usr/bin/env python
+......
+
+执行时：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+chmod u+x test.py
+./test.py
+
+6、第三方包和模块路径：sys.path，此外还有site目录，也在sys.path中记录了。
+
+7、在安装包时，可以只将其安装在用户目录下，例如~/.local或者~/.local/lib/python2.x/site-packages，这可以通过python setup.py install –user来完成。
+
+8、需要使用未来版本中的，但当前又不支持的功能，通过future：
+from __future__ import division
+
+9、当有未捕获的SystemExit异常时，或者信号SIGTERM，SIGHUP时，会释放所有对象的引用和命名空间，如果有调用__del__()。
+但很多时候，__del__()并不会被调用，我们可以自己编写释放资源的函数，并利用atexit模块，在退出事件上注册它。这可以保证：在退出时一定会执行cleanup()
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+import atexit
+ 
+def cleanup():
+    print "Exiting..."
+    #Do something
+    #close(f)
+    #...
+ 
+atexit.register(cleanup)
+
+执行：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+python ./cln.py
+ 
+Exiting...
+
+10、也可以使用os._exit(status)来退出程序，它将直接使用exit()系统调用。

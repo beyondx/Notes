@@ -1,0 +1,171 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-17T17:36:30+08:00
+
+====== Fcitx ======
+Created Thursday 17 November 2011
+https://wiki.archlinux.org/index.php/Fcitx_%28%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87%29
+
+==== Contents ====
+
+
+    1 安装 FCITX
+    2 使用 FCITX 输入中文
+    3 使用 KDM 的情况
+    4 Troubleshooting:
+
+==== 安装 FCITX ====
+
+Fcitx (Free Chinese Input Toy for X) ──即小企鹅输入法 ，它是一个以 GPL方式发布的、__基于XIM__的简体中文输入法(即原来的 G 五笔)，包括五笔、拼音(全拼和双拼)、二笔、区位等输入模块，支持简入繁出，是在Linux操作系统中常用的中文输入法。它的优点是，短小精悍、跟程序的兼容性比较好。
+
+它在 extra 库中，可以用以下命令安装：
+
+ pacman -S fcitx
+
+风波：因云帆论坛有人批评Fcitx代码写的很差，作者于2007年7月10日决定终止了本项目。但随即有人宣布接手。该项目的主页转移到了 Google Code 上面（http://code.google.com/p/fcitx ）。
+当前的最新版本是其 SVN 版，即 fcitx-svn。可以从 AUR 上来安装：
+
+ yaourt -S fcitx-svn
+
+==== 使用 FCITX 输入中文 ====
+
+使用 FCITX 之前,你必须先进行环境设定，不过这并不难.
+
+    打开你主文件夹（/home/XXX）下的 .bashrc文件，添加以下几行： 
+
+ #setup** XIM environment**, needn't if use SCIM as    gtk-immodules
+ export XMODIFIERS="@im=fcitx"
+ export GTK_IM_MODULE=xim
+ export QT_IM_MODULE=xim
+注意：如果使用scim则，上述的xim需改为scim，因为 fxitx基于xim而scim不是。
+    重新登录以使其生效. 
+
+重新登录后，打开一个终端, 输入:
+
+  fcitx &
+
+为检验 fcitx 是否正常运行, 打开一个程序，比如 leafpad, 按 CTRL+Space 激活 FCITX 并试着输入几个字.
+
+如果一切正常, 也许你想让它随 X 环境启动,我们也十分推荐这样做──尽管启动 X 之后运行 fcitx 有时可能导致诸如 gnome-panel 之类的程序崩溃(不是很严重但有点烦人). 打开主文件夹下的 .xinitrc,在启动你的窗口管理器（WM）（即在：exec ***）之__前__添加两行:
+
+ killall fcitx
+ fcitx &
+
+如果你使用类似 XDM (比如说 gdm)的桌面管理器, 请在 ~/.profile 中进行以上设定。
+
+大功告成!
+
+
+==== 使用 KDM 的情况 ====
+
+要让 FCITX 随 KDM 启动, 打开 /usr/share/config/kdm/Xstartup, 添加以下几行:
+
+LC_CTYPE=zh_CN.UTF-8
+export LC_CTYPE
+export XMODIFIERS="@im=fcitx"
+#pkill fcitx
+fcitx&
+
+打开 /etc/profile, 添加以下几行:
+
+export XIM=fcitx
+export XIM_PROGRAM=fcitx
+export XMODIFIERS="@im=fcitx"
+export GTK_IM_MODULE=xim
+export QT_IM_MODULE=xim
+
+=== Troubleshooting: ===
+
+1. 如果你按下 CTRL+Space 不能激活 FCITX , 而它确实在后台运行正常, 请检查你的 locale:
+
+ [ganlu@A ~]$ locale
+ LANG=en_US
+ LC_CTYPE=en_US.utf8
+ LC_NUMERIC="en_US"
+ LC_TIME="en_US"
+ LC_COLLATE=C
+ LC_MONETARY="en_US"
+ LC_MESSAGES="en_US"
+ LC_PAPER="en_US"
+ LC_NAME="en_US"
+ LC_ADDRESS="en_US"
+ LC_TELEPHONE="en_US"
+ LC_MEASUREMENT="en_US"
+ LC_IDENTIFICATION="en_US"
+ LC_ALL=
+
+以上是在我机器上执行 'locale' 命令的结果, 所以我们知道 FCITX 确实支持 utf8 (至少支持 en_US.utf8 ) . 如果你的 locale 输出显示你已经正确设定 utf8 为 locale , 我推荐你检查一下你是否启用 utf8:
+
+[ganlu@A ~]$ locale -a
+
+查看你的 locale 是否包含在其中, 如果没有, 不用担心, 我们可以自己添加:
+
+[ganlu@A ~]$ __localedef __-vci en_US -f utf8 en_US.utf8
+
+然后，重新登录看其是否生效. 如果还是不行, 可以试试用带有 "zh_CN" 的编码方案作为 locale , 比如：
+
+ export LC_CTYPE=zh_CN.gbk
+
+关于 locale 的详情，请参阅 Google.
+
+=== 注意:  ===
+
+其实，在英文环境下，并__不需要__将 LC_CTYPE 变量设为中文的locale(但是**emacs例外**)。也就是说，完全不用设置 locale ，也能照样使用中文输入法。如果 ~/.bashrc or ~/.xinitrc 文件中，已经有了：
+
+ export XMODIFIERS=@im=fcitx
+ export GTK_IM_MODULE=xim
+ export QT_IM_MODULE=xim
+
+那么，KDE/Qt 的程序应该就能用了。对于 GTK 程序，只需要修改 /etc/gtk-2.0/gtk.immodules，将：
+
+ "xim" "X Input Method" "gtk20" "/usr/share/locale" "ko:ja:th:zh"
+
+这一行的后面，加入“en”，即更改为：
+
+ "xim" "__X Input Method__" "gtk20" "/usr/share/locale" "en:ko:ja:th:zh"
+
+就可以顺利的在英文环境下使用 Fcitx 了。
+
+同理，如果想要在英文环境下使用 SCIM ，那么只要将：
+
+ "scim" "__SCIM Input Method__" "scim" "/usr/share/locale" "ja:ko:zh"
+
+更改为：
+
+ "scim" "SCIM Input Method" "scim" "/usr/share/locale" "en:ja:ko:zh"
+
+即可。
+
+
+2. 可以激活 FCITX, 但上面的字体显示为白框的情况. 请修改 ~/.fcitx/config, 自从 3.6.3 版本开始, 配置文件的地址是 ~/.config/fcitx/config. 把下面这行:
+
+显示字体(中)=*
+
+改为
+
+显示字体(中)=AR PL ShanHeiSun Uni
+
+这里我使用了 uming 字体, 所以请确保已经安装ttf-arphic-uming字体. 你也可以使用任何其他字体. 重启 FCITX:
+
+[ganlu@A ~]$ pkill fcitx
+[ganlu@A ~]$ fcitx &
+
+安装完 3.6.3 之后, 如果没有找到 config 文件, 请在命令行下输入:
+
+fcitx -c
+
+3. 在Gnome3中可以激活 FCITX, 可以看到打出来的字，但字上不了屏的情况.
+
+a.在~/.xprofile 或者 ~/.xinitrc 文件中,添加如下内容：
+
+export LC_ALL=en_US.utf8（如果你想让你的语言为中文，则设置成export LC_ALL=zh_CN.utf8）
+export XMODIFIERS=@im=fcitx
+export QT_IM_MODULE=xim
+export GTK_IM_MODULE=xim
+fcitx -d 
+
+b.在~/.fcitx/config/config文件中，修改FontLocale的值，使其与LC_ALL的值相同，本例为
+
+FontLocale=en_US.UTF-8
+
+关于更多 FCITX 的配置, 请查看 ~/.config/fcitx 或者 /usr/share/fcitx/doc/fcitx.pdf，不过你最好懂中文, :- ) 

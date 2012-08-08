@@ -1,0 +1,21 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-05T17:07:18+08:00
+
+====== 缓冲区列表操作 ======
+Created Thursday 05 May 2011
+
+**C-x C-b 	**		打开缓冲区列表，切换到*Buffer List*缓冲区后可以执行以下单字符命令：
+ 　　d or k 标记为删除 　　
+	~ 标记为未修改状态 　　
+	% 标记为只读 
+	m给缓冲区加上待显示标记
+	o立即在另外窗口中显示该编辑缓冲区，光标移到该窗口中
+	C-o	同上，但光标不移到该窗口中
+	f在当前窗口中立即显示该编辑缓冲区的内容
+	v显示用m标记的所有文件内容　　
+	s 保存缓冲 　　
+	u 取消标记 　　
+	x 执行标记的操作 　　
+	q退出编辑缓冲区
+M-x eval-buffer    执行*screatch*当前缓冲区中的lisp命令或.emacs中的内容，或其lisp文件。

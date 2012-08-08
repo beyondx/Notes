@@ -1,0 +1,543 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-23T11:27:30+08:00
+
+====== 基础 ======
+Created Monday 23 May 2011
+http://www.mailer.com.cn/Tool/knowledge.htm
+邮件系统基础知识库
+
+IP地址?
+    IP地址是在网络上分配给每台计算机或网络设备的32位数字标识。在Internet上，每台计算机或网络设备的IP地址是全世界唯一的。IP地址的格式是 xxx.xxx.xxx.xxx，其中xxx是 0 到 255 之间的任意整数。例如，科迈网站主机的IP地址是 210.22.12.54。
+
+什么是固定IP地址?
+    固定IP地址是长期分配给一台计算机或网络设备使用的IP地址。一般来说，采用专线上网的计算机才拥有固定的Internet IP地址。
+
+什么是动态IP地址?
+    通过Modem、ISDN、ADSL、有线宽频、小区宽频等方式上网的计算机，每次上网所分配到的IP地址都不相同，这就是动态IP地址。因为IP地址资源很宝贵，大部分用户都是通过动态IP地址上网的。
+
+什么是内网、什么是公网、什么是NAT?
+    公网、内网是两种Internet的接入方式。
+   内网接入方式：上网的计算机得到的IP地址是Inetnet上的保留地址，保留地址有如下3种形式：
+   10.x.x.x
+   172.16.x.x至172.31.x.x
+   192.168.x.x
+   内网的计算机以NAT（网络地址转换）协议，通过一个公共的网关访问Internet。内网的计算机可向Internet上的其他计算机发送连接请求，但Internet上其他的计算机无法向内网的计算机发送连接请求。
+   公网接入方式：上网的计算机得到的IP地址是Inetnet上的非保留地址。公网的计算机和Internet上的其他计算机可随意互相访问。
+   NAT（Network Address Translator）是网络地址转换，它实现内网的IP地址与公网的地址之间的相互转换，将大量的内网IP地址转换为一个或少量的公网IP地址，减少对公网IP地址的占用。NAT的最典型应用是：在一个局域网内，只需要一台计算机连接上Internet，就可以利用NAT共享Internet连接，使局域网内其他计算机也可以上网。使用NAT协议，局域网内的计算机可以访问Internet上的计算机，但Internet上的计算机无法访问局域网内的计算机。
+   Windows操作系统的Internet连接共享、sygate、winroute、unix/linux的natd等软件，都是使用NAT协议来共享Internet连接。
+   所有ISP（Internet服务提供商）提供的内网Internet接入方式，几乎都是基于NAT协议的。
+
+什么是域名? 域名由什么构成?
+   　　域名是internet上用来寻找网站所用的名字，是internet上的重要标识，相当于主机的门牌号码。 每一台主机都对应一个IP地址，每一个IP地址由一连串的数字组成，如101.25.11.34。人们为了方便记忆就用 域名来代替这些数字来寻找主机，如mydomain.com。每一个域名与IP地址是一一对应的，人们输入域名，再由域名服务器（DNS）解析成IP地址，从而找到相应的网站。每一个网址和EMAIL都要用到域名。在英文国际域名中，域名可以英文字母和阿拉伯数字以及横杠"－"组成，最长可达67个字符（包括后缀），并且字母的大小写没有区别，每个层次最长不能超过22个字母。在国内域名中，三级域名长度不得超过20个字。
+
+什么是DNS?
+    域名管理系统DNS（Domain Name System）是域名解析服务器的意思.它在互联网的作用是：把域名转换成为网络可以识别的ip地址.比如：我们上网时输入的www.163.com会自动转换成为202.108.42.72
+
+什么是A记录?
+    A (Address) 记录是用来指定主机名（或域名）对应的IP地址记录。用户可以将该域名下的网站服务器指向到自己的web server上。同时也可以设置您域名的二级域名。
+
+什么是NS记录?
+    NS（Name Server）记录是域名服务器记录，用来指定该域名由哪个DNS服务器来进行解析。
+
+什么是别名记录(CNAME)?
+    也被称为规范名字。这种记录允许您将多个名字映射到同一台计算机。 通常用于同时提供WWW和MAIL服务的计算机。例如，有一台计算机名为“host.mydomain.com”（A记录）。 它同时提供WWW和MAIL服务，为了便于用户访问服务。可以为该计算机设置两个别名（CNAME）：WWW和MAIL。 这两个别名的全称就是“www.mydomain.com”和“mail.mydomain.com”。实际上他们都指向“host.mydomain.com”。
+
+什么是泛域名解析?
+    泛域名解析定义为： 客户的域名a.com，之下所设的*.a.com全部解析到同一个IP地址上去。 比如客户设b.a.com就会自已自动解析到与a.com同一个IP地址上去。
+
+什么是MX记录?
+    MX（Mail Exchanger）记录是邮件交换记录，它指向一个邮件服务器，用于电子邮件系统发邮件时根据 收信人的地址后缀来定位邮件服务器。例如，当Internet上的某用户要发一封信给 user@mydomain.com 时，该用户的邮件系统通过DNS查找mydomain.com这个域名的MX记录，如果MX记录存在， 用户计算机就将邮件发送到MX记录所指定的邮件服务器上。
+万网 MX 记录设置    希网 3322.org 动态域名 MX 记录设置    花生壳动态域名设置
+
+检查MX记录是否存在的方法
+   进行DNS查询的一个非常有用的工具是nslookup，可以使用它来查询DNS中的各种数据。可以在Windows的命令行下直接运行nslookup进入一个交互模式，在这里能查询各种类型的DNS数据。
+   DNS的名字解析数据可以有各种不同的类型，有设置这个zone的参数的SOA类型数据，有设置名字对应的IP地址的A类型数据，有设置邮件交换的MX类型数据。这些不同类型的数据均可以通过nslookup的交互模式来查询，在查询过程中可以使用 set type命令设置相应的查询类型。
+如：
+C:\>nslookup
+Default Server: [202.106.184.166]
+Address: 202.106.184.166
+
+> set type=mx
+> sina.com.cn
+Default Server: [202.106.184.166]
+Address: 202.106.184.166
+
+Non-authoritative answer:
+sina.com.cn MX preference = 10, mail exchanger = sinamx.sina.com.cn
+
+sina.com.cn nameserver = ns1.sina.com.cn
+sina.com.cn nameserver = ns3.sina.com.cn
+sinamx.sina.com.cn internet address = 202.106.187.179
+sinamx.sina.com.cn internet address = 202.106.182.230
+ns1.sina.com.cn internet address = 202.106.184.166
+ns3.sina.com.cn internet address = 202.108.44.55
+如果所要查的某域名的MX记录不存在，则出现与以下类似的提示：
+C:\>nslookup
+> set type=mx
+> amaxit.com.cn
+Default Server: [202.106.184.166]
+Address: 202.106.184.166
+
+*** 202.106.184.166 can't find amaxit.com.cn: Non-existent domain
+
+在邮件系统中使用自己的域名
+    假设你的邮件服务器地址是: 61.176.1.120  
+    已经建了一条A记录: mail.mydomain.com A 61.176.1.120
+
+    对于MX记录已经存在的情况
+
+        如果MX记录已经存在，并且已经检查出是在某一个域名服务器上，您需要做的工作就是与您的域名服务商或该域名服务器的管理人员联系，把该MX记录按如下的形式进行修改：
+        您的域名 　　 IN MX 10 mail.mydomain.com
+
+    对于MX记录还不存在的情况
+
+        要搞清楚您的域名确切的是在哪个域名服务器（DNS）中进行域名解析的，有两种办法，一种是查阅您注册该域名时提交的有关申请资料，得到当时受理申请的单位，与该受理申请的单位联系，让对方的相关人员帮您查清楚；另一种是在WinNT，Win2000或各种Unix操作系统中，通过使用nslookup得到。
+        找到您的域名服务器后，请与您的域名服务商或该服务器的管理人员联系，让对方为您增加一条MX记录，该记录的形式如下：
+        您的域名　　 IN MX 10 mail.mydomain.com
+
+只有主机名能否建邮件系统？
+      完全可以。假设你的邮件服务器的主机名是 mail.mydomain.com，就是说在internet上mail.mydomain.com解析到你的 邮件服务器IP地址。你可以在你的邮件系统中建立一个叫 mail.mydomain.com的域，你的email格式为 user1@mail.mydomain.com, 其它邮件系统可以发信到你的服务器，使用动态域名指向的也是一样。如果你有一个静态IP地址，你甚至可以建一个一IP地址为结尾的邮件系统。 还有一种情况你的域名直接指向你的邮件服务器，就是说在internet上mydomain.com解析到你的邮件服务器，这时你建一个mydomain.com的域， 你的email格式为 user1@mydomain.com
+
+什么是动态域名
+      Internet上的域名解析一般是静态的，即一个域名所对应的IP地址是静态的，长期不变的。也就是说，如果要在Internet上搭建一个网站，需要有一个固定的IP地址。
+     动态域名的功能，就是实现固定域名到动态IP地址之间的解析。用户每次上网得到新的IP地址之后，安装在用户计算机里的动态域名软件就会把这个IP地址发送到动态域名解析服务器，更新域名解析数据库。Internet上的其他人要访问这个域名的时候，动态域名解析服务器会返回正确的IP地址给他。
+     因为绝大部分Internet用户上网的时候分配到的IP地址都是动态的，用传统的静态域名解析方法，用户想把自己上网的计算机做成一个有固定域名的网站，是不可能的。而有了动态域名，这个美梦就可以成真。用户可以申请一个域名，利用动态域名解析服务，把域名与自己上网的计算机绑定在一起，这样就可以在家里或公司里搭建自己的网站，非常方便。
+
+私网ip网段
+     私有地址（Private address）属于非注册地址，专门为组织机构内部使用。以下列出留用的三类内部寻址地址：A类 10.0.0.0，B类 172.16.0.0 —— 172.31.0.0，C类 192.168.0.0 —— 192.168.255.0。
+
+如何查看我的电脑的IP地址
+      Windows系统: 用鼠标选择“开始”->“程序”->“MS-DOS方式”，打开一个DOS命令行窗口，执行：ipconfig
+unix/linux: 在命令行下输入ifconfig
+
+什么是子域名、二级域名?
+     子域名是个相对的概念，是相对父域名来说的。域名有很多级，中间用点分开。例如公司的顶级域名是以 com 结尾的，所有以 com 结尾的域名便都是它的子域。例如：www.amaxit.net 便是 amaxit.net 的子域，而 amaxit.net 是 net 的子域。
+
+RBL是什么?
+      RBL 全称是 Real-time Blackhole Lists, 是国外的反垃圾邮件组织提供的检查垃圾邮件发送者地址的服务, RBL 功能对中国用户而言，几乎不可用。 因为我们发现大部分中国的IP地址都在 RBL 数据库里。请不要启用RBL 功能。 常用的RBL服务器地址有: relays.ordb.org;dnsbl.njabl.org;bl.spamcop.net;sbl.spamhaus.org;dun.dnsrbl.net;dnsbl.sorbs.net 查询和删除RBL中的IP地址请到http://openrbl.org/ 和 http://ordb.org
+
+
+电子邮件符号＠的来历
+      ＠符号在英文中曾含有两种意思，即“在”或“单价”。它的前一种意思是因其发音类 似于英文at，于是常被作为“在”的代名词来使用。如“明天早晨在学校等”的英文便条就 成了“wait you ＠ schoolmorning”。除了at外，它又有each的含义，所以“＠”也常常用 来表示商品的单价符号。
+    美国的一位电脑工程师汤林森确立了＠在电子邮件中的地位，赋予符号“＠”新意。为 了能让用户方便地在网络上收发电子邮件，1971年就职于美国国防部发展军用网络阿帕网的 BBN电脑公司的汤林森，奉命找一种电子信箱地址的表现格式。他选中了这个在人名中绝不会 出现的符号“＠”并取其前一种含义，可以简洁明了地传达某人在某地的信息，“＠”就这 样进入了电脑网络。
+    汤林森设计的电子邮件的表现格式为“人名代码＋电脑主机或公司代码＋电脑主机所属 机构的性质代码＋两个字母表示的国际代码”。这就是现在我们所用电子邮件地址的格式， 其中用“＠”符号把用户名和电脑地址分开，使电子邮件能通过网络准确无误地传送。
+
+电信、网通主要DNS列表
+
+省 主服务器 辅服务器
+北京  2202.96.199.133 202.96.0.133 202.106.0.20 202.106.148.1 202.97.16.195
+上海  202.96.199.132 202.96.199.133 202.96.209.5 202.96.209.133
+天津  202.99.96.68 10.10.64.68
+广东  202.96.128.143 202.96.128.68 202.96.128.110
+深圳  202.96.134.133 202.96.154.8 202.96.154.15
+河南  202.102.227.68 202.102.245.12 202.102.224.68
+广西  202.96.128.68 202.103.224.68 202.103.225.68
+福建  202.101.98.54 202.101.98.55
+厦门  202.101.103.55 202.101.103.54
+湖南  202.103.0.68 202.103.96.68 202.103.96.112
+江苏  202.102.15.162 202.102.29.3 202.102.13.141 202.102.24.35
+陕西  202.100.13.11 202.100.4.16
+西安  202.100.4.15 202.100.0.68
+湖北  202.103.0.68 202.103.0.117 202.103.24.68
+山东  202.102.154.3 202.102.152.3 202.102.128.68 202.102.134.68
+浙江  202.96.102.3 202.96.96.68 202.96.104.18
+辽宁  202.98.0.68 202.96.75.68 202.96.75.64 202.96.69.38 202.96.86.18 202.96.86.24
+安徽  202.102.192.68 202.102.199.68 10.89.64.5
+重庆  61.128.128.68 10.150.0.1
+黑龙江 202.97.229.133 202.97.224.68
+河北  202.99.160.68 10.17.128.90
+保定  202.99.160.68 202.99.166.4
+吉林   202.98.5.68 202.98.14.18 202.98.14.19
+江西  202.101.224.68 10.117.32.40 202.109.129.2 202.101.240.36
+山西  202.99.192.68 202.99.198.6
+新疆  61.128.97.74 61.128.97.73
+贵州  202.98.192.68 10.157.2.15
+云南  202.98.96.68 202.98.160.68
+四川  202.98.96.68 61.139.2.69
+重庆  61.128.128.68 61.128.192.4
+成都  202.98.96.68 202.98.96.69
+内蒙古 202.99.224.68 10.29.0.2
+青海   202.100.128.68 10.184.0.1
+海南  202.100.192.68 202.100.199.8
+宁夏   202.100.0.68 202.100.96.68
+甘肃  202.100.72.13 10.179.64.1
+香港   205.252.144.228 208.151.69.65
+澳门  202.175.3.8 202.175.3.3
+
+常见的网络服务和对应端口
+
+服务名称 	
+
+端口号/协议 [别名]
+	
+
+#注释
+
+ 
+	
+
+ 
+	
+
+ 
+
+ftp-data
+	
+
+20/tcp
+	
+
+#FTP, data
+
+ftp
+	
+
+21/tcp
+	
+
+#FTP. control
+
+telnet
+	
+
+23/tcp
+	
+
+ 
+
+smtp
+	
+
+25/tcp mail
+	
+
+#Simple Mail Transfer Protocol
+
+time
+	
+
+37/tcp timserver
+	
+
+ 
+
+time
+	
+
+37/udp timserver
+	
+
+ 
+
+domain
+	
+
+53/tcp
+	
+
+#Domain Name Server
+
+domain
+	
+
+53/udp
+	
+
+#Domain Name Server
+
+tftp
+	
+
+69/udp
+	
+
+#Trivial File Transfer
+
+gopher
+	
+
+70/tcp
+	
+
+ 
+
+http
+	
+
+80/tcp www www-http
+	
+
+#World Wide Web
+
+pop3
+	
+
+110/tcp
+	
+
+#Post Office Protocol - Version 3
+
+nntp
+	
+
+119/tcp usenet
+	
+
+#Network News Transfer Protocol
+
+netbios-ns
+	
+
+137/tcp nbname
+	
+
+#NETBIOS Name Service
+
+netbios-ns
+	
+
+137/udp nbname
+	
+
+#NETBIOS Name Service
+
+netbios-dgm
+	
+
+138/udp nbdatagram
+	
+
+#NETBIOS Datagram Service
+
+netbios-ssn
+	
+
+139/tcp nbsession
+	
+
+#NETBIOS Session Service
+
+imap
+	
+
+143/tcp imap4
+	
+
+#Internet Message Access Protocol
+
+snmp
+	
+
+161/udp
+	
+
+#SNMP
+
+snmptrap
+	
+
+162/udp snmp-trap
+	
+
+#SNMP trap
+
+irc
+	
+
+194/tcp
+	
+
+#Internet Relay Chat Protocol
+
+ipx
+	
+
+213/udp
+	
+
+#IPX over IP
+
+ldap
+	
+
+389/tcp
+	
+
+#Lightweight Directory Access Protocol
+
+https
+	
+
+443/tcp MCom
+	
+
+ 
+
+https
+	
+
+443/udp MCom
+	
+
+ 
+
+uucp
+	
+
+540/tcp uucpd
+	
+
+ 
+
+ldaps
+	
+
+636/tcp sldap
+	
+
+#LDAP over TLS/SSL
+
+doom
+	
+
+666/tcp
+	
+
+#Doom Id Software
+
+doom
+	
+
+666/udp
+	
+
+#Doom Id Software
+
+phone
+	
+
+1167/udp
+	
+
+#Conference calling
+
+ms-sql-s
+	
+
+1433/tcp
+	
+
+#Microsoft-SQL-Server
+
+ms-sql-s
+	
+
+1433/udp
+	
+
+#Microsoft-SQL-Server
+
+ms-sql-m
+	
+
+1434/tcp
+	
+
+#Microsoft-SQL-Monitor
+
+ms-sql-m
+	
+
+1434/udp
+	
+
+#Microsoft-SQL-Monitor
+
+wins
+	
+
+1512/tcp
+	
+
+#Microsoft Windows Internet Name Service
+
+wins
+	
+
+1512/udp
+	
+
+#Microsoft Windows Internet Name Service
+
+l2tp
+	
+
+1701/udp
+	
+
+#Layer Two Tunneling Protocol
+
+pptp
+	
+
+1723/tcp
+	
+
+#Point-to-point tunnelling protocol
+
+radius
+	
+
+1812/udp
+	
+
+#RADIUS authentication protocol
+
+radacct
+	
+
+1813/udp
+	
+
+#RADIUS accounting protocol
+
+nfsd
+	
+
+2049/udp nfs
+	
+
+#NFS server
+
+knetd
+	
+
+2053/tcp
+	
+
+#Kerberos de-multiplexor
+
+admin
+	
+
+6000/tcp
+	
+
+#Winmail Server Admin
+
+webmail
+	
+
+6080/tcp
+	
+
+#Winmail Server Webmail
+
+man
+	
+
+9535/tcp
+	
+
+#Remote Man Server

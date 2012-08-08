@@ -1,0 +1,43 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-17T10:23:39+08:00
+
+====== Strigi ======
+Created Thursday 17 November 2011
+
+From Wikipedia, the free encyclopedia
+Developer(s) 	Jos van den Oever
+Flavio Castelli
+Stable release 	0.7.1 [1] / 7 January 2010
+Development status 	Active[2]
+Written in 	C++
+Operating system 	Linux
+Type 	Search tool
+License 	LGPL
+Website 	sourceforge.net/projects/strigi/
+
+Strigi is a **desktop search daemon**, which is operating system-independent and desktop-independent. Strigi was initiated by Jos van den Oever. Strigi's goals are to be **fast**, use a small amount of RAM, and use flexible backends and plug-ins.[3] A benchmark as of January 2007 showed that Strigi is faster and uses less memory than other search systems,[4] but it lacks many of their features[citation needed]. Like most desktop search systems, Strigi can extract information from files, such as the **length** of an audio clip, the **contents **of a document, or the** resolution** of a picture; **plugins** determine what filetypes it is capable of handling.[5] Strigi uses its own** Jstream system** which allows for __deep indexing__ of files. Strigi is accessible via Konqueror, or by clicking on its icon, after adding it to KDE's Kicker or GNOME Panel. (In GNOME desktop, it is called the Deskbar applet.) The graphical user interface (GUI) is named **Strigiclient**.[5]
+
+===== Contents =====
+
+    1 Features
+    2 Operating systems and desktops
+    3 See also
+    4 References
+    5 External links
+
+===== Features =====
+
+* SHA-1 hash for every file indexed to find **duplicates**
+* As of July, 2007 Strigi supports indexing the** contents **of plain text, PDF, MP3, archives, Debian and RPM packages, and OASIS OpenDocument text (odt), spreadsheet (ods) and presentation (odp) files
+* D-Bus and socket support for communication between the daemon and search program
+* Small memory footprint
+* Xesam query language support
+* Very portable, currently runs on Linux, Solaris, Mac OS X and Windows
+* **Pluggable backend**: Lucene and HyperEstraier, SQLite and Xapian backends are being worked on
+* iNotify and synchronization to filesystem are being attempted.[3]
+* Strigi's indexing can be stopped manually, and will suspend itself if running on a laptop's batteries, disk drive runs out of space,[6] and/or runs in the background until the CPU is not busy with tasks that the computer-user is waiting on the CPU for.[4]
+
+==== Operating systems and desktops ====
+
+KDE Plasma Workspaces require Strigi as **core component** of the new __semantic desktop __technologies. __Strigi and NEPOMUK__ are working together to help create a semantic desktop search. NEPOMUK will allow the user to add **metadata**, which Strigi will be able to index for a more precise search. Developers are also considering adding Sonnet support to Strigi to allow users to search for documents written in a specific language[7].

@@ -1,0 +1,78 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-21T21:55:44+08:00
+
+====== Ata piix ======
+Created Monday 21 November 2011
+SATA hardware features
+https://ata.wiki.kernel.org/articles/s/a/t/SATA_hardware_features_8af2.html
+__ata_piix__
+
+Intel chipsets PATA IDE and SATA in IDE mode
+
+===== Hardware Support =====
+
+This driver supports the **PATA controllers **included with the listed intel chipsets:
+
+    PIIX3
+    PIIX4
+    ICH0
+    ICH
+    ICH2
+    ICH3
+    C-ICH
+    ICH4
+    ICH5
+    6300ESB
+    ICH6
+    ICH7
+    ICH8M 
+
+This driver also supports the__ SATA controllers in IDE mode__ included with the listed intel chipsets:
+
+    ICH5
+    6300ESB
+    ICH6
+    CE3100
+    ICH7
+    NM10
+    631xESB, 632xESB
+    ICH8
+    ICH9
+    ICH10
+    IICH
+    PCH
+    EP80579 
+
+__SATA ports in AHCI mode__(on chipset models supporting this mode) are driven by the AHCI driver.
+
+===== Modes Supported =====
+
+PIO, MWDMA, UDMA
+
+===== Limitations =====
+
+    All DMA modes are disabled if PIIX4E is attached at 450NX
+    MWDMA0 is not supported on PATA ports of some ICH
+    MWDMA1 is broken on PATA ports of some ICH
+    ICH and PCH supporting AHCI or RAID mode will suffer from SATA port sequence shift when switching from AHCI or RAID to IDE mode and vice versa
+    Attached storage devices may not be detected on Intel ICH5 series southbridge when all six storage devices are populated
+    6 Gb/s SATA devices may not be detected on PCH x5x, xx5x, 34x0
+    SATA devices may not be detected at the 3 Gb/s ports of B2 stepping PCH x6x, xx6x
+    CE3100 does not support PCI MSI at its SATA controller
+    PCI MSI is not yet supported at SATA controllers of ICH5 in non combined mode. As a result legacy PCI interrupts are still used 
+
+===== Known Problems =====
+
+    CE3100 Stepping A0 is not supported because workarounds are needed to fix errata:
+        DMA burst size must be 64 bytes at most
+        SATA PCI header is not completely PCI compatible
+        SATA PCI Device ID is wrong
+        SATA memory mapped PCI header is wrong 
+
+===== Module Options =====
+
+None
+Programmer documentation
+
+Documentation is available for ICH0, ICH, ICH2, ICH3, ICH4, ICH5 IDE and ICH5 SATA 

@@ -1,0 +1,63 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-30T13:59:54+08:00
+
+====== 20.第15章 动态规划(5) 分析几道DP题 ======
+Created Saturday 30 July 2011
+看了下上一篇的日期，是5.16号，已经有20天没写了，郁闷啊，不过最近的考试终于结束了，接下来就是18号的六级和后面的三门考试，这几天可以安心研究算法了，开心啊。
+
+
+建议先看看前言：http://www.wutianqi.com/?p=2298
+
+连载总目录：http://www.wutianqi.com/?p=2403
+
+这一章，我准备把HDOJ上找几道经典的DP题目给大家分析一下。
+
+1.HDOJ 1257 最少拦截系统
+
+题目链接：http://acm.hdu.edu.cn/showproblem.php?pid=1257
+
+分析+代码：http://www.wutianqi.com/?p=1841
+
+经典的LIS，DP入门级题目。
+
+
+2.HDOJ 1176 免费馅饼
+
+题目链接：http://acm.hdu.edu.cn/showproblem.php?pid=1176
+
+分析+代码：http://www.wutianqi.com/?p=2457
+
+这一题的经典在于由直线向数塔的转化，图形分析在上面的连接中给出。
+
+
+3.HDOJ 1160 FatMouse’s Speed
+
+题目链接：http://acm.hdu.edu.cn/showproblem.php?pid=1160
+
+分析+代码：http://www.wutianqi.com/?p=2290
+
+最长上升子序列的问题，题目比较新颖，这里可以感受到我在前面写的，DP和BFS,递归和DFS的关系。
+
+
+4.HDOJ 1080 Human Gene Functions
+
+题目链接：http://acm.hdu.edu.cn/showproblem.php?pid=1080
+
+分析+代码：http://www.wutianqi.com/?p=2413
+
+这题不知道该怎么说，反正个人做了后第一感觉就是经典！特此推荐。
+
+另外，DP的题目个人觉得做多了就有感觉了，以前转载过牛人总结的HDOJ上46道DP题目，嘿嘿，给出链接：
+
+http://www.wutianqi.com/?p=550
+
+谁要全部做完了记得告诉我一声，我要膜拜一下。
+
+好了，DP到此结束，接下来的将是贪心算法了~~~
+
+Tanky Woo 标签: DP，动态规划，Tanky Woo
+
+在我独立博客上的原文：http://www.wutianqi.com/?p=2559
+
+欢迎大家互相学习，互相进步！

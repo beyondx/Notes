@@ -1,0 +1,154 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-03-08T18:18:16+08:00
+
+====== 外设I-O资源的访问方式 ======
+Created Thursday 08 March 2012
+http://www.embedu.org/Column/Column342.htm
+
+作者：李强,华清远见嵌入式学院讲师。
+我们知道__默认外设I/O资源是不在Linux内核空间中的__（如sram或硬件接口寄存器等），若需要访问该外设I/O资源，必须先**将其地址映射到内核空间中来**，然后才能在内核空间中访问它。
+
+Linux内核访问外设I/O内存资源的方式有两种：动态映射(ioremap)和静态映射(map_desc)。
+
+===== 一、动态映射(ioremap)方式 =====
+动态映射方式是大家使用了比较多的，也比较简单。即直接通过内核提供的ioremap函数动态创建一段外设I/O内存资源到内核虚拟地址的映射表，从而可以在内核空间中访问这段I/O资源。
+
+Ioremap宏定义在asm/io.h内：
+
+#define ioremap(cookie,size) __ioremap(cookie,size,0)
+
+__ioremap函数原型为(arm/mm/ioremap.c)：
+
+void __iomem * __ioremap(unsigned long phys_addr, size_t size, unsigned long flags);
+        phys_addr：要映射的起始的IO地址
+        size：要映射的空间的大小
+        flags：要映射的IO空间和权限有关的标志
+
+该函数返回映射后的内核虚拟地址(3G-4G). 接着便可以通过读写该返回的内核虚拟地址去访问之这段I/O内存资源。
+
+举一个简单的例子: (取自s3c2410的驱动)
+
+比如我们要访问s3c2410平台上的I2S寄存器, 查看datasheet 知道IIS物理地址为0x55000000，我们把它定义为宏S3C2410_PA_IIS，如下：
+
+#define S3C2410_PA_IIS (0x55000000)
+
+若要在内核空间(iis驱动)中访问这段I/O寄存器(IIS)资源需要先建立到内核地址空间的映射：
+
+our_card->regs = ioremap(S3C2410_PA_IIS, 0x100);
+        if (our_card->regs == NULL) {
+                        err = -ENXIO;
+                        goto exit_err;
+        }
+
+创建好了之后，我们就可以通过readl(our_card->regs )或writel(value, our_card->regs)等IO接口函数去访问它。
+
+二、静态映射(map_desc)方式
+
+下面重点介绍静态映射方式即通过map_desc结构体静态创建I/O资源映射表。
+
+内核提供了在系统启动时通过map_desc结构体静态创建I/O资源到内核地址空间的线性映射表(即page table)的方式，这种映射表是一种一一映射的关系。程序员可以自己定义该I/O内存资源映射后的虚拟地址。创建好了静态映射表，在内核或驱动中访问该I/O资源时则无需再进行ioreamp动态映射，可以直接通过映射后的I/O虚拟地址去访问它。
+
+下面详细分析这种机制的原理并举例说明如何通过这种静态映射的方式访问外设I/O内存资源。
+
+内核提供了一个重要的结构体struct machine_desc ,这个结构体在内核移植中起到相当重要的作用,内核通过machine_desc结构体来控制系统体系架构相关部分的初始化。
+
+machine_desc结构体的成员包含了体系架构相关部分的几个最重要的初始化函数，包括map_io, init_irq, init_machine以及phys_io , timer成员等。
+
+machine_desc结构体定义如下：
+
+struct machine_desc {
+                /*
+				* Note! The first four elements are used
+				* by assembler code in head-armv.S
+                */
+                unsigned int        nr;         /* architecture number */
+                unsigned int        phys_io;          /* start of physical io */
+                unsigned int        io_pg_offst;         /* byte offset for io
+														* page tabe entry */
+
+        const char *name; /* architecture name */
+                unsigned long boot_params; /* tagged list */
+
+        unsigned int video_start; /* start of video RAM */
+                unsigned int video_end; /* end of video RAM */
+
+        unsigned int reserve_lp0 :1; /* never has lp0 */
+                unsigned int reserve_lp1 :1; /* never has lp1 */
+                unsigned int reserve_lp2 :1; /* never has lp2 */
+                unsigned int soft_reboot :1; /* soft reboot */
+                void (*fixup)(struct machine_desc *,
+                struct tag *, char **,
+                struct meminfo *);
+                void (*map_io)(void);/* IO mapping function */
+                void (*init_irq)(void);
+                struct sys_timer *timer; /* system tick timer */
+                void (*init_machine)(void);
+        };
+
+这里的map_io成员即内核提供给用户的创建外设I/O资源到内核虚拟地址静态映射表的接口函数。Map_io成员函数会在系统初始化过程中被调用,流程如下：
+
+Start_kernel -> setup_arch() --> paging_init() --> devicemaps_init()中被调用Machine_desc结构体通过MACHINE_START宏来初始化。
+
+用户可以在定义Machine_desc结构体时指定Map_io的接口函数，这里以s3c2410平台为例。
+
+s3c2410 machine_desc结构体定义如下：
+
+/* arch/arm/mach-s3c2410/Mach-smdk2410.c */
+        MACHINE_START(SMDK2410, "SMDK2410") /* @TODO: request a new identifier and switch
+												* to SMDK2410 */
+                /* Maintainer: Jonas Dietsche */
+                .phys_io = S3C2410_PA_UART,
+                .io_pg_offst = (((u32)S3C24XX_VA_UART) >> 18) & 0xfffc,
+                .boot_params = S3C2410_SDRAM_PA + 0x100,
+                .map_io = smdk2410_map_io,
+                .init_irq = s3c24xx_init_irq,
+                .init_machine = smdk2410_init,
+                .timer = &s3c24xx_timer,
+        MACHINE_END
+
+如上,map_io被初始化为smdk2410_map_io。smdk2410_map_io即我们自己定义的创建静态I/O映射表的函数。在Porting内核到新开发板时，这个函数需要我们自己实现。
+
+(注：这个函数通常情况下可以实现得很简单，只要直接调用iotable_init创建映射表就行了，我们的板子内核就是。不过s3c2410平台这个函数实现得稍微有点复杂，主要是因为它将要创建IO映射表的资源分为了三个部分(smdk2410_iodesc, s3c_iodesc以及s3c2410_iodesc)在不同阶段分别创建。这里我们取其中一个部分进行分析，不影响对整个概念的理 解。)
+
+S3c2410平台的smdk2410_map_io函数最终会调用到s3c2410_map_io函数。
+
+流程如下：s3c2410_map_io -> s3c24xx_init_io -> s3c2410_map_io
+
+下面分析一下s3c2410_map_io函数：
+
+void __init s3c2410_map_io(struct map_desc *mach_desc, int mach_size)
+        {
+                /* register our io-tables */
+                iotable_init(s3c2410_iodesc, ARRAY_SIZE(s3c2410_iodesc));
+                ……
+        }
+
+iotable_init内核提供，定义如下：
+
+/*
+		* Create the architecture specific mappings
+        */
+        void __init iotable_init(struct map_desc *io_desc, int nr)
+        {
+                int i;
+
+        for (i = 0; i < nr; i++)
+                        create_mapping(io_desc + i);
+         }
+
+由上知道，s3c2410_map_io最终调用iotable_init建立映射表。
+
+iotable_init函数的参数有两个：一个是map_desc类型的结构体，另一个是该结构体的数量nr。这里最关键的就是struct map_desc。map_desc结构体定义如下：
+
+/* include/asm-arm/mach/map.h */
+        struct map_desc {
+                unsigned long virtual; /* 映射后的虚拟地址 */
+                unsigned long pfn; /* I/O资源物理地址所在的页帧号 */
+                unsigned long length; /* I/O资源长度 */
+                unsigned int type; /* I/O资源类型 */
+        };
+
+create_mapping函数就是通过map_desc提供的信息创建线性映射表的。
+
+这样的话我们就知道了创建I/O映射表的大致流程为：只要定义相应I/O资源的map_desc结构体，并将该结构体传给iotable_init函数执行，就可以创建相应的I/O资源到内核虚拟地 址空间的映射表了。

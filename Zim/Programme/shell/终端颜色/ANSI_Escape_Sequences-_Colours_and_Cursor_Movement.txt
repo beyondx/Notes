@@ -1,0 +1,215 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-26T22:11:24+08:00
+
+====== ANSI Escape Sequences- Colours and Cursor Movement ======
+Created Sunday 26 February 2012
+
+http://www.linuxselfhelp.com/howtos/Bash-Prompt/Bash-Prompt-HOWTO-6.html
+
+===== 6.1 Colours =====
+
+As mentioned before, non-printing escape sequences have to be enclosed in \[\033[ and \]. For colour escape sequences, they should also be followed by a __lowercase m__.
+
+If you try out the following prompts in an xterm and find that you aren't seeing the colours named, check out your ~/.Xdefaults file (and possibly its bretheren) for lines like "**XTerm*Foreground: BlanchedAlmond**". This can be commented out by placing an exclamation mark __("!") __in front of it. Of course, this will also be dependent on what terminal emulator you're using. This is the likeliest place that your term foreground colours would be overridden.
+
+To include blue text in the prompt:
+
+    PS1="\[**\033[34m**\][\$(date +%H%M)][\u@\h:\w]$ "
+
+The problem with this prompt is that the blue colour that starts with the 34 colour code is __never switched back__ to the regular colour, so any text you type after the prompt is still in the colour of the prompt. This is also a dark shade of blue, so combining it with the bold code might help:
+
+    PS1="\[\033[1;34m\][\$(date +%H%M)][\u@\h:\w]$\[**\033[0m**\] "
+
+The prompt is now in light blue, and it ends by switching the colour back to nothing (whatever foreground colour you had previously).
+
+Here are the rest of the colour equivalences:
+
+    Black       0;30     Dark Gray     1;30
+    Blue        0;34     Light Blue    1;34
+    Green       0;32     Light Green   1;32
+    Cyan        0;36     Light Cyan    1;36
+    Red         0;31     Light Red     1;31
+    Purple      0;35     Light Purple  1;35
+    Brown       0;33     Yellow        1;33
+    Light Gray  0;37     White         1;37
+
+Daniel Dui (ddui@iee.org) points out that to be strictly accurate, we must mention that the list above is for colours at the console. In an xterm, the code 1;31 isn't "Light Red," but "Bold Red." This is true of all the colours.
+
+You can also set background colours by using 44 for Blue background, 41 for a Red background, etc. There are no bold background colours. Combinations can be used, like Light Red text on a Blue background: \[\033[44;1;31m\], although setting the colours separately seems to work better (ie. \[\033[44m\]\[\033[1;31m\]). Other codes available include 4: Underscore, 5: Blink, 7: Inverse, and 8: Concealed.
+
+Aside: Many people (myself included) object strongly to the "blink" attribute. Fortunately, it doesn't work in any terminal emulators that I'm aware of - but it will still work on the console. And, if you were wondering (as I did) "What use is a 'Concealed' attribute?!" - I saw it used in an example shell script (not a prompt) to allow someone to type in a password without it being echoed to the screen.
+
+Based on a prompt called "elite2" in the Bashprompt package (which I have modified to work better on a standard console, rather than with the special xterm fonts required to view the original properly), this is a prompt I've used a lot:
+
+ 
+function elite
+{
+
+local GRAY="\[\033[1;30m\]"
+local LIGHT_GRAY="\[\033[0;37m\]"
+local CYAN="\[\033[0;36m\]"
+local LIGHT_CYAN="\[\033[1;36m\]"
+
+case $TERM in
+    xterm*)
+        local TITLEBAR='\[\033]0;\u@\h:\w\007\]'
+        ;;
+    *)
+        local TITLEBAR=""
+        ;;
+esac
+
+local GRAD1=$(tty|cut -d/ -f3)
+PS1="$TITLEBAR\
+$GRAY-$CYAN-$LIGHT_CYAN(\
+$CYAN\u$GRAY@$CYAN\h\
+$LIGHT_CYAN)$CYAN-$LIGHT_CYAN(\
+$CYAN\#$GRAY/$CYAN$GRAD1\
+$LIGHT_CYAN)$CYAN-$LIGHT_CYAN(\
+$CYAN\$(date +%H%M)$GRAY/$CYAN\$(date +%d-%b-%y)\
+$LIGHT_CYAN)$CYAN-$GRAY-\
+$LIGHT_GRAY\n\
+$GRAY-$CYAN-$LIGHT_CYAN(\
+$CYAN\$$GRAY:$CYAN\w\
+$LIGHT_CYAN)$CYAN-$GRAY-$LIGHT_GRAY " 
+PS2="$LIGHT_CYAN-$CYAN-$GRAY-$LIGHT_GRAY "
+}
+
+I define the colours as temporary shell variables in the name of readability. It's easier to work with. The "GRAD1" variable is a check to determine what terminal you're on. Like the test to determine if you're working in an Xterm, it only needs to be done once. The prompt you see look like this, except in colour:
+
+    --(giles@nikola)-(75/ttyp7)-(1908/12-Oct-98)--
+    --($:~/tmp)--
+
+To help myself remember what colours are available, I wrote the following script which echoes all the colours to screen:
+
+#!/bin/bash
+#
+#   This file echoes a bunch of colour codes to the terminal to demonstrate 
+#   what's available.  Each line is one colour on black and gray 
+#   backgrounds, with the code in the middle.  Verified to work on white,
+#   black, and green BGs (2 Dec 98).
+#
+echo "  On Light Gray:        On Black:"
+echo -e "\033[47m\033[1;37m  White        \033[0m\
+ 1;37m \
+\033[40m\033[1;37m  White        \033[0m"
+echo -e "\033[47m\033[37m  Light Gray   \033[0m\
+   37m \
+\033[40m\033[37m  Light Gray   \033[0m"
+echo -e "\033[47m\033[1;30m  Gray         \033[0m\
+ 1;30m \
+\033[40m\033[1;30m  Gray         \033[0m"
+echo -e "\033[47m\033[30m  Black        \033[0m\
+   30m \
+\033[40m\033[30m  Black        \033[0m"
+echo -e "\033[47m\033[31m  Red          \033[0m\
+   31m \
+\033[40m\033[31m  Red          \033[0m"
+echo -e "\033[47m\033[1;31m  Light Red    \033[0m\
+ 1;31m \
+\033[40m\033[1;31m  Light Red    \033[0m"
+echo -e "\033[47m\033[32m  Green        \033[0m\
+   32m \
+\033[40m\033[32m  Green        \033[0m"
+echo -e "\033[47m\033[1;32m  Light Green  \033[0m\
+ 1;32m \
+\033[40m\033[1;32m  Light Green  \033[0m"
+echo -e "\033[47m\033[33m  Brown        \033[0m\
+   33m \
+\033[40m\033[33m  Brown        \033[0m"
+echo -e "\033[47m\033[1;33m  Yellow       \033[0m\
+ 1;33m \
+\033[40m\033[1;33m  Yellow       \033[0m"
+echo -e "\033[47m\033[34m  Blue         \033[0m\
+   34m \
+\033[40m\033[34m  Blue         \033[0m"
+echo -e "\033[47m\033[1;34m  Light Blue   \033[0m\
+ 1;34m \
+\033[40m\033[1;34m  Light Blue   \033[0m"
+echo -e "\033[47m\033[35m  Purple       \033[0m\
+   35m \
+\033[40m\033[35m  Purple       \033[0m"
+echo -e "\033[47m\033[1;35m  Pink         \033[0m\
+ 1;35m \
+\033[40m\033[1;35m  Pink         \033[0m"
+echo -e "\033[47m\033[36m  Cyan         \033[0m\
+   36m \
+\033[40m\033[36m  Cyan         \033[0m"
+echo -e "\033[47m\033[1;36m  Light Cyan   \033[0m\
+ 1;36m \
+\033[40m\033[1;36m  Light Cyan   \033[0m"
+
+6.2 Cursor Movement
+
+ANSI escape sequences allow you to move the cursor around the screen at will. This is more useful for full screen user interfaces generated by shell scripts, but can also be used in prompts. The movement escape sequences are as follows:
+
+    - Position the Cursor:
+      \033[<L>;<C>H
+         Or
+      \033[<L>;<C>f
+      puts the cursor at line L and column C.
+    - Move the cursor up N lines:
+      \033[<N>A
+    - Move the cursor down N lines:
+      \033[<N>B
+    - Move the cursor forward N columns:
+      \033[<N>C
+    - Move the cursor backward N columns:
+      \033[<N>D
+
+    - Clear the screen, move to (0,0):
+      \033[2J
+    - Erase to end of line:
+      \033[K
+
+    - Save cursor position:
+      \033[s
+    - Restore cursor position:
+      \033[u
+
+The latter two codes are NOT honoured by many terminal emulators. The only ones that I'm aware of that do are xterm and nxterm - even though the majority of terminal emulators are based on xterm code. As far as I can tell, rxvt, kvt, xiterm, and Eterm do not support them. They are supported on the console.
+
+Try putting in the following line of code at the prompt (it's a little clearer what it does if the prompt is several lines down the terminal when you put this in): echo -en "\033[7A\033[1;35m BASH \033[7B\033[6D" This should move the cursor seven lines up screen, print the word " BASH ", and then return to where it started to produce a normal prompt. This isn't a prompt: it's just a demonstration of moving the cursor on screen, using colour to emphasize what has been done.
+
+Save this in a file called "clock":
+
+#!/bin/bash
+
+function prompt_command {
+let prompt_x=$COLUMNS-5
+}
+
+PROMPT_COMMAND=prompt_command
+
+function clock {
+local       BLUE="\[\033[0;34m\]"
+local        RED="\[\033[0;31m\]"
+local  LIGHT_RED="\[\033[1;31m\]"
+local      WHITE="\[\033[1;37m\]"
+local  NO_COLOUR="\[\033[0m\]"
+case $TERM in
+    xterm*)
+        TITLEBAR='\[\033]0;\u@\h:\w\007\]'
+        ;;
+    *)
+        TITLEBAR=""
+        ;;
+esac
+
+PS1="${TITLEBAR}\
+\[\033[s\033[1;\$(echo -n \${prompt_x})H\]\
+$BLUE[$LIGHT_RED\$(date +%H%M)$BLUE]\[\033[u\033[1A\]
+$BLUE[$LIGHT_RED\u@\h:\w$BLUE]\
+$WHITE\$$NO_COLOUR "
+PS2='> '
+PS4='+ '
+}
+
+This prompt is fairly plain, except that it keeps a 24 hour clock in the upper right corner of the terminal (even if the terminal is resized). This will NOT work on the terminal emulators that I mentioned that don't accept the save and restore cursor position codes. If you try to run this prompt in any of those terminal emulators, the clock will appear correctly, but the prompt will be trapped on the second line of the terminal.
+
+See also The Elegant Useless Clock Prompt for a more extensive use of these codes.
+
+6.3 Moving the Cursor With tput
+
+As with so many things in Unix, there is more than one way to achieve the same ends. A utility called "tput" can also be used to move the cursor around the screen, or get back information about the status of the terminal. "tput" for cursor positioning is less flexible than ANSI escape sequences: you can only move the cursor to an absolute position, you can't move it relative to its current position. I don't use "tput," so I'm not going to explain it in detail. Type "man tput" and you'll know as much as I do. 

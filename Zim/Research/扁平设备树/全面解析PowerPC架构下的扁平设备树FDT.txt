@@ -1,0 +1,501 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-30T15:50:20+08:00
+
+====== 全面解析PowerPC架构下的扁平设备树FDT ======
+Created Wednesday 30 November 2011
+
+http://blog.csdn.net/sailor_8318/article/details/5078959
+
+Sailor_forever  sailing_9806#163.com
+
+
+【摘要】本文以MPC8378处理器、Linux2.6.25内核及U-boot1.3.4为例，讲述了如何在PowerPC架构下使用FDT。首先介绍了引入FDT的背景，接着详细介绍了FDT的组成及制作。最后介绍了U-boot及内核如何支持FDT。
+
+
+【关键字】PowerPC，MPC8378，DTS，DTB，FDT，device node，property，compatible
+
+
+1    背景    2
+2    设备树的描述方式    2
+2.1    root Node    3
+2.2    chosen    3
+2.3    cpus Node    3
+2.4    System Memory    5
+2.5    Devices    5
+2.5.1    Compatible属性    6
+2.5.2    Addressing    6
+2.6    Interrupts and Interrupt Controllers    7
+3    如何制作设备树映像    8
+3.1    输入    8
+3.2    输出    9
+3.3    命令格式    9
+4    设备树的传递途径    9
+4.1    U-boot对FDT的支持    10
+4.2    如何配置FDT    10
+4.3    如何传递设备树    10
+5    内核如何解析设备树    12
+6    设备树对驱动设计产生的影响    15
+
+
+===== 1    背景 =====
+通常情况下，桌面机和服务器可以兼容大部分软件，最好的结果就是**当添加新硬件时无需重新编译Linux内核**。标准的固件接口可以保证bootloader将正确的参数传递给内核。__PC可以采用bios，PowerPC and Sparc采用Open-Firmware接口__。但是对于嵌入式系统，软件差别太大，内核本身也是定制的，bootloader只需要传递很少的参数，因为大部分信息都是硬编码在kernel的配置中的。这样__同一个内核映像很难同时使用在多个不同的平台__上。（这里的**平台指的是安装有PowerPC的开发板，平台的类型由CPU和各外围硬件确定。**）
+
+早期的PowerPC平台采用**特定的数据结构bd_info**来传递参数，其定义在include/asm-ppc/ppcboot.h，#define来定义特定平台的数据域，但并没有什么信息来说明当前采用的是那个bd_info结构，所以必须保证__在内核和bootloader中同时更新__以便保持一致。
+
+合并32-bit (arch/ppc) 和 64-bit (arch/ppc64) PowerPC的同时，决定重新整理固件接口，建立新的目录arch/powerpc，这里所有的平台必须向内核提供__Open Firmware风格的设备树__以便内核启动时可以获得当前平台的硬件配置。
+
+===== 2    设备树的描述方式 =====
+简单的说设备书是一种描述硬件配置信息的数据结构，包括CPU，内存，总线及相关外设。内核启动时可以解析这些信息，以此决定__如何配置内核及加载那些驱动__。该数据结构有一个单一的根节点“/”。每个节点有个名字并可以包含多个子节点。数据的格式遵循IEEE standard 1275。
+
+Device tree source (.dts)采用一种易编辑的文本方式来表达设备树，device tree compiler tool (dtc)将.dts转换成binary device tree blob(.dtb)。__设备树并不是控制系统设备的唯一方法，比如内核对USB和PCI已经有非常方便的检测机制__。
+
+/ { // the root node
+    an-empty-property;
+   
+    a-child-node {
+    array-prop = <0x100 32>;
+    string-prop = "hello, world";
+    };
+   
+    another-child-node {
+    binary-prop = [0102CAFE];
+    string-list = "yes","no","maybe";
+    };
+};
+Figure 1: Simple example of the .dts file format
+
+===== 2.1    root Node =====
+设备树的起点是根节点，Model和compatible属性指明了__当前平台__的名字，格式为**<mfg>,<board>**：Mfg是vendor，board是板子模型。Compatible属性不一定非得要，但是当两个系统在硬件配置上基本一致时，这个参数可以用于辨别当前系统。
+/ {
+    model = "fsl,mpc8377rdb";    #**当前平台的名字**
+    compatible = "fsl,mpc8377rdb";  #与当前平台**兼容**的平台列表
+    #address-cells = <1>;
+    #size-cells = <1>;
+
+    aliases {
+        ethernet0 = &enet0;
+        ethernet1 = &enet1;
+        serial0 = &serial0;
+        serial1 = &serial1;
+        //pci0 = &pci0;
+    };
+    // Child nodes go here
+};
+Figure 3: Example system root node
+
+===== 2.2    chosen =====
+此节点并不真正代表设备节点，而是一些虚拟的**由bootloader传递给内核的一些参数**，包括bootargs(cmdline)和initrd等。一般由bootloader在启动内核时添加此节点。
+
+=== 2.3    cpus Node ===
+cpus节点是root节点的子节点，对于多核CPU系统，每个CPU有一个子节点。Cpus节点并不需要特别的特性，但是通常习惯指定#address-cells = <1>和#size-cells = <0>，这指定了各个CPU节点的reg属性的格式，其用于编码物理CPU号。
+
+CPU节点的格式为cpu@x，model属性描述CPU类型，其他的是时钟频率及cache 相关属性。
+cpus {
+    #cpus = <1>;
+    #address-cells = <1>;   
+    #size-cells = <0>;
+
+    PowerPC,8377@0 {
+       ** device_type = "cpu";**
+        **model = "PowerPC, 8377";**
+        reg = <0x0>;
+        d-cache-line-size = <32>;
+        i-cache-line-size = <32>;
+        d-cache-size = <32768>;
+        i-cache-size = <32768>;
+        timebase-frequency = <0>;
+        bus-frequency = <0>;
+        clock-frequency = <0>;
+    };
+};
+Figure 4: cpus node
+
+cpus {
+    #cpus = <2>;
+    #address-cells = <1>;
+    #size-cells = <0>;
+
+    PowerPC,8641@0 {
+        device_type = "cpu";
+        reg = <0>;
+        d-cache-line-size = <20>;    // 32 bytes
+        i-cache-line-size = <20>;    // 32 bytes
+        d-cache-size = <8000>;        // L1, 32K
+        i-cache-size = <8000>;        // L1, 32K
+        timebase-frequency = <0>;    // 33 MHz, from uboot
+        bus-frequency = <0>;        // From uboot
+        clock-frequency = <0>;        // From uboot
+        32-bit;
+        linux,boot-cpu;
+    };
+    PowerPC,8641@1 {
+        device_type = "cpu";
+        reg = <1>;
+        d-cache-line-size = <20>;    // 32 bytes
+        i-cache-line-size = <20>;    // 32 bytes
+        d-cache-size = <8000>;        // L1, 32K
+        i-cache-size = <8000>;        // L1, 32K
+        timebase-frequency = <0>;    // 33 MHz, from uboot
+        bus-frequency = <0>;        // From uboot
+        clock-frequency = <0>;        // From uboot
+        32-bit;
+    };
+};
+
+===== 2.4    System Memory =====
+描述系统内存的节点成为memory node，其为root节点的子节点，通常只用一个memory节点描述系统**所有的内存范围**，reg属性用来定义当前可用的各个memory范围。
+
+memory {
+    device_type = "memory";
+    reg = <0x00000000 0x40000000>;    // 256MB at 0
+};
+Figure 5: Memory node
+
+===== 2.5   Devices =====
+一系列节点用于描述系统总线及设备，每个总线及设备在设备树种都有自己的节点。__处理器的local bus通常直接作为根节点的子节点__，附着在local bus上的**Devices and **__bridges__将作为其子节点。
+
+下图显示的PLB bus上的设备包括interrupt controller, an Ethernet device,及 OPB bridge，OPB总线上有serial devices and a Flash device
+plb {
+	    compatible = "**simple-bus**";
+	    #address-cells = <1>;
+	    #size-cells = <1>;
+	    ranges;
+
+	    UIC0: interrupt-controller {
+	**    compatible = "ibm,uic-440gp",** "ibm,uic";
+	    interrupt-controller;
+	    #__interrupt-cells __= <2>;
+	    };
+
+	    ethernet@20000 {
+	    compatible = "ibm,emac-440gp";
+	    reg = <0x20000 0x70>;
+	    __interrupt-parent__ = <&UIC0>;
+	    interrupts = <0 4>;
+	    };
+    
+	opb {
+	        compatible = "**simple-bus**";
+	        #address-cells = <1>;
+	        #size-cells = <1>;
+	        ranges = <0x0 0xe0000000  0x20000000>;
+	
+	        serial@0 {
+	        compatible = "ns16550";
+	        reg = <0x0 0x10>;
+	**        interrupt-parent = <&UIC0>;**
+	**        interrupts = <1 4>;**
+	        };
+	
+	        serial@10000 {
+	        compatible = "ns16550";
+	        reg = <0x10000 0x10>;
+	        interrupt-parent = <&UIC0>;
+	        interrupts = <2 4>;
+	        };
+	
+	        flash@1ff00000 {
+	        compatible = "amd,s29gl256n",
+	        "cfi-flash";
+	        reg = <0x1ff00000 0x100000>;
+	        };
+	    };
+};
+Figure 6: Simple System Device Hierarchy
+
+=== 2.5.1    Compatible属性 ===
+几乎每个设备都有compatible属性，OS利用此关键字来确定node所描述的设备，通常compatible字符串的格式如下：
+**<manufacturer>,<part-num>**
+
+对于每个特定的compatible值，需要为该设备定义一个device tree binding。有时候compatible是一系列字符串，如果某个设备在**寄存器级别**和某个旧设备兼容，则可以同时指定多个字串，这样OS就知道这__两个驱动是兼容__的。通常该设备的compatible字串在前，然后是兼容的旧设备的字串。
+
+==== 2.5.2    Addressing ====
+**设备地址**由reg属性指定，其为一系列cell单元。格式如下：
+reg = <base1 size1 [base2 size2 [...]]>; __base的个数由父设备的#address-cells确定，size的个数由#size-cells确定__
+每个reg的实际大小有父节点的#address-cells and #size-cells属性决定，#address-cells是用来指定base address基地址的cells个数，#size-cells是用来指定region size的cells个数。Reg所使用的cells个数必须是（#address-cells + #size-cells）的倍数。
+
+Reg定义的是bus address，而非system address，bus address是设备依赖的总线上的相对地址，或者更专业的说__bus address是相对于父节点的__。
+
+__Ranges属性可以将bus address映射到父节点一级__，格式如下：
+ranges = <addr1 parent1 size1 [...]>;
+addr为**总线地址**，宽度为#address-cells，parent是父节点总线上的地址，宽度__为父节点的__#address-cells，size宽度为__父节点__的#size-cells。但是当总线地址和父节点地址映射关系为1：1时，可以简化映射关系：
+**ranges;**
+在本示例中，Flash在OPB总线上的地址为0x1ff00000，但OPB总线中，PLB bus address 0xe0000000 映射到了0x0000000 on the OPB bus，因此Flash设备的地址为0xfff00000。
+
+===== 2.6    Interrupts and Interrupt Controllers =====
+设备树的自然布局很方便描述设备间的简单关系，但是中断系统是个比较复杂的例子。可以将serial device描述为OPB总线的子节点，但也可以说其是interrupt controller设备的子节点，那么如何描述呢？目前的规范是，自然树的结构适用于描述那些**寻址和控制设备**的主要接口，次要连接可以通过phandle属性来描述相互之间的关系，其为节点中的一个指针，指向另一个节点。
+
+对于中断连接，设备节点利用**interrupt-parent and interrupts属性**来描述到**interrupt controller**的连接。interrupt-parent是指向描述interrupt controller节点的指针，interrupts是interrupt controller可以触发的一系列中断信号。
+
+Interrupt controller节点必须定义__空属性__interrupt-controller，同时定义#interrupt-cells，确定几个cells描述一个中断信号。由于Interrupt controller节点在设备树种被其他节点链接，因此必须定义属性linux,phandle = <xx>。
+
+对于大部分SOC系统，通常只有一个interrupt controller,，但是多个interrupt controller之间可以级联。interrupt controller和设备之间的关系就形成了__interrupt tree__。
+
+对于serial device node，interrupt-parent属性定义了其在中断树中与其父节点的关系。Interrupts属性定义了特定的中断标识，其格式取决于中断树中父节点的#interrupt-cells，通常#interrupt-cells为2，这样第一个值表示interrupt controller中的硬件中断编号，第二个值表示中断触发方式：电平触发或者边沿触发。
+
+/* IPIC
+* interrupts cell = <intr #, sense>
+* sense values match linux IORESOURCE_IRQ_* defines:
+* sense == 8: Level, low assertion
+* sense == 2: Edge, high-to-low change
+ */
+pic@700 {
+    linux,phandle = <700>;
+    interrupt-controller;
+    #address-cells = <0>;
+    #interrupt-cells = <2>;
+    reg = <700 100>;
+    built-in;
+    device_type = "ipic";
+};
+
+serial@4500 {
+    device_type = "serial";
+    compatible = "ns16550";
+    reg = <4500 100>;
+    clock-frequency = <0>;
+    interrupts = <9 8>;
+    interrupt-parent = <700>;
+};
+
+===== 3    如何制作设备树映像 =====
+Device tree compiler(dtc)负责将文本格式的设备树转换成OS可以识别的格式。
+
+=== 3.1    输入 ===
+Dtc接受三种输入格式：
+源文件，即device tree source；
+Blob (dtb)，flattened tree format，主要用于检查现有的DTB映像；
+FS文件系统，/proc/device-tree下面的文件树目录，主要用于从当前运行的内核中获得设备树映像。
+
+-sh-3.1# ls -al /proc/device-tree
+ls -l /proc/device-tree/
+-r--r--r--    1 root     root            4 Jan  1 00:05 #address-cells
+-r--r--r--    1 root     root            4 Jan  1 00:05 #size-cells
+dr-xr-xr-x    2 root     root            0 Jan  1 00:05 aliases
+dr-xr-xr-x    2 root     root            0 Jan  1 00:05 chosen
+-r--r--r--    1 root     root           15 Jan  1 00:05 compatible
+dr-xr-xr-x    3 root     root            0 Jan  1 00:05 cpus
+dr-xr-xr-x   15 root     root            0 Jan  1 00:05 immr@e0000000
+dr-xr-xr-x    4 root     root            0 Jan  1 00:05 localbus@e0005000
+dr-xr-xr-x    2 root     root            0 Jan  1 00:05 memory
+-r--r--r--    1 root     root            1 Jan  1 00:05 name
+dr-xr-xr-x    2 root     root            0 Jan  1 00:05 pci@e000a000
+dr-xr-xr-x    2 root     root            0 Jan  1 00:05 redbox-fpga-card0@F0000000
+dr-xr-xr-x    2 root     root            0 Jan  1 00:05 redbox-fpga-card1@F0000000
+dr-xr-xr-x    2 root     root            0 Jan  1 00:05 redbox-fpga-dbstate@F0000000
+dr-xr-xr-x    2 root     root            0 Jan  1 00:05 redbox-fpga-misc@F0000000
+
+ls -l /proc/device-tree/immr/@e0000000/
+-r--r--r--    1 root     root            4 Jan  1 00:06 #address-cells
+-r--r--r--    1 root     root            4 Jan  1 00:06 #size-cells
+-r--r--r--    1 root     root            4 Jan  1 00:06 bus-frequency
+-r--r--r--    1 root     root           11 Jan  1 00:06 compatible
+-r--r--r--    1 root     root            4 Jan  1 00:06 device_type
+dr-xr-xr-x    2 root     root            0 Jan  1 00:06 ethernet@24000
+dr-xr-xr-x    2 root     root            0 Jan  1 00:06 ethernet@25000
+dr-xr-xr-x    2 root     root            0 Jan  1 00:06 i2c@3000
+dr-xr-xr-x    3 root     root            0 Jan  1 00:06 i2c@3100
+dr-xr-xr-x    2 root     root            0 Jan  1 00:06 interrupt-controller@700
+dr-xr-xr-x    3 root     root            0 Jan  1 00:06 mdio@24520
+-r--r--r--    1 root     root            5 Jan  1 00:06 name
+dr-xr-xr-x    2 root     root            0 Jan  1 00:06 power@b00
+-r--r--r--    1 root     root           12 Jan  1 00:06 ranges
+-r--r--r--    1 root     root            8 Jan  1 00:06 reg
+dr-xr-xr-x    2 root     root            0 Jan  1 00:06 serial@4500
+dr-xr-xr-x    2 root     root            0 Jan  1 00:06 serial@4600
+dr-xr-xr-x    2 root     root            0 Jan  1 00:06 spi@7000
+dr-xr-xr-x    2 root     root            0 Jan  1 00:06 timer@500
+dr-xr-xr-x    2 root     root            0 Jan  1 00:06 usb@23000
+dr-xr-xr-x    2 root     root            0 Jan  1 00:06 wdt@200
+
+=== 3.2    输出 ===
+Blob (dtb)，主要用于从DTS获得设备树映像；
+source (dts), 当输入参数为Blob (dtb)，可以“反汇编”出设备树源文件；
+assembler source (asm)，其最终可以编译成.O文件，可以链接到bootloader中或者frrmware image。
+
+=== 3.3    命令格式 ===
+dtc [-I <input -format > ] [-O <output -format > ] [-o output-filename] [-V output_version] input_filename
+
+dtc -I dts -O dtb -S 0x3000 -o obj_name.dtb source_name.dts
+-S 指定的是生成的dtb文件的大小，需要适当地扩大以供u-boot 创建/choose节点时使用
+
+===== 4    设备树的传递途径 =====
+对于Open Firmware (OF)系统，prom_init.c中的代码负责解析设备树，并将其转化为**blob印象**。
+
+对于无Open Firmware (OF)的系统，内核可以直接从入口启动，并接受外部传递的flattened device tree参数。对于嵌入式系统，此参数由bootloader提供，或者封装过的zImage映像提供。
+
+===== 4.1    U-boot对FDT的支持 =====
+U-boot为了支持FDT，专门添加了新的代码，如下：
+/Libfdt目录
+fdt.h
+libfdt.h
+fdt_support.h
+fdt_support.c
+
+===== 4.2    如何配置FDT =====
+通常在板子配置头文件定义相关宏，以支持FDT
+/* Pass open firmware flat tree */
+#define CONFIG_OF_LIBFDT    1
+#define CONFIG_OF_BOARD_SETUP    1
+#define CONFIG_OF_STDOUT_VIA_ALIAS 1
+
+CONFIG_OF_BOARD_SETUP宏表示会对设备树中的部分参数进行调整，主要是timebase-frequency，bus-frequency，clock-frequency等参数，在设备树配置文件中，这些参数可能为0，即采用U-boot中的参数。
+
+===== 4.3    如何传递设备树 =====
+Lib_ppc/board.c中do_bootm_linux负责启动Linux内核。
+#if defined(CONFIG_OF_LIBFDT)
+#include <fdt.h>
+#include <libfdt.h>
+#include <fdt_support.h>
+
+static void fdt_error (const char *msg);
+static int boot_get_fdt (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[],
+        bootm_headers_t *images, char **of_flat_tree, ulong *of_size);
+static int boot_relocate_fdt (struct lmb *lmb, ulong bootmap_base,
+        cmd_tbl_t *cmdtp, int flag, int argc, char *argv[],
+        char **of_flat_tree, ulong *of_size);
+#endif
+
+相关流程如下：
+ 
+在该流程中，主要从启动参数中找出设备树，然后在设备树中添加chosen 节点， 并将initrd 的地址地址，结束地址，bootargs,cmd_line 等参数保存到chosen 节点中，最后根据是否支持扁平设备树选择不同的内核启动方式。
+
+#if defined(CONFIG_OF_LIBFDT)
+    if (of_flat_tree) {    /* device tree; boot new style */
+        /*
+		* Linux Kernel Parameters (passing device tree):
+		* r3: pointer to the fdt, followed by the board info data
+		* r4: physical pointer to the kernel itself
+		* r5: NULL
+		* r6: NULL
+		* r7: NULL
+         */
+        debug ("   Booting using OF flat tree.../n");
+        (*kernel) ((bd_t *)of_flat_tree, (ulong)kernel, 0, 0, 0);
+        /* does not return */
+    } else
+#endif
+    {
+        /*
+		* Linux Kernel Parameters (passing board info data):
+		* r3: ptr to board info data
+		* r4: initrd_start or 0 if no initrd
+		* r5: initrd_end - unused if r4 is 0
+		* r6: Start of command line string
+		* r7: End   of command line string
+         */
+        debug ("   Booting using board info.../n");
+        (*kernel) (kbd, initrd_start, initrd_end, cmd_start, cmd_end);
+        /* does not return */
+    }
+
+如果未定义CONFIG_OF_LIBFDT或者当前bootm命令没有FDT参数时则**采用传统**的方式启动内核。
+
+启动命令格式如下：
+Bootm kernel_addr  ramdisk_addr/-  fdt_addr
+当不采用ramdisk时，第二个参数为“-”
+
+===== 5    内核如何解析设备树 =====
+1）首先将从u-boot 传递过来的映像基地址和dtb 文件映像基地址保存通用寄存器r30,r31；
+2）通过调用machine_init()、early_init_devtree()函数来获取内核前期初始化所需的bootargs,cmd_line等系统引导参数；
+
+3）调用start_kernel()、setup_arch()、unflatten_device_tree（）函数来解析dtb 文件，构建一个由device_node 结构连接而成的单项链表，并使用全局变量allnodes 指针来保存这个链表的头指针；
+4）内核调用OF 提供的API 函数获取allnodes链表信息来初始化内核其他子系统、设备等。
+ 
+
+Head_32.S
+/*
+* This is where the main kernel code starts.
+ */
+start_here:
+。。。。
+/*
+* Do early platform-specific initialization,
+* and set up the MMU.
+ */
+    mr    r3,r31
+    mr    r4,r30
+    bl    machine_init
+
+/*
+* Find out what kind of machine we're on and save any data we need
+* from the early boot process (devtree is copied on pmac by prom_init()).
+* This is called very early on the boot process, after a minimal
+* MMU environment has been set up but before MMU_init is called.
+ */
+void __init machine_init(unsigned long dt_ptr, unsigned long phys)
+{
+    /* If btext is enabled, we might have a BAT setup for early display,
+	* thus we do enable some very basic udbg output
+     */
+#ifdef CONFIG_BOOTX_TEXT
+    udbg_putc = btext_drawchar;
+#endif
+
+    /* Do some early initialization based on the flat device tree */
+    early_init_devtree(__va(dt_ptr));
+}
+
+/* Warning, IO base is not yet inited */
+void __init setup_arch(char **cmdline_p)
+{
+    *cmdline_p = cmd_line;
+
+    /* so udelay does something sensible, assume <= 1000 bogomips */
+    loops_per_jiffy = 500000000 / HZ;
+
+    unflatten_device_tree();
+…..
+}
+
+/**
+* unflattens the device-tree passed by the firmware, creating the
+* tree of struct device_node. It also fills the "name" and "type"
+* pointers of the nodes so the normal device-tree walking functions
+* can be used (this used to be done by finish_device_tree)
+ */
+void __init unflatten_device_tree(void)
+{
+    unsigned long start, mem, size;
+    struct device_node **allnextp = &allnodes;
+
+    DBG(" -> unflatten_device_tree()/n");
+
+    /* First pass, scan for size */
+    start = ((unsigned long)initial_boot_params) +
+        initial_boot_params->off_dt_struct;
+    size = unflatten_dt_node(0, &start, NULL, NULL, 0);
+    size = (size | 3) + 1;
+
+    DBG("  size is %lx, allocating.../n", size);
+
+    /* Allocate memory for the expanded device tree */
+    mem = lmb_alloc(size + 4, __alignof__(struct device_node));
+    mem = (unsigned long) __va(mem);
+
+    ((u32 *)mem)[size / 4] = 0xdeadbeef;
+
+    DBG("  unflattening %lx.../n", mem);
+
+    /* Second pass, do actual unflattening */
+    start = ((unsigned long)initial_boot_params) +
+        initial_boot_params->off_dt_struct;
+    unflatten_dt_node(mem, &start, NULL, &allnextp, 0);
+    if (*((u32 *)start) != OF_DT_END)
+        printk(KERN_WARNING "Weird tag at end of tree: %08x/n", *((u32 *)start));
+    if (((u32 *)mem)[size / 4] != 0xdeadbeef)
+        printk(KERN_WARNING "End of tree marker overwritten: %08x/n",
+               ((u32 *)mem)[size / 4] );
+    *allnextp = NULL;
+
+    /* Get pointer to OF "/chosen" node for use everywhere */
+    of_chosen = of_find_node_by_path("/chosen");
+    if (of_chosen == NULL)
+        of_chosen = of_find_node_by_path("/chosen@0");
+
+    DBG(" <- unflatten_device_tree()/n");
+}
+
+=== 6    设备树对驱动设计产生的影响 ===
+TBD

@@ -1,0 +1,10 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-10T16:43:18+08:00
+
+====== global ======
+Created Tuesday 10 January 2012
+
+Repo: cvs -z3 -d:pserver:anonymous@cvs.savannah.gnu.org:/sources/global co global
+Homepage: http://www.gnu.org/software/global/global.html
+http://savannah.gnu.org/cvs/?group=global

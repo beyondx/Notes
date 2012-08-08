@@ -1,0 +1,50 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-04T22:35:42+08:00
+
+====== 3 ======
+Created Saturday 04 February 2012
+
+http://leenux.blog.edu.cn/2004/189844.html
+
+** list和lambda
+
+  List的存在是lisp得名的原因。list只有__三个基本操作__：cons，car，
+cdr。cons表示的是，将一个symbol 添加到某个现有list的__表头__上去；
+car表示取的某个list的表头；cdr表示取的某个list除了表头之外的剩余
+部分。car和cdr是标准的lisp黑话，没用过lisp系语言的人肯定不会知道
+这两个词什么意思。
+                                                                                                                       
+                                                                                                                       
+  car和cdr很容易理解，cons有一点特别。                                                                                 
+
+                                                                                                                       
+  lisp中，list上每一个元素的结构等价于
+                                                                                                                       
+
+  struct node { void* data; void* next; }
+                                                                                                                       
+                                                                                                                       
+  如果用c来表示cons的作法的话，大致是这样的
+
+
+  node* cons(arg1, arg2) {
+    list* = malloc (sizeof node);
+    list.data = arg1;
+    list.next = arg2;
+    return list;
+  }
+
+
+  所以我们如果做一次(cons 1 '(2 3))的话，想象一下，会组成一个新的
+列表，表头的data是1.但是如果我们做一次(cons '(2 3) 1)的话，会形成
+一个新的表，表中的第一个元素是'(2 3)，本应该指向第二个元素的位置，
+现在存放了一个数字。这种结构被称为__dot pair(带点偶对)__，emacs会把它
+打印成((2 3) . 1)。dot pair一个常见用途是拿来做不定长参数列表(再
+想一遍list的构造就明白这个设计实在很讨巧)。
+                                                                                                                       
+
+  Lambda本身就更没的说了。略过。
+                                                                                                                       
+                                                                                                                       
+  于是elisp的就没有别的特殊语法了。是不是太简单了？

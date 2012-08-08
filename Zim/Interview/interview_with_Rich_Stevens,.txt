@@ -1,0 +1,66 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-03T16:06:11+08:00
+
+====== interview with Rich Stevens, ======
+Created 星期五 03 六月 2011
+http://www.kohala.com/start/unpv12e/interview.html
+Prentice Hall interview with Rich Stevens, author of Unix Programming, Volume 1: Networking APIs, Sockets and XTI, 2/e
+
+October, 1997
+
+Prentice Hall: How did you become involved in Unix networking, from a programming and author perspective?
+
+Rich Stevens: During the 1980's, while I was at Health Systems International, we were doing Unix software development for a variety of platforms. We went through the normal sequences of hardware that most startups went through at that time: one VAX-11/750 running 4.2BSD, then a bigger VAX (785), then multiple VAXes (added an 8650), throw in some PCs running a flavor of operating systems (Venix, Xenix, DOS), and for good measure one IBM mainframe running VM.
+
+Naturally, with multiple VAXes running 4.xBSD, you connect them together with an Ethernet and run TCP/IP, and TCP/IP was also available for the PC-based Unices and the mainframe. In addition to the standard utilities (ftp, rlogin) we started writing our own applications using sockets. Documentation was almost nonexistent (I had very worn copies of the two Leffler et al. documents from the 4.3BSD manual set) so when you needed an answer, you looked it up in the source code. After doing this for a while I realized that everything I was digging up should really be documented.
+
+I really believe that my background is fundamental to the success of UNP and my other books. That is, I was not one of the developers at Berkeley or AT&T, so the writing of UNP was not a "memory dump". Everything that is in the book I had to dig out of somewhere and understand myself. This process of digging up the details and learning how things work leads down many side streets and to many dead ends, but is fundamental (I think) to understanding something new.
+
+Many times in my books I have set out to write how something works, thinking I know how it works, only to write some test programs that lead me to things that I never knew. I try to convey some of these missteps in my books, as I think seeing the wrong solution to a problem (and understanding why it is wrong) is often as informative as seeing the correct solution.
+
+Prentice Hall: How has the Unix network programming environment changed since the publication of the First Edition in 1990?
+
+Rich Stevens: First, it is obvious that TCP/IP is the future, something that was not a given in 1990, with all the OSI hype that was taking place. Second, the Berkeley sockets interface has also become the de facto standard, despite X/Open's big push for TLI/XTI. Third, IP version 6 (IPv6) should be heavily used during the lifetime of the second edition, so there is a strong emphasis in the book for protocol-independent networking code, allowing applications to be developed for both IPv4 and IPv6. Lastly, the Posix.1g standard for both sockets and XTI is near final approval, so it was important for the rewrite to include this standard, along with the forthcoming Unix 98 standard.
+
+Prentice Hall: How did the Second Edition evolve to 3 volumes and what will be covered in each volume?
+
+Rich Stevens: When I started the rewrite over a year ago I started with the sockets chapter and things just grew and grew as I expanded this one chapter from the 1990 edition into over 20 chapters. My first attempt to make it "fit" was to take out the second half of the 1990 edition (applications) and make that a separate volume. I then realized that Chapter 3 from the 1990 edition (IPC, or interprocess communication) would not fit either. A hard decision was whether or not to include the six chapters on XTI. I decided to keep them because they are still used by some developers, often with protocols other than TCP/IP, and because XTI is part of the Posix.1g standard.
+
+Volume 2 will be IPC, both the information from Chapter 3 of the 1990 edition along with coverage of the newer Posix.1b realtime IPC methods.
+
+Volume 3 will be applications, some from the 1990 edition plus many new applications that have been developed since 1990.
+
+Prentice Hall: Volume 1 is devoted primarily to sockets programming. How has this area changed since the publication of the First Edition and how is this change reflected in the book?
+
+Rich Stevens: Besides more details on the topics from the 1990 edition, the following topics are new to the second edition: IPv4/IPv6 interoperability, protocol-independent name translation, routing sockets, multicasting, Posix threads, IP options, datalink access, client-server design alternatives (how many different ways are there to write a Web server?), virtual networks and tunneling, and network program debugging techniques.
+
+Although most of these topics are demonstrated using the sockets API under Unix, many of these are what I call "network programming fundamentals" that can be implemented on systems other than Unix, and using an API other than sockets.
+
+Prentice Hall: How would you describe the code in Volume 1 and how will your readers be able to access this code?
+
+Rich Stevens: The code is available to anyone on the Internet and should compile easily on most current Unix systems. The majority of the 10,000 lines of C code are functions that one can use as building blocks (a network programming toolchest) inside their own network applications. Many of these functions help hide the differences between IPv4 and IPv6, and can aid the reader in developing protocol-independent code.
+
+Prentice Hall: Why is there such a continuing demand for information on Unix when certain persons in the Pacific NorthWest would have us believe that NT is taking over the world?
+
+Rich Stevens: As Scott McNealy says, Unix has been "dying" at an annual growth rate of about 20% per year for the past 10 years. Without starting a religious debate I can state that Unix is a time-tested, industrial strength system that has enough critical mass to continue for many, many years. It usage continues to grow in the commercial world (just witness how many of the world's Web servers run on Unix platforms) along with the free versions (e.g., the phenomenal growth of Linux). The absolute number of Unix systems will never equal that of Windows, but who cares? As a writer I just need to know that the audience for my books is not declining, and the total number of Unix programmers is increasing, not declining.
+
+Prentice Hall: Every book which you have written has been extremely successful and enjoyed a long shelf life. Can you describe the process and effort you put into the development of your books?
+
+Rich Stevens: I have a couple of credos when writing a book. I must also admit that two Prentice Hall books that have helped shape these beliefs are Kernighan and Ritchie's C book, and Kernighan and Pike's "The UNIX Programming Environment".
+
+First, the book must be technically accurate. If you are going to show code, include the code directly from its source files and make certain that it compiles and runs correctly. If you are going to show terminal input and output, use the "script" program to produce a verbatim copy, to avoid any typographical errors. Having many competent technical reviewers helps here too, as no author knows everything about a subject.
+
+Second, the book must be typeset nicely. I think this is critical for a programming book, so that the reader can tell what are commands, what the user types in, what are comments, and so on. The appearance of source code is also critical to understanding the code. To guarantee this I produce camera ready copy of all my books, a time consuming step, but worth it in the end, I believe. Books by Don Knuth and Brian Kernighan are a continual source of inspiration in this area.
+
+Third, I try to demonstrate and not dictate. One small program is often worth a thousand words. One of the reviewers for the second edition of UNP complained about my usage of the third person when writing, as in "When we run this program". But I really envision many readers sitting down with the book at a terminal, with all the examples from the book on line, and going through the steps and examples outlined in the book. I use the term "we" to mean the reader and myself.
+
+Fourth, I like pictures to explain something. If I cannot draw something, I don't understand it. This is especially critical in the area of networking: draw the processes involved, draw the networking connections (or IPC) between the processes, show which files are open by which process, and so on. That's where I came up with the term "Illustrated" for my TCP/IP series, to distinguish it from the other TCP/IP books in the market.
+
+UNP also deserves the "Illustrated" adjective, as it contains lots and lots of figures. Whenever I need to understand something new, I have to draw a picture of what's involved, and I then include these pictures in the books.
+
+Fifth, I firmly believe that my readers want all the details, not glossy overviews. That's why the second edition has grown so much from the 1990 edition. I think that most readers of the new edition will read only half of the book, but each reader will read a different half. This also means that it is essential that the book be usable as a reference, which means lots of references to other related sections of the book, and a thorough index.
+
+Sixth, I never include anything I do not understand. I hate hand waving when I read a book (which often indicates that the author doesn't understand something) so I avoid it at all costs. When I hit something that I don't understand, I take a detour and learn something new. This often makes my books late by a few months, but I think accuracy and completeness are essential. Many times I start a section on some topic, allocating (say) three days to write it. Two weeks later I am finishing the section because I got side tracked on something that I needed to cover, but which I didn't understand completely.
+
+© Prentice-Hall, Inc. A Simon & Schuster Company Upper Saddle River, New Jersey 07458

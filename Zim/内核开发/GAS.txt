@@ -1,0 +1,11 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-15T20:53:10+08:00
+
+====== GAS ======
+Created Friday 15 June 2012
+
+_init:置于函数前面是什么作用？它属于GNU汇编器命令吗？
+这是一个宏，凡是有__init前缀的函数都会在系统启动时被调用，启动后init函数所占有的存储空间将被释放。时间太久忘了，好像是__init把后面的函数放到一个函数指针的列表中，在init时依次调用吧。
+看一下他的定义就知道了。
+

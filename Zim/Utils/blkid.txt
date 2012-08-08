@@ -1,0 +1,14 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T19:11:36+08:00
+
+====== blkid ======
+Created Sunday 27 March 2011
+
+**blkid**
+
+ is a command utility to display block disk attributes
+
+geekard@geekard-laptop:~$ sudo blkid /dev/sda3
+/dev/sda3: LABEL="/" UUID="18d7325c-ab28-4fca-95a9-a5b43cc0f839" TYPE="ext4" 
+geekard@geekard-laptop:~$ 

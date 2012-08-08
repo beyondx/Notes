@@ -1,0 +1,135 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-17T23:28:57+08:00
+
+====== Emacs的文件管理器Dired ======
+Created Wednesday 17 August 2011
+ 
+
+详细的用法说明可以参照Emacs的info文件，这里只是介绍一些常用的功能。
+
+M-x dired 或者 C-x d，可以进入dired-mode，这样便可以对文件进行操作了，作为一个文件管理器还是挺不错的。
+
+在.emacs里加入以下语句。
+
+(setq dired-recursive-deletes t) ; 可以递归的删除目录
+(setq dired-recursive-copies t) ; 可以递归的进行拷贝
+(require 'dired-x) ; 有些特殊的功能
+(global-set-key "/C-x/C-j" 'dired-jump) ; 通过 C-x C-j 跳转到当前目录的 Dired
+(setq dired-guess-shell-alist-user
+(list
+(list "//.chm$" "xchm")
+(list "//.rm$" "gmplayer")
+(list "//.rmvb$" "gmplayer")
+(list "//.avi$" "gmplayer")
+(list "//.asf$" "gmplayer")
+(list "//.wmv$" "gmplayer")
+(list "//.htm$" "w3m")
+(list "//.html$" "w3m")
+(list "//.mpg$" "gmplayer")
+)
+) ; 设置一些文件的默认打开方式，此功能必须在(require 'dired-x)之后
+一些常用的命令
+
+和文件一样打开目录或通过 C-x d 都可以进入目录的 Dired 缓冲中。这里是打开 Dired-x 之后默认的绑定。说明后面[]中的符号的意义：
+[*] 作用在已标记的所有文件(目录)或光标所在当前文件(目录)上。
+[p] 用前缀参数表示文件个数，从当前文件开始，正数向下、负数向上。
+[u] 用前缀参数改变默认行为。对于设置标记的命令一般变为去掉标记。
+[x] 需要加载 dired-x。
+查看帮助
+? 简单帮助
+h 模式帮助
+移动光标
+n, p, SPC 上、下移动光标 [p]
+C-n, C-p 上、下移动光标 [p]
+M-{, M-} 已标记的文件之间移动 [p]
+C-M-p, C-M-n 缓冲中的子目录间移动 [p]
+<, > 缓冲中的目录行间移动 [p]
+C-M-u 缓冲中的目录树上移动 [p]
+M-g 光标移动到某个文件上
+M-G 光标移动到某个缓冲中的子目录上，(用 i 插入的)
+标记文件
+m 标记文件，下移一行 [p]
+u 去掉标记，下移一行 [p]
+U 去掉缓冲中所有的标记
+M-Backspace 去掉缓冲中所有的某个标记，缺省为 * 标记
+Backspace 并去掉上一行标记，并上移一行 [p]
+t 标记/未标记互换
+D 删除所有标记的文件/目录 [*]
+d 设置“删除标记”（字符D），并且光标下移一行 [p]
+x 删除用 d 标记的文件/目录
+~ 将缓冲中备份文件做删除标记 [u]
+& 没用的文件，做删除标记
+# 将缓冲中自动保存的文件做删除标记 [u]
+. 按备份文件版本，将备份文件做删除标记 [u]
+% g 标记所有“含有”regexp 的文件 [u]
+* * 标记所有可执行文件 [u]
+* . 标记所有同扩展名文件 [ux]
+* / 标记所有目录 [u]
+* @ 标记所有符号连接 [u]
+* c 改变标记的符号
+% d 通过匹配 regexp 标记删除
+% m 通过匹配 regexp 标记 [u]
+复制、移动、创建 文件或目录以及连接
+C-x C-f 创建文件
++ 创建目录
+R 文件的重命名/移动 [p*]
+C 复制文件 [*]
+S 创建文件的 Symbol link (绝对路径) [p*]
+Y 创建文件的 Symbol link (相对路径) [px*]
+H 创建文件的 Hard link [p*]
+% C 复制匹配 regexp 的文件 [p*]
+% S 创建匹配 regexp 的 Symbol link (绝对路径) [p*]
+% Y 创建匹配 regexp 的 Symbol link (相对路径) [p*]
+% H 创建匹配 regexp 的 Hark link [p*]
+修改文件名、属性
+M 修改文件 rwx 权限属性 [*]
+G 修改文件 Group 属性 [p*]
+O 修改文件 Owner 属性 [p*]
+T 修改文件的时间戳 [p*]
+% l 文件名逐一改为小写 [p*]
+% u 文件名逐一改为大写 [p*]
+% R, % r 重命名/移动匹配 regexp 的文件 [p*]
+访问文件，目录
+e, f, RET 打开文件或目录
+a 打开文件或目录，并替换当前缓冲
+v 使用 view 模式查看文件，q 退出，有些文件使用外部查看程序调用
+o 另一个窗口中，打开文件或目录
+C-o 另一个窗口中，打开文件或目录，但当前窗口不变
+F 打开(多个)文件 [x*]
+I 使用 Info 模式查看文件
+N 使用 man 模式查看文件，若有前缀参数，提示输入处理命令 [ux*]
+V 使用 RMAIL 模式查看文件 [x]
+退出
+^ 访问目录的父目录，若有前缀参数在另外的窗口中打开 [u]
+q 退出缓冲，若有前缀参数则关闭缓冲 [u]
+隐藏/刷新缓冲中内容
+s 互换缓冲中“文件名/时间”排序 [u]
+C-u s 修改传递给 ls 的参数，即修改每行的内容
+i 把当前行的子目录插入缓冲中
+M-o 隐藏/显示部分次要文件，使缓冲更简便，若有前缀参数标记隐藏的文件 [ux]
+$ 隐藏/显示当前目录中内容 [p]
+M-$ 隐藏/显示缓冲中所有目录内容
+k 隐藏文件，按 g 可以再显示出来 [p*]
+l 刷新缓冲文件 [p*]
+g 刷新缓冲所有文件
+C-/, C-_, C-x u dired 模式的 undo
+其他
+= 比较文件
+M-= 文件和备份之间比较，若有前缀参数，提示输入 diff 选项 [u]
+w 复制文件名到 kill-ring [p*]
+Z 压缩/解压缩文件 [p*]
+X 在文件上执行 shell 命令 [p*]
+B 编译(Emacs Lisp)文件 [p*]
+L 加载(Emacs Lisp)文件 [p*]
+y 给出文件类型信息 (通过 file 命令)
+P 打印文件 [p*]
+dired-x.el 中的其他有用的函数
+dired-mark-extension 按后缀标记
+dired-flag-extension 按后缀标记删除
+dired-clean-patch 标记删除 patch 文件
+dired-clean-tex 标记删除 tex 编译文件
+dired-very-clean-tex 标记删除 tex 编译文件
+dired-jump 跳转到当前缓冲所在目录
+dired-jump-other-window 在另一个窗口中跳转到当前缓冲所在目录
+dired-omit-here-always 在当前目录生成 .dired 文件

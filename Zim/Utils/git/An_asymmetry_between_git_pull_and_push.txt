@@ -1,0 +1,104 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-21T23:03:09+08:00
+
+====== An asymmetry between git pull and push ======
+Created Sunday 21 August 2011
+
+http://longair.net/blog/2011/02/27/an-asymmetry-between-git-pull-and-git-push/
+Although git is an excellent system, which has certainly changed my way of working for the better, occasionally one comes across an inconsistency that seems bizarre. In case you don’t want to read the whole of this post, the one sentence summary would be, “By default, git push origin will update branches on the destination with one with the same name on the source, instead of using the association defined by git branch --track, which git pull origin would use — the config option push.default can change this behaviour.” However, for a more detailed explanation, read on…
+
+Suppose someone has told you that they’ve pushed a topic branch to GitHub that they’d like you to work on. Let’s say that you’ve set up a remote called github for that repository, and the branch there is called new-feature2.  With a recent git (>= 1.6.1) you can just do git fetch and then:
+
+git checkout -t github/new-feature2
+
+… which will create a branch in your repository called new-feature2 based on github/new-feature2, and set various config options to associate your new-feature2 branch with github/new-feature2.  It will also checkout that new branch so that you can start working on it.  However, let’s suppose that you want to give your branch a more helpful name – let’s say that’s “add-menu”.  Then you might instead do:
+
+git checkout -t -b add-menu github/new-feature2
+
+… which has the same effects to the previous command, except for giving the branch a different name locally.  The config options that will have been set by that command are:
+
+branch.add-menu.remote=github
+branch.add-menu.merge=refs/heads/new-feature2
+
+The detailed semantics of these config options are given in the branch.<name>.remote and branch.<name> merge sections of git config’s documentation, but, for the moment, just understand that this sets up an association between your local add-menu branch, and the new-feature2 branch on GitHub.
+
+This association makes various helpful features of git possible – for example, this is how you get this nice information from git status:
+
+$ git status
+# On branch add-menu
+# Your branch is ahead of 'github/new-feature2' by 5 commits.
+
+It’s also the mechanism by which, when you’re on the add-menu branch, typing:
+
+$ git pull github
+
+… will cause git to run a git fetch, and then merge github/new-feature2 into your add-menu branch.  That’s all very helpful.
+
+So, what happens when you want to push your changes back to the upstream branch?  You might hope that because this association exists in your config, then typing any of the following three commands while you’re on the add-menu branch would work:
+
+    git push github add-menu
+    git push github
+    git push
+    git push github HEAD
+
+However, with the default git setup, none of these commands will result in new-feature2 being updated with your new commits on add-menu.  What does happen instead?
+1. [wrong] git push github add-menu
+
+In this case git push parses add-menu as a refspec.  “refspecs” are usually of the form <src>:<dst>, telling you which local branch (src) you’d like to update the remote branch (def) with.  However, the default behaviour if you don’t add :<dst>, as in this example, is explained in here:
+
+    If :<dst> is omitted, the same ref as <src> will be updated.
+
+So the command is equivalent to git push github add-menu:add-menu, which will create a new branch called add-menu on GitHub rather than updating new-feature2.
+2. [wrong] git push github
+
+In this case, the refspec is omitted.  The documentation for git push again explains what happens in this case:
+
+    The special refspec : (or +: to allow non-fast-forward updates) directs git to push “matching” branches: for every branch that exists on the local side, the remote side is updated if a branch of the same name already exists on the remote side. This is the default operation mode if no explicit refspec is found (that is neither on the command line nor in any Push line of the corresponding remotes file—see below).
+
+… so the new commits on your add-menu branch won’t be pushed.  However, the changes for every other branch for which there’s a matching name in your repository on GitHub will be!
+2. [wrong] git push
+
+Again, we can find in the documentation for git push what happens if we miss out the remote as well:
+
+    git push: Works like git push <remote>, where <remote> is the current branch’s remote (or origin, if no remote is configured for the current branch).
+
+In our example case, branch.add-menu.remote is set to github, so the behaviour in this case will be the same as in the previous one, i.e. probably not what you want.
+4. [wrong] git push github HEAD
+
+Thanks to David Ongaro for suggesting adding this fourth wrong command. The git push documentation explains that this is:
+
+    A handy way to push the current branch to the same name on the remote. 
+
+In other words, in this example, that will end up being the same as git push github add-menu:add-menu, again creating an unwanted add-menu branch in the remote repository.
+So how should you push?
+
+The simplest option, which will work everywhere, is just to specify both the source and destination parts of the refspec, i.e.:
+
+git push github add-menu:new-feature2
+
+That means that you have to remember what the remote name should be, but it’s the least ambiguous way to push a branch, and in any case it’s a good idea to understand how to use refspecs more generally.
+
+However, another alternative (available since git version 1.6.3) is to set the push.default config variable.  The documentation for this in the git config man page is:
+
+    push.default: Defines the action git push should take if no refspec is given on the command line, no refspec is configured in the remote, and no refspec is implied by any of the options given on the command line. Possible values are:
+
+        nothing – do not push anything.
+        matching – push all matching branches. All branches having the same name in both ends are considered to be matching. This is the default.
+        tracking – push the current branch to its upstream branch.
+        current – push the current branch to a branch of the same name.
+
+So if you set push.default to tracking with one of:
+
+$ git config push.default tracking # just for the current repository
+$ git config --global push.default tracking # globally for your account
+
+… then when you’re on the add-menu branch, git push github will update new-feature2 on GitHub with your changes in add-menu, and no other branches will be affected.
+
+The commit message that introduced this change suggests that the reason that this option was introduced was exactly to avoid the kind of confusion I’ve described above:
+
+    When “git push” is not told what refspecs to push, it pushes all matching branches to the current remote. For some workflows this default is not useful, and surprises new users. Some have even found that this default behaviour is too easy to trigger by accident with unwanted consequences.
+
+Personally, I don’t actually use this option, since I use git on so many different systems it would be more confusing to have different settings for push.default on some of them.  However, I hope it’s useful for some people, and it’s a shame that this behaviour couldn’t reasonably be made the default at this stage.
+
+Update: Thanks to David Ongaro, who points out below that since git 1.7.4.2, the recommended value for the push.default option is upstream rather than tracking, although tracking can still be used as a deprecated synonym. The commit message that describes that change is nice, since it suggests that there is an effort underway to deprecate the term “track” in the context of setting this association with the upstream branch in a remote repository. (The totally different meanings of “track” in git branch --track and “remote-tracking branches” has long irritated me when trying to introduce git to people.)

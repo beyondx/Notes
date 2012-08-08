@@ -1,0 +1,105 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-23T17:47:59+08:00
+
+====== 数组 ======
+Created Friday 23 December 2011
+http://molinux.blog.51cto.com/2536040/469296
+数组申明：
+
+    [root@localhost ~]# ARRAY=(a b c d) 
+     #一对括表示是数组，数组元素用“空格“符号分割开。
+
+    [root@localhost ~]# echo $ARRAY 
+    a 
+    #数组也是指针形似，数组名称相当于一个指针，指向第一个数组元素，
+    #所以echo会显示出ARRAY[0]的值
+     
+
+数组赋值：
+
+    [root@localhost ~]# A[0]=9  
+    [root@localhost ~]# A[10]=1  
+    [root@localhost ~]# echo ${A[0]}  
+    9  
+    #赋值时可以单个赋值，如上 
+
+
+数组读取：
+
+
+    [root@localhost ~]# echo $ARRAY[1]  //错误形式示例 
+     a[1]  
+    [root@localhost ~]# echo $ARRAY[2] //错误形式示例 
+     a[2]  
+    #如上面两种形式书写，echo会先显示$ARRAY的值，然后按照字符串显示[n],并且拼接起来。达不到取出值的目的. 
+     
+    [root@localhost ~]# echo ${ARRAY[0]}  
+    a  
+    [root@localhost ~]# echo ${ARRAY[1]}  
+    b  
+    [root@localhost ~]# echo ${ARRAY[3]}  
+    d  
+    #注意下表从0开始；读取时候需用 ${} 将数组元素括起来. 
+    [root@localhost ~]#ARRAY=(a b c d) 
+    [root@localhost ~]# echo ${ARRAY[*]} 
+    a b c d 
+    [root@localhost ~]# echo ${#ARRAY[*]} 
+    4 
+     
+    [root@localhost ~]# 
+    [root@localhost ~]# A[0]=9 [root@localhost ~]# A[10]=1 
+    [root@localhost ~]# echo ${A[*]} 
+    9 1 
+    [root@localhost ~]# echo ${#A[*]} 
+    2 
+    [root@localhost ~]# A[3]=5 
+    [root@localhost ~]# echo ${A[*]} 
+    9 5 1 
+    [root@localhost ~]# echo ${#A[*]} 
+    3 
+    # 如上所示，${数组名[下标]} 下标是：*或者@ 可得到整个数组内容 
+    #并且 ${#数组名[*]}  可返回整个数组非空值的个数 
+
+数组删除：
+
+    [root@localhost ~]# unset A 
+    [root@localhost ~]# echo ${A[*]} 
+    [root@localhost ~]# echo ${#A[*]} 
+    0 
+
+
+数组特殊用法：
+
+    ----分片：
+    [root@localhost ~]# echo ${ARRAY[*]} 
+    a b c d e 
+    [root@localhost ~]# echo ${ARRAY[*]:0:3} 
+    a b c 
+    [root@localhost ~]# echo ${ARRAY[*]:2:4} 
+    c d e 
+    # 如上，在数组中可以用：n进行数组的范围分片，显示一个范围的数值
+    # 
+    [root@localhost ~]# next=(${ARRAY[*]:2:4}) 
+    [root@localhost ~]# echo ${next[*]} 
+    c d e 
+    #如上，分片后的部分数值赋给了新数组next
+     
+    ----替换：
+    [root@localhost ~]# echo ${ARRAY[*]}
+    a b c d e
+    [root@localhost ~]# echo ${ARRAY[*]/a/A}
+    A b c d e
+    [root@localhost ~]# echo ${ARRAY[*]/b/B}
+    a B c d e
+    [root@localhost ~]# echo ${ARRAY[*]/b/100}
+    a 100 c d e
+    [root@localhost ~]#
+    [root@localhost ~]# echo ${y[*]}
+    1 2 3 4 5
+    [root@localhost ~]# echo ${y[*]/2/200}
+    1 200 3 4 5
+    #如上，可以进行数组中值的替换。
+
+
+

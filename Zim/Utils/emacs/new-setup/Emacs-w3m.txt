@@ -1,0 +1,91 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-10T15:41:01+08:00
+
+====== Emacs-w3m ======
+Created Tuesday 10 January 2012
+
+Repo: cvs -d :pserver:anonymous@cvs.namazu.org:/storage/cvsroot co emacs-w3m
+Homepage: http://emacs-w3m.namazu.org/
+
+===== Installation =====
+
+Before installing emacs-w3m, you have to check whether your environment meets the requirements.
+
+Installing emacs-w3m on UNIX-like systems
+
+    At the first, run the configure script.
+
+        % ./configure
+
+    If you've installed APEL, FLIM or something in non-standard directories other than the default load-path, you must specify them using the --with-addpath option as follows:
+
+        % ./configure --with-addpath=/opt/share/apel:/opt/share/flim
+
+    Next, execute the following commands to install emacs-w3m to an appropriate directory.
+
+        % make
+        # make install
+
+    If you are using Emacs 21.1 and newer or XEmacs, you had better install icon image files. To do this:
+
+        # make install-icons
+
+    You can also install emacs-w3m as an XEmacs package using make install-package instead of make install.
+
+        % make
+        # make install-package
+
+    In this case, you don't have to execute make install-icons.
+
+===== Installing on non-UNIX-like systems =====
+
+    If you cannot execute the configure script on your system, or if no make command is available, execute the following command:
+
+        # emacs -batch -q -no-site-file -l w3mhack.el NONE -f w3mhack-nonunix-install
+
+    If APEL, FLIM (or any other library) aren't installed in the ordinary places, the installer will leave them out. In such a case, it is necessary to tell those places to the installer as shown below:
+
+        # emacs -batch -q -no-site-file -l w3mhack.el //c/share/apel://c/share/flim -f w3mhack-nonunix-install
+
+===== Configuration =====
+
+Put this line into your ~/.emacs file:
+
+    (require 'w3m-load)
+
+Just type M-x w3m, and you can use emacs-w3m.
+
+In order to handle text/html part with emacs-w3m under SEMI MUAs such as Wanderlust, you have to put the following line in your ~/.emacs file:
+
+    (require 'mime-w3m)
+
+For more detail, see Info manual.
+
+===== Mailing List =====
+
+We have the mailing list, emacs-w3m@namazu.org, to discuss about emacs-w3m. Because almost all of its members are Japanese, Japanese is mainly used for discussion but we also welcome mails written in English. This list is opened to the public, and its archive is accessible via WEB. You can also subscribe to the gmane.emacs.w3m newsgroup which is gateway'd to this list bidirectionally.
+
+If you want to subscribe to this list, check the disclaimer and send a mail containing
+
+    subscribe Your Name
+
+(not your email address) in the body to emacs-w3m-ctl@namazu.org. To unsubscribe to it, send a mail containing just
+
+    # bye
+
+in the body to emacs-w3m-ctl@namazu.org.
+
+===== Related Links =====
+http://www.emacswiki.org/emacs/emacs-w3m
+
+
+
+    w3m
+        w3m-m17n
+        w3mmee 
+    APEL
+    FLIM
+    BITMAP-MULE
+    gifsicle
+    New custom 

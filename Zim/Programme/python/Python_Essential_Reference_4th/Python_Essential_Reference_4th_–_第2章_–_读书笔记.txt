@@ -1,0 +1,80 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-05T14:47:36+08:00
+
+====== Python Essential Reference 4th – 第2章 – 读书笔记 ======
+Created 星期二 05 七月 2011
+本章主要是关于字面值和基本的符号。
+1、一条很长的语句，可以使用空格加斜杠” \”来分割，如下：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#注意\ 前面又个空格哦！
+a = 1 + 2 +3 + 4 \
+   + 5 + 6+ 7
+
+2、与1相反，当需要多条语句在一行的时候，需要用分号”;”分开。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#注意\ 前面又个空格哦！
+a = 2;b=3
+
+3、当某快内没有任何语句的时候，必须用pass占位，因为Pyhon靠缩进来判别代码块，如：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+if a:
+    pass
+else:
+    print("False !")
+
+4、标识符：由字母、数字、下划线且非数字开头。和C、C++、Java等基本一样。
+保留字如下：
+and del from nonlocal try as elif global not while assert else if or with break except import pass yield class exec in print continue finally is raise def for lambda return
+
+一个下划线开头的一般有特殊含义。
+
+5、数字字面值：布尔、整型、浮点、复数。
+True/False
+1 111111111111111111L
+123.45 123e+04
+1+2j 1-2J
+
+6、字符串字面值，单引号、双引号、三引号。
+‘I’m a Word’
+“Still a Word”
+“”"
+I
+also
+a
+word
+“”"
+
+7、转移字符：由\开始，与C语言等类似
+
+8、Python2中默认为byte字符串（ASCII类似），Python3才默认为utf-8,因此经常有乱码的问题。这个非常讨厌，遇到时候再找解决办法吧。
+
+9、容器（sequence），
+list：[1,2,3,"Hi"]
+tuple：(1,2,3,”Hi I cant change”)
+dictionary：{“a”:1,”b”:2}
+
+10、（保留的）操作符、特殊符号。
+很多，不一一列举了。
+特别注意的是，下述符号也被保留了：# \ @
+
+11、文档字符串，见上一章，讲过了，在def的下面用三个引号引起来的部分就是。
+
+12、修饰符，比如上一章的@staticmethod，已经见过了。
+
+13、源代码的编码
+如果源代码中出现了其他语言的字符常量，而又与文件编码不一致，可以强制生命编码，文件头写如下内容：
+
+# -*- coding: UTF-8 -*-
+
+这样之后，就可以直接使用utf-8的编辑器编辑了。
+
+（第2章 完毕）
+
+您可能也喜欢如下文章:

@@ -1,0 +1,212 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-31T20:26:24+08:00
+
+====== 漫谈QWidget及其派生类(三) ======
+Created Monday 31 October 2011
+
+http://blog.csdn.net/dbzhang800/article/details/6744650
+
+    在漫谈QWidget及其派生类(二)一文的最后我们简单提到了QMainWindow的一些东西。但是内容太少了，本文中我们换个角度看看QMainWindow，希望大家能了解一点：与QWidget相比，其派生类QMainWindow也不过如此
+
+例子一
+上一篇太乱了，应该主要是缺少例子。我们这次改一改，直接上个例子看看：
+
+{{./1.png}}
+
+#include <QtGui/QtGui>
+class MainWindow:public QMainWindow
+{
+public:
+    MainWindow()
+    {
+        menuBar()->addMenu("&File");
+        menuBar()->addMenu("&Help");
+
+        statusBar()->addWidget(new QLabel("Hello from Dbzhang800..."));
+        statusBar()->addPermanentWidget(new QLabel("2011-09-03"));
+
+      **  setCentralWidget**(new QTextEdit);
+    }
+};
+
+int main(int argc, char *argv[])
+{
+    QApplication a(argc, argv);
+    MainWindow w;
+    w.show();
+    return a.exec();
+}
+
+这个例子实在没什么可说的，对不？？
+
+* 菜单栏
+* 状态栏
+* 中心窗体
+
+这么常规的东西，有必要写在这儿么？如果只是这样，肯定没有必要了。可是，如果我说：不用QMainWindow，直接用QWidget可以轻易实现同样的效果。是不是值得聊聊了？
+
+===== HMainWindow =====
+
+其实上面你看到的截图，是我用的HMainWindow生成的。使用HMainWindow的话，你只需要将前面的 QMainWindow ==> HMainWindow，是不是很简单？
+
+  **  HMainWindow 的定义：**
+
+class HMainWindow:public QWidget
+{
+public:
+    HMainWindow(QWidget * parent=0)
+        :QWidget(parent,__ Qt::Window__), m_menuBar(0), m_statusBar(0), m_central(0)
+    {
+        m_vbox = new QVBoxLayout(this);
+        m_vbox->setContentsMargins(0,0,0,0);
+        m_vbox->setSpacing(0);
+    }
+
+    void setCentralWidget(QWidget * w)
+    {
+        if (!m_central) {
+            m_central = w;
+            m_vbox->insertWidget(0, w, 1);
+        }
+    }
+
+    QMenuBar * menuBar()
+    {
+        if (!m_menuBar) {
+            m_menuBar = new QMenuBar(this);
+            m_vbox->setMenuBar(m_menuBar);
+        }
+        return m_menuBar;
+    }
+
+    QStatusBar * statusBar()
+    {
+        if (!m_statusBar) {
+            m_statusBar = new QStatusBar(this);
+            m_vbox->addWidget(m_statusBar);
+        }
+        return m_statusBar;
+    }
+
+private:
+    QMenuBar * m_menuBar;
+    QStatusBar * m_statusBar;
+    QWidget * m_central;
+    QVBoxLayout * m_vbox;
+};
+
+我们用这个来模拟一个QMainWindow，这个类很简单：
+
+HMainWindow():
+
+构造函数。创建了一个layout(用来放置菜单栏、状态栏、中心窗体);传递给基类QWidget一个Qt::Window标记，当然，对我们这个例子这个东西有没有无所谓。
+
+menuBar(): 
+
+第一次调用它时，会生成一个QMenuBar，并加入layout
+
+statusBar():
+
+同上，生成状态栏并加入layout
+
+setCentralWidget():
+
+除状态栏、菜单栏外的区域，总要放个东西吧？
+
+和 QMainWindow比起来，我们这个HMainWindow实在是太简易了。因为QMainWindow所使用的**QMainWindowLayout**(对，有这么一个东西，是个私有类) 比 QVBoxLayout复杂太多了。
+
+不过呢，思想是一样的。一旦理解了这个，也就掌握 QMainWindow 的那点小把戏了。
+
+**例子二**
+
+不少网友抱怨：
+
+* 覆盖基类的paintEvent函数，结果画的东西全都看不到
+* 覆盖基类的mousePressEvent函数，结果收不到鼠标事件
+* 覆盖基类的****Event函数，结果...
+    ...
+
+//class MainWindow:public QMainWindow
+class MainWindow:public HMainWindow
+{
+public:
+    MainWindow()
+    {
+    //...
+    }
+protected:
+protected:
+    void mousePressEvent(QMouseEvent *)
+    {
+     //...
+    }
+    void paintEvent(QPaintEvent *)
+    {
+     //...
+    }
+};
+
+有了前面的基础，想想是不是很简单？QMainWindow只不过是一个__带layout的Widget__，上面放置了菜单栏、状态栏、中心窗体这些子Widget。挡住了我们的QMainWindow.
+
+**例子三**
+
+如果没有意识到QMainWindow的**中心窗体**的作用，很容易犯下面的错误，你能找到答案么？
+
+* 创建一个子Widget，比如按钮。不设置为(或添加到)中心窗体
+
+//class MainWindow:public QMainWindow
+class MainWindow:public HMainWindow
+{
+public:
+    MainWindow()
+    {
+    //...
+    QPushButton * btn = new QPushButton(this);
+    }
+};
+
+什么现象？哈哈，其实 很有意思：
+
+创建了一个按钮，回想上一节？几何尺寸是如何改变的？只能通过**setGeometry或resize或move**。这些我们都没使用。于是默认大小、默认位置(0，0)。于是，左上角出现一个按钮！！
+
+可是，左上角一般是什么东西呢？菜单栏嘛？ 菜单栏和按钮同时出现在左上角？？可能么？
+
+有何不可呢，只不过两个东西必然有一个在上一个在下！！谁上谁下，和什么有关？你可以自己试试看(考虑到文章长度，本文不涉及widget的堆放层次的控制)。
+
+**例子四**
+
+如果没有意识到QMainWindow这个东西，其实已经__有了__一个layout，很容易犯下面的问题，你能找到答案么？
+
+* layout 不起作用，按钮依然出现在左上角！！
+
+//class MainWindow:public QMainWindow
+class MainWindow:public HMainWindow
+{
+public:
+    MainWindow()
+    {
+    QHBoxLayout * hbox = new QHBoxLayout;
+    hbox->addWidget(new QPushButton(this));
+
+    setLayout(hbox);
+    }
+};
+
+似乎不少人对此不解？我用其他Widget都是这么用的啊？创建layout，添加其他widget，设置layout，
+
+怎么失败了呢？？
+
+看看Manual，知道答案了吧？
+
+void QWidget::setLayout ( QLayout * layout )
+
+If there already is a layout manager installed on this widget, QWidget__ won't __let you install another. 
+
+**例子五**
+
+真不想写了，给大家个链接，感兴趣的可以看看。QMainWindow一旦概念不清(或用法不对)，还会有什么问题
+
+    http://hi.baidu.com/cyclone/blog/item/d27c41349e32b75b251f14d4.html
+
+本文完。希望本文的内容对大家有帮助。但本文不能取代Manual，用QMainWindow，一定要认真看QMainWindow的Manual。

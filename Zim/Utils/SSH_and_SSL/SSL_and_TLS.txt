@@ -1,0 +1,41 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-12T19:25:44+08:00
+
+====== SSL and TLS ======
+Created Wednesday 12 October 2011
+
+SSL stands for "**Secure Sockets Layer;**" TLS, for "**Transport Layer Security.**" SSL was developed by Netscape for use in __securing HTTP.__ That is still its principal use, although there is nothing specific to HTTP about SSL. When a browser accesses a URL which begins with__ "https"__, it __speaks HTTP over an SSL connection__. TLS is the name of the IETF protocol standard that grew out of __SSL 3.0__, and is documented by RFC 2246. We will use the term "TLS."
+
+TLS has goals and features similar to those of the SSH Transport and User Authentication protocols. It provides a single,__ full-duplex byte stream__ to clients, with cryptographically assured privacy and integrity, and optional authentication. It differs from SSH in the following principal ways:
+
+    TLS server authentication is optional: the protocol supports fully anonymous operation, in which neither side is authenticated. Such connections are inherently vulnerable to man-in-the-middle attacks. In SSH-TRANS, server authentication is mandatory, which protects against such attacks. Of course, it is always possible for a client to skip the step of verifying that the public key supplied by the server actually belongs to the entity the client intended to contact (e.g. using the **/etc/ssh_known_hosts** file). However, SSH-TRANS at least demands going through the motions.
+    Both client and server authentication are done with X.509 public-key certificates. This makes TLS a bit more cumbersome to use than SSH in practice, since it requires a functioning __public-key infrastructure (PKI)__ to be in place, and certificates are more complicated things to generate and manage than SSH keys. However, a PKI system provides scalable key management for your trouble, which SSH currently lacks.
+    TLS does not provide the range of client authentication options that SSH does; public-key is the only option.
+    TLS does not have the extra features provided by the other SSH component: the SSH Connection Protocol (SSH-CONN). SSH-CONN uses the underlying SSH-TRANS connection to provide muliple logical data channels to the application, as well as support for remote program execution, terminal management, tunnelled TCP connections, flow control, etc. 
+
+
+
+====== SSL: ======
+A public key cryptography tunneling protocol, and various internet
+services can be piped through it. Ports 115, 563, 995, 465, and 443 are
+the standard ports for __SSL-encrypted FTP, NNTP, POP3, SMTP, and HTTP__
+sessions. Some clients have SSL support built-in (all web browsers, and
+some NNTP and e-mail clients). Clients without built-in SSL support can
+still use SSL via "**SSL proxies**" like Stunnel (i.e. Eudora@127.0.0.1 -->
+127.0.0.1:stunnel_port --> smtp.myisp.com:465). To my knowledge, there
+is __no username/password __authentication built into the SSL protocol itself.
+Authentication is left up to the daemon receiving __SSL connections.__ I.e.,
+if connecting to an NNTP server on port 563, user authentication would
+happen *inside the SSL tunnel* with the normal NNTP "AUTHINFO" commands,
+just like if a non-SSL port 119 NNTP connection were underway.
+
+====== SSH: ======
+Another public key cryptography tunneling protocol like SSL, but
+unlike SSL, SSH__ has username/password authentication__ is built into it.
+All SSH-capable clients connect to port 22 (SSH) on the destination server
+to negotiate the username/password stage, and if successful, the clients
+then tell the SSH daemons what it wants to connect to. I.e., an SSH-aware
+SMTP client would connect to mail.myisp.com:22, send my username/password
+to the SSH daemon, and then tell the SSH daemon "I want you to connect to
+mail.myisp.com:25 on my behalf and proxy it through to me".

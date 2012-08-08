@@ -1,0 +1,102 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-16T16:46:09+08:00
+
+======  Musics ======
+Created Monday 16 May 2011
+http://home.ustc.edu.cn/~lixuebai/Music/ClassicalList.html
+我用的是《阿呆系列 古典音乐》推荐的曲子，列在下面：
+
+目录1，老名曲的收藏
+
+这个目录包含一些极其优美的作品，你一听可能就会认出它们。
+
+巴赫：第五勃兰登堡协奏曲(Bach: Brandenburg Concerto no.5)
+
+贝多芬：第五钢琴协奏曲（皇帝协奏曲）；第五和第九交响曲
+(Beethoven: Piano Concerto no.5(Emperor); Symponies No.5 and 9)
+
+比捷：第一和第二《卡门》组曲(Bizet: Carmen Suites 1 and 2)
+
+德沃夏克: E小调第九交响曲（自新大陆）(Dvorak: Symphony no.9 in E minor
+(From the New world))
+
+格什温：《蓝色狂想曲》(Gershwin: Rhapsody in Blue)
+
+格里格：A小调钢琴协奏曲；《培尔.金特》第一组曲
+(Grieg: Piano Concerto in A minor; Peer Gynt Suite no.1)
+
+亨德尔：《弥赛亚》(Handel: Messiah)
+
+海顿：G大调第九十四交响曲（惊愕）(Haydn: Symphony no.94 in G major (surprise)
+
+门德尔松：A大调第四交响曲（意大利交响曲）
+(Mendelssohn: Symphony no.4 in A major (Italian))
+
+莫扎特：C大调第二十一钢琴协奏曲
+(Mozart: Piano Concerto no.21 in C major)
+
+拉赫玛尼诺夫：C小调第二钢琴协奏曲
+(Rachmaninoff: Pian Concerto no.2 in C major)
+
+拉威尔：《波莱罗》(Ravel: Bolero)
+
+里姆斯基.科萨科夫：《舍赫拉查德》
+(Rimask-Korsakov: Sheherazade)
+
+罗德里戈：《阿兰胡埃斯协奏曲》
+(Rodrigo: Concierto de Aranjuez)
+
+罗西尼：《威廉.退尔》序曲
+(Rossino: William Tell Overture)
+
+舒伯特：第八交响曲（未完成交响曲）
+(Schubert: Symphony no.8 (Unfinished))
+
+约翰.施特劳斯：《蓝色多瑙河》圆舞曲
+(J. Strauss: Blue Danube Waltz)
+
+柴科夫斯基：《胡桃夹子》组曲；《罗密欧与朱丽叶》幻想序曲；D大调小提琴协奏曲；
+降B大调第一钢琴协奏曲
+(Tchaikovsky: Nutcraker Suite; Romeo and Juliet Fantasy-Overture; Violin
+Concerto in D major; Piano Concerto no.1 in B-flat major)
+
+维瓦尔第：《四季》；D大调吉他协奏曲
+(Vivaldi: Four Seasons; Guitar Concerto in D major)
+
+目录2：适当的收藏你也许不认识这些伟大的作品，但它们却是很容易理解的：
+
+巴赫：管弦乐组曲第3号(Bach: Orchestral Suite no.3)
+
+巴伯：《造谣学校》序曲(Barber: Overture to The School for Scandal)
+
+巴托克：罗马尼亚舞曲(Bartok: Romania Dances)
+
+贝多芬：第三（英雄）和第七交响曲；D大调小提琴协奏曲
+(Beethoven: Symphonies no.3 "Eroica" and no.7; Violin Concerto in D major)
+
+柏辽兹：《罗马狂欢节》序曲(Berlioz: Roman Carnival Overture)
+
+勃拉姆斯：第一和第二交响曲(Brahms: Symphonies no.1 and 2)
+
+布里顿：《青少年管弦乐队指南》(Britten: Young Persons's Guide to the Orchestra)
+
+德沃夏克：B小调大提琴协奏曲；E大调弦乐小夜曲；降E大调小夜曲
+(Dvorak: Cello Concerto in B minor; Serenade for Strings in E major; Serenade
+in E-flat major)
+
+格什温：F大调钢琴协奏曲；《一个美国人在巴黎》
+(Gershwin: Piano Concerto in F; An American in Paris)
+
+亨德尔：《水上音乐》；任何一首大协奏曲
+(Handel: Water Music; and Concerto Grosso)
+
+海顿：D大调第104交响曲( Haydn: Symphony no.104 in D major)
+
+李斯特：第二匈牙利狂想曲(Liszt: Hungarian Rhapsody no.2)
+
+门德尔松：A小调第三交响曲（苏格兰）
+(Mendelssohn: Symphony no.3 in A minor "Scottish")
+
+莫扎特：A大调小提琴协奏曲第5号；C小调钢琴协奏曲，K491；G小调第四十交响曲
+--或者他写的任何东西(Mozart: Violi

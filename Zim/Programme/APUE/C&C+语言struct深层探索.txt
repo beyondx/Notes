@@ -1,0 +1,328 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-04T14:40:33+08:00
+
+====== C&C+语言struct深层探索 ======
+Created 星期六 04 六月 2011
+C/C+语言struct深层探索
+
+===== 1.     struct的巨大作用 =====
+
+面对一个人的大型C/C++程序时，只看其对struct的使用情况我们就可以对其编写者的编程经验进行评估。因为一个大型的C/C++程序，势必要涉及一些(甚至大量)进行数据组合的结构体，这些结构体可以将原本意义属于一个整体的数据组合在一起。从某种程度上来说，会不会用struct，怎样用struct是区别一个开发人员是否具备丰富开发经历的标志。
+
+在网络协议、通信控制、嵌入式系统的C/C++编程中，我们经常要传送的不是简单的字节流（char型数组），而是多种数据组合起来的一个整体，其表现形式是一个结构体。
+
+经验不足的开发人员往往将所有需要传送的内容依顺序保存在**char型数组**中，通过**指针偏移**的方法传送网络报文等信息。这样做编程复杂，易出错，而且一旦控制方式及通信协议有所变化，程序就要进行非常细致的修改。
+
+一个有经验的开发者则灵活运用结构体，举一个例子，假设网络或控制协议中需要传送三种报文，其格式分别为packetA、packetB、packetC：
+
+struct structA
+{
+int a;
+char b;
+};
+ 
+
+struct structB
+{
+char a;
+short b;
+};
+
+ 
+struct structC
+{
+int a;
+char b;
+float c;
+}
+
+优秀的程序设计者这样设计传送的报文：
+
+struct CommuPacket
+{
+int iPacketType;　　//报文类型标志
+union　　　　　　//每次传送的是三种报文中的一种，使用union
+{
+        struct structA packetA;
+        struct structB packetB;
+        struct structC packetC;
+}
+};
+
+在进行报文传送时，直接传送struct CommuPacket一个整体。
+
+假设发送函数的原形如下：
+
+// pSendData：发送字节流的首地址，iLen：要发送的长度
+
+Send(char * pSendData, unsigned int  iLen);
+
+发送方可以直接进行如下调用发送struct CommuPacket的一个实例sendCommuPacket：
+
+Send( (char *)&sendCommuPacket , sizeof(CommuPacket) );
+
+假设接收函数的原形如下：
+
+// pRecvData：发送字节流的首地址，iLen：要接收的长度
+
+//返回值：实际接收到的字节数
+
+unsigned int Recv(char * pRecvData, unsigned int  iLen)；
+
+接收方可以直接进行如下调用将接收到的数据保存在struct CommuPacket的一个实例recvCommuPacket中：
+
+Recv( (char *)&recvCommuPacket , sizeof(CommuPacket) );
+
+接着判断报文类型进行相应处理：
+
+switch(recvCommuPacket. iPacketType)
+
+{
+
+case PACKET_A:
+
+…    //A类报文处理
+
+break;
+
+case PACKET_B:
+
+…　  //B类报文处理
+
+break;
+
+case PACKET_C:
+
+…   //C类报文处理
+
+break;
+
+}
+
+以上程序中最值得注意的是
+
+Send( (char *)&sendCommuPacket , sizeof(CommuPacket) );
+
+Recv( (char *)&recvCommuPacket , sizeof(CommuPacket) );
+
+中的__强制类型转换__：(char *)&sendCommuPacket、(char *)&recvCommuPacket，先取地址，再转化为char型指针，这样就可以直接利用处理字节流的函数。
+
+利用这种强制类型转化，我们还可以方便程序的编写，例如要对sendCommuPacket所处内存初始化为0，可以这样调用标准库函数memset()：
+
+memset((char *)&sendCommuPacket,0, sizeof(CommuPacket));
+
+===== 2.     struct的成员对齐 =====
+
+Intel、微软等公司曾经出过一道类似的面试题：
+
+1. #include <iostream.h>
+2. #pragma pack(8)
+3. struct example1
+4. {
+5.    	short a;
+6.    	long b;
+7. };
+ 
+
+8. struct example2
+9. {
+10. 	char c;
+11. 	example1 struct1;
+12. 	short e;   
+13. };
+14. #pragma pack()
+ 
+15. int main(int argc, char* argv[])
+16. {
+17. 	example2 struct2;
+18. 	cout << sizeof(example1) << endl;
+19. 	cout << sizeof(example2) << endl;
+20. 	cout << (unsigned int)(&struct2.struct1) – (unsigned int)(&struct2)<< endl;
+21. 	return 0;
+22. }
+
+问程序的输出结果是什么？
+
+答案是：
+
+8
+16
+4
+
+不明白？还是不明白？下面一一道来：
+
+===== 2.1 自然对界 =====
+
+struct是一种复合数据类型，其构成元素既可以是基本数据类型（如int、long、float等）的变量，也可以是一些复合数据类型（如array、struct、union等）的数据单元。**对于结构体，编译器会自动进行成员变量的对齐**，以提高运算效率。缺省情况下，编译器为结构体的每个成员按其**自然对界（natural alignment）**条件分配空间。各个成员按照它们被声明的顺序在内存中顺序存储，第一个成员的地址和整个结构的地址相同。
+
+自然对界(natural alignment)即默认对齐方式，是指**按结构体的成员中size最大的成员对齐**。
+例如：
+
+struct naturalalign
+
+{
+     char a;
+     short b;
+     char c;
+};
+
+在上述结构体中，size最大的是short，其长度为2字节，因而结构体中的char成员a、c都以2为单位对齐，sizeof(naturalalign)的结果等于6；
+
+如果改为：
+
+struct naturalalign
+
+{
+     char a;
+     int b;
+     char c;
+};
+
+其结果显然为12。
+
+===== 2.2指定对界 =====
+
+一般地，可以通过下面的方法来改变缺省的对界条件：
+
+　　· 使用伪指令#pragma pack (n)，编译器将按照n个字节对齐；
+·     使用伪指令#pragma pack ()，取消自定义字节对齐方式。
+
+注意：如果#pragma pack (n)中指定的n大于结构体中最大成员的size，则其不起作用，结构体仍然按照size最大的成员进行对界。
+
+例如：
+#pragma pack (n)
+struct naturalalign
+{
+     char a;
+     int b;
+     char c;
+};
+#pragma pack ()
+
+当n为4、8、16时，其对齐方式均一样，sizeof(naturalalign)的结果都等于12。而当n为2时，其发挥了作用，使得sizeof(naturalalign)的结果为8。
+
+在VC++ 6.0编译器中，我们可以指定其对界方式（见图1），其操作方式为依次选择projetct > setting > C/C++菜单，在struct member alignment中指定你要的对界方式。
+图1　在VC++ 6.0中指定对界方式
+
+另外，通过____attribute((aligned (n)))__也可以让所作用的结构体成员对齐在n字节边界上，但是它较少被使用，因而不作详细讲解。
+
+===== 2.3    面试题的解答 =====
+
+至此，我们可以对Intel、微软的面试题进行全面的解答。
+程序中第2行#pragma pack (8)虽然指定了对界为8，但是由于struct example1中的成员最大size为4（long变量size为4），故struct example1仍然按4字节对界，struct example1的size为8，即第18行的输出结果；
+
+struct example2中包含了struct example1，其本身包含的简单数据成员的最大size为2（short变量e），但是因为其包含了struct example1，而struct example1中的最大成员size为4，struct example2也应以4对界，#pragma pack (8)中指定的对界对struct example2也不起作用，故19行的输出结果为16；
+
+由于struct example2中的成员以4为单位对界，故其char变量c后应__补充3个空__，其后才是成员struct1的内存空间，20行的输出结果为4。
+
+===== 3.     C和C++间struct的深层区别 =====
+
+在C++语言中struct具有了“类”的功能，其与关键字class的区别在于struct中成员变量和函数的默认访问权限为public，而class的为private。
+
+例如，定义struct类和class类：
+
+struct structA
+{
+char a;
+…
+}
+
+class classB
+{
+      char a;
+      …
+}
+
+则：
+
+struct A a;
+a.a = ‘a’;    //访问public成员，合法
+
+classB b;
+b.a = ‘a’;    //访问private成员，不合法
+
+许多文献写到这里就认为已经给出了C++中struct和class的全部区别，实则不然，另外一点需要注意的是：
+__C++中的struct保持了对C中struct的全面兼容__（这符合C++的初衷——“a better c”），因而，下面的操作是合法的：
+
+//定义struct
+struct structA
+{
+char a;
+char b;
+int c;
+};
+structA a = {‘a’ , ‘a’ ,1};    //  定义时直接赋初值
+即struct可以在定义的时候直接以{ }对其成员变量赋初值，而class则不能，在经典书目《thinking C++ 2nd edition》中作者对此点进行了强调。
+
+===== 4.struct编程注意事项 =====
+
+看看下面的程序：
+
+1. #include <iostream.h>
+2. struct structA
+3. {
+4. 	int iMember;
+5.  	char *cMember;
+6. };
+
+7. int main(int argc, char* argv[])
+8. {
+9.  	structA instant1,instant2;
+10.	char c = ‘a’;
+11. 	instant1.iMember = 1;
+12. 	instant1.cMember = &c;
+13.	instant2 = instant1;
+14.	cout << *(instant1.cMember) << endl;
+15.	*(instant2.cMember) = ‘b’;
+16. 	cout << *(instant1.cMember) << endl;
+17. 	return 0;
+}
+
+14行的输出结果是：a
+16行的输出结果是：b
+
+Why?我们在15行对instant2的修改改变了instant1中成员的值！
+
+原因在于13行的__instant2 = instant1赋值语句采用的是变量逐个拷贝__，这使得instant1和instant2中的cMember指向了同一片内存，因而对instant2的修改也是对instant1的修改。
+
+在C语言中，当结构体中存在指针型成员时，一定要注意在采用赋值语句时是否将2个实例中的指针型成员指向了同一片内存。
+
+在C++语言中，当结构体中存在指针型成员时，我们需要重写struct的拷贝构造函数并进行“=”操作符重载。
+
+
+没有 说到：
+    2006年06月16日 @ 3:49 pm
+
+    好像还与结构体成员的排列顺序有关吧，比如：
+
+    struct naturalalign
+    {
+	    char a;
+	    int b;
+	    char c;
+    };
+
+    结构体的大小和：
+
+    struct naturalalign
+    {
+	    char a;
+	    char c;
+	    int b;
+    };
+
+    的大小就不一样。
+   
+yoghurt 说到：
+    2006年09月29日 @ 2:12 pm
+
+    对struct的类似使用有所保留,
+    不同的编译器, 在不同的平台上, 相同定义struct的成员
+    的对齐和内部排列顺序都可能不同.
+    特别是当打开一些优化选项的时候.
+    所以上面的程序, 如果在接受方可能会产生错误.
+宋宝华 说到：
+    2006年10月24日 @ 11:13 pm
+
+    各位的意见都很对，本文讲解struct的封装作用，所以没有特别提及struct的对界。笔者在另外一篇文章里专门论述了struct的对界问题。

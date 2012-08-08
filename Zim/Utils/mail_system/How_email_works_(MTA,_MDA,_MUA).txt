@@ -1,0 +1,369 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-22T20:25:04+08:00
+
+====== How email works (MTA, MDA, MUA) ======
+Created Sunday 22 May 2011
+http://en.kioskea.net/contents/courrier-electronique/fonctionnement-mta-mua.php3
+
+What is email?
+
+Electronic mail (also known as email or e-mail) is one of the most commonly used services on the Internet, allowing people to send messages to one or more recipients. Email was invented by Ray Tomlinson in 1972.
+
+Why use email?
+
+The operating principle behind email is relatively simple, which has quickly made it the most popular service used on the Internet.
+
+As with a traditional postal service, for your message to reach your recipient, all you need to know is their address. Its two main advantages over "paper mail" are the speed at which the email is sent (practically instantaneous) and the lower cost (included with the cost of an Internet connection).
+
+What's more, email can be used to instantaneously send a message to several people at once.
+Email addresses
+
+Email addresses (both for senders and recipients) are two strings separated by the character "@" (the "at sign"):
+
+user@domain
+
+The right-hand part describes the domain name involved, and the left-hand part refers to the user who belongs to that domain. One or more mail servers (MX records in the Domain Name System) correspond to each domain.
+
+An email address can be up to 255 characters long and can include the following characters:
+
+    Lowercase letters from a to z;
+    Digits
+    The characters ".","_" and "-" (full stop, underscore, and hyphen) 
+
+In practice, an email address often looks something like this:
+
+firstname.lastname@provider.domain
+
+Email, as simple as it is to use, relies on a more complicated set of operating procedures than that of the Web. For most users, its operation is transparent, which means that it is not necessary to understand how email works in order to be able to use it.
+
+However, the short introduction below has been provided to help users understand its basic principles, give them an idea of how to best configure their email clients and inform them about the underlying mechanisms of spam.
+How email works
+{{./courrier-electronique-images-schema-mua-mta-mda.png}}
+Email is based around the use of electronic mailboxes. When an email is sent, the message is routed from server to server, all the way to the recipient's email server. More precisely, the message is sent to the mail server tasked with transporting emails (called the MTA, for Mail Transport Agent) to the recipient's MTA. On the Internet, MTAs communicate with one another using the protocol SMTP, and so are logically called SMTP servers (or sometimes outgoing mail servers).
+
+The recipient's MTA then delivers the email to the incoming mail server (called the MDA, for Mail Delivery Agent), which stores the email as it waits for the user to accept it. There are two main protocols used for retrieving email on an MDA:
+
+    POP3 (Post Office Protocol), the older of the two, which is used for retrieving email and, in certain cases, leaving a copy of it on the server.
+    IMAP (Internet Message Access Protocol), which is used for coordinating the status of emails (read, deleted, moved) across multiple email clients. With IMAP, a copy of every message is saved on the server, so that this synchronisation task can be completed. 
+
+For this reason, incoming mail servers are called POP servers or IMAP servers, depending on which protocol is used.
+
+Schematic diagram of MTA-MDA-MUA
+
+To use a real-world analogy, MTAs act as the post office (the sorting area and mail carrier, which handle message transportation), while MDAs act as mailboxes, which store messages (as much as their volume will allow) until the recipients check the box. This means that it is not necessary for recipients to be connected in order for them to be sent email.
+
+To keep everyone from checking other users' emails, MDA is protected by a user name called a login and by a password.
+
+Retrieving mail is done using a software program called an MUA (Mail User Agent).
+
+When the MUA is a program installed on the user's system, it is called an email client (such as Mozilla Thunderbird, Microsoft Outlook, Eudora Mail, Incredimail or Lotus Notes).
+
+When it is a web interface used for interacting with the incoming mail server, it is called webmail.
+Open relay
+
+By default, and for historical reasons, it is not necessary to authenticate oneself to send email, which means that it is very easy to falsify one's own address when sending mail.
+
+For this reason, nearly all Internet service providers lock down their SMTP servers to that only their subscribers can use them, or more precisely only machines whose IP address belongs to the ISP's domain. This explains why travelling users must modify the outgoing server settings in their email clients each time they move to a new home or business.
+
+When an organisation's email server is improperly configured and allows third-party users on any network to send emails, this is called an open relay.
+
+Open relays are generally used by spammers, as using them hides the true origins of their messages. As a result, many ISPs keep an up-to-date blacklist of open relays, to keep subscribers from receiving messages from such servers. 
+
+Using email
+
+An email client, a software program for writing, checking and sending email, is generally made up of a number of windows. The main windows of this software are:
+
+    Incoming, In, Inbox: This represents the main mailbox for receiving email,
+    Sent, Outbox, Out: These are copies of messages that you have sent.
+    Deleted, Trash: The trash bin containing deleted emails. When emails are shown in the trash, you can still retrieve them. To permanently delete them, you will need empty the trash bin.
+    Folders: Most clients can be used to file emails in folders, much like folders on a hard drive.
+
+Email fields
+
+Here are the meanings of the fields to be filled in when you send an email:
+
+    From: this is your email address; most of the time you will not have to fill in this field, because it is generally set by the email client according to your preferences.
+    To: This field is used for the recipient's email address.
+    Subject: this is the title that your recipients will see when they want to read the email
+    Cc (carbon copy): this allows an email to be send to a large number of people by writing their respective addresses separated by commas
+    Bcc (blind carbon copy): This is a Cc, except that the recipient does not see the list of people in the Bcc field
+    Message: This is the body of your message
+
+The Carbon Copy function sends a copy to people not directly involved with the message but whom you wish to keep up to date with the message contents or show that you sent the email to the recipient(s).
+
+The Blind Carbon Copy function makes it possible to forward messages without any of the recipients or even the hidden recipients seeing that the message is being forwarded to them. It is generally recommended when sending an email to many people to forward it using Blind copy so as to prevent one of the recipients from replying to everyone or assembling a list of addresses.
+
+Other email functions are:
+
+    Attached Files, Attachments: A file can be attached to an email by specifying its location on the hard drive.
+    Signature: If the email client allows it, you are often able to set a signature, meaning a few lines of text which will be added to the end of the document.
+
+What to do with a message
+
+There are many operations that can be performed on emails:
+
+    New, Compose, Write: Write a new message
+    Erase, Delete, Remove: Erase a message
+    Store, Save, Backup, Drafts: Copy a message into a safer place
+    Print: Print a message
+    Reply: Send a reply message to the sender (sometimes including their own message in the body of the document, with each line preceded by the symbol ">" and "Re:" followed by their chosen subject as the title, to show that it is a reply. The Reply All button makes it possible to send a reply to the sender as well as everyone else who had been put as a recipient or on copy.
+    Forward: Forwards the message to someone else, letting them know that the message comes from you. The subject is generally preceded by Fwd: to indicate that it is a forwarded message.
+    Redirect, Transmit: Forward a message to someone, letting them know where it originally came from. The subject is generally preceded by Fwd: to indicate that it is a forwarded message.
+Netiquette
+
+Netiquette (a contraction of the words "Net" and "etiquette") refers to the set of rules governing correct behaviour on the Internet, in order to respect others and be respected in turn.
+
+They serve as guidelines for civility and proper conduct, so that all users can act in a like manner respectful of others.
+When composing and sending a message
+
+    Indicate the subject of the message clearly in the "Subject" field. This is particularly critical for the recipient If the message's subject is explicit, it will make it much easier for the recipient, when looking at all the emails received, to tell which ones are most important and which less so. This will also allow the recipient to easily sort out their mail. You can make a distinction between a general subject, normally placed within brackets (such as for the name of a project) and a short summary of the message; for example:
+
+    [Project X] Meeting on 13 December
+
+    Only send email to people who are involved - It is ill-advised, and annoying for recipients, to send email to anyone you know. Recipients waste valuable time sorting out the messages which actually involve them from those which they have little or no interest in. What's more, this practice needlessly ties up network resources.
+        The "To:" field designates the primary recipient. This is the person to whom the email is addressed.
+        The "Cc:" field designates people who are being kept informed about this email communication.
+        The "Bcc:" field designates recipients whom the other recipients cannot see. It is recommended to not use this feature. Instead, it is advisable to separately forward them a copy of the preceding message. 
+    Be brief and give ample context for the message. To be read and understood, it is preferable to use short, precise sentences. If the message is long, divide it into multiple paragraphs to make it easier to read. A precise, well-structured text helps prevent misunderstandings or misinterpretations. A message can be quickly and easily forwarded to other users. Use suitable language, and avoid misplaced humour, sarcasm, and insults. For the benefit of recipients in professional settings, it is helpful to begin a message with one of the following phrases:
+        For your information
+        For your approval
+        Follow-up 
+    If documents must be attached to the message, take the recipients into consideration. The recipient of an attached file might not have the software to read it. Make sure that the file is saved in a format which most current software can read. (e.g. .rtf instead of .doc). Additionally, be aware of the attachment's size. The larger the size of the file, the longer it will take to send and receive. A hefty attachment might be blocked by the remote email server, or fill up the recipient's inbox, preventing other messages from being received. Use compression/decompression utilities (such as ZIP) to reduce the size of these files.
+    Before sending a message which is supposed to contain an attachment, make sure that the attachment is really there!
+    Avoid using uppercase letters. Text written in uppercase is difficult to read. What's more, using words in all capital letters on the Internet indicates that you are expressing strong emotions (such as joy or anger), which the recipient of your message might not take well. To emphasise a term, place it in quote marks instead.
+    Before sending a message, take the time to reread it. Try correcting typos or language errors. The style of the message reflects the sender's image.
+    Make sure you identify yourself, and leave contact information at the end of the message. Consider leaving your signature at the bottom of your emails, but without taking up too much space (four or five lines at the most), specifying, e.g. your occupation and the organisation you belong to. Telephone numbers may be useful if one of the recipients needs to contact you quickly. Custom dictates that the signature be preceded by a line containing nothing but two dashes ("--"). 
+
+When receiving a message
+
+    When a message has been read, decide immediately where to file it. Email can be managed just like traditional mail. To find a message easily, make a habit of filing the messages you receive into folders by topic. This way, it will be easier to find an old message or discussion thread. Some email clients let you assign a colour to a message. It may be useful to set a colour code for identifying certain categories of messages.
+    Except where necessary, do not print out emails. When email is filed properly, it may be easily found if needed. For this reason, it is useless to print out every email. This prevents wasting paper, helping to preserve the environment.
+    Respect the private nature of the messages you receive. Never forward or copy to others an email personally addressed to you without the consent of the original sender. 
+
+On using emoticons (smileys)
+
+Emoticons (sometimes called smileys) are symbols included in messages to indicate the mood of the person who wrote the message (humourous, sarcastic, ironic, etc.) Their use is normally reserved for non-professional messages.
+
+To create an emoticon, simply use punctuation symbols. To see them more easily, tilt your head 90 degrees to the left.
+Next »
+
+Concept of mailing lists
+
+A mailing list is one of the most commonly used services on the Internet, allowing people to send messages to one or more recipients. Email was invented by Ray Tomlinson in 1972.
+
+Mailing list managers
+
+A mailing list is based around software called a mailing list manager (or MLM for short).
+
+This software distributes emails to all subscribers. It must properly handle bounced emails, as well as addresses which are not responding. If a user on the list has programmed an away message, the mailing list manager and that user's email client might send messages back and forth to one another, leading to an unending chain of emails.
+
+An MLM also responds to commands found in the subject or body of the email. Here are a few example commands which most mailing list managers understand:
+
+    SUBSCRIBE: used for requesting a subscription to the list
+    UNSUBCRIBE: used for unsubscribing from the list
+    HELP: requests that the MLM list all commands available 
+
+Discussion list/Mailing list
+
+The mailing list manager is generally administered by a list administrator whose job is to keep the lists in good working order and configure them as needed. Some lists may be moderated, meaning that every message shared must first be approved by a moderator to be transmitted to the list.
+
+A list's administrator can decide if the subscribers may or may not respond to messages, if list membership is open to all. When the subscribers can reply to the list, it is called a "discussion list". 
+
+Structure of an email
+
+An email has three basic parts:
+
+    The header, a set of lines containing information about the message's transportation, such as the sender's address, the recipient's address, or timestamps showing when the message was sent by intermediary servers to the transport agents (MTAs), which act as a mail sorting office. The header begins with a From line and is changed each time it passes through an intermediary server. Using headers, you can see the exact path taken by the email, and how long it took each server to process.
+    The message proper, made up of the two following elements:
+        the header fields, a set of lines describing the message's settings, such as the sender, the recipient, the date, etc. Each one has the following form:
+
+        Name: Value
+
+        An email includes at least the three following headers:
+            From: The sender's email address
+            To: The recipient's email address
+            Date: The date when the email was sent 
+        It may contain the following optional fields:
+            Received: Various information about the intermediary servers and the date when the message was processed.
+            Reply-To: A reply address.
+            Subject: The message's subject
+            Message-ID: A unique identification for the message. 
+        the message body, containing the message, separated from the header by a line break. 
+
+An email is made up of lines of displayable 7-bit US-ASCII characters. Each line has at most 76 characters, for compatibility reasons, and ends with the characters CRLF (\r\n).
+Concept of a header
+
+It is important to note that header data is no guarantee of when the message was sent or who sent it.
+
+Additional personalised headers (called X-headers) can be set in order to provide the appropriate information. X-headers are so called because their name must begin with X-.
+
+Some anti-spam software programs mark messages as unwanted using the following header:
+
+X-Spam-Status: Yes
+
+Introduction to MIME
+
+MIME (Multipurpose Internet Mail Extensions) is a standard which was proposed by Bell Communications in 1991 in order to expand upon the limited capabilities of email, and in particular to allow documents (such as images, sound, and text) to be inserted in a message. It was originally defined by RFCs 1341 and 1342 in June 1992.
+
+Using headers, MIME describes the type of message content and the encoding used.
+
+MIME adds the following features to email service:
+
+    Be able to send multiple attachments with a single message;
+    Unlimited message length;
+    Use of character sets other than ASCII code;
+    Use of rich text (layouts, fonts, colours, etc)
+    Binary attachments (executables, images, audio or video files, etc.), which may be divided if needed.
+
+MIME uses special header directives to describe the format used in a message body, so that the email client can interpret it correctly:
+
+    MIME-Version: This is the version of the MIME standard used in the message. Currently only version 1.0 exists.
+    Content-type: Describes the data's type and subtype. It can include a "charset" parameter, separated by a semi-colon, defining which character set to use.
+    Content-Transfer-Encoding: Defines the encoding used in the message body
+    Content-ID: Represents a unique identification for each message segment
+    Content-Description: Gives additional information about the message content.
+    Content-Disposition: Defines the attachment's settings, in particular the name associated with the file, using the attribute filename. 
+
+Primary MIME types
+
+MIME types, used in the Content-Type header, are used to classify documents attached to an email. A MIME type is comprised as follows:
+
+Content-type: main_mime_type/mime_subtype
+
+A GIF image, for example, has the following MIME type:
+
+Content-type: image/gif
+
+The primary data types, sometimes called "discrete data types," are:
+
+    text: readable text data text/rfc822 [RFC822]; text/plain [RFC2646]; text/html [RFC2854] .
+    image: binary data representing digital images: image/jpeg; image/gif; image/png.
+    audio: digital sound data: audio/basic; audio/wav
+    video: video data: video/mpeg
+    application: Other binary data: application/octet-stream; application/pdf 
+
+MIME types are also used on the Web to classify documents transferred using the protocol HTTP. Thus during a transaction between a web server and a browser, the first thing the web server does is send the MIME type of the file to the browser, so that the browser knows how to display the document.
+Encoding formats
+
+To transfer binary data, MIME offers five encoding formats which can be used in the header transfer-encoding:
+
+    7bit: 7-bit text format (for messages without accented characters);
+    8bit: 8-bit text format;
+    quoted-printable: Quoted-Printable format, recommended for messages which use a 7-bit alphabet (such as when there are accent marks);
+    base64: Base 64, recommended for sending binary files as attachments;
+    binary: binary format; not recommended. 
+
+Since MIME is very open, it can use third-party encoding formats such as:
+
+    BinHex (a proprietary format belonging to Apple),
+    uuencode,
+    xxencode 
+
+Header encoding
+
+The transfer-encoding header is used to specify an encoding format for the message body, but it doesn't solve the problem of encoding headers themselves (such as the message subject).
+
+To encode headers with character sets which use more than 7 bits, such as for including accented letters in an email's subject, the MIME standard offers the following format:
+
+=?charset?encoding?result?=
+
+    charset represents the character set used,
+    encoding defines the encoding desired with two possible values:
+        Q for quoted-printable
+        B for base64 
+    result: text encoded using the method specified. 
+
+Below is an example of Quoted-Printable encoding with "Building façade" as the email's subject.
+
+Subject: Building fa=?ISO-8859-1?Q?=E7ade?=
+
+Composite messages
+
+With the MIME type "multipart", the MIME standard allows for composite messages, meaning messages which include multiple attachments, which may even be nested.
+
+To do so, MIME allows for a standard called boundary. This is an arbitrary string defined as an attribute in the Content-type header:
+
+Content-Type: multipart/mixed;
+ boundary="------------020005090303070203010601" 
+
+Each separator delimits a portion of content beginning with the headers Content-Type and Content-Encoding. It is essential that the value of this separator is not found within the message contents.
+
+There are several types of separators:
+
+    multipart/mixed defines a series of multiple elements
+    multipart/alternative defines alternatives for the same information, such as a message in either text and HTML format. If the email client is able to display messages with a layout and configured to do so, it will show the HTML version; otherwise, it will display the test version.
+    multipart/parallel defines data present at the same time (such as sound and image).
+    multipart/signed defines a digital signature for message data
+    multipart/related defines related pieces of information 
+
+List of MIME types
+
+MIME types are standardised by a group called the IANA (Internet Assigned Numbers Authority). Here is a non-exhaustive list of the most common MIME types.
+
+MIME Type 	Type of file 	Associated extension
+application/atom+xml 	Files in ATOM format 	atom
+application/iges 	CAS files 	iges
+application/javascript 	JavaScript files 	js
+application/dxf 	AutoCAD files 	dxf
+application/mp4 	MPEG4 files 	mp4
+application/iges 	IGES CAD exchange format 	igs,iges
+application/octet-stream 	Non-interpreted binary files 	bin
+application/msword 	Microsoft Word document files 	doc
+application/pdf 	Adobe Acrobat files 	pdf
+application/postscript 	PostScript files 	ai,eps,ps
+application/rtf 	Rich text format 	rtf
+application/sgml 	SGML files 	sgml
+application/vnd.ms-excel 	Microsoft Excel spreadsheet files 	xls
+application/vnd.ms-powerpoint 	Microsoft Powerpoint presentation files 	ppt
+application/xml 	XML file 	xml
+application/x-tar 	Compressed tar files 	tar
+application/zip 	Compressed ZIP files 	man
+audio/basic 	Basic audio files 	au,snd
+audio/mpeg 	MPEG audio files 	mpg,mp3
+audio/mp4 	MPEG-4 audio files 	mp4
+audio/x-aiff 	AIFF audio files 	aif,aiff,aifc
+audio/x-wav 	Wave audio files 	wav
+image/gif 	Gif images 	man
+image/jpeg 	Jpeg images 	jpg,jpeg,jpe
+image/png 	Images PNG 	png
+image/tiff 	Tiff images 	tiff,tif
+image/x-portable-bitmap 	PBM Bitmap files 	pbm
+image/x-portable-graymap 	PBM Graymap files 	pgm
+image/x-portable-pixmap 	PBM Pixmap files 	ppm
+multipart/x-zip 	Zip archive files 	zip
+multipart/x-gzip 	GNU zip archive files 	gz,gzip
+text/css 	Style sheet 	css
+text/csv 	Comma-separated text files 	csv
+text/html 	HTML files 	htm,html
+text/plain 	Unformatted text files 	txt,g,h,c,cc,hh,m,f90
+text/richtext 	Rich text files 	rtx
+text/rtf 	Rich Text Format text files 	rtf
+text/tab-separated-value 	Tab-separated text files 	tsv
+text/xml 	XML files 	xml
+video/h264 	H.264 videos 	h264
+video/dv 	DV videos 	dv
+video/mpeg 	MPEG videos 	mpeg,mpg,mpe
+video/quicktime 	QuickTime videos 	qt,mov
+video/msvideo 	Microsoft Windows videos 	avi
+More Information
+
+    Official list of MIME types (IANA - )
+    Main RFCs:
+        RFC 2045: MIME Part One: Format of Internet Message Bodies
+        RFC 2046: MIME Part Two: Media Types
+        RFC 2047: MIME Part Three: Message Header Extensions for Non-ASCII Text
+        RFC 2048: MIME Part Four: Registration Procedures
+        RFC 2049: MIME Part Five: Conformance Criteria and Examples 
+    Secondary RFCs:
+        RFC 1524: The formal description of mailcap files. Mailcap files describe how to handle media types.
+        RFC 2015: MIME Security with Pretty Good Privacy (PGP).
+        RFC 2110: MIME E-mail Encapsulation of Aggregate Documents, such as HTML (MHTML).
+        RFC 2111: Content-ID and Message-ID Uniform Resource Locators.
+        RFC 2112: The MIME Multipart/Related Content-type.
+        RFC 2183: Defines the syntax and sematics of the "Content-Disposition" header to convey presentational information.
+        RFC 2184: MIME Parameter Value and Encoded Word Extensions: Character Sets, Languages, and Continuations 
+
+Next »
+
+

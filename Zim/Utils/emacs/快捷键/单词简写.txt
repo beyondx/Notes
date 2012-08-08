@@ -1,0 +1,27 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-05T16:10:46+08:00
+
+====== 单词简写 ======
+Created Thursday 05 May 2011
+
+ __inverse-add-global-abbrev （C-x a i g）__或者__ inverse-add-local-abbrev（C-x a i l ）__
+将缓冲区中的单词定义简写 __C-x a g__。在完成了这个操作之后，当 Abbrev 模式开启时，小缓冲区将提示您用缩写来替代那个单词或短语。同样地，要定义一个仅应用于当前主要模式的缩写，可以使用__ C-x a l__。
+
+需先启用 abbrev-mode模式，可用于简写复杂的单词、短语，也可以用于纠错。
+Emacs根据简写词被定义时的编辑模式对他们进行分类，简写模式依赖于自己定义的简写表，全局性简写词可用于任意一种编辑模式里，局部简写词只能用于定义时所在的编辑模式里。Emacs提供一种简写词的逆向定义方法，即先输入简写词(一个字)，然后输入其定义(即扩展后的内容)
+M-x abbrev-mode		进入简写词辅模式，Abbrev出现在状态栏上
+C-x a i g 		add-inverse-global	在输入简写词后按该命令可定义全局简写词
+C-x a i l		add-inverse-lobal	....局部简写词
+C-x ag 		将光标所在的单词定一为全局简写词
+C-x al		。。。。局部。。。
+M-x edit-abbrevs		编辑简写词列表
+M-x list-abbrevs		查看简写词列表
+M-x unexpand-abbrev	撤销最近一个简写词条目
+M-x write-abbrev-file 	保存简写词列表
+M-x kill-all-abbrevs	禁用所有简写词
+   
+为了使简写词列表能在启动时加载，可以在.emacs中加入以下语句
+(setq-default abbrev-mode t)
+(read-abbrev-file  "~/.abbrev-defs")
+(setq save-abbrevs t)

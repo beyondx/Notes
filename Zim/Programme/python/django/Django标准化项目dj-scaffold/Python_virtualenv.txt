@@ -1,0 +1,169 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-23T20:42:04+08:00
+
+====== Python virtualenv ======
+Created Sunday 23 October 2011
+http://www.rainsts.net/article.asp?id=1004
+
+virtualenv 的作用相当于 Sandbox，它通过隔离包目录和系统环境参数来实现多个**相对独立的虚拟环境**。如此可避免过多的第三方库因版本依赖造成问题。同时每个独立的虚拟环境只需通过打包即可分发，也大大方便了系统部署。
+
+$ sudo easy_install virtualenv
+
+
+现在我们可以创建虚拟环境了。
+
+$ virtualenv test1
+
+New python executable in test1/bin/python
+Installing setuptools............done.
+
+
+我们可以看到虚拟目录下已经被安装了基本所需的运行环境。
+
+$ ls test1/bin
+activate  activate_this.py  easy_install  easy_install-2.6  pip  python
+
+$ ls test1/include/
+python2.6
+
+$ ls test1/lib
+python2.6
+
+$ ls test1/lib/python2.6/
+_abcoll.py   copy_reg.pyc     linecache.py     os.pyc         sre_compile.py     stat.py
+_abcoll.pyc  distutils        linecache.pyc    posixpath.py   sre_compile.pyc    stat.pyc
+abc.py       encodings        locale.py        posixpath.pyc  sre_constants.py   types.py
+abc.pyc      fnmatch.py       locale.pyc       re.py          sre_constants.pyc  types.pyc
+codecs.py    fnmatch.pyc      ntpath.py        re.pyc         sre_parse.py       UserDict.py
+codecs.pyc   genericpath.py   ntpath.pyc       site-packages  sre_parse.pyc      UserDict.pyc
+config       genericpath.pyc  orig-prefix.txt  site.py        sre.py             warnings.py
+copy_reg.py  lib-dynload      os.py            site.pyc       sre.pyc            warnings.pyc
+
+
+进入 test1 目录，**激活虚拟环境。**
+
+$ cd test1
+
+test1$ source bin/activate
+
+(test)test1$ which python
+/home/yuhen/projects/test1/bin/python
+
+(test)test1$ which easy_install
+/home/yuhen/projects/test1/bin/easy_install
+
+(test1)test1$ python
+
+Python 2.6.5 (r265:79063, Apr 16 2010, 13:57:41)
+[GCC 4.4.3] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+
+>>> import sys
+>>> sys.path
+['', 
+'/home/yuhen/projects/test1/lib/python2.6/site-packages/setuptools-0.6c11-py2.6.egg', 
+'/home/yuhen/projects/test1/lib/python2.6/site-packages/pip-0.7.2-py2.6.egg', 
+'/home/yuhen/projects/test1/lib/python2.6', 
+'/home/yuhen/projects/test1/lib/python2.6/plat-linux2', 
+'/home/yuhen/projects/test1/lib/python2.6/lib-tk', 
+'/home/yuhen/projects/test1/lib/python2.6/lib-old', 
+'/home/yuhen/projects/test1/lib/python2.6/lib-dynload', 
+'/usr/lib/python2.6', 
+'/usr/lib64/python2.6', 
+'/usr/lib/python2.6/plat-linux2', 
+'/usr/lib/python2.6/lib-tk', 
+'/usr/lib64/python2.6/lib-tk', 
+'/home/yuhen/projects/test1/lib/python2.6/site-packages', 
+'/usr/local/lib/python2.6/dist-packages/virtualenv-1.4.9-py2.6.egg', 
+'/usr/local/lib/python2.6/dist-packages/simplejson-2.1.1-py2.6-linux-x86_64.egg', 
+'/usr/local/lib/python2.6/site-packages', 
+'/usr/local/lib/python2.6/dist-packages', 
+'/usr/lib/python2.6/dist-packages', 
+'/usr/lib/pymodules/python2.6', 
+'/usr/lib/pymodules/python2.6/gtk-2.0', 
+'/usr/lib/python2.6/dist-packages/wx-2.8-gtk2-unicode']
+>>>
+
+
+可以看到使用 "souce bin/active" 激活以后，命令提示行多了一个** "(test1)" 前缀**，同时 python 和 easy_install 默认会使用虚拟环境 bin 目录下的程序。sys.path 显示当前虚拟环境的库目录被添加到搜索路径列表中。
+
+(test1)$ easy_install MySQL-python
+Searching for MySQL-python
+Reading http://pypi.python.org/simple/MySQL-python/
+Reading http://sourceforge.net/projects/mysql-python
+Best match: MySQL-python 1.2.3c1
+Downloading http://sourceforge.net/.../1.2.3c1/MySQL-python-1.2.3c1.tar.gz/download
+Processing download
+Running MySQL-python-1.2.3c1/setup.py -q bdist_egg --dist-dir /tmp/easy_install-Em0wfb/MySQL-python-1.2.3c1/egg-dist-tmp-vzoJ2t
+In file included from _mysql.c:36:
+/usr/include/mysql/my_config.h:1050:1: warning: "HAVE_WCSCOLL" redefined
+In file included from /usr/include/python2.6/Python.h:8,
+                 from pymemcompat.h:10,
+                 from _mysql.c:29:
+/usr/include/python2.6/pyconfig.h:808:1: warning: this is the location of the previous definition
+zip_safe flag not set; analyzing archive contents...
+Adding MySQL-python 1.2.3c1 to easy-install.pth file
+
+Installed /home/yuhen/projects/python/test1/lib/python2.6/site-packages/MySQL_python-1.2.3c1-py2.6-linux-x86_64.egg
+Processing dependencies for MySQL-python
+Finished processing dependencies for MySQL-python
+
+(test1)$ ls -l lib/python2.6/site-packages/
+total 444
+-rw-r--r-- 1 yuhen yuhen    283 2010-06-02 09:46 easy-install.pth
+-rw-r--r-- 1 yuhen yuhen 106325 2010-06-02 09:46 MySQL_python-1.2.3c1-py2.6-linux-x86_64.egg
+drwxr-xr-x 4 yuhen yuhen   4096 2010-06-02 09:45 pip-0.7.2-py2.6.egg
+-rw-r--r-- 1 yuhen yuhen 333447 2010-06-01 23:58 setuptools-0.6c11-py2.6.egg
+-rw-r--r-- 1 yuhen yuhen     30 2010-06-02 09:45 setuptools.pth
+
+(test1)$ cat lib/python2.6/site-packages/setuptools.pth
+./setuptools-0.6c11-py2.6.egg
+
+(test1)$ python
+>>> import MySQLdb
+>>> MySQLdb.version_info
+(1, 2, 3, 'gamma', 1)
+>>>
+
+
+MySQL-python 被安装到了虚拟环境中，且 easy-install.pth 中正确添加了 egg 搜索路径。
+
+最后我们可以用 "deactivate" 命令**退出虚拟环境**。
+
+(test1)test1$ deactivate
+
+
+在创建虚拟环境时，我们可以添加 "--no-site-packages" 参数指示虚拟环境不要访问 global site-packages。
+
+$ virtualenv --no-site-packages test2
+New python executable in test2/bin/python
+Installing setuptools............done.
+
+$ cd test2
+
+test2$ source bin/activate
+
+(test2)test2$ python
+>>> import sys
+>>> sys.path
+['', 
+'/home/yuhen/projects/python/test2/lib/python2.6/site-packages/setuptools-0.6c11-py2.6.egg',
+'/home/yuhen/projects/python/test2/lib/python2.6/site-packages/pip-0.7.2-py2.6.egg', 
+'/home/yuhen/projects/python/test2/lib/python2.6', 
+'/home/yuhen/projects/python/test2/lib/python2.6/plat-linux2', 
+'/home/yuhen/projects/python/test2/lib/python2.6/lib-tk', 
+'/home/yuhen/projects/python/test2/lib/python2.6/lib-old', 
+'/home/yuhen/projects/python/test2/lib/python2.6/lib-dynload', 
+'/usr/lib/python2.6', 
+'/usr/lib64/python2.6', 
+'/usr/lib/python2.6/plat-linux2', 
+'/usr/lib/python2.6/lib-tk', 
+'/usr/lib64/python2.6/lib-tk', 
+'/home/yuhen/projects/python/test2/lib/python2.6/site-packages']
+>>>
+
+
+搜索路径中除了 Python 基本库路径外，已经没有了 global site-packages。这样即便我们在安装了大量开发包的的系统里，也可以隔离出一个干净的测试环境。
+
+要判断一个虚拟环境是否 --no-site-packages，除了检查 sys.path 外，还可以通过 "lib/python2.6/no-global-site-packages.txt" 文件来判断。 

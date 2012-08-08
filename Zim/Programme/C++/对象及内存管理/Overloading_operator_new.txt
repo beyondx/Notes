@@ -1,0 +1,578 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-17T13:09:40+08:00
+
+====== Overloading operator new ======
+Created Friday 17 February 2012
+
+http://www.relisoft.com/book/tech/9new.html
+
+Both** new and delete** are considered __operators__ in C++. What it means, in particular, is that they can be overloaded like any other operator. And just like you can define **a class-specific operator=**, you can also define class-specific operators new and delete. They will be __automatically called by the compiler__ to allocate and deallocate objects of that particular class. Moreover, you can **overload and override** **global versions** of new and delete.
+
+===== Class-specific new =====
+**Dynamic memory **allocation and deallocation are __not cheap__. A lot of programs spend the bulk of their time inside the** heap,** searching for free blocks, recycling deleted blocks and merging them to prevent heap fragmentation. If memory management is a performance bottleneck in your program, there are several optimization techniques that you might use.
+
+Overloading new and delete on a per-class basis is usually used to speed up allocation/deallocation of objects of that particular class. There are two main techniques--__caching and bulk allocation__.
+
+==== Caching ====
+The idea behind caching is that __recycling is cheaper than manufacturing__. Suppose that we wanted to speed up additions to a hash table. Every time an addition is performed, a new link is allocated. In our program, these links are only deallocated when the **whole **hash table is destroyed, which happens at the end of the program. Imagine, however, that we are using our hash table in another program, where it's either possible to selectively remove items from the hash table, or where there are many hash tables created and destroyed during the lifetime of the program. In both cases, we might speed up average link allocation time by __keeping around the links that are currently not in use__.
+
+A //FreeList //object will be used as storage for// unused links//. To get a new link we call its //NewLink// method. To return a link back to the __pool__, we call its //Recycle// method. The pool of links is implemented as a linked list. There is also a Purge method that frees the **whole **pool.
+
+class Link;  //前向声明，解决交叉依赖。
+class FreeList
+{
+public:
+    FreeList () : _p (0) {}
+    ~FreeList ();
+    void Purge ();
+    void * NewLink ();
+    void Recycle (__void *__ link);
+private:
+    __Link * ___p;
+};
+
+Class //Link //has a static member //_freeList// which is used by the__ overloaded class-specific operators new and delete__. Notice the assertion in operator new. It protects us from somebody calling this particular operator for a different class. How could that happen? Operators new and delete are__ inherited__. If a class derived from Link didn't **override** these operators, new called for the derived class would return an object of the wrong size (base-class size).
+
+class Link   //__链表节点__，需要重载其new和delete操作符。
+{
+    friend class FreeList;
+public:
+    Link (Link * pNext, int id)
+    : _pNext (pNext), _id (id) {}
+
+    Link *  Next () const { return _pNext; }
+    int     Id () const { return _id; }
+
+    // allocator
+    __void * operator new__ (size_t size)
+    {
+        assert (size ==__ sizeof __(Link));
+        return _freeList.NewLink ();
+    }
+    __void operator delete __(void * mem)
+    {
+        if (mem)
+            _freeList.Recycle (mem);
+    }
+    static void Purge () { _freeList.Purge (); }
+private:
+   __ static    FreeList__ _freeList;
+
+    Link *  _pNext;
+   ** int     _id;**
+};
+
+Inside List::Add the creation of a new Link will be translated by the compiler into the call to the **class-specific operator new** followed by the call to its constructor (if any). The beauty of this method is that no changes to the implementation of List are needed.
+
+__class List__
+{
+public:
+    List ();
+    ~List ()
+    {
+        while (_pHead != 0)
+        {
+            Link * pLink = _pHead;
+            _pHead = _pHead->Next();
+            delete pLink;
+        }
+    }
+    void Add (int id)
+    {
+        Link * pLink =__ new Link__ (_pHead, id);
+        _pHead = pLink;
+    }
+    Link const * GetHead () const { return _pHead; }
+private:
+__    Link * _pHead;__
+};
+
+__A hash table contains an array of Lists __which will all internally use the special-purpose allocator for its links.
+
+After we are done with the hash table, we might want to purge the memory stored in the private allocator. That would make sense if, for instance, there was only one hash table in our program, but it allowed deletion as well as addition of entries. On the other hand, if we __wanted our pool of links to be shared between multiple hash tables__, we wouldn't want to purge it every time a hash table is destroyed.
+
+__class HTable__
+{
+public:
+    explicit HTable (int size): _size(size)
+    {
+        _aList = new List [size];
+    }
+
+    ~HTable ()
+    {
+        delete [ ] _aList;
+        // release memory in free list
+        __Link::Purge (); __// optional
+    }
+
+    // ...
+private:
+    List * _aList;
+    int    _size;
+};
+
+Notice: **Purge is a static method of Link**, so we don't need an instance of a Link in order to call it.
+
+In the implementation file, we first have to define the static member **_freeList **of the class Link. Static data is automatically initialized to zero.
+
+FreeList Link::_freeList;
+
+The implementation of FreeList is pretty straightforward. We try to __reuse Links__, if possible; otherwise we call the __global operator new__. Since we are allocating** raw memory**, we ask for sizeof (Link) bytes (chars). 
+When we delete this storage, we cast Links back to their raw form. Deleting a Link as a Link would result in a (second!) call to its destructor. We don't want to do it here, since destructors for these Links have already been called when the class-specific delete was called.
+
+__void *__ FreeList::NewLink ()
+{
+    if (_p != 0)
+    {
+        void * mem = _p ;
+        _p = _p->_pNext;
+        return mem;
+    }
+    else
+    {
+        //__ use global operator new__
+        return __::new __char [sizeof (Link)];
+    }
+}
+
+void FreeList::Recycle (void * mem)
+{
+    Link * link = static_cast<__Link *__> (mem);
+    link->_pNext = _p;
+    _p = link;
+}
+
+FreeList::~FreeList ()
+{
+    Purge ();
+}
+
+void FreeList::Purge ()2
+{
+    while (_p != 0)
+    {
+        // it was allocated as an array of char
+        char * mem = reinterpret_cast<__char *__> (_p);
+        _p = _p->Next();
+        __::delete__ [ ] mem;
+    }
+}
+
+Notice all the casting we have to do. When our overloaded new is called, it is expected to return a void pointer. Internally, however, we either recycle a Link from a linked-list pool, or allocate a raw chunk of memory of the appropriate size. We don't want to call __::new Link__, because that would have an unwanted **side effect** of calling Link's constructor (it will be called anyway after we return from operator new).
+
+Our delete, on the other hand, is called with a void pointer, so we have to cast it to a Link in order to store it in the list.
+
+Purge deletes all as if they were arrays of chars--since that is how they were allocated. Again, we don't want to delete them as Links, because Link destructors have already been called.
+
+As usually, calls to global operators new and delete can be disambiguated by prepending double colons. Here, they ar not strictly necessary, but they enhance the readability.
+
+
+
+===== Bulk Allocation(批量) =====
+bulk [bʌlk] n.体积, 容积,大块, 大部分, 大批 adj.散装的, 大量的 vt.使膨胀, 使成堆 vi.膨胀, 显得重要 
+amortize [ə'mɔ:taiz]v.分期偿还, 摊还 =amortise(英)
+
+Another approach to speeding up allocation is to allocate in bulk and thus amortize the cost of memory allocation across many calls to operator** new**. The implementation of Links, Lists and HashTables is as before, except that a new class, __LinkAllocator__ is used in place of __FreeList__. It has the same interface as FreeList, but its implementation is more involved. Besides keeping a list of recycled **Link**s, it also has a separate list of blocks of links. Each block consists of a header of class __Block__ and a block of 16 consecutive raw pieces of memory each the size of a Link.
+
+class Link;
+class LinkAllocator
+{
+    enum { **BlockLinks = 16** };
+   __ class Block__
+    {
+    public:
+        Block * Next () { return _next; }
+        void SetNext (Block * next) { _next = next; }
+    private:
+        Block * _next;
+    };
+public:
+    LinkAllocator () : _p (0), _blocks (0) {}
+    ~LinkAllocator ();
+    void Purge ();
+    void * NewLink ();
+    void Recycle (void * link);
+private:
+    Link  * _p;   // 回收(recycled)的节点组成的链表。
+    __Block * _blocks;  // 批量分配的内存空间链表（不管该空间是否被利用），每个节点可以容纳一个Block对象+BlockLinks个Link对象。__
+};
+
+This is how a new Link is created:
+
+void * LinkAllocator::NewLink ()
+{
+    if (_p == 0)
+    {
+        // use global operator new to allocate **a block of links**
+        char * p = __::new char [sizeof (Block) + BlockLinks * sizeof (Link)]__;
+
+        // add it to the list of blocks
+        Block * block = reinterpret_cast<__Block *__> (p);
+        block->SetNext (_blocks);
+        _blocks = block;
+
+        // __add it to the list of links（将分配的BlockLinks个Link对象链接起来，同时加到已有的_p链表上）__
+        p += sizeof (Block);
+        for (int i = 0; i < BlockLinks; ++i)
+        {
+            Link * link = reinterpret_cast<__Link *__> (p);
+            link->_pNext = _p;
+            _p = link;
+            p += sizeof (Link);
+        }
+    }
+
+    void * mem = _p;
+    _p = _p->_pNext;
+    return mem;
+}
+
+The first block of code deals with the situation when there are **no unused links** in the **Link **list. A whole block of 16 (BlockLinks) __Link-sized chunks__ is allocated all at once, together with some room for the** Block **header. The Block is immediately linked into the list of__ blocks__ and then chopped up into separate Links which are added to the Link list. Once the Link list is replenished, we can pick a Link from it and pass it out.
+
+The implementation of Recycle is the same as before--the links are returned to the __Link__ list. Purge, on the other hand, does bulk deallocations of whole blocks.
+
+void LinkAllocator::Purge ()
+{
+    while (_blocks != 0)
+    {
+        // it was allocated as an array of char
+        char * mem = reinterpret_cast<__char *__> (_blocks);
+        _blocks = _blocks->Next();
+        ::delete [ ] mem;
+    }
+}
+
+Only **one call in 16** to new Link results in actual memory allocation. All others are dealt with very quickly by picking a ready-made Link from a list.
+
+===== Array new =====
+Even though class **Link** has overloaded operators new and delete, if you were to allocate a** whole array of Links**, as in __new Link [10]__, the compiler would call __global new__ to allocate enough memory for the whole array. It would not call the class-specific overload. Conversly, deleting such an array would result in the call to global operator delete--not it's class-specific overload.
+
+Since in our program we never allocate arrays of Links, we have nothing to worry about. And even if we did, global new and delete would do the right thing anyway.
+
+However, in the unlikely case when you actually want to have control over **array allocations**, C++ provides a way. It let's you overload operators__ new[] __and  __delete[]__. The syntax and the signatures are analogous to the overloads of straight new and delete.
+
+void * operator new [] (size_t size);
+void operator delete [] (void * p);
+
+The only difference is that the size passed to new[] takes into account the **total size of the array plus some additional data **used by the compiler to distinguish between **pointers to objects and arrays of objects**. For instance, the compiler has to know the number of elements in the array in order to be able to call destructors on all of them when __delete [ ]__ is called.
+
+All four operators new, delete, new[] and delete[] are treated as__ static members of the class__ that overloads them (i.e., they don't have access to this).
+
+===== Global new =====
+Unlike class-specific new, global new is usually overloaded for **debugging purposes**. In some cases, however, you might want to overload global new and delete permanently, because you have** a better allocation strategy** or because you want **more control** over it.
+
+In any case, you have a choice of overriding __global new and delete__ or adding your own special versions that follow a slightly different syntax. **Standard **operator new takes __one argument__ of type size_t. Standard delete takes one argument of type void *. You can define your own versions of new and delete that take **additional arguments** of arbitrary types. For instance, you can define
+	
+	void * operator new (size_t size, __char * name__);
+	void operator delete (void * p, char * name);  //name两者的内容要一致。
+
+and call the special new using this syntax:
+
+Foo * p = new ("special") Foo;  //size参数会自动计算并传入，new/delete是运算符。
+
+Unfortunately, __there is no way to call the **special** delete explicitly__, so you have to be sure that standard delete will correctly handle memory allocated using your special new (or that delete is never called for such objects).
+
+So what's the use of the overloaded delete with special arguments? There is actually one case in which it will be called--__when an exception is thrown during object construction__. 
+As you might recall, there is a contract implicit in the language that if an exception happens during the construction of an object, the memory for this object will be automatically deallocated. It so happens that during object's construction the compiler is still aware of which version of operator new was called to allocate memory. It is therefore able to **generate a call to the **corresponding version** of delete**, in case an exception is thrown. After the successful completion of construction, this information is __no longer available__ and the compiler has no means to guess which version of global delete is appropriate for a given object.
+
+Once you have defined an overloaded version of new, you can call it explicitly,** by specifying additional argument(s)**. Or you can substitute all calls to new in your code with the overloaded version using __macro substitution__.
+
+===== Macros =====
+We haven't really talked about macros in this book--they are a part of standard C++, but their use is __strongly discouraged__. In the old times, they were used in place of the more sophisticated C++ features, such as inline functions and templates. Now that there are better ways of getting the same functionality, macros are fast becoming obsolete. But just for completeness, let me explain how they work.
+
+Macros are obnoxious, smelly, sheet-hogging bedfellows for several reasons, most of which are related to the fact that they are a glorified__ text-substitution__ facility whose effects are applied during preprocessing, before any C++ syntax and semantic rules can even begin to apply.
+
+A macro works through __literal substitution__. You may think of **macro expansion** as a separate process performed by the compiler before even getting to the main task of parsing C++ syntax. In fact, in older compilers, macro expansion was done by a separate program, the__ preprocessor__.
+
+There are two major types of macros. The first type simply substitutes one string with another, in the code that logically follows it (by logically I mean that, if the macro is defined in an include file, it will also work in the file that includes it, and so on). Let me give you an example that might actually be useful. Let's define the following macro in the file dbnew.h
+
+#define new new(____FILE____, ____LINE____)
+
+This macro will substitute all occurrences of** new **that logically follow it with the string **new (FILE, LINE).** Moreover, the macro preprocessor will then substitute all occurrences of the special pre-defined symbol FILE with the full name of the source file in which it finds it; and all occurrences of __LINE__ with the appropriate line number. So if you have a file c:\test\main.cpp with the contents:
+
+#include "dbnew.h"
+int main ()
+{
+    int * p = __new__ int;
+    return 0;
+}
+
+it will be pre-processed to produce the following code:
+
+int main ()
+{
+    int * p = new __("c:\test\main.cpp", 4)__ int;
+    return 0;
+}
+
+Now you can use your own overloaded operator new, for instance to trace all memory allocation. Here's a simple example of such implementation.
+
+void * __operator new__ (size_t size, char const * file, int line)
+{
+    std::cout << file << ": " << line << std::endl;
+    return __::new__ char [size];
+}
+
+Notice that we have to make sure that our macro is not included in the file that defines this overload. Otherwise both occurrences of "new" would be substituted by "new(FILE, __LINE)" resulting in incorrect code.
+
+The second type of macro also works through textual substitution, but it behaves more like** an inline function**-- it takes arguments. And again, since macro expansion works outside of the C++ compiler, there is no type checking and a possibility of unexpected side effects. A classic example is the max macro:
+
+#define max(a, b) (((a) > (b))? (a): (b))
+
+Notice the parentesis paranoia--a characteristic feature of macros. Programmers learned to put parentheses around macro parameters, because they might be expressions containing low precedence operators. Consider, for instance, what happens when you call
+
+c = max (a & mask, b & mask)
+
+Without the parentheses around parameters in the definition of max, the preprocessor would expand it into
+
+c = a & mask >  b & mask? a & mask: b &amp mask;
+
+which, because of operator precedence rules, would be interpreted as:
+
+c = (a & (mask > b) & mask)? (a & mask): (b &amp mask;)
+
+The result of this calculation would most likely be erroneous.
+
+Things get even worse, when you call a macro with expressions that have side effects. Consider for instance the expansion of max (a++, b++):
+
+(((a++) > (b++))? (a++): (b++))
+
+One of the variables will be incremented twice, the other once. This is probably not what the programmer expected.
+
+By the way, there is one more gotcha--notice that I didn't put a space between.
+
+===== Tracing Memory Leaks =====
+
+A more interesting application of this technique lets you trace unreleased allocations, a.k.a. memory leaks. The idea is to store information about each allocation in a global data structure and dump its contents at the end of the program. Overloaded operator delete would remove entries from this data structure.
+
+Since operator delete has only access to a pointer to previously allocated memory, we have to be able to reasonably quickly find the entry based on this pointer. A map keyed by a pointer comes to mind immediately. We'll call this global data structure a Tracer
+
+class Tracer
+{
+private:
+    class Entry
+    {
+    public:
+        Entry (char const * file, int line)
+            : _file (file), _line (line)
+        {}
+        Entry ()
+            : _file (0), _line (0)
+        {}
+        char const * File () const { return _file; }
+        int Line () const { return _line; }
+    private:
+        char const * _file;
+        int _line;
+    };
+    class Lock
+    {
+    public:
+        Lock (Tracer & tracer)
+            : _tracer (tracer)
+        {
+            _tracer.lock ();
+        }
+        ~Lock ()
+        {
+            _tracer.unlock ();
+        }
+    private:
+        Tracer & _tracer;
+    };
+    typedef std::map<void *, Entry>::iterator iterator;
+    friend class Lock;
+public:
+    Tracer ();
+    ~Tracer ();
+    void Add (void * p, char const * file, int line);
+    void Remove (void * p);
+    void Dump ();
+
+    static bool Ready;
+private:
+    void lock () { _lockCount++; }
+    void unlock () { _lockCount--; }
+private:
+
+    std::map<void *, Entry> _map;
+    int _lockCount;
+};
+
+We have defined two auxillary classes, Tracer::Entry which is used as the value for the map, and Tracer::Lock which is used to temporary disable tracing. They are used in the implementation of Tracer::Add and Tracer::Remove.
+
+The method Add adds a new entry to the map, but only when tracing is active. Notice that it disables tracing when accessing the map--we don't want to trace the allocations inside the map code.
+
+void Tracer::Add (void * p, char const * file, int line)
+{
+    if (_lockCount > 0)
+        return;
+    Tracer::Lock lock (*this);
+    _map [p] = Entry (file, line);
+}
+
+The method Remove makes the same preparations as Add and then searches the map for the pointer to be removed. If it's found, the whole entry is erased.
+
+void Tracer::Remove (void * p)
+{
+    if (_lockCount > 0)
+        return;
+
+    Tracer::Lock lock (*this);
+
+    iterator it = _map.find (p);
+    if (it != _map.end ())
+    {
+        _map.erase (it);
+    }
+}
+
+Finally, at the end of the program, the method Dump is called from the destructor of Tracer to display all the leaks.
+
+Tracer::~Tracer ()
+{
+    Ready = false;
+    Dump ();
+}
+
+void Tracer::Dump ()
+{
+    if (_map.size () != 0)
+    {
+        std::cout << _map.size () << " memory leaks detected\n";
+        for (iterator it = _map.begin (); it != _map.end (); ++it)
+        {
+            char const * file = it->second.File ();
+            int line = it->second.Line ();
+            std::cout << file << ", "  << line << std::endl;
+        }
+    }
+}
+
+Notice: if your implementation of standard library cannot deal with standard output after the termination of main (), read the next section, Debug Output.
+
+Since we are overloading global operators new and delete, the Tracer has to be a global object too.
+
+extern Tracer NewTrace;
+
+Notice that this might lead to some problems, if there are other global objects that allocate memory in their constructors. The order of construction of global objects residing in different files is undefined. If a memory-allocating global object is constructed before the construction of NewTracer, we're in trouble. That's why I introduced a static Boolean flag, Tracer::Ready, which is originally set to false.
+
+bool Tracer::Ready = false;
+
+The constructor of Tracer sets this flag to true and Tracer::Dump sets it back to false.
+
+Tracer::Tracer () 
+: _lockCount (0) 
+{
+    Ready = true;
+}
+
+The implementation of the overloaded new is straightforward.
+
+void * operator new (size_t size, char const * file, int line)
+{
+    void * p = malloc (size);
+    if (Tracer::Ready)
+        NewTrace.Add (p, file, line);
+    return p;
+}
+
+Notice that we use the low level memory allocating function malloc, rather than calling operator ::new. That's because we are going to overload the regular new as well.
+
+There must be a corresponding overload of delete, to be used during exception unwinding.
+
+void operator delete (void * p, char const * file, int line)
+{
+    if (Tracer::Ready)
+        NewTrace.Remove (p);
+    free (p);
+}
+
+Since we used malloc for memory allocation, we have to use free for deallocation.
+
+For completeness, we also override the regular global new, in case there are parts of our code outside of the reach of macro substitution (for instance, parts of the standard library).
+
+void * operator new (size_t size)
+{
+    void * p = malloc (size);
+    if (Tracer::Ready)
+        NewTrace.Add (p, "?", 0);
+    return p;
+}
+
+Finally, we have to override the global delete in order to trace all deallocations.
+
+void operator delete (void * p)
+{
+    if (Tracer::Ready)
+        NewTrace.Remove (p);
+    free (p);
+}
+
+Since we only want the tracing to be enabled in the debug version of our program, we'll enclose the definition of our macro in conditional compilation directives.
+
+#if !defined NDEBUG
+#include "debugnew.h"
+
+#define new new(__FILE__, __LINE__)
+
+#endif
+
+Most compilers define the flag NDEBUG (no debug) when building the release (non-debugging) version of the program. The file debugnew.h contains, among others, the declaration of overloaded operators new and delete.
+
+Similarly, we have to make sure that the implementation of overloaded new and delete is also compiled conditionally. That's because the decision as to which version of new and delete will be called from your program is done by the linker. If the linker doesn't find an implementation of these operators in your code, it will use the ones privided by the runtime library. Otherwise it will call your overrides throughout.
+
+Finally, we add the definition of the global object NewTrace to main.cpp. The destructor of this object will dump memory leaks after the end of main ().
+
+#if !defined NDEBUG
+Tracer NewTrace;
+#endif
+						
+
+Debug Output
+
+An even better idea is to redirect the dump to the debugger. (An additional advantage of doing that is to bypass potential library bugs that prevent standard output after main ()). There is a function OutputDebugString, declared in <windows.h>, which outputs strings to the debug window, if you are running the program under the debugger. We format the string using std::stringstream.
+
+if (_map.size () != 0)
+{
+    OutputDebugString ("*** Memory leak(s):\n");
+    for (iterator it = _map.begin (); it != _map.end (); ++it)
+    {
+        char const * file = it->second.File ();
+        int line = it->second.Line ();
+        int addr = reinterpret_cast<int> (it->first);
+        std::stringstream out;
+        out << "0x" << std::hex << addr << ": " 
+            << file << ", line " << std::dec << line << std::endl;
+        OutputDebugString (out.str ().c_str ());
+    }
+    OutputDebugString ("\n");
+}
+
+If your standard library doesn't handle even that, try bypassing integer output by using a low-level conversion routine, itoa (integer-to-ascii).
+
+    char buffer1 [10];
+    char buffer2 [8];
+    out << "0x" << itoa (addr, buffer1, 16) << ": "
+        << file << ", line " << itoa (line, buffer2, 10) << std::endl;
+						
+
+Placement new
+
+There is one particular overload of new that is part of the standard library. It's called placement new (notice: sometimes all overrides of new that take extra arguments are called placement new) and it takes one additional argument--a void pointer. It is used whenever the memory for the object has already been allocated or reserved by other means. The argument could be a pointer to some static memory or to a chunk of pre-allocated raw dynamic memory. Placement new does not allocate memory--it uses the memory passed to it (it's your responsibility to make sure the chunk is big enough) and calls the appropriate constructor.
+
+For instance, in our earlier example with bulk allocation, we could use placement new to create a Block object using memory that's been allocated as an array of bytes.
+
+char * p = ::new char [sizeof (Block) + BlockLinks * sizeof (Link)];
+Block * block = new (p) Block (_blocks);
+_blocks = block;
+
+It makes sense now to have a constructor of Block that initializes the pointer to next. In fact, the method SetNext is no longer needed.
+
+LinkAllocator::Block::Block (Block * next) : _next (next) {}
+
+The standard library defines a corresponding placement delete which does absolutely nothing, but is required in case the constructor throws an exception. Since placement new doesn't allocate any memory, it's an error to delete the object created by it. Of course, the raw memory that's been passed to placement new has to be dealt with appropriately. In our example, it's the Purge method that frees raw memory.
+
+By the way, there is also an array placement operator new[] and the corresponding delete[]. It is left as an exercise for the user to use it for converting memory following the Block header to an array of Links (what kind of a constructor would you add to Link for that purpose?).

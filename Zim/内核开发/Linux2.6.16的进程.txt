@@ -1,0 +1,82 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-06-15T21:00:30+08:00
+
+====== Linux2.6.16的进程 ======
+Created Friday 15 June 2012
+http://blog.donews.com/qiaolin/archive/2006/11/06/1073440.aspx
+
+===== 1. Linux 中的多线程： =====
+__N个Light Weight Process组成一个thread group，它们整体作为一个多线程程序__，getpid( ) , kill( ) , and _exit( )等系统调用把它们看成一个进程。而Light Wight Processes可以共享很多资源：比如address space, the open files等。
+
+在task_struct里面的tgid和group_leader域分别是本进程的threa group leander的PID和**进程描述符的地址**。一般来说，thread group的第一个进程就是leader；如果不是多线程程序，也即一共就只有一个进程，那么__pid和tgid是同一个值__。在内核里面也就是用这两个值是否相等来决定是不是thead group leader：
+#define thread_group_leader(p) (p－>pid == p－>tgid)
+
+===== 2.进程的内核堆栈： =====
+a) 不管是何种类型的进程，在linux里面__能区分是不同进程的除开task_struct之外，就是thread_info结构体了__。它并不是代表线程相关信息，而是**和硬件关系跟紧密的一些数据**。
+
+一般来说，kernel用__2个页面__（8K）来标识一个进程的内核堆栈和thread_info. thread_info 和task_struct里面都有一个域__指向对方__，因此是一一对应的关系。这2个页面是__连续分布__的，低端的52个字节存放thread_info，高端的8140个字节作为这个__进程的内核堆栈__。相关源代码可以在do_fork调用的copy_process函数，而copy_process调用的dup_task_struct里面看到：
+
+#define __THREAD_SIZE__ (8192)
+#define alloc_task_struct() __kmem_cache_alloc__(task_struct_cachep, GFP_KERNEL)
+#define alloc_thread_info(tsk) __kmalloc__(THREAD_SIZE, GFP_KERNEL)
+tsk =alloc_task_struct();   //动态分配task_struct的空间
+ti = alloc_thread_info(tsk);//在kernel里分配两页连续的内存
+*tsk = *orig;            //__复制父进程的task_struct__
+tsk->thread_info = ti;    //修改thread_info指针指向自己的thread_info
+setup_thread_stack(tsk, orig); //__复制父进程的内核堆栈__
+
+b)当linux从用户态切换到内核态时，会__修改寄存器esp使其指向该进程的内核堆栈__，这样kernel使用esp的高29位（低13位为0）来取到thread_info的起始地址。从而__用thread_info里面的task域找到进程的task_struct__。代码如下：
+static inline struct thread_info ***current_thread_info**(void)
+{
+       struct thread_info *ti;
+       __asm__("andl %%esp,%0; ":"=r" (ti) : "0" (~(THREAD_SIZE – 1)));
+       return ti;
+}
+static __always_inline struct task_struct * **get_current**(void)
+{
+       return current_thread_info()->task;
+}
+#define __current__  get_current()
+
+===== 3.系统里面的所有进程： =====
+task_struct 的__tasks域__(list_head类型)用来构成系统里面**所有进程的一个链表**（一个thread group里面只有group leader参与）。链表的header是__init_task__，也就是0号进程(swapper)。可以用for_each_process来循环返回这个链表所有里面代表的每一个进程，除了swapper。
+
+===== 4.优先级进程队列： =====
+每个cpu 都有prio_array_t类型结构体，用task_struct里面的__run_list__构成每一个优先级的链表，供调度器使用O(1)的算法复杂度找到当前最适合的进程来上cpu执行。
+struct prio_array {
+       unsigned int nr_active; //所有优先级列表里面的进程数
+       unsigned long bitmap[BITMAP_SIZE]; //每一位代表对应优先级列表是否为空
+       struct list_head queue[MAX_PRIO];   //140个列表，下标就是进程的优先级
+};
+
+===== 5.Kernel Thread： =====
+它们是一些特殊的进程，用来辅助完成Linux系统的功能，但希望能被调度执行比如回收页面，清理磁盘缓存等。最出名的__0号进程(swapper)__就是一个kernel thread。它们与普通进程的最大区别是不需要使用用户空间，它们__只使用内核空间__，也即PAGE_OFFSET以上的线性地址。函数如下：
+int kernel_thread(int (*fn)(void *), void * arg, unsigned long flags){}
+    。。。。。。。。。。。。。。。。。。。。。。
+       regs.ebx = (unsigned long) fn;
+       regs.edx = (unsigned long) arg;
+       regs.eip = (unsigned long) kernel_thread_helper;
+       regs.xcs = __KERNEL_CS;
+       。。。。。。。。。。。。。。。。。。。。
+       /* Ok, create the new process.. */
+       return do_fork(flags | CLONE_VM | CLONE_UNTRACED, 0, &regs, 0, NULL, NULL);
+}
+EXPORT_SYMBOL(kernel_thread);
+
+可见kernel thread同样由do_fork创建，__只是指明了CLONE_VM参数__，这样do_fork就不会复制父进程的页表也即用户空间了。
+
+===== 6.unlikely and linkely: =====
+在kernel的源代码里面经常可以看到这两个宏：
+#define likely(x) __builtin_expect(!!(x), 1)
+#define unlikely(x) __builtin_expect(!!(x), 0)
+这两个宏的返回值依然是宏的参数x，它们的作用不是计算，而是指示编译器在生成if-lese语句对应的汇编代码时，是把if放在前面还是else放在前面。Likely就希望把if里面的代码放在前面，而unlikely则相反。
+
+===== 7.结束进程： =====
+a) 在多线程情况下调用do_exit_group,这个函数会给每一个线程发丧__SIGKILL__信号，从而每个线程(Light weight process)会调用do_exit。在do_exit_group调用的zap_other_threads函数里面：
+for (t = next_thread(p); t != p; t = next_thread(t)) {
+              if (t != p->group_leader)
+                     t->exit_signal = -1;
+              /* SIGKILL will be handled before any pending SIGSTOP */
+              sigaddset(&t->pending.signal, SIGKILL);   
+b)do_exit在结束了内存，文件系统，文件等资源的回收后，会调用__exit_notify通知父进程__，然后调用schedule作强制调度。

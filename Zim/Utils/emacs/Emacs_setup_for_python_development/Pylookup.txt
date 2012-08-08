@@ -1,0 +1,95 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-09T20:12:06+08:00
+
+====== Pylookup ======
+Created Monday 09 January 2012
+http://taesoo.org/Opensource/Pylookup
+
+Pylookup is a mode to** search python documents **especially within emacs.
+
+===== Usage =====
+1. M-x pylookup-lookup
+
+{{./1-lookup.png}} 
+
+    M-x pylookup-lookup, (set your local key map)
+
+2. Ido autocompletion
+{{./2-ido.png}}
+
+    Interactive do interface to search keywords
+    C-r, C-s : next/prev match
+
+3. Search results
+{{./3-search.png}}
+
+    Results of searching a keyword
+    n/p : next/prev line
+    C-v,M-v : scroll up/down
+    q : quit
+    Space/Enter : lookup document
+
+4.Read in your browser
+
+{{./5-browsing.png}}
+
+    You can see the proper python document in your favorite browser, w3m, firefox, ie or whatever.
+
+===== Install =====
+
+==== Checkout ====
+    git clone http://github.com/tsgates/pylookup.git  
+Edit .emacs
+
+;; add pylookup to your loadpath, ex) "~/.lisp/addons/pylookup"
+(setq pylookup-dir "[PATH]")
+(add-to-list 'load-path pylookup-dir)
+;; load pylookup when compile time
+(eval-when-compile (require 'pylookup))
+
+;; set executable file and db file
+(setq pylookup-program (concat pylookup-dir "/pylookup.py"))
+(setq pylookup-db-file (concat pylookup-dir "/pylookup.db"))
+
+;; to speedup, just load it on demand
+(autoload 'pylookup-lookup "pylookup"
+  "Lookup SEARCH-TERM in the Python HTML indexes." t)
+(autoload 'pylookup-update "pylookup" 
+  "Run pylookup-update and create the database at `pylookup-db-file'." t)
+
+    Change [PATH] variable to proper path where you installed pylookup
+    Add above code in your .emacs
+
+===== Preferences =====
+
+==== • Keybinding ====
+(global-set-key __"\C-ch"__ 'pylookup-lookup)   #这是缺省的绑定
+
+==== • Lookup downloaded documents ====
+    Update Database (In repository, there is database to lookup online document, but slow to load in a browser)
+
+    $ cd ~/.lisp/addons/pylookup  
+    $ ./pylookup.py -u file:///home/tsgates/.lisp/addons/pylookup/python-2.6.2-docs-html  
+    $ ./pylookup.py -l test  
+    COMPARISON_FLAGS (in module doctest) [lib];file:///home/tsgates/.lisp/addons/pylookup...  
+
+* Move to pylookup directory
+* Execute pylookup.py with your absolute python document path, download from here
+* Test by executing pylookup.py -l test and check pylookup indicating proper path you set
+
+==== • Default browser ====
+;; __w3m,系统需要安装w3m，同时还需要安装emacs-3m插件__
+(setq browse-url-browser-function 'w3m-browse-url) 
+(setq browse-url-default-browser "firefox.exe")    ;; firefox in M$ Windows
+
+==== • Numpy Support ====
+self.list_entry = False" in IndexProcessor.__init__
+
+
+===== Acknowledgements =====
+
+    Martin Blais's haddoc mode: http://furius.ca/haddoc
+    Github: http://github.com/tsgates/pylookup
+    This code is distributed under the GNU GPL v.2.0
+

@@ -1,0 +1,8 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-14T15:37:06+08:00
+
+====== 技巧 ======
+Created Wednesday 14 December 2011
+
+LD_LIBRARY_PATH or setting up the /etc/ld.so.conf file

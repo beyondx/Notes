@@ -1,0 +1,463 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-02T09:18:13+08:00
+
+====== PCI设备的枚举(PCI BIOS方法) ======
+Created Monday 02 July 2012
+http://blog.163.com/a3563@126/blog/static/54675706200941523146593/
+
+PCI设备的初始化 
+
+在我们的RTL8139驱动程序中，大量的使用了__pci_dev__这个数据结构，它代表着PCI总线上的各个PCI设备（包括PCI桥），我们在程 序中利用这个结构完成了大量的设备初始化工作。例如，我们最先是调用pci_enable_device()函数来开启设备的。这个函数的实质作用是把 PCI设备的__配置空间__（configuration space）中的__Command__ reg域中的最低两位置为1，使这个设备能够**开启内存（或端口）映射寄存器的功能**，这个功能概况的说就是你通过一系列的设置后，访问设备寄存器不需要持有寄存器的地址，而直接访问内存地址就可以了(PCI设备一旦配置并映射了Memory或IO空间，则对寄存器的访问可以直接向访问普通Memory单元那样，而不需用向特定端口或寄存器写入总线号、设备号和功能号来访问配置空间。)，映射的过程以后在说，这里即使你完成了这一系列的过程，如果不把（configuration space）中的Command reg相应置位，设备就根本不承认你的访问，所以程序开始头一件事先把它开了，在完成这个事情的pci_enable_device()中，它的参数便是 一个pci_dev结构，因为我们至少必须知道要开启的设备是哪一个吧，不能乱开一通，而有了这个参数我们就能够正确的找到这个设备进而找到这个设备的配置空间（configuration space），从而完成这个事情。在比如在程序中有这个一系列的函数： 
+mmio_start = pci_resource_start (pdev, 1); 
+mmio_end = pci_resource_end (pdev, 1); 
+mmio_flags = pci_resource_flags (pdev, 1); 
+mmio_len = pci_resource_len (pdev, 1); 
+这几句代码的作用是从设备中读取这个设备的寄存器组__在内存中映射的物理地址__（注意是__物理地址__，取得虚拟地址要进行**ioremap()**函数的转换， 通过这些虚拟地址可以直接访问到这些寄存器），它是如何实现的的呢，我先概括的说一下真实的实现情况。
+
+首先是机器刚加电启动的时候，BIOS程序(支持PCI总线操作的BIOS称为PCI BIOS)扫描整个 PCI总线，把这些总线上的每一个设备都赋予一块互不冲突的物理地址，这个地址被写到了每个设备配置空间中的（configuration space）中的Base Address0-Base Address5中，注意这里便是PCI总线相对与ISA总线的一个明显的好处，ISA总线的地址的确定是没有这么利索的，而PCI则帮我们做了这些事 情，保证了地址的不冲突，我们可以直接放心的使用。比如在pci_resource_start（）这个函数中我们得到了某段寄存器映射到内存的地址，而这个函数的实质是把pci_dev结构中的成员__resource数组__中的值直接的返回给我们定义的变量mmio_start了，这里我们有一个问题，这个 pci_dev结构中的成员是**什么时候**建立并得到了正确的值的呢（实际上这个值无疑就是BIOS在初始化时候给这个设备的没有冲突的值，它被存储在这个设备的配置空间里）。
+
+显然在我们进行驱动编程之前，系统中的每个PCI设备的代表物pci_dev__早已经建立存在__，它的成员不同角度的反应了这个设备的每个 PCI特征，而我们的驱动程序只是简单的使用了他们，因此想彻底了解一个驱动程序，光看驱动代码你无法了解到真正的底层内幕，从而肯定无法真正的理解这个程序的工作过程。显然我们要做的第一件事情就是了解PCI设备的初始化过程，完成了这个过程我们才敢说把软件代码和硬件的寄存器真正的结合了起来，才真正 掌握了驱动的本领，不然的话你只能忍受__驱动代码封装了底层内幕__痛苦。 
+
+好了，闲话少叙，既然我们知道了PCI初始化的重要性，我们就来钻研它，搞懂它，一通百通，以后不仅是网卡设备，其他的PCI设备都可以省很多事情。 
+Linux初始化时期的一个著名的函数便是在Linux/__init/main.c__中的init函数，在里面初始化了很多设备，我们的PCI设备初始化之旅也是从这个函数开始的。我们进入init（）里的__do_basic_setup()__函数中，正是在这个函数中我们找到了一个醒目的函数 __pci_init（）__，顾名思义，我们有一种预感，我们的PCI设备就是在这里初始化的，事实证明了我们的预感是正确的。好了在进行下一步之前，总结一下 已经走过的路先，init()-->do_basic_setup()-->pci_init()。 
+
+好了我们现在正式进入pci_init()这个函数中。这个函数在Linux/drivers/__pci/pci.c__中，这里面有一个主要的函数 __pcibios_init()__，这里应该注意，凡是函数名中有bios字样的，那么这个函数肯定是**体系结构相关**的，其定义在某一种CPU的单独的子目录下，如这里的 pcibios_init（）便是在Linux/arch/i386/kernel/__pci-pc.c__中，显然它是Intel i386体系下的。为了介绍方便，我们给出这个函数的部分核心源码： 
+
+1397 void __init pcibios_init(void) 
+1398 { 
+1399 int quad; 
+1400 
+1401 if (!pci_root_ops) 
+1402 pcibios_config_init(); 
+1403 if (!pci_root_ops) { 
+1404 printk(KERN_WARNING "PCI: System does not support PCI\n"); 
+1405 return; 
+1406 } 
+
+这里的pci_root_ops是一个全局变量，它的类型是pci_ops,这是一个非常关键的数据结构，定义如下： 
+
+456 __struct pci_ops__ { 
+457 int (*read_byte)(struct pci_dev *, int where, u8 *val); 
+458 int (*read_word)(struct pci_dev *, int where, u16 *val); 
+459 int (*read_dword)(struct pci_dev *, int where, u32 *val); 
+460 int (*write_byte)(struct pci_dev *, int where, u8 val); 
+461 int (*write_word)(struct pci_dev *, int where, u16 val); 
+462 int (*write_dword)(struct pci_dev *, int where, u32 val); 
+463 }; 
+
+里面都是函数指针，那么这些指针用来干什么的呢，为什么在pcibios_init（）中一开始就涉及对这个结构的全局变量的判断呢。事实上是这 样的，这个结构体里的函数都是__用来访问PCI设备的配置空间__（configuration space）的，一定要把配置空间和PCI设备的寄存器空间区分开来，配置空间是一种标准，所有的PCI设备必须遵守并提供这种标准的空间，而寄存器空间是随这不同的设备而不同的，例如两块不同品牌的网卡，他们都是PCI设备，属于配置空间是一样的，但是由于生产商不一样，网卡提供的功能也不尽相同，寄存器空间将会有很大的不同。这样做有一个好处，我们知道，配置空间里的值的读写都是有BIOS完成的，__一个统一格式的PCI配置空间对于BIOS检测读写这些设备将会非常有利__，~~而CPU的指令是无法直接访问这些配置空间的，CPU指令只能访问到寄存器空间，这些寄存器空间被映射到内存空间中，我们访问设备的寄存器就像是访问内存一样。~~
+
+那么CPU指令无法访问到配置空间，我们怎么读写里面的值来达到我们的要求呢，是这样的，我们在内存中找到BIOS程序的代码，然 后传递参数给BIOS，让它帮我们读写配置空间，因为我们知道BIOS是可以访问这些空间的。那现在就很容易明白pci_ops里面的函数指针都是用来读写配置空间的，我们把要读写的值和设备号告诉这些函数，在__这些函数中调用了BIOS例程__，并把这些值当作参数传给了BIOS例程，BIOS在根据设备号和要读写的值来进行操作。我们将在下面介绍这些过程的真正实现。现在对于1401-1406行的代码就很清楚了，如果pci_root_ops不存在，说明我们还没有建立这些函数，需要建立他们，这项工作是由pcibios_config_init（）来完成的。如果建立失败则打印退出。 
+
+在介绍pcibios_config_init（）前，我们在来回顾一下已经走过的路线:
+
+init()-->do_basic_setup()- ->pci_init()-->pcibios_init()-->pcibios_config_init()
+
+其实在pcibios_init()中 一共做了两个方面的工作，一个方面是我们马上要开始讲的访问配置空间的一系列的函数的建立，即pcibios_config_init()，这方面我们将在内存中寻找BIOS代码的入口，然后进行函数建立，这个方面虽然是辅助性的，但是却是极其重要的，因为以后的没一步都离不开这些函数。好了 pcibios_init()中另一个方面做了最关键的事情，就是__探测PCI总线上的所有设备__，并且为他们分配并**建立起pci_dev结构的链表**。有多少个设备就建立多少个这样的结构，将来某个驱动程序要初始化某个设备的时候，找到这个pci_dev并且获得里面的数据就可以了。从某种意义上说，驱动程序的大量工作是在这里做的。
+
+我们先看完第一方面的工作就介绍第二方面。pcibios_config_init()完成了第一方面的工作，先看一下其中的核心代码： 
+
+1370 if ((pci_probe & PCI_PROBE_BIOS) 
+1371 && ((**pci_root_ops** = __pci_find_bios__()))) { 
+
+1371行就是把pci_ops类型的pci_root_ops进行了初始化，用的是pci_find_bios（）。在这个函数中有些关键的代码：
+
+894 for (check = (union bios32 *) __va(**0xe0000**); 
+895 check <= (union bios32 *) __va(**0xffff0**); 
+896 ++check) { 
+897 if (check->fields.signature != BIOS32_SIGNATURE) 
+898 continue; 
+
+这几行代码的作用就是在__物理地址__0xe0000-0xffff0范围内寻找**BIOS程序的入口**，发现__BIOS32_SIGNATURE__这个标志就表明找到了，BIOS的地址被存储在bios32_indirect这个全局变量中。这个变量定义如下： 
+
+575 static struct { 
+576 unsigned long address; 
+577 unsigned short segment; 
+578 } **bios32_indirect** = { 0, __KERNEL_CS }; 
+
+通过下面这条语句完成了这个把找到的地址放到了这个结构中，在pci_find_bios中 
+
+919 bios32_indirect.address = bios32_entry + PAGE_OFFSET; 
+
+找到了BIOS32还不够，还要通过它找到我们需要的PCIBIOS，还是在pci_find_bios函数中 
+
+920 if (**check_pcibios()**) 
+921 return &pci_bios_access; 
+
+check_bios完成了这项工作，这个函数也是在同一个文件中。重要语句如下：
+ 
+629 if ((__pcibios_entry__ = bios32_service(PCI_SERVICE))) { 
+630 __pci_indirect__.address = pcibios_entry + PAGE_OFFSET;   //pcibios_entry是物理地址，加上PAGE_OFFSET变为CPU可访问的虚拟地址。
+
+pcibios_entry就是我们要找到的最终的PCIBIOS的地址，我们就是靠这个程序来完成配置空间的读写的。pci_indirect 与上面的bios32_indirect相似，将用来存储PCIBIOS的地址，它包括一个段地址和一个偏移量。这里需要注意一个非常重要的地方， __pci_indirect和bios32_indirect分别表示PCIBIOS和BIOS32这两个程序的地址，他们都是存储在固件中，出厂时就有的。__
+
+PCIBIOS可以帮助我们读写配置空间，但是为什么我们还要BIOS32呢？是这样的，我们在寻找PCIBIOS的过程中，正是借助这BIOS32 这个程序帮我们完成的。__BIOS32就是帮助我们寻找各种BIOS的__。这里的bios32_indirect和pci_indirect都是全局变量，只要找到了这些地址并存储在他们中，以后随时都可以使用他们了。因为需要借助BIOS32这个程序，所以要先找到BIOS32并把他们的地址保存起来。寻找这个地址是靠bios32_service（）来完成的（上面代码629行），得到的地址加上一个PAGE_OFFSET就成了__虚拟地址__，也就是CPU可访问的，因为在保护模式下CPU访问的都是虚拟地址，物理地址不好使。然后把这个地址存储到了pci_indirect里面，（上面代码630行），这 样，在以后的程序中任何时候引用这个地址都可以发挥PCIBIOS的功能了（对配置空间进行读写）。下面介绍bios32_service（）。里面的核心代码如下：
+ 
+593 __asm__("lcall (%%edi); cld" 
+594 : "=a" (return_code), 
+595 "=b" (address), 
+596 "=c" (length), 
+597 "=d" (entry) 
+598 : "" (__service__), 
+599 "1" (0), 
+600 "D" (&bios32_indirect)); 
+
+这段汇编的实质是调用BIOS32并传入一些参数（我们这里传的参数的意向是找到PCIBIOS的地址，我们知道__BIOS32就是寻找各种BIOS的__，PCIBIOS只是BIOS的一种），传出的参数便是我们需要的PCIBIOS的地址。 这段汇编的解释如下（这是GCC内嵌汇编）：lcall （%%edi）是调用一个子程序，程序地址装在EDI寄存器中，输入部“D”(& bios32_indirect))表示EDI寄存器中装的就是这个地址，为bios32_indirect，它就是我们前面已经找到的BIOS32的地 址。bios32_indirect里面包含段地址和段内偏移地址，通过他们就可以找到BIOS32入口。BIOS32的输入参数如下“” （service）表示我们要求BIOS32寻找的是PCIBIOS的地址，因为我们在这个函数上下文中可以得知service的值是 PCI_SERVICE, 输出的参数address，length，entry表示**PCIBIOS的地址，程序长度，入口**。bios32_service （）返回时我们回到了check_bios（）的629行，我们找到了PCIBIOS。 
+
+现在我们回到pci_find_bios（）的920行，如果找到了则安全返回，即return &pci_bios_access那么这个pci_bios_access是什么呢，它是**对pci_ops的初始化**，对里面每个函数都赋上了值，这个结构如下： 
+
+static **struct pci_ops** __pci_bios_access__= { 
+pci_bios_read_config_byte， 
+pci_bios_read_config_word， 
+pci_bios_read_config_dword， 
+pci_bios_write_config_byte， 
+pci_bios_write_config_word， 
+pci_bios_write_config_dword， 
+}; 
+
+回到pcibios_config_init（）中，我们的**pci_root_ops被赋值为pci_bios_access** 
+
+看了这么些代码（只列出一小部分，代表一个框架,他们在同一个文件中，可参考原始代码），我们究竟得到了什么，答案是__pci_indirect__， 它里面存储着PCIBIOS的地址，以后我们任何时候要读写配置空间，直接调用这个地址，并给这个地址传递我们的读写参数就可以了。下面我们来看具体实现。
+ 
+我们就以pci_bios_access结构中的pci_bios_read_config_byte，为例来说明 __pci_bios_read_config_byte()把程序传过来的参数(struct pci_dev *, int where, u8 *val)整合成PCIBIOS需要的参数，传递给了pci_bios_read()__，在pci_bios_read()中实现了所有的功能。 
+
+695 static int __pci_bios_read__ (int seg, **int bus, int dev, int fn**, int reg, int len, u32 *value) 
+696 { 
+708 __asm__("lcall (%%esi); cld\n\t" 
+709 "jc 1f\n\t" 
+710 "xor %%ah, %%ah\n" 
+711 "1:" 
+712 : "=c" (__*value__), 
+713 "=a" (result) 
+714 : "1" (PCIBIOS_READ_CONFIG_BYTE), 
+715 "b" (bx), 
+716 "D" ((long)reg), 
+717 "S" (&pci_indirect)); 
+
+注意看717行，这里用到的pci_indirect就是我们先前得到的PCIBIOS的地址，现在终于派上了用场。这个函数的参数情况如下： 稍微会点内嵌汇编的人都能明白这个程序的意思了（如果不明白的，自己先去查查资料），当我们传完了参数后，最终的事情是由BIOS来帮我们完成的了。这里 需要在强调一下的是读出来的参数（也就是配置空间某个寄存器的值）被__存到了CL中__（如果是word则是CX，如果是dword则是ECX，我们这里以 byte为例）。然后我们在把它从CL中拷贝到我们的程序中。 但是有人说，我们在驱动程序设计时看到的都是pci_read_config_byte这样的，不是 pci_bios_read_config_byte啊，呵呵，其实pci_read_config_byte的实现也是调用了 pci_bios_read_config_byte函数，下面给出证据。看下面这段内核代码： 
+
+868 #define __PCI_OP__(rw,size,type) \ 
+869 int **pci_##rw##_config_##size** (struct pci_dev *dev, int pos, type value) \ 
+870 { \ 
+871 int res; \ 
+872 unsigned long flags; \ 
+873 if (PCI_##size##_BAD) return PCIBIOS_BAD_REGISTER_NUMBER; \ 
+874 spin_lock_irqsave(&pci_lock, flags); \ 
+875 res = __dev->bus->ops__->rw##_##size(__dev, pos, value__); \ 
+876 spin_unlock_irqrestore(&pci_lock, flags); \ 
+877 return res; \ 
+878 } 
+879 
+880 PCI_OP(read, byte, u8 *) 
+881 PCI_OP(read, word, u16 *) 
+882 PCI_OP(read, dword, u32 *) 
+883 PCI_OP(write, byte, u8) 
+884 PCI_OP(write, word, u16) 
+885 PCI_OP(write, dword, u32) 
+
+把上面的宏展开你应该就能明白怎么回事了（gcc中“##”表示连接字符），如PCI_OP(read, byte, u8 *)展开就是pci_read_config_byte()，也就是我们所熟悉的。在这个函数里面res = dev->bus->ops->rw##_##size(dev, pos, value);（这里的dev->bus->ops实际就是pci_root_ops）,这条语句调用的就是我们的pci_root_ops (也就是pci_bios_access，因为我们也看到了上面一系列代码中一个重要功能就是把pci_root_ops由NULL变成了 pci_bios_access，在这里就终于派上用场了),这回就很清楚了最后调用的还是pci_bios_read_config_byte()(见 pci_bios_access的定义)。至于这个函数的实现，我们刚刚讲过了，忘了的在往回翻翻。 
+
+到了这里，第一个方面就讲完了，总结一下：我们通过线性搜索找到了BIOS32并把它的地址存储到bios32_indirect中，然后利用 这个地址执行BIOS32找到了PCIBIOS的地址，同样，也把它存储起来，不过这回存到了pci_indirect中了，如果这些都成功，那么就把 pci_root_ops置为pci_bios_access，这样以后__用户界面的pci_read_config_byte等系列函数都是靠这 pci_bios_access里面的函数指针来完成的，至于pci_bios_access里面的函数的实现，无一例外，都是靠这已经获得的 pci_indirect这个PCIBIOS的地址来完成的__。详细情况，请参考源码。 
+
+现在我们开始第二个方面，这个部分紧接这第一个方面，为了方便，我们把代码在贴一下： 
+1397 void __init pcibios_init(void) 
+1398 { 
+1399 int quad; 
+1400 
+1401 if (!__pci_root_ops__) 
+1402 **pcibios_config_init();** 
+1403 if (!pci_root_ops) { 
+1404 printk(KERN_WARNING "PCI: System does not support PCI\n"); 
+1405 return; 
+1406 } 
+1407 
+1408 printk(KERN_INFO "**PCI: Probing PCI hardware**\n"); 
+1409 __pci_root_bus__ = pci_scan_bus(0, pci_root_ops, NULL); 
+1410 if (clustered___apic___mode && (numnodes > 1)) { 
+1411 for (quad = 1; quad < numnodes; ++quad) { 
+1412 printk("Scanning PCI bus %d for quad %d\n", 
+1413 QUADLOCAL2BUS(quad,0), quad); 
+1414 pci_scan_bus(QUADLOCAL2BUS(quad,0), 
+1415 pci_root_ops, NULL); 
+1416 } 
+1417 } 
+
+我们看到1401-1406为第一个方面，而从1408开始就是第二个方面了，也是PCI设备初始化的实质性方面了，它将充分利用第一个方面取得的成果，来出色的完成工作。 
+
+pci_root_bus是pci_bus类型的指针，在这个类型是**PCI总线的一个抽象**，有一些重要的域，如代表这条总线的总线号 number，代表着这条总线上挂着的所有设备的device，代表着资源的resource，相当重要的还有代表着__对PCI配置空间的访问函数指针__（也就是我们上面所有工作得到的那个pci_bios_access，我们把得到的指针赋予这个变量，以后调用也就是通过这个总线类型结构的这个域来实现） __ops__，至于这个结构的全部实现，参考源码。
+ 
+下面就是我们的重头戏pci_scan_bus了，顾名思义，这个函数就是__扫描总线上的所有设备并且为他们建立各自的pci_dev结构__，现在给出函数代码： 
+1564 **struct pci_bus** * __devinit pci_scan_bus(int bus, struct pci_ops *ops, void *sysdata) 
+1565 { 
+1566 struct pci_bus *b = **pci_alloc_primary_bus**(bus); 
+1567 if (b) { 
+1568 b->sysdata = sysdata; 
+1569 b->ops = __ops__; 
+1570 b->subordinate = __pci_do_scan_bus__(b); 
+1571 } 
+1572 return b; 
+1573 } 
+
+首先是pci_alloc_primary_bus（）函数，它的作用是分配一个pci_bus结构用来描述这条总线，并且把这个结构挂到__总线队列pci_root_buses中__去（因为有很多条总线，需要统一组织和管理），代码如下：
+ 
+1545 struct pci_bus * __devinit pci_alloc_primary_bus(int bus) 
+1546 { 
+1547 struct pci_bus *b; 
+1548 
+1549 if (//pci_bus_exists//(&pci_root_buses, bus)) { 
+1550 /* If we already got to this bus through a different bridge, ignore it */ 
+1551 DBG("PCI: Bus %02x already known\n", bus); 
+1552 return NULL; 
+1553 } 
+1554 
+1555 b = __pci_alloc_bus__(); 
+1556 **list_add_tail**(&b->node, &__pci_root_buses__); 
+1557 
+1558 b->number = b->secondary = bus; 
+1559 b->resource[0] = __&ioport_resource__; 
+1560 b->resource[1] = __&iomem_resource__; 
+1561 return b; 
+1562 } 
+
+然后就是在pci_scan_bus的1570行调用实质性的pci_do_scan_bus函数,来实现所有实质性操作。这个函数的代码如下： 
+
+1489 unsigned int __devinit **pci_do_scan_bus**(struct pci_bus *bus) 
+1490 { 
+1491 unsigned int devfn, max, pass; 
+1492 struct list_head *ln; 
+1493 struct pci_dev *dev, dev0; 
+1494 
+1495 DBG("Scanning bus %02x\n", bus->number); 
+1496 max = bus->secondary; 
+1497 
+1498 /* Create a device template */ 
+1499 memset(&dev0, 0, sizeof(dev0)); 
+1500 dev0.bus = bus; 
+1501 dev0.sysdata = bus->sysdata; 
+1502 
+1503 /* Go find them, Rover! */ 
+1504 for (devfn = 0; devfn < 0x100; devfn += 8) { 
+1505 dev0.devfn = devfn; 
+1506 __pci_scan_slot__(&dev0); 
+1507 } 
+1508 
+1509 /* 
+1510 * After performing arch-dependent fixup of the bus, look behind 
+1511 * all PCI-to-PCI bridges on this bus. 
+1512 */ 
+1513 DBG("Fixups for bus %02x\n", bus->number); 
+1514 pcibios_fixup_bus(bus); 
+1515 for (pass=0; pass < 2; pass++) 
+1516 for (ln=bus->devices.next; ln != &bus->devices; ln=ln->next) { 
+1517 dev = pci_dev_b(ln); 
+1518 if (dev->hdr_type == PCI_HEADER_TYPE_BRIDGE || dev->hdr_type == PCI_HEADER_TYPE_CARDBUS) 
+1519 max = pci_scan_bridge(bus, dev, max, pass); 
+1520 } 
+1521 
+1522 /* 
+1523 * We've scanned the bus and so we know all about what's on 
+1524 * the other side of any bridges that may be on this bus plus 
+1525 * any devices. 
+1526 * 
+1527 * Return how far we've got finding sub-buses. 
+1528 */ 
+1529 DBG("Bus scan for %02x returning with max=%02x\n", bus->number, max); 
+1530 return max; 
+1531 } 
+
+这个函数的参数就是我们刚刚通过pci_alloc_primary_bus分配得到的pci_bus结构，我们在 pci_do_scan_bus 中对它进行进一步的初始化，我们的重点是1504-1507行的循环，我们应该注意到pci_dev这个结构中的__设备功能号__就是在这个时候确定的。即 devfn，我们在写配置空间时确定写的是哪个设备的依据之一就是这个devfn，这里正是对它进行初始化的工作，以后总线上的设备就是适用我们现在分配 给它的功能号。我们注意这个循环一共考察了256个号，分32组进行，每个组8个号（这是因为，按照PCI Spec的规定，**每条PCI总线可以有32个设备，每个设备8各功能**。），具体的分配工作是在pci_scan_slot（）中进行的。这个函 数如下： 
+
+1451 struct pci_dev * __devinit __pci_scan_slot__(struct pci_dev *temp) 
+1452 { 
+1453 struct pci_bus *bus = temp->bus; 
+1454 struct pci_dev *dev; 
+1455 struct pci_dev *first_dev = NULL; 
+1456 int func = 0; 
+1457 int is_multi = 0; 
+1458 u8 hdr_type; 
+1459 
+1460 for (func = 0; __func < 8__; func++, temp->__devfn++__) { 
+1461 if (func && !is_multi) /* not a __multi-function device__ */ 
+1462 continue; 
+1463 if (__pci_read_config_byte__(temp, **PCI_HEADER_TYPE**, &hdr_type)) 
+1464 continue; 
+1465 temp->hdr_type = hdr_type & 0x7f; 
+1466 
+1467 dev = __pci_scan_device__(temp); //建立一个struct pci_device结构。
+1468 if (!dev) 
+1469 continue; 
+1470 __pci_name_device__(dev); 
+1471 if (!func) { 
+1472 //is_multi// = hdr_type & 0x80; 
+1473 first_dev = dev; 
+1474 } 
+1475 
+1476 /* 
+1477 * Link the device to both the **global PCI device chain** and 
+1478 * the per-bus list of devices. 
+1479 */ 
+1480 list_add_tail(&dev->global_list, &__pci_devices__); 
+1481 list_add_tail(&dev->bus_list, &__bus->devices__); 
+1482 
+1483 /* Fix up broken headers */ 
+1484 pci_fixup_device(PCI_FIXUP_HEADER, dev); 
+1485 } 
+1486 return first_dev; 
+1487 } 
+
+我们看1463行，我们辛辛苦苦在第一阶段建立起来的访问配置空间的函数终于派上了用场，这里读取的是配置空间中的 PCI_HEADER_TYPE域。如果读的结果不正确，则放弃建立这个设备的pci_dev，我们从上面的代码中看出，分32组扫描总线，每组有8个 号，这里的1460行就是__对这8个号分别扫描建立pci_dev__，如果前面一切正常表明**存在这个设备**，于是调用pci_scan_device（），这个 函数代码如下： 
+
+1421 struct pci_dev * __devinit pci_scan_device(struct pci_dev *temp) 
+1422 { 
+1423 struct pci_dev *dev; 
+1424 u32 l; 
+1425 
+1426 if (__pci_read_config_dword__(temp, **PCI_VENDOR_ID**, &l)) 
+1427 return NULL; 
+1428 
+1429 /* some broken boards return 0 or ~0 if __a slot is empty__: */ 
+1430 if (l == 0xffffffff || l == 0x00000000 || l == 0x0000ffff || l == 0xffff0000) 
+1431 return NULL; 
+1432 
+1433 dev = __kmalloc__(sizeof(*dev), GFP_KERNEL);    //为struct pci_dev分配空间。
+1434 if (!dev) 
+1435 return NULL; 
+1436 
+1437 memcpy(dev, temp, sizeof(*dev)); 
+1438 dev->__vendor__ = l & 0xffff; 
+1439 dev->__device__ = (l >> 16) & 0xffff; 
+1440 
+1441 /* Assume 32-bit PCI; let 64-bit PCI cards (which are far rarer) 
+1442 set this higher, assuming the system even supports it. */ 
+1443 dev->dma_mask = 0xffffffff; 
+1444 if (__pci_setup_device__(dev) < 0) { 
+1445 kfree(dev); 
+1446 dev = NULL; 
+1447 } 
+1448 return dev; 
+1449 } 
+
+如你所见，这个函数读取了配置空间里的生产商号，并进行了相应的检查，如果没有问题就走到了1433行，我们松了一口气，我们在驱动程序中用的很多的**pci_dev结构的内存就是在这里分配的**（kmalloc函数），进行了一些简单的初始化，在1444行的pci_setup_device（）函 数中，进行了这个结构的大量初始化，代码如下： 
+
+1356 int pci_setup_device(struct pci_dev * dev) 
+1357 { 
+1358 u32 class; 
+1359 
+1360 sprintf(dev->__slot_name__, "%02x:%02x.%d", dev->__bus->number__, __PCI_SLOT__(dev->devfn), __PCI_FUNC__(dev->devfn)); 
+1361 sprintf(dev->__name__, "PCI device %04x:%04x", dev->vendor, dev->device); 
+1362 
+1363 pci_read_config_dword(dev, __PCI_CLASS_REVISION__, &class); 
+1364 class >>= 8; /* upper 3 bytes */ 
+1365 dev->class = **class**; 
+1366 class >>= 8; 
+1367 
+1368 DBG("Found %02x:%02x [%04x/%04x] %06x %02x\n", dev->bus->number, dev->devfn, dev->vendor, dev->device, class, dev->hdr_type); 
+1369 
+1370 /* "Unknown power state" */ 
+1371 dev->current_state = 4; 
+1372 
+1373 switch (dev->hdr_type) { /* header type */ 
+1374 case __PCI_HEADER_TYPE_NORMAL__: /* standard header */ 
+1375 if (class == PCI_CLASS_**BRIDGE_PCI**) 
+1376 goto bad; 
+1377 __pci_read_irq__(dev); 
+1378 __pci_read_bases__(dev, 6, PCI_ROM_ADDRESS); 
+1379 pci_read_config_word(dev, PCI_SUBSYSTEM_VENDOR_ID, &dev->subsystem_vendor); 
+1380 pci_read_config_word(dev, PCI_SUBSYSTEM_ID, &dev->subsystem_device); 
+1381 break; 
+。。。 
+} 
+
+这里有两个主要的函数，1377行的pci_read_irq()和1378行的pci_read_bases()，前者是从配置空间中读出中断号（这个__中断号是在电脑启动时BIOS统一分配，写到了配置空间里__）， 
+
+1336 static void pci_read_irq(struct pci_dev *dev) 
+1337 { 
+1338 unsigned char irq; 
+1339 
+1340 pci_read_config_byte(dev, __PCI_INTERRUPT_PIN__, &irq); 
+1341 if (irq) 
+1342 pci_read_config_byte(dev, __PCI_INTERRUPT_LINE__, &irq); 
+1343 **dev->irq** = irq; 
+1344 } 
+
+这里只是把它从配置空间里读出来，并且把它写给了pci_dev里面的irq字段，以后在驱动程序中就可以__直接使用这个irq来进行中断处理程序的注册了__，而不用在驱动程序中去在读了，这里的初始化大大的简化了驱动程序的设计，极大的简化了驱动程序开发者的压力。在看后一个也是非常重要的方面： 
+
+1049 static void pci_read_bases(struct pci_dev ***dev**, unsigned int **howmany**, int **rom**) 
+1050 { 
+1051 unsigned int pos, reg, next; 
+1052 u32 l, sz; 
+1053 **struct resource** *res; 
+1054 
+1055 for(pos=0; pos<**howmany**; pos = next) { 
+1056 next = pos+1; 
+1057 res = &dev->resource[pos]; 
+1058 __res->name__ = dev->name; 
+1059 reg = __PCI_BASE_ADDRESS_0__ + (pos << 2); 
+1060 pci_read_config_dword(dev, reg, &l); 
+
+1061 pci_write_config_dword(dev, reg, ~0);     //读取BAR所映射的空间大小时，先要向该BAR写入全F，然后再读。
+1062 pci_read_config_dword(dev, reg, &sz); 
+1063 pci_write_config_dword(dev, reg, l); 
+
+1064 if (!sz || sz == 0xffffffff) 
+1065 continue; 
+1066 if (l == 0xffffffff) 
+1067 l = 0; 
+
+1068 if ((l & PCI_BASE_ADDRESS_SPACE) == PCI_BASE_ADDRESS_SPACE___MEMORY__) { //读取的I中，最后一位用于区别**资源类型**是Memory还是IO。
+1069 __res->start__ = l & PCI_BASE_ADDRESS___MEM_MASK__; 
+1070 __res->flags__ |= l & ~PCI_BASE_ADDRESS_MEM_MASK;  //资源标志
+1071 sz = pci_size(sz, PCI_BASE_ADDRESS_MEM_MASK); 
+1072 } else { 
+1073 res->start = l & PCI_BASE_ADDRESS___IO_MASK__; 
+1074 res->flags |= l & ~PCI_BASE_ADDRESS_IO_MASK; 
+1075 sz = pci_size(sz, PCI_BASE_ADDRESS_IO_MASK & 0xffff); 
+1076 } 
+1077 __res->end__ = res->start + (unsigned long) sz; 
+1078 __res->flags__ |= pci_calc_resource_flags(l); 
+
+1079 if ((l & (PCI_BASE_ADDRESS_SPACE | PCI_BASE_ADDRESS_MEM_TYPE_MASK)) 
+1080 == (PCI_BASE_ADDRESS_SPACE_MEMORY | PCI_BASE_ADDRESS_MEM_TYPE_64)) {   //PCI空间是**64位地址**。
+1081 pci_read_config_dword(dev, reg+4, &l); 
+1082 next++; 
+1083 #if BITS_PER_LONG == 64 
+1084 res->start |= ((unsigned long) l) << 32; 
+1085 res->end = res->start + sz; 
+1086 pci_write_config_dword(dev, reg+4, ~0); 
+1087 pci_read_config_dword(dev, reg+4, &sz); 
+1088 pci_write_config_dword(dev, reg+4, l); 
+1089 if (~sz) 
+1090 res->end = res->start + 0xffffffff + 
+1091 (((unsigned long) ~sz) << 32); 
+1092 #else 
+1093 if (l) { 
+1094 printk(KERN_ERR "PCI: Unable to handle **64-bit address** for device %s\n", dev->slot_name); 
+1095 res->start = 0; 
+1096 res->flags = 0; 
+1097 continue; 
+1098 } 
+1099 #endif 
+1100 } 
+1101 } 
+1102 if (rom) { 
+1103 __dev->rom_base_reg__ = rom; 
+1104 res = &dev->resource[PCI_ROM_RESOURCE]; 
+1105 pci_read_config_dword(dev, rom, &l); 
+1106 pci_write_config_dword(dev, rom, ~PCI_ROM_ADDRESS_ENABLE); 
+1107 pci_read_config_dword(dev, rom, &sz); 
+1108 pci_write_config_dword(dev, rom, l); 
+1109 if (l == 0xffffffff) 
+1110 l = 0; 
+1111 if (sz && sz != 0xffffffff) { 
+1112 res->flags = (l & PCI_ROM_ADDRESS_ENABLE) | 
+1113 IORESOURCE_MEM | IORESOURCE_PREFETCH | IORESOURCE_READONLY | IORESOURCE_CACHEABLE; 
+1114 res->start = l & PCI_ROM_ADDRESS_MASK; 
+1115 sz = pci_size(sz, PCI_ROM_ADDRESS_MASK); 
+1116 res->end = res->start + (unsigned long) sz; 
+1117 } 
+1118 res->name = dev->name; 
+1119 } 
+1120 } 
+
+这个函数__对pci_dev里面的resource字段进行了初始化__，跟获得中断号的那个函数原理一样，也是从这个设备的配置空间中把这些资源地址 读出来，但是有个地方需要特别注意，这个函数**对每个PCI设备都读了6次**，因为每个PCI配置空间都有6个Base Address域，对每个域我们需要读出它的__开始地址和长度__，这里有一个问题，就是读长度，看1060-1062行，1060行是读出了开始地址， 1061行是写进了0xffffffff，1062行读出了长度，这是怎么回事呢，其实我们就是对1061和1062行比较迷惑，是这样的当你想读出来长度时，不像读开始地址那么直接，必须先写一个值进去，这里是0xffffffff，然后读出来的就是长度了。其他的代码读者自行阅读，这些函数基本上在同 一个文件Linux/drivers/pci/pci.c中。

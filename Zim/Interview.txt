@@ -1,0 +1,9 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T20:39:22+08:00
+
+====== Interview ======
+Created Sunday 27 March 2011
+
+some interview with famous people.
+

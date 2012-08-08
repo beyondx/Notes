@@ -1,0 +1,241 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-05T14:49:26+08:00
+
+====== Python Essential Reference 4th – 第9章 – 读书笔记 ======
+Created 星期二 05 七月 2011
+
+本章主要是关于各种I/O操作，包括File-Objec及其操作、Unicode字符串相关的I/O函数以及对象的序列化和持久化。
+
+1、从cmd读取传入参数：sys.argv。其中sys.argv[0]是当前的程序名称。
+
+2、想要退出系统时，出了exit和return外，还可以raise SystemExit(1)
+
+3、解析命令行参数，可以使用optparse模块。
+不过从2.7之后，Python将废弃optparse，转而支持argparse，话说开源的东西变动太大。。。
+optparse的用法如下：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+import optparse
+ 
+p = optparse.OptionParser()
+ 
+#Add option of -o/--output
+p.add_option("-o",action="store",dest="outfile")
+p.add_option("--output",action="store",dest="outfile")
+ 
+#Add option of boolean
+p.add_option("-d",action="store_true",dest="debug")
+p.add_option("--debug",action="store_true",dest="debug")
+ 
+#Set default values
+#p.set_default(debug=False)
+ 
+opts,args = p.parse_args()
+ 
+print opts.outfile,opts.debug
+
+4、环境变量：os.envviron
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> import os
+>>> print os.environ
+{'TMP': 'C:\\Users\\liheyuan\\AppData\\Local\\Temp', 'COMPUTERNAME': 'LIHEYUAN-PC', 'USERDOMAIN': 'liheyuan-PC', 'PSMODULEPATH': 'C:\\Windows\\system32\\WindowsPowerShell\\v1.0\\Modules\\', 'COMMONPROGRAMFILES': 'C:\\Program Files\\Common Files', 'PROCESSOR_IDENTIFIER': 'x86 Family 6 Model 23 Stepping 10, GenuineIntel', 'PROGRAMFILES': 'C:\\Program Files', 'PROCESSOR_REVISION': '170a', 'SYSTEMROOT': 'C:\\Windows', 'HOME': 'C:\\Users\\liheyuan', 'COMSPEC': 'C:\\Windows\\system32\\cmd.exe', 'TK_LIBRARY': 'C:\\Python27\\tcl\\tk8.5', 'TEMP': 'C:\\Users\\liheyuan\\AppData\\Local\\Temp', 'PROCESSOR_ARCHITECTURE': 'x86', 'TIX_LIBRARY': 'C:\\Python27\\tcl\\tix8.4.3', 'ALLUSERSPROFILE': 'C:\\ProgramData', 'SESSIONNAME': 'Console', 'HOMEPATH': '\\Users\\liheyuan', 'USERNAME': 'liheyuan', 'LOGONSERVER': '\\\\LIHEYUAN-PC', 'LOCALAPPDATA': 'C:\\Users\\liheyuan\\AppData\\Local', 'PROGRAMDATA': 'C:\\ProgramData', 'PYTHONPATH': '%PYTHONPATH%;d:\\python;d:\\python;d:\\python', 'TCL_LIBRARY': 'C:\\Python27\\tcl\\tcl8.5', 'PATH': 'C:\\Windows\\system32;C:\\Windows;C:\\Windows\\System32\\Wbem;C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\;C:\\Program Files\\Common Files\\Thunder Network\\KanKan\\Codecs', 'PATHEXT': '.COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC', 'FP_NO_HOST_CHECK': 'NO', 'WINDIR': 'C:\\Windows', 'APPDATA': 'C:\\Users\\liheyuan\\AppData\\Roaming', 'HOMEDRIVE': 'C:', 'SYSTEMDRIVE': 'C:', 'NUMBER_OF_PROCESSORS': '2', 'PROCESSOR_LEVEL': '6', 'OS': 'Windows_NT', 'PUBLIC': 'C:\\Users\\Public', 'USERPROFILE': 'C:\\Users\\liheyuan'}
+
+5、File-Object。
+内置的open方法：open(name,mode,bufsize)，后两个参数是可选的。
+
+mode可取r（读）、w（写）或a(追加)。默认情况下，为了解决windows和linux下对换行的差异（windows下是\r\n,linux是\n），默认会对其进行转换统一成\n，这个转换可以通过rU关闭，或者U启用。如果要用二进制模式b，则不会进行自动换行转换。如果需要及时更新，则在r或者w或者a后面加上+。
+
+bufsize是读取、写入的缓存，0为关闭，1是行缓存，>1之后是用字节表示的读取次数。
+
+File-Object的操作很多，比较特别需要注意的如下：
+f.readline([n])，读取一行，接近n个字节时停止，n省略时就是一行。
+f.readlines([size])，读取所有的行，以list形式返回，可选接近size个字节时停止。
+f.close()，关闭释放资源。
+f.tell()，定位当前偏移量。
+f.seek()，随机访问文件的某一位置。
+
+6、File读取完毕后，会返回None，而非抛出异常!
+因此逐行读取的方法是：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+while True:
+    line = f.readline()
+    if not line:
+        break
+
+7、在Python2中，read()返回的是8-bit的字符串，而Python3以后统一是utf-8
+
+8、标准输入输出：sys.stdin，sys.stdout，sys.stderr。和C中是对应的。如果直接用，可以
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+import sys
+sys.stdin.write("What's your name:")
+name = sys.stdin.readline("")
+
+9、当然如果从stdin读取，写入stdout也不用那么麻烦，用raw_input和print
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+import sys
+name = raw_input("What's your name:")
+
+10、print语句，尽管我们都是用它向stdout输出，但实际上它也可以用于File-Object的。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+f = open("output","w")
+print >>f,"hello world"
+
+11、print语句在使用,隔开之后，默认的分隔符是空格，我们可以改变的：
+（但是我一直没执行成功的说。。。）
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+f = open("output","w")
+print("The values are",x,y,z,sep=",")
+
+12、print的字符串中的变量可使用“模板替换”。一般来说，web框架都有自己定义的一套模板语法和文件，但基本的用法还是可以用的：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+text = "Dear %(name)s, Give me $%(amount)0.2f"
+print text % ( {"name":'Mrs. Liu', "amount":100.3} )
+
+也可以用formart方法
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+text = "Dear {name}s, Give me {amount:0.2f}"
+print text.format( name='Mrs. Liu', amount=100.3)
+
+13、Generater和I/O
+一般来说用生成器Generator与I/O操作结合，可以让内容的产生和I/O部分去耦合，另外附带的好处就是内存消耗更小（因为不是拼接好一堆string后再写入）
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+import sys
+#产生内容
+def content(n):
+    while n > 0:
+        yield "T-minus %d\n" % n
+        n -= 1
+    yield "HaHa"
+ 
+#逐行写入，不费内存
+ct = content(5)
+f = sys.stdout
+f.writelines(ct)
+
+14、显然，Generator对buffer的利用不是最大化的，因此，有些时候我们也会采取拼接大字符串再一次性写入的方法。拼接可以用join：
+（当然内存少不了。。）
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+......
+"".join(lines)
+
+15、Unicode字符串的处理。
+绝对不要把unicode字符串和非unicode字符串连用！
+在I/O操作时，会遇到很多的Unicode问题。解决方法有很多：
+（1）通过encode和decode
+s.decode(encoding,error) 将encoding编码的字符串转化为unicode编码字符串
+s.encode(encoding,error) 将unicode编码的字符串转化为8-bit的、encoding格式的字节码
+encoding可以取ascii latin-1(iso-8859-1) cp1252 utf-8 utf-16 utf-16-le utf-16-be unicode-escape
+raw-unicode-escape等。
+error是转化过程中的容错级别，默认是strict，可以选择ignore或者replace等。
+（2）使用Unicode I/O
+使用函数codes.open(filename,mode,encoding,error)，后三个参数可选。
+mode和open的mode类似。
+encoding是指定read和write时的字符串编码
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#这个例子要写入utf-8编码的字符串到文件
+>>> import codecs
+>>> str = u"计算所"
+>>> f = codecs.open("test.txt",'w','utf-8')
+>>> f.write(str)
+>>> f.close()
+#这个则是ascii编码（gbk）的
+>>> import codecs
+>>> str = "计算所"
+>>> f = codecs.open("test.txt",'w')
+>>> f.write(str)
+>>> f.close()
+
+16、如果已经打开了一个文件，并且想用codecs，则可以用codecs包装一下：
+fenc = codecs.EncodedFile(f,”utf-8″)
+
+17、Object序列化（持久化）。
+Python中，对Object进行持久化非常容易，可以用pickle实现：
+一个比较虎的地方貌似是支持循环引用。。比如下面的例子，我持久化o2，会把引用的o1也自动持久化了。。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#!/usr/bin/python
+ 
+import pickle
+ 
+class MyObj(object):
+    def __init__(self,v,r):
+        self.value = v
+        self.ref = r
+ 
+    def print123(self):
+        print self.value
+        if self.ref != None:
+            print self.ref.value
+ 
+if __name__ == "__main__":
+    o1 = MyObj(1,None)
+    o2 = MyObj(3,o1)
+ 
+    print "Before store using pickle"
+    o2.print123()
+ 
+    f = open("obj.sav","wb")
+    pickle.dump(o2,f)
+    f.close()
+ 
+    print "After load using pickle"
+    f = open("obj.sav","rb")
+    o = pickle.load(f)
+    f.close()
+    o.print123()
+
+18、对象的持久化还可以直接使用shelve，他不用再open文件了。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+import shelve
+obj = SomeObject()
+db = shelve.open("file")
+db['key'] = obj
+...
+obj = db['key']
+db.close()
+
+19、实际上，shelve的底层使用了pickle模块，只不过将它写成文件时更易读懂。pickle的持久化格式随着版本有细微差异，可以用过dump(obj,file,protocol)的最后一个参数来解决。
+
+20、如果希望自定义持久化的数据，可以来重写对象的__getstate__() 和 __setstate__()。它们会被pickle再dump和load的时候调用。比如对象涉及底层网络socket的时候就是一个例子。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+import socket
+class Client(object):
+    def __init__(self,addr):
+        self.server_addr = addr
+        self.sock = socket.Socket(socket.AF_INET,socket.SOCK_STREAM)
+        self.sock.connect(addr)
+    def __getstate__(self):
+        return self.server_addr
+    def __setstate(self,value):
+        self.server_addr = value
+        self.sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        self.sock.connect(self.server_addr)

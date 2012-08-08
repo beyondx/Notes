@@ -1,0 +1,167 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-10T20:06:17+08:00
+
+====== usb device在sysfs中的组织结构 ======
+Created Tuesday 10 July 2012
+http://biancheng.dnbcw.info/linux/311737.html
+
+lzj@lzj-laptop:/sys/bus/usb/devices$ ls /sys/bus/usb/devices/ -l
+total 0
+lrwxrwxrwx 1 root root 0 2010-05-27 18:11 usb1 -> ../../../devices/pci0000:00/0000:00:1a.7/usb1  #8个USB Controller
+lrwxrwxrwx 1 root root 0 2010-05-27 18:11 usb2 -> ../../../devices/pci0000:00/0000:00:1d.7/usb2
+lrwxrwxrwx 1 root root 0 2010-05-27 18:11 usb3 -> ../../../devices/pci0000:00/0000:00:1a.0/usb3
+lrwxrwxrwx 1 root root 0 2010-05-27 18:11 usb4 -> ../../../devices/pci0000:00/0000:00:1a.1/usb4
+lrwxrwxrwx 1 root root 0 2010-05-27 18:11 usb5 -> ../../../devices/pci0000:00/0000:00:1a.2/usb5
+lrwxrwxrwx 1 root root 0 2010-05-27 18:11 usb6 -> ../../../devices/pci0000:00/0000:00:1d.0/usb6
+lrwxrwxrwx 1 root root 0 2010-05-27 18:11 usb7 -> ../../../devices/pci0000:00/0000:00:1d.1/usb7
+lrwxrwxrwx 1 root root 0 2010-05-27 18:11 usb8 -> ../../../devices/pci0000:00/0000:00:1d.2/usb8
+
+lrwxrwxrwx 1 root root 0 2010-05-27 18:11 1-0:1.0 -> ../../../devices/pci0000:00/0000:00:1a.7/usb1/1-0:1.0   #8个USB Root HUB
+lrwxrwxrwx 1 root root 0 2010-05-27 18:11 2-0:1.0 -> ../../../devices/pci0000:00/0000:00:1d.7/usb2/2-0:1.0
+lrwxrwxrwx 1 root root 0 2010-05-27 18:11 3-0:1.0 -> ../../../devices/pci0000:00/0000:00:1a.0/usb3/3-0:1.0
+lrwxrwxrwx 1 root root 0 2010-05-27 18:11 4-0:1.0 -> ../../../devices/pci0000:00/0000:00:1a.1/usb4/4-0:1.0
+lrwxrwxrwx 1 root root 0 2010-05-27 18:11 5-0:1.0 -> ../../../devices/pci0000:00/0000:00:1a.2/usb5/5-0:1.0
+lrwxrwxrwx 1 root root 0 2010-05-27 18:11 6-0:1.0 -> ../../../devices/pci0000:00/0000:00:1d.0/usb6/6-0:1.0
+lrwxrwxrwx 1 root root 0 2010-05-27 18:11 7-0:1.0 -> ../../../devices/pci0000:00/0000:00:1d.1/usb7/7-0:1.0
+lrwxrwxrwx 1 root root 0 2010-05-27 18:11 8-0:1.0 -> ../../../devices/pci0000:00/0000:00:1d.2/usb8/8-0:1.0
+
+lrwxrwxrwx 1 root root 0 2010-05-27 10:12 4-1 -> ../../../devices/pci0000:00/0000:00:1a.1/usb4/4-1   #4号总线的Root HUB第1个端口上的USB设备。
+lrwxrwxrwx 1 root root 0 2010-05-27 10:12 4-1:1.0 -> ../../../devices/pci0000:00/0000:00:1a.1/usb4/4-1/4-1:1.0 #该设备的接口
+
+可见在目录/sys/bus/usb/devices/都是到/sys/devices/pci0000:00目录的链接，因为usb总线是连接在PCI总线上的。看其中一个root hub,以usb1为例：目录/sys/bus/usb/devices/usb1/描述的是一个USB Controller,看看这个hub device有些什么东西:
+
+lzj@lzj-laptop:/sys/bus/usb/devices/usb1$ ls -l
+total 0
+drwxr-xr-x 4 root root     0 2010-05-27 18:11 1-0:1.0
+-rw-r--r-- 1 root root  4096 2010-05-27 11:01 authorized
+-rw-r--r-- 1 root root  4096 2010-05-27 11:01 authorized_default
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 bcdDevice
+-rw-r--r-- 1 root root  4096 2010-05-27 11:01 bConfigurationValue
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 bDeviceClass
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 bDeviceProtocol
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 bDeviceSubClass
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 bmAttributes
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 bMaxPacketSize0
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 bMaxPower
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 bNumConfigurations
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 bNumInterfaces
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 busnum
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 configuration
+-r--r--r-- 1 root root 65553 2010-05-27 11:01 descriptors
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 dev
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 devnum
+lrwxrwxrwx 1 root root     0 2010-05-27 11:01 driver -> ../../../../bus/usb/drivers/usb
+drwxr-xr-x 3 root root     0 2010-05-27 10:19 ep_00    __#endpoint 0__
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 idProduct
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 idVendor
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 manufacturer
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 maxchild
+drwxr-xr-x 2 root root     0 2010-05-27 10:19 power
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 product
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 quirks
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 serial
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 speed
+lrwxrwxrwx 1 root root     0 2010-05-27 11:01 subsystem -> ../../../../bus/usb
+-rw-r--r-- 1 root root  4096 2010-05-27 11:01 uevent
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 urbnum
+-r--r--r-- 1 root root  4096 2010-05-27 11:01 version
+
+这里面包含了一个hub device应该有的属性，一些以b开头的字段是非常熟悉的，在usb2.0 spec中都有描述。首先，一个hub也是一个usb decice，因此一个usb device ,直接引用include/linux/usb/ch9.h中的定义是：（＋表示在该目录下存在）
+
+216 /* USB_DT_DEVICE: Device descriptor */
+217 struct __usb_device_descriptor__ {
+218 __u8 bLength;
+219 __u8 bDescriptorType;    //+descriptors
+220 
+221 __le16 bcdUSB;            //+version
+222 __u8 bDeviceClass;        //+
+223 __u8 bDeviceSubClass;    //+
+224 __u8 bDeviceProtocol;    //+
+225 __u8 bMaxPacketSize0;    //+
+226 __le16 idVendor;        //+
+227 __le16 idProduct;        //+
+228 __le16 bcdDevice;        //+
+229 __u8 iManufacturer;    //+manufacturer
+230 __u8 iProduct;            //+product
+231 __u8 iSerialNumber;    //+serial
+232 __u8 bNumConfigurations;    //+
+233 } __attribute__ ((packed));
+
+一个usb device 可以有一个或多个configurations,所以这里也包含了struct usb_config_descriptor中的一些字段：
+
+273 struct __usb_config_descriptor__ {
+274 __u8 bLength;
+275 __u8 bDescriptorType;
+276 
+277 __le16 wTotalLength;
+278 __u8 bNumInterfaces;        //+
+279 __u8 bConfigurationValue;    //+
+280 __u8 iConfiguration;        //+configuration
+281 __u8 bmAttributes;            //+
+282 __u8 bMaxPower;            //+
+283 } __attribute__ ((packed));
+
+这些字段在这里都包括了，但是在什么地方体现这个device 是hub呢？？
+cat __bDeviceClass__显示9，在ch9.h中定义：
+#define USB_CLASS_HUB 9
+lzj@lzj-laptop:/sys/bus/usb/devices/usb1$ cat bDeviceClass 
+09
+
+另外，hub当然还是一个hub device,它具有普通usb device没有的一些性质， struct usb_hub_descriptor，但这些信息没有在sysfs中显示，可能是一个普通用户不需要知道hub的信息吧，所以内核开发者没有在sysfs中显示（猜测）。
+    130 struct __usb_hub_descriptor__ {
+    131         __u8  bDescLength;
+    132         __u8  bDescriptorType;
+    133         __u8  bNbrPorts;
+    134         __le16 wHubCharacteristics;
+    135         __u8  bPwrOn2PwrGood;
+    136         __u8  bHubContrCurrent;
+    137                 /* add 1 bit for hub status change; round to bytes */
+    138         __u8  DeviceRemovable[(USB_MAXCHILDREN + 1 + 7) / 8];
+    139         __u8  PortPwrCtrlMask[(USB_MAXCHILDREN + 1 + 7) / 8];
+140 } __attribute__ ((packed));
+
+注意到ep_00的目录吗，在每个device的目录下面都会有这个目录，因为每当设备插入的时候会有一个叫做__enumeration__的过程，通过这个过程主机可以获得设备的必要信息，这个过程就是__通过hub 的port0与设备的endpoint0来通信__的。
+
+一个usb device有1个或多个interface.   1-0:1.0就是interface的目录,命名规则是：roothub-port:configuration.interface.
+
+lzj@lzj-laptop:/sys/bus/usb/devices/usb1/1-0:1.0$ ls -l
+total 0
+-r--r--r-- 1 root root 4096 2010-05-27 11:03 bAlternateSetting
+-r--r--r-- 1 root root 4096 2010-05-27 11:03 bInterfaceClass
+-r--r--r-- 1 root root 4096 2010-05-27 11:03 bInterfaceNumber
+-r--r--r-- 1 root root 4096 2010-05-27 11:03 bInterfaceProtocol
+-r--r--r-- 1 root root 4096 2010-05-27 11:03 bInterfaceSubClass
+-r--r--r-- 1 root root 4096 2010-05-27 11:03 bNumEndpoints
+lrwxrwxrwx 1 root root    0 2010-05-27 11:03 driver -> ../../../../../bus/usb/drivers/hub
+drwxr-xr-x 3 root root    0 2010-05-27 10:19 __ep_81__
+-r--r--r-- 1 root root 4096 2010-05-27 11:03 modalias
+drwxr-xr-x 2 root root    0 2010-05-27 10:19 power
+lrwxrwxrwx 1 root root    0 2010-05-27 11:03 subsystem -> ../../../../../bus/usb
+-r--r--r-- 1 root root 4096 2010-05-27 11:03 supports_autosuspend
+-rw-r--r-- 1 root root 4096 2010-05-27 11:03 uevent
+ 
+这里也是一些很熟悉的b开头的字段，ch9.h中定义:struct usb_interface_descriptor
+310 struct __usb_interface_descriptor__ {
+311 __u8 bLength;
+312 __u8 bDescriptorType;
+313 
+314 __u8 bInterfaceNumber;        //+
+315 __u8 bAlternateSetting;    //+
+316 __u8 bNumEndpoints;        //+
+317 __u8 bInterfaceClass;        //+
+318 __u8 bInterfaceSubClass;    //+
+319 __u8 bInterfaceProtocol;    //+
+320 __u8 iInterface;
+321 } __attribute__ ((packed));
+
+当然每个接口interface有一个或多个endpoints，在ep_81中是这个interface唯一的一个endpoint的信息。以上是一个没有接任何设备的hub的信息，如果接了设备，它在sysfs中的文件组织又是怎么样的呢？
+
+我电脑上只接了一个usb鼠标，在usb4上，因此：
+lzj@lzj-laptop:/sys/bus/usb/devices/usb4$ ls
+4-0:1.0             bcdDevice            bDeviceSubClass  bNumConfigurations  descriptors  ep_00         maxchild  serial     urbnum
+4-1                 bConfigurationValue  bmAttributes     bNumInterfaces      dev          idProduct     power     speed      version
+authorized          bDeviceClass         bMaxPacketSize0  busnum              devnum       idVendor      product   subsystem
+authorized_default  bDeviceProtocol      bMaxPower        configuration       driver       manufacturer  quirks    uevent
+
+其他什么都没变，就是多了一个4-1的目录，这个目录就是我的usb 鼠标的device目录了，可以想象，这个目录下会有一个类似4-1:1.0的目录，描述的是它的interface.还会有个目录叫ep__00....

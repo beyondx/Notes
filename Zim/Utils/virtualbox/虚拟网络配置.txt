@@ -1,0 +1,62 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-27T10:54:31+08:00
+
+====== 虚拟网络配置 ======
+Created Friday 27 May 2011
+http://linux.chinaitlab.com/administer/728769.html
+  本文假设Host系统是Ubuntu 7.04，Guest系统是CentOS 5.0，其他Linux类系统的配置应该与此类似。
+
+        首先确保安装了网桥工具(bridge-utils)和用户模式Linux工具(uml-utilities)，如果没有可运行如下命令安装：
+
+        # apt-get install bridge-utils uml-utilities
+
+        并确保普通用户可访问虚拟网卡设备，
+
+        # chmod 0666 /dev/net/tun
+
+        1. NAT方式
+
+        VirtualBox软件在内部虚拟出NAT网络，该网络在Host系统不可见，更不可配置，Guest系统设置DHCP方式获取网络地址，即可直接访问Host网络。
+
+        需要注意的是启动Guest系统之前必须确保网络是连通的，否则Guest系统起来后无法访问Host系统后来连通的网络，比如ADSL拨号上网。
+
+        2. 路由方式
+
+        首先给Host系统创建一块虚拟网卡，
+
+        # tunctl -t vb0 -u marchday
+
+        网卡的名称是vb0，授权使用的用户是marchday。
+
+        然后创建Guest，指定Host Interface，并指定Host Interface Name为vb0，即上面我们创建的虚拟网卡。Guest系统启动后其网卡相当于和vb0相连，然后我们就可以分别配置Host和Guest的网卡，使其 可相互连通，并使Guest系统访问外部网络。
+
+        需要注意的是一块虚拟网卡同时只能连接一个Guest系统，如果你同时启动了好几个Guest系统，需要为每个Guest创建虚拟网卡。
+
+        3. 桥接方式
+
+        网桥工作在TCP/IP的第二层，数据链路层。它只能感知MAC地址，对IP及以上层是无法感知的。你可以把网桥想象成交换机，一般情况下有两个 口，数据在两个口之间转发，Linux下的桥接设备可以加入很多接口，真正地像一个多口的交换机，而且还支持STP( spanning tree protocol )。
+
+        在Linux下，网桥接口和第一个加入的接口MAC地址保持一致。
+
+        这里我们考虑两种结构的网络拓扑。
+3.1 Guest系统的网卡直接和公司局域网相连
+
+        假设 Host系统的 eth0 和公司局域网相连，通过dhcp获取IP地址，并通过局域网接入Internet。在这种网络拓扑下，Guest系统的网卡相当于直接接入公司的局域网，这种接入是通过桥接实现的，我们看看怎么做。
+
+        添加虚拟网卡接口
+        # tunctl -t vb01 -u marchday
+        添加网桥设备接口
+        # brctl addbr br0
+        把物理网卡eth0配置为promisc模式
+        # ifconfig eth0 0.0.0.0 promisc
+        把物理网卡eth0加入网桥
+        # brctl addif br0 eth0
+        获取网桥设备的IP地址
+        # dhclient br0
+        把虚拟网卡加入网桥
+        # brctl addif br0 vb01
+        激活虚拟网卡
+        # ifconfig vb01 up
+
+        这是最快捷的虚拟机上网方式，启动虚拟机就跟启动局域网的一台物理机器一样，马上就可以获取IP地址上网。

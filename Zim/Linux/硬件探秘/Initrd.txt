@@ -1,0 +1,723 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T19:39:49+08:00
+
+====== Initrd ======
+Created Sunday 27 March 2011
+
+这一次探秘我们主要研究以下kernel和initrd。
+
+kernel是什么以及有哪些功能相信大家都很清楚，我就不多说了。这里主要介绍ubuntu10.04上安装的相关软件包、文件、目录以及kernel的配置方法。
+至于initrd文件是干什么用的呢？
+大家只要做一个简单的实验就可以明白了：在开机的GRUB命令行上去掉initrd这一行，然后按CTRL+x启动，过会你会发现屏幕出现“kernel panic”的提示。
+为什么会这样呢？这是因为为了减小kernle文件(vmlinuz)的大小和增强灵活性，现在的发行版如ubuntu默认将硬盘接口卡如IDE，STAT，SCSI的驱动程序以模块(modules)的形式
+放在initrd文件中，GRUB中去掉initrd这一行意味着initrd中的modules没有被加载，进而kernel就不能识别该硬盘更别提挂载上面的根文件系统了。
+initrd文件的功能主要有两个：
+1、提供开机必需的但kernel文件(即vmlinuz)没有提供的驱动模块(modules)
+2、负责加载硬盘上的根文件系统并执行其中的/sbin/init程序进而将开机过程持续下去
+
+GRUB将kernle加载到内存并执行，kernel在运行的后期会读取initrd文件中的init脚本文件并按照其中命令逐行执行，所以要掌握initrd的作用和硬盘上的根文件系统加载过程，全面解析init文件是
+很重要的。在本文的第二部分，我会将/boot/initrd文件打开，逐行解读init文件。
+
+下面我简要介绍以下ubuntu 10.04上安装的与kernle相关的软件包及文件：
+
+geekard@geekard-laptop:~$ dpkg -l linux* 
+Desired=Unknown/Install/Remove/Purge/Hold 
+| Status=Not/Inst/Cfg-files/Unpacked/Failed-cfg/Half-inst/trig-aWait/Trig-pend 
+|/ Err?=(none)/Reinst-required (Status,Err: uppercase=bad) 
+||/ Name           Version        Description 
++++-==============-==============-============================================ 
+ii  linux-firmware 1.34.1         Firmware for Linux kernel drivers 
+ii  linux-headers- 2.6.32-22.36   Header files related to Linux kernel version 
+ii  linux-headers- 2.6.32-22.36   Linux kernel headers for version 2.6.32 on x 
+ii  linux-image-2. 2.6.32-22.36   Linux kernel image for version 2.6.32 on x86 
+ii  linux-libc-dev 2.6.32-23.37   Linux Kernel Headers for development 
+。。。。。
+
+可以看出系统安装的与kernel相关的软件包挺多的，但主要有三种类型：
+linux-firmware     kernel提供的固件程序,位于/lib/firmware目录下。操作系统用驱动程序驱动硬件，而驱动程序就是和硬件上的固件(如PCI设备上的PCI BIOS)进行交互以控制对应硬件的，所以固件是驱动程序与硬件的执行机构间的桥梁。
+linux-headers     与特定linux kernel版本相关的头文件，位于/usr/src/linux-headers-2.6.32-22/include和/usr/include目录下，在编译一些modules和软件如virtualbox additional tools 时使用。
+linux-image      为linux kernel的二进制压缩文件,存在于/boot/vmlinuz
+linux-generic   主要提供相应版本linux kernel的metadata即更新文件
+
+让我们重点看一下系统安装的linux-image软件包的功能和内容：
+geekard@geekard-laptop:~$ dpkg -s  linux-image-2.6.32-22-generic 
+Package: linux-image-2.6.32-22-generic 
+Status: install ok installed 
+Priority: optional 
+Section: admin 
+Installed-Size: 94652 
+Maintainer: Ubuntu Kernel Team <kernel-team@lists.ubuntu.com> 
+Architecture: i386 
+Source: linux 
+Version: 2.6.32-22.36 
+Provides: fuse-module, ivtv-modules, kvm-api-4, linux-image, linux-image-2.6, ndiswrapper-modules-1.9, redhat-cluster-modules 
+Depends: initramfs-tools (>= 0.36ubuntu6), coreutils | fileutils (>= 4.0), module-init-tools (>= 3.3-pre11-4ubuntu3), wireless-crda 
+Pre-Depends: dpkg (>= 1.10.24)                    #注意这些依赖的软件包的作用适合kernel启动密切相关的。
+Recommends: grub-pc | grub | lilo (>= 19.1) 
+Suggests: fdutils, linux-doc-2.6.32 | linux-source-2.6.32, linux-tools 
+Breaks: lvm2 (<< 2.02.54-1ubuntu3) 
+Conflicts: hotplug (<< 0.0.20040105-1) 
+Description: Linux kernel image for version 2.6.32 on x86/x86_64 
+ This package contains the Linux kernel image for version 2.6.32 on 
+ x86/x86_64. 
+ . 
+ Also includes the corresponding System.map file, the modules built by the  
+ packager, and scripts that try to ensure that the system is not left in an 
+ unbootable state after an update.                   
+ . 
+ Supports Generic processors. 
+ . 
+ Geared toward desktop systems. 
+ . 
+ You likely do not want to install this package directly. Instead, install 
+ the linux-generic meta-package, which will ensure that upgrades work 
+ correctly, and that supporting packages are also installed. 
+geekard@geekard-laptop:~$ 
+geekard@geekard-laptop:~$ dpkg -L  linux-image-2.6.32-22-generic 
+/. 
+/boot                            #这就是系统启动目录，其中的kernel相关文件
+/boot/vmlinuz-2.6.32-22-generic 
+/boot/config-2.6.32-22-generic 
+/boot/abi-2.6.32-22-generic 
+/boot/System.map-2.6.32-22-generic 
+/boot/vmcoreinfo-2.6.32-22-generic 
+/lib 
+/lib/modules                      #这就是kernel提供的module所在的目录，在开机过程中和系统运行过程中经常使用。注意module和特定版本的kernel是对应的。
+/lib/modules/2.6.32-22-generic 
+/lib/modules/2.6.32-22-generic/kernel 
+/lib/modules/2.6.32-22-generic/kernel/arch 
+/lib/modules/2.6.32-22-generic/kernel/arch/x86/kvm/kvm.ko 
+…..
+/lib/firmware/2.6.32-22-generic/mts_gsm.fw   #kernel提供的固件程序
+/lib/firmware/2.6.32-22-generic/yam/9600.bin 
+/usr 
+/usr/share 
+/usr/share/doc 
+/usr/share/doc/linux-image-2.6.32-22-generic 
+/usr/share/doc/linux-image-2.6.32-22-generic/changelog.Debian.old.gz 
+/usr/share/doc/linux-image-2.6.32-22-generic/copyright 
+/usr/share/doc/linux-image-2.6.32-22-generic/changelog.Debian.gz 
+
+好了，我们现在知道了/boot目录下除grub子目录外的所有文件都是由linux-image软件包提供的，那么这些文件的作用是什么呢？
+geekard@geekard-laptop:~$ ls /boot                #kernel相关文件
+abi-2.6.32-22-generic         memtest86+.bin 
+config-2.6.32-22-generic      System.map-2.6.32-22-generic 
+grub                          vmcoreinfo-2.6.32-22-generic 
+initrd.img-2.6.32-22-generic  vmlinuz-2.6.32-22-generic 
+geekard@geekard-laptop:~$ 
+
+各文件功能如下：
+config-2.6.32-22-generic       内核参数配置记录文件，这个文件在重新编译配置kernel时非常有用。
+System.map-2.6.32-22-generic   内核对象列表文件，内核对象即为内核提供的常量及函数的符号链接
+vmcoreinfo-2.6.32-22-generic   内核核心参数设置记录文件
+initrd.img-2.6.32-22-generic   intrd文件，注意这个和系统的kernel版本是对应的
+vmlinuz-2.6.32-22-generic      内核文件，这个和上个文件即为在GRUB命令行上指定的文件
+
+geekard@geekard-laptop:~$ uname -a  #查看系统kernel信息命令
+Linux geekard-laptop 2.6.32-22-generic #36-Ubuntu SMP Thu Jun 3 22:02:19 UTC 2010 i686 GNU/Linux 
+geekard@geekard-laptop:~$ 
+
+显示的含义为：主机名为geekard-laptop、硬件平台为i686的笔记本电脑安装了GNU/Linux 类型的操作系统，其kernel是在SMP Thu Jun 3 22:02:19 UTC 2010第36次编译的,版本为版本为2.6.32-22-generic
+另外在系统运行的过程中可以查看和编辑/proc/sys/kernel/下的相应文件，实时获取和设置kernel的参数
+
+geekard@geekard-laptop:~$ ls /etc/kernel   #更新内核过程中用到的配置脚本
+header_postinst.d  postinst.d  prerm.d 
+geekard@geekard-laptop:~$ 
+
+内核的安装方式：
+1、从配置并编译好的rpm或deb软件包安装。
+2、从源码包安装，需手动配置。建议高级用户使用，配置不当会造成系统不能正常启动。
+
+从源代码安装的步骤：（以下内容摘自kernel源代码的README文件）
+
+1、INSTALLING the kernel source: 
+
+ - If you install the full sources, put the kernel tarball in a 
+   directory where you have permissions (eg. your home directory) and 
+   unpack it: 
+
+		gzip -cd linux-2.6.XX.tar.gz | tar xvf - 
+
+   or 
+		bzip2 -dc linux-2.6.XX.tar.bz2 | tar xvf - 
+
+
+   Replace "XX" with the version number of the latest kernel. 
+2、Make sure you have no stale .o files and dependencies lying around: 
+
+		cd linux 
+		make mrproper 
+
+   You should now have the sources correctly installed. 
+3、CONFIGURING the kernel:
+        "make config"      Plain text interface. 
+	"make menuconfig"  Text based color menus, radiolists & dialogs. 
+	"make xconfig"     X windows (Qt) based configuration tool. 
+	"make gconfig"     X windows (Gtk) based configuration tool. 
+	"make oldconfig"   Default all questions based on the contents of 
+			   your existing ./.config file and asking about 
+			   new config symbols. 
+
+主要在配置kernel时最重要的是确定kernel对芯片组、总线、文件系统的支持。
+4、Do a "make" to create a compressed kernel image. It is also  possible to do "make install" if you have lilo installed to suit the 
+   kernel makefiles, but you may want to check your particular lilo setup first. 
+   COMPILING the kernel: If you configured any of the parts of the kernel as `modules', you  will also have to do "make modules_install".
+5、配置grub.cfg文件，在其中添加新配置的kernel及initrd文件作为启动项
+6、Reboot with the new kernel and enjoy. 
+
+
+第二部分：initrd文件探秘
+
+kernel被GRUB加载经内存并执行后会进一步加载initrd文件，它是按照initrd文件中提供的init脚本一步步执行的，所以要掌握initrd文件的执行过程就必须要搞清楚init文件的内容和作用。下面我
+会重点介绍init文件。
+
+首先什么是 initial ram disk (缩写 initrd)  
+       它是由 bootloader 初始化的内存盘。在 linux 启动之前，bootloader  会将它(通常是 initrd.img-xxx...xxx 文件)加载到内存中。内核启动的时候会将这个文件解开，并作为根文件系 统使用。而启动阶段的驱动模块(如jbd)放在这些文件系统上,内核是无法读取文件系统的，从而只能通过Linux initrd启动的虚拟文件系统来装载这些模块。这里有些人会问: 既然内核此时不能读取文件系统，那内核的文件是怎么装入内存中的呢？答案很简单，Grub是file-system sensitive的，能够识别常见的文件系统。
+
+设 计 initrd 的主要目的
+目的是让系统的启动分为两个阶段。首先，带有最少但是必要的驱动(这些驱动是在配置内核时选择嵌入方式)的内核启动。然后，其它需要的模块将 从 initrd 中根据实际需要加载(使用udev机制，最重要的根文件系统所在硬盘的控制器接口module)。这样就可以不必将所有的驱动都编译进内核，而根据实际情况有选择地加载。对于启动较慢的设备 如 usb 设备等，如果将驱动编译进内核，当内核访问其上的文件系统时，通常设备还没有准备好，就会造成访问失败。所以，通常 在 initrd 中加载 usb 驱动，然后休眠几秒钟，带设备初始化完成后，再挂载其中的文件系统。  
+
+系统上安装的相关软件包
+geekard@geekard-laptop:~$ dpkg -l \*ini\* |grep ii 
+ii  busybox-initramfs          1:1.13.3-1ubuntu11             Standalone shell setup for initramfs 
+ii  initramfs-tools                0.92bubuntu78                    tools for generating an initramfs 
+ii  initramfs-tools-bin        0.92bubuntu78               binaries used by initramfs-tools 
+geekard@geekard-laptop:~$ 
+
+BusyBox combines tiny versions of many common UNIX utilities into a single   small executable. It provides minimalist replacements for the most common 
+ utilities you would usually find on your desktop system (i.e., ls, cp, mv,  mount, tar, etc.). The utilities in BusyBox generally have fewer options than 
+ their full-featured GNU cousins; however, the options that are included  provide the expected functionality and behave very much like their GNU 
+ counterparts. 
+initramfs-tools-bin软件包提供initrd文件制作工具命令，但更好的方法是手动制作(下面我会详细介绍)。
+
+initrd 的具体形式  
+    目前有两种形式：cpio-initrd 和 image-initrd。  
+    image- initrd 的制作相对麻烦，处理流程相对复杂(内核空间->用户空间->内核空间 与初始化越来越多的在用户空间进 行的趋势不符)，主要是2.4及以前的kernle使用，本文不对其进行介绍。  
+    cpio- initrd 的处理流程(内核空间->用户空间):  
+        1． boot loader 把内核以 及 initrd 文件加载到内存的特定位置。  
+        2． 内核判断 initrd 的文件格式，如果 是 cpio 格式。  
+        3． 将 initrd 的内容释放 到 rootfs 中。  
+        4． 执行 initrd 中 的 /init 文件，执行到这一点，内核的工作全部结束，完全交给 /init 文件处 理。 cpio- initrd 的制作:  
+     首先在一个目录中建立必要的文件及目录。例如:  
+        song@ubuntu:/home/linux_src/initrd/debian_etch/initrd$ ls -l  
+         总用量 5  
+        drwxr-xr-x  2 song song  864 2007-05-01 21:37 bin  
+        drwxr-xr-x  3 song song  160 2007-05-01 21:37 conf  
+        drwxr-xr-x  4 song song  136 2007-05-01 21:37 etc  
+        -rwxr-xr-x  1 song song 3233 2007-05-02 15:16 init  
+        drwxr-xr-x  4 song song  416 2007-05-01 21:37 lib  
+        drwxr-xr-x  2 song song   48 2007-04-14 15:59 modules  
+        drwxr-xr-x  2 song song  208 2007-05-01 21:37 sbin  
+        drwxr-xr-x 11 song song  400 2007-05-01 21:37 scripts  
+     然后，将这些内容打成 gzip 压缩过的 cpio 包:  
+        song@ubuntu:/home/linux_src/initrd/debian_etch/initrd$ find . | cpio -o -H newc | gzip -9 > ../initrd.img.gz  
+        20500 blocks  
+        song@ubuntu:/home/linux_src/initrd/debian_etch/initrd$ ls -l ../initrd.img.gz  
+        -rw-r--r-- 1 song song 4493175 2007-05-02 17:17 ../initrd.img.gz  
+     
+     解包：  
+    首先建立一个空目录，然 后进入那个目录，并运行相应的命令。例如，在 /home/linux_src/initrd/debian_etch 目录下存 在 initrd.img-2.6.18-4-686 文件，我们现在要把它解开，过程如下：  
+        song@ubuntu:/home/linux_src/initrd/debian_etch$ mkdir tmp  
+        song@ubuntu:/home/linux_src/initrd/debian_etch$ cd tmp  
+        song@ubuntu:/home/linux_src/initrd/debian_etch/tmp$ gzip -dc ../initrd.img-2.6.18-4-686 | cpio -idm  
+        20500 blocks  
+        song@ubuntu:/home/linux_src/initrd/debian_etch/tmp$ ls -l  
+         总用量 5  
+        drwxr-xr-x  2 song song  864 2007-05-02 17:23 bin  
+        drwxr-xr-x  3 song song  160 2007-05-02 17:23 conf  
+        drwxr-xr-x  4 song song  136 2007-05-02 17:23 etc  
+        -rwxr-xr-x  1 song song 3213 2007-03-08 06:30 init  
+        drwxr-xr-x  4 song song  416 2007-05-02 17:23 lib  
+        drwxr-xr-x  2 song song   48 2007-04-14 15:59 modules  
+        drwxr-xr-x  2 song song  208 2007-05-02 17:23 sbin  
+        drwxr-xr-x 11 song song  400 2007-05-02 17:23 scripts  
+
+
+initrd  中 init 脚本的分析    
+     由前面 cpio-initrd 的处理流程可以看到，内核在将其解开并放入 rootfs 后，将要执 行 /init 文件，所以我们分析的重点就是这个文件。其它的文件请结合具体的源码与本文的内容进行理 解。  
+#!/bin/sh
+
+该行说明该init文件是一个由sh解释并执行的脚本文件，内核通过文件头来确定应该怎样执行（即是直接执行还是调用哪个程序执行该文件）。
+
+[ -d /dev ] || mkdir -m 0755 /dev
+[ -d /root ] || mkdir -m 0700 /root   #这是硬盘上的根分区预先挂载到的目录
+[ -d /sys ] || mkdir /sys
+[ -d /proc ] || mkdir /proc
+[ -d /tmp ] || mkdir /tmp
+mkdir -p /var/lock
+mount -t sysfs -o nodev,noexec,nosuid none /sys   #udev会参考的vfs，udev会根据其中的信息加载modules和创建设备文件
+mount -t proc -o nodev,noexec,nosuid none /proc    
+
+这一部分很简单,建立了相关目录和挂载点，并将kernel运行过程中产生的信息挂载到/sys和/proc目录下。注意/sys目录是udev会参考的vfs，udev会根据其中的信息加载modules和创建设备文件，当不使用udev机制(我后面会讲)时/sys目录可以不建立。/proc目录和相应的proc文件系统必须建立和挂载，因为脚本会参考其中的/proc/cmdline文件获得kernel命令行上的参数。
+
+grep -q '\<quiet\>' /proc/cmdline || echo "Loading, please wait..."
+
+如果在GRUB的kernel行上有quiet关键字，则在kernel启动和initrd中init脚本执行的过程中不会在屏幕上显示相关信息而是一个闪烁的下划线，否则将显示"Loading, please wait..."
+
+# Note that this only becomes /dev on the real filesystem if udev's scripts
+# are used; which they will be, but it's worth pointing out
+if ! mount -t devtmpfs -o mode=0755 none /dev; then  #其实then的代码一般不会执行
+	mount -t tmpfs -o mode=0755 none /dev
+	mknod -m 0600 /dev/console c 5 1
+	mknod /dev/null c 1 3
+fi
+
+这一部分在/dev目录下建立devtmpfs文件系统，devtmpfs是一个虚拟的文件系统被挂载后会自动在/dev目录生成很多常见的设备节点文件，当挂载devtmpfs失败时会手动建立/dev/console和/dev/null设备节点文件。/dev/console 总是代表当前终端，用于输出kernel启动时的输出内容，在最后通 过 exec 命令用指定程序替换当前 shell 时使用。/dev/null 也是很常用的，凡是重定向到它的数据都将消失得无影无踪。
+
+mkdir /dev/pts #主要用于nfs等启动时使用，对于本地/dev/pts不使用，故下面一段代码可忽略
+mount -t devpts -o noexec,nosuid,gid=5,mode=0620 none /dev/pts || true
+> /dev/.initramfs-tools
+mkdir /dev/.initramfs
+usplash 会使用/dev/.initramfs 目录。usplash 会在机器启动的时候提供类似 windows的启动画面，ubuntu linux 的启动画面就是通过 usplash 实现的。由于 在 /sbin 目录当中没有任何 usplash 相关的文件，所以我们可以忽略这个目录的存 在。 
+
+# Export the dpkg architecture
+export DPKG_ARCH=
+. /conf/arch.conf
+DPKG_ARCH  表明了当前运行linux的计算机的类型，对一般的pc是大多 i386，也可能是别的比如 powerpc 一类的。用export是为了让这个变量不仅在此 shell环境中有效，而且在它的子 shell环境中仍然有效。而且在第27行 export DPKG_ARCH 变量的时候，让 DPKG_ARCH 变量等于空。这样，当前运行的计算机 的类型就完全由 /conf/arch.conf 决定了
+# Set modprobe env
+export MODPROBE_OPTIONS="-qb"
+设置modprobe默认的选项，-b 表示用use-blacklist(主要是系统的硬件有多个modules支持，选择使用哪一个，其他的加入到黑名单中以防冲突) ，-q表示quiet
+
+# Export relevant variables
+export ROOT=       #从kernel中提取的realfs所在的设备
+export ROOTDELAY=  
+export ROOTFLAGS=
+export ROOTFSTYPE=
+export IPOPTS=
+export HWADDR=
+export break=
+export init=/sbin/init    #realfs中的第一个执行的程序位置
+export quiet=n
+export readonly=y
+export rootmnt=/root        #realfs在rootfs中的临时挂载点
+export debug=             #将本脚本的输出定向到一个文件，以便启动系统后分析
+export panic=
+export blacklist=          #设置modules的黑名单
+export resume_offset=
+
+
+这一部分主要是输出一些变量到环境中
+ROOT       保存GRUB的kernel命令行上的root参数即硬盘上根分区所对应的设备节点文件
+ROOTDELAY  指定将要进入的系统的根目录所在的分区必 须在多少秒之内准备好
+ROOTFLAGS  指定将要进入的系统的根目录所在的分区挂 载到 ${rootmnt} 目录时的参数
+ROOTFSTYPE  指定根分区所在的文件系统类型
+IPOPTS      当kernel为nfs时指定的服务器IP
+HWADDR      当kernel为nfs时指定的服务器MAC
+break    由 maybe_break 函数使用。若 break  的值同 maybe_break 的第一个参数相同，则 maybe_break 函数调 用 panic 函数(注意 panic 函数和 panic 变量是不同 的)。 若 panic 变量为"0"(此 处是字符串，其内容是"0"，不是整数)， 则 panic 函数将重新启动机器。其他情况下(包括 panic 变量为空的情况)都将以交互的方式调出 shell，此shell的输入输出使用已经创建好的节点 /dev/console。
+init  指定硬盘realfs中的第一个执行的程序位置， 此变量指定在这个脚本最后要执行的进程。 此处 /sbin/init 是系统上所有进程的父进程，负责开启其它进程。当然，你也可以把它换成其他的程序，甚至是 ls，不一定非要是 /sbin/init，虽然这样你的系统启动之后什么都不能做。 
+quiet=n  指定为非"y"，会显示一些启动的状态信息;若指定为"y"则不显示这些信息。  
+readonly=y  如果 readonly 等于字符串"y"，则以只读方式挂 载最终要进入的系统的根目录所在分区到 ${rootmnt} 目录，其他情况(包括 readonly 为 空)以读写方式挂载。  
+rootmnt=/root        指定硬盘上的realfs在rootfs中的临时挂载点
+debug            #将本脚本的输出定向到一个文件，以便启动系统后分析
+panic           描述见 break参数的说明。
+blacklist        #设置modules的黑名单
+resume_offset    一般用不到
+
+
+# Bring in the main config 
+. /conf/initramfs.conf    #最重要的是BOOT参数，定义了是本地启动还是nfs启动
+for conf in conf/conf.d/*; do  #对于不支持kernel命令行选项的bootloader很有用
+	[ -f ${conf} ] && . ${conf}
+done
+. /scripts/functions    #这个脚本文件很重要，在其中定义了很多以后要用到的工具函数
+
+在当前shell中引入主配置文件 /conf/initramfs.conf。 这个配置文件实际上是 mkinitramfs(8)  的配置文件，其中定义了一些变量，并赋予了适当的值，如 BOOT=local 则默认从本地磁盘启动(可以是可移动磁盘)。 BOOT 变量的值实际上是 /scripts 目录下的一个文件，可以是 local 或 是 nfs。在此 init 脚本挂载将要进入的系统的根目录所在分区的时候，会先读取并运 行 /scripts/${BOOT} 文件。 在这个文件中定义了 mountroot 函数，对于 local 启动和 nfs 启动 此函数的实现不同。这样通过对不同情况引入不同的文件，来达到同样名称的函数行为不同的目的。这就导致了具体挂载的行为和启动方式相关。  
+
+引入 /conf/conf.d 下的所有文件，注意在引入的时候用了 -f 参数判断，这样只有普通的文件才 会被引入，链接(硬链接除外)、目录之类的非普通文件不会被引入，当使用不支持命令行参数的开机引导
+程序时，可以在该目录下建立各种参数设置文件。(Uubunt使用的GRUB支持kernel命令行参数，所以这个目录下就上面提到的两个文件initramfs.conf和arch.conf)
+
+
+# Parse command line options
+for x in $(cat /proc/cmdline); do   #为export的变量赋值，最重要的是root
+	case $x in
+	init=*)                 #指定切换到磁盘上的rootfs上时执行的第一个程序，默认为/sbin/init
+		init=${x#init=}
+		;;
+	root=*)
+		ROOT=${x#root=} #形如：root=/dev/sda3的选项，下面的case代码不会执行
+		case $ROOT in
+		LABEL=*)        #获取磁盘上rootfs所在的分区设备文件，支持用LABEL，UUID的形式
+			ROOT="${ROOT#LABEL=}"   
+
+			# support / in LABEL= paths (escape to \x2f)
+			case "${ROOT}" in      #下面是对诸如root=LABEL=/的设备标签转换为root=LABEL=\x2f的形式
+			*[/]*)
+			if [ -x "$(command -v sed)" ]; then
+				ROOT="$(echo ${ROOT} | sed 's,/,\\x2f,g')"
+			else
+				if [ "${ROOT}" != "${ROOT#/}" ]; then
+					ROOT="\x2f${ROOT#/}"
+				fi
+				if [ "${ROOT}" != "${ROOT%/}" ]; then
+					ROOT="${ROOT%/}\x2f"
+				fi
+				IFS='/'
+				newroot=
+				for s in $ROOT; do
+					if [ -z "${newroot}" ]; then
+						newroot="${s}"
+					else
+						newroot="${newroot}\\x2f${s}"
+					fi
+				done
+				unset IFS
+				ROOT="${newroot}"
+			fi
+			esac
+			ROOT="/dev/disk/by-label/${ROOT}"
+			;;
+		UUID=*)
+			ROOT="/dev/disk/by-uuid/${ROOT#UUID=}"
+			;;
+		/dev/nfs)
+			[ -z "${BOOT}" ] && BOOT=nfs
+			;;
+		esac
+		;;
+	rootflags=*)            #获取kernel命令行上的rootflags参数
+		ROOTFLAGS="-o ${x#rootflags=}"
+		;;
+	rootfstype=*)
+		ROOTFSTYPE="${x#rootfstype=}"
+		;;
+	rootdelay=*)
+		ROOTDELAY="${x#rootdelay=}"
+		case ${ROOTDELAY} in
+		*[![:digit:].]*)
+			ROOTDELAY=
+			;;
+		esac
+		;;
+	resumedelay=*)
+		RESUMEDELAY="${x#resumedelay=}"
+		;;
+	loop=*)
+		LOOP="${x#loop=}"
+		;;
+	loopflags=*)
+		LOOPFLAGS="-o ${x#loopflags=}"
+		;;
+	loopfstype=*)
+		LOOPFSTYPE="${x#loopfstype=}"
+		;;
+	cryptopts=*)
+		cryptopts="${x#cryptopts=}"
+		;;
+	nfsroot=*)
+		NFSROOT="${x#nfsroot=}"
+		;;
+	netboot=*)
+		NETBOOT="${x#netboot=}"
+		;;
+	ip=*)
+		IPOPTS="${x#ip=}"
+		;;
+	hwaddr=*)
+		HWADDR="${x#hwaddr=}"
+		;;
+	boot=*)               #指定本地还是网络启动
+		BOOT=${x#boot=}
+		;;
+	resume=*)
+		RESUME="${x#resume=}"
+		;;
+	resume_offset=*)
+		resume_offset="${x#resume_offset=}"
+		;;
+	noresume)
+		noresume=y
+		;;
+	panic=*)              #获取panic参数值
+		panic="${x#panic=}"
+		case ${panic} in
+		*[![:digit:].]*)
+			panic=
+			;;
+		esac
+		;;
+	quiet)
+		quiet=y
+		;;
+	ro)
+		readonly=y
+		;;
+	rw)
+		readonly=n
+		;;
+	debug)
+		debug=y
+		quiet=n
+		exec >/dev/.initramfs/initramfs.debug 2>&1
+		set -x
+		;;
+	debug=*)
+		debug=y
+		quiet=n
+		set -x    #开启shell的调试模式
+		;;
+	break=*)
+		break=${x#break=}
+		;;
+	break)
+		break=premount
+		;;
+	blacklist=*)
+		blacklist=${x#blacklist=}
+		;;
+	netconsole=*)
+		netconsole=${x#netconsole=}
+		;;
+	esac
+done
+
+以上的位于for循环中的脚本的主要功能是获取kernel的命令行选项(/proc/cmdline )然后赋给相应的变量。其中最重要的是root，其它的可有可无。
+
+
+
+if [ -z "${noresume}" ]; then
+	export resume=${RESUME}
+else
+	export noresume
+fi
+
+若 NORESUME 变量不为空，则将 RESUME 变量的值赋给 resume 变 量，并把 resume 变量 export 出去，使得在子 shell 环境中也可以 使用 resume 变量。resume 变量将在 /scripts/local-premount/resume 脚本中使用。
+
+
+[ -n "${netconsole}" ] && modprobe netconsole netconsole=${netconsole}
+基于网络的终端控制，一般用不到。
+
+maybe_break top    
+
+参见上文中对break变量的解释，kernel中指定的break参数包含top时，maybe_break会查看panic变量是否为0，若否则以交互的方式调出 shell，此shell的输入输出使用已经创建好的节点 /dev/console。
+
+# export BOOT variable value for compcache,
+# so we know if we run from casper
+export BOOT
+
+# Don't do log messages here to avoid confusing usplash
+run_scripts /scripts/init-top    
+
+按照/scripts/init-top/ORDER文件的配置依次执行其下的脚本文件，这里最重要的是开启了udev daemon 
+udev 以 daemon 的方式启动 udevd，接着执行 udevtrigger 触发在机器启动前已 经接入系统的设备的 uevent，然后调用 udevsettle 等待，直到当 前 events 都被处理完毕。之后，如果 ROOTDELAY 变量不为空，就 sleep ROOTDELAY 秒以等待 usb/firewire disks 准备 好。  
+
+maybe_break modules    
+log_begin_msg "Loading essential drivers..."
+load_modules
+log_end_msg
+
+load_modules按照/conf/modules文件的配置加载重要的module，由于使用了udev机制这一步其实是多余的，实际上/conf/modules文件并不存在。
+
+
+maybe_break premount
+[ "$quiet" != "y" ] && log_begin_msg "Running /scripts/init-premount"
+run_scripts /scripts/init-premount
+[ "$quiet" != "y" ] && log_end_msg
+这段代码从字面上理解是为接下来挂载将要使用的系统的根目录所在的分区作准备，/scripts/init-premount实际并不存在，所以这一步其实啥都没干。
+
+maybe_break mount                #这一步主要是执行/scripts/local中的mountroot函数，将realfs挂载到${rootmnt},在mountroot函数中最重要的是检测realfs的fytype
+log_begin_msg "Mounting root file system..."
+. /scripts/${BOOT}
+parse_numeric ${ROOT}          #这一步主要用于解析lilo启动管理程序传递的参数，对于GRUB用不到。
+mountroot
+log_end_msg
+这一部分的功能主要是把硬盘上的realfs挂载到${rootmnt}特别重要，大部分的系统启动问题都是这一部分存在问题引起的。其中很大一部分的原因是硬盘控制器的module
+没有被udev或上面的load_modules加载，导致kernel不能读取硬盘中的数据。
+
+下面我们来看一下 /scripts/local 中定义的 mountroot 函数是如何工作 的。  
+    首先，它通 过 run_scripts 函数执行 /scripts/local-top 目录下所有具有可执行权限的文件。在这个目录下有3个文件：lvm，mdrun  和 udev_helper。  
+    lvm  是逻辑卷管理方面的脚本，我没有过(估计一般pc很少有人会用)，而且其中调用的具有可执行权限的文件在此 initrd.img  中也不存在。因为这个脚本在运行的时候会先检查需要的文件是否存在，若不存在则退出，所以这个脚本相当于什么也没做。略过。  
+    mdrun  是 raid 方面的脚本。它要求 udev_helper 先被执行(见第136行代码的说明)其中用到的具有可执行权限的文件在 此 initrd.img 中不存在。这等效于这个脚本不起作用。  
+    udev_helper  脚本 mdrun 的先决条件，根据实际情况 ide-generic 模块可能会被加 载。  
+    在这三个脚本执行过之 后，mountroot 函数会查看 ROOT 设备节点是否已经存在，如果不存在将等 ${ROOTDELAY} 秒。若在这段时间内 ROOT 设备节点没有出现则调 用 panic 函数重启机器或是生一 个交互 shell。  
+     若 ROOT 设备节点已经存在，则查看 ROOTFSTYPE 变量是否为空。若不空， 则 FSTYPE 变量的值就是 ${ROOTFSTYPE}；否则通过 eval 用 fstype 命令得到 ROOT 的分区格式。其中，fstype 命令会输 出 FSTYPE=blabla 类型的字符串，它跟在 eval 后面就相当于作了  FSTYPE=blabla 这样的赋值操作。如果经过这一步之后 ROOTFSTYPE 的值是 "unknown"(包括通过在 kernel 后添 加 rootfstype=unknown 参数和 fstype 输出的  FSTYPE=unknown)，则 mountroot 函数调用 /lib/udev/vol_id 得到 分区的格式。此时，FSTYPE 的值仍有可能是 "unknown"。 如果是这样的话，在最后的 mount 操作就会失败。或许你会觉得这里要判断分区格式是不是很麻烦。是的，确实如此。但是要知道这 里的 mount 不会自己判断分区格式，所以要在参数中指定。  
+     在得到了 FSTYPE 之后，mountroot 函数调用 run_scripts 函数运 行 /scripts/local-premount 下面具有可执行权限的文件。  
+     在 /scripts/local-premount 目录中只有一个具有可执行权限的脚本 resume。此脚本负责在 计算机休眠后恢复休眠前的状态。若 resume 变量为空或者这个变量所指的设备不存在，则直接退出；否则，运 行 /bin/resume 恢复状态。
+     在这之后，mountroot 函数根据变量 readonly 确定是以只读还是读写的方式挂载，根 据 FSTYPE 变量加载适当得内核模块。在得到了所有必要的参数之后，通过 mount 命令将将要进入的 系统的根目录所在的分区挂载到 ${rootmnt} 目录下。  
+     最后，mountroot 函数通过 run_scripts 函数执行 /scripts/local- bottom 下具有可执行权限的文件。由于在此目录下没有文件，所以这一步什么都没有做。  
+      parse_numeric 函数 ( /scripts/functions 中定义)从它的注释中可以看出，这个是为了和 lilo 兼容而存 在的。由于现在一般用 grub 作为 bootloader，我们平常写的 root=/dev /hdxx，root=LABEL=xx...xx 或 root=UUID=x...x-...-xxx 的形式都会造 成此函数的直接返回，相当于什么都没有做。由于我没有用过 lilo，所以对于下面 lilo 的处理，我也不好说什 么。  
+   
+
+maybe_break bottom                 #/scripts/init-bottom中的主要文件是udev，这一步要停止udev服务并执行mount -n -o move /dev ${rootmnt}/dev
+[ "$quiet" != "y" ] && log_begin_msg "Running /scripts/init-bottom"
+run_scripts /scripts/init-bottom
+[ "$quiet" != "y" ] && log_end_msg
+
+这一部分的主要功能是按照/scripts/init-buttom/ORDER文件的配置依次执行其下的脚本文件，这里最重要的是关闭了udev daemon 
+
+
+# Move virtual filesystems over to the real filesystem
+mount -n -o move /sys ${rootmnt}/sys
+mount -n -o move /proc ${rootmnt}/proc
+
+将开机过程中kernel产生的信息转移到硬盘上rootfs对应的目录中。
+
+# Check init bootarg
+if [ -n "${init}" ] && [ ! -x "${rootmnt}${init}" ]; then
+	echo "Target filesystem doesn't have ${init}."
+	init=
+fi
+
+查看init变量中指定的文件能否执行，一般是/sbin/init
+
+# Search for valid init
+if [ -z "${init}" ] ; then
+	for init in /sbin/init /etc/init /bin/init /bin/sh; do
+		if [ ! -x "${rootmnt}${init}" ]; then
+			continue
+		fi
+		break
+	done
+fi
+
+当init变量为空时(一般都是这样)，查找可以找到并使用的init程序
+
+# No init on rootmount
+if [ ! -x "${rootmnt}${init}" ]; then
+	panic "No init found. Try passing init= bootarg."
+fi
+
+找不到可以使用的init程序时，kernel panic。
+
+# Confuses /etc/init.d/rc
+if [ -n ${debug} ]; then
+	unset debug
+fi
+
+ 因为在最终要使用的系统的 /etc/init.d/rc 中通过 debug 变量来显示要执行的一些命令， 其中 debug=echo 那一行是注释掉的。所以这里要 unset debug 变量，否则;/etc/init.d/rc 的执行会出问题。
+
+# Chain to real filesystem
+maybe_break init
+exec run-init ${rootmnt} ${init} "$@" <${rootmnt}/dev/console >${rootmnt}/dev/console 2>&1
+panic "Could not execute run-init."
+
+这一段代码是这个 init 脚本的最后部分，把系统的启动交给了将要进入的系统的 ${init} (上面初始化为 "/sbin/init")，并用 /dev/console 作为输入与输出的设备。  
+     那么这个 run-init (/bin/run-init) 究竟作了些什么。我们得到 klibc- utils 源码包并解开之后，run-init 的源码在 klibc-1.4.34/usr/kinit/run-init 目录下。这个程序要完成的功能的核 心在 run-init.c 的第88行，run_init(realroot, console, init, initargs)  (runinitlib.c 中定义)函数的调用。坐在这个函数中首先通过 chdir 调用将目录切换到 了 realroot。因为此时还没有改变根目录，所以 / 和 . 应该不是同一个目录。然后确 认 / 和 . 不在同一个文件系统上(注意，同样的分区格式，不同的分区，也是不同的文件系统)。接下来确定 存在 /init 文件，并且当前的根目录所在的文件系统类型是 ramfs 或 tmpfs。在这 一切都确定之后，通过 nuke_dir("/")  (runinitlib.c 中定义)调用删除当前根目录下除挂载点以外的内容，挂载点下有真正的rootfs，以释放它们所占用的内存。紧接着把当前目录，也就 是 realroot ，通过 mount 移动到根目录，并通过 chroot 函数 将根目录设为当前目录，这样硬盘上的根文件系统就挂载完毕了，再通过一个 chdir("/")  调用改变当前工作目录为根目录。现在，我们剩下的只是让 /sbin/init 跑起来。但在开始之前要得到 0, 1, 2 三个文件描述符，用来做我们 的 stdin, stdout 和 stderr。在得到这些之后就通 过 execv(init, initargs) 调用让我们的 /sbin/init 跑起来 了。  
+
+
+小 结  
+    好了，上面我已经说了这么 多。那么，init 脚本究竟都作了什么呢？  
+     首先，建立一些必要的文件夹作为程序工作的时候需要的目录或者必要的挂载点，以及必需的设备节点。  
+     然后，根据提供的参数建立适当的设备节点并加载适当的内核模块，启动适当的进程(udevd)帮助我们完成这一步骤。当没有使用udev机制时应在/conf/modules中指明要加载的驱动。同时要自己建好相关的设备节点。
+     最后，在做完了这些乱七八糟的为挂载根目录及运行 /sbin/init 进程作准备的事情之后，调用 run- init 来运行 /sbin/init 从而启动我们的系统。  
+     由以上可以看出Ubunt为了兼容各种不同的硬件配置将该init脚本写的非常繁琐，在实际应用中我们可以根据自己主机的情况定制该文件。
+
+
+定制initrd文件
+
+ 既然我们已经知道了 initrd.img 到底要做什么，我们现在就来一个精简的 init 脚 本。  
+    把几乎所有的过程都放到一 个脚本当中，仍掉了 nfs 启动的内容，仍掉了从休眠中唤醒的功能，根据需要舍弃了一些文件和文件夹的创建，以及一些变量。这样我 们的脚本只有本地启动的内容，结构更加紧凑，操作过程可能会更加清楚。这个也难说，具体和个人有关。不要 udev， 虽然很实用。 因为我们下边的这个脚本是个原理性的演示。由于没有了 udev， /sys 目录就没有必要了，同时我们还得自己照顾设 备节点。对于我这里的情况，要手动建立 /dev/hda1, /dev/hda2 和 /dev /hda5 这三个设备节点，其中 hda1 是主分区，它挂载到根目录，hda2 是扩展分 区，hda5 是 swap。如果设备节点创建少了，启动的时候就会失败。现在我这里的情况是比较简单的，但是如果通过改变启动参数 使用移动存储设备启动呢？所以 udev 是一个很有用的东西，同时对于移动的设备你不知道确切的 /dev /sdaxx 这样的形式，UUID 就变得很重要了。
+
+下面是我写的精简版本init。
+
+#!/bin/sh
+
+#Modified by : geekard geekard@gmail.com
+#Update:2010.8.7
+#Version:1
+
+#本init脚本未使用udev，相关modules和设备文件需要执行建立
+
+#建立后面将用的目录结构，用于存放文件和作为挂载点
+[ -d /dev ] || mkdir -m 0755 /dev
+[ -d /root ] || mkdir -m 0700 /root
+#由于不使用udev机制，故/sys目录可以省略，但/proc必须要有。
+#[ -d /sys ] || mkdir /sys
+[ -d /proc ] || mkdir /proc
+[ -d /tmp ] || mkdir /tmp
+mkdir -p /var/lock
+mkdir /dev/.initramfs  #用于debug
+mount -t proc -o nodev,noexec,nosuid none /proc   #用于后面的cmdline的参数提取。
+
+echo "Loading, please wait..."
+
+#挂载tmpfs文件系统并建立将使用的设备文件，若使用udev机制，则不需要建立这些设备文件，相应的命令为:mount -t devtmpfs none /dev  .
+mount -t tmpfs none /dev
+mknod -m 0600 /dev/console c 5 1
+mknod /dev/null c 1 3
+mknod /dev/sda b 8 0 
+mknod  /dev/sda1 b 8 1  #我的swap的分区节点
+mknod  /dev/sda3 b 8 3 #root
+mknod  /dev/sda5 b 8 5  #home
+
+# Set modprobe env
+export MODPROBE_OPTIONS="-qb"
+
+# Export relevant variables
+export ROOT=             #realfs设备文件路径,在kernel命令行中指定，如:root=/dev/sda3，由于本init没有使用udev，故UUID不能使用，只能用sd*和hd*的形式。
+export break=
+export init=/sbin/init   #realfs中的第一个执行的init位置
+export rootmnt=/root     #realfs的临时挂载点，这里的/指rootfs
+export debug=
+
+export BUSYBOX=y
+
+#将一些函数包括进来，主要是一些输出函数
+. /scripts/functions
+
+# Parse command line options
+for x in $(cat /proc/cmdline); do
+	case $x in
+	
+	root=*)
+		ROOT=${x#root=}
+		;;
+		
+	debug)
+		debug=y
+		quiet=n
+		exec >/dev/.initramfs/initramfs.debug 2>&1
+		set -x
+		;;
+	
+	break=*)
+		break=${x#break=}
+		;;
+	break)
+		break=premount
+		;;
+	esac
+done
+
+# export BOOT variable value for compcache,
+# so we know if we run from casper
+export BOOT=local
+
+#加载/conf/modules中指定的modules，由于没有启用udev，kernel找到的硬件的module不会自动加载，所以应在modules文件中
+#指明在mount root fs 前要加载的重要modules如ata,scsi controler的modules（开机后用lspci -v获得）,vfat，fat，ntfs等的modules.
+maybe_break modules
+log_begin_msg "Loading essential drivers..."
+load_modules
+log_end_msg
+#这一部分很重要，因为没有启动udev机制，重要的module需要自己在/conf/modules中指定。实际上只需要一个module即自己的硬盘接口module，如我用的STAT接口对应的module是ahci
+
+#以下的FSTYPE判别语句可以省略，因为常见的ext2|3|4，内核支持。
+maybe_break mount
+log_begin_msg "Mounting root file system..."
+eval $(fstype < ${ROOT}) 
+modprobe -q ${FSTYPE} 
+roflag=-w  
+mount ${roflag} -t ${FSTYPE} ${ROOT} ${rootmnt}  
+log_end_msg  
+
+# Move virtual filesystems over to the real filesystem
+mount -n -o move /proc ${rootmnt}/proc
+
+# Confuses /etc/init.d/rc
+if [ -n ${debug} ]; then
+	unset debug
+fi
+
+# Chain to real filesystem
+#run-init的作用是：先将/中除 ${rootmnt}的内容删除，然后调用mount -o move  ${init} / 即将realfs的内容移动到/，再
+# exec chroot / /sbin/init  即将当前/指向硬盘中的realfs并用exec命令执行realfs中的/sbin/init，这将替换掉当前执行的位于initrd中的init
+maybe_break init
+exec run-init ${rootmnt} ${init} "$@" <${rootmnt}/dev/console >${rootmnt}/dev/console 2>&1
+panic "Could not execute run-init."
+
+  
+
+
+
+
+

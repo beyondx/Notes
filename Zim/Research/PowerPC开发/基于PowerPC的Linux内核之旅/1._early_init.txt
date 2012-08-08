@@ -1,0 +1,223 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-03T17:24:15+08:00
+
+====== 1. early init ======
+Created Saturday 03 December 2011
+http://www.linuxidc.com/Linux/2011-11/46581.htm
+
+很早之前就有写基于PowerPC架构的Linux源代码分析的文章的想法，但无奈于Linux源码量太大，逻辑也很复杂，再加上本身对PowerPC汇编了解不多，闲暇时间也没有太多，一直都没有什么机会。上个月，工作上的事情因为硬件的耽误稍微少了些，再加上自己之前分析U-Boot的源码时学了不少PowerPC汇编的知识，又移植了Linux中的SPI和Nand Flash的驱动源码到vxWorks，感觉时机比较成熟了，踉踉跄跄的开始了尝试性的分析，一点点的来，还望不足之处高手能指出。本次的文章将只致力于PowerPC平台，在加上本人对CPU内部机制比较感兴趣，所以大部分内容都是在与具体的CPU初始化相关的.S文件中，之后会根据我的经历选择性的分析内部中断机制和外设的驱动等内容。另外，由于在对启动代码的分析阶段中，大多数源代码都在Arch/Powerpc/Kernel文件夹下，如果不是我会给出相对路径的。
+
+相关阅读：
+
+Linux PowerPC I2C驱动 之 I2C设备层的注册过程 http://www.linuxidc.com/Linux/2011-08/41104.htm
+
+Linux PowerPC I2C驱动 之 I2C Adapter层的注册过程  http://www.linuxidc.com/Linux/2011-08/41103.htm
+
+PowerPC体系下的Linux启动步骤和其他大多数架构都是类似的，系统引导将从arch/powerpc/kernel/head_32.s开始执行，再转到init/main.c中的start_kernel函数初始化内核。首先来看下入口点文件head_32.S，其中的r1~r5这五个寄存器的内容及含义还不是很清楚，但可以确定r5的初始值为0，进而在start函数中跳转执行Setup_32.c中的early_init函数，查看该函数的定义，代码如下，很简单：
+
+    /*notrace为函数属性:禁止trace，定义为__attribute__((no_instrument_function))， 
+    不懂的可以看我之前对此关键字的介绍*/  
+    notrace unsigned long __init early_init(unsigned long dt_ptr)   
+    {  
+        /*reloc_offset定义于misc.s文件,用于返回(当前运行地址-链接地址)的值*/  
+        unsigned long offset = reloc_offset();    
+        struct cpu_spec *spec;  
+      
+        /* 首先清空bss段，这里使用的是memset_io，因为暂时没有cache可用*/  
+        memset_io((void __iomem *)PTRRELOC(&__bss_start), 0,  
+                __bss_stop - __bss_start);  
+      
+        /*确定cpu类型，mfspr(SPRN_PVR)指令获取CPU的版本号*/  
+        spec = identify_cpu(offset, mfspr(SPRN_PVR));  
+      
+        do_feature_fixups(spec->cpu_features,  
+                  PTRRELOC(&__start___ftr_fixup),  
+                  PTRRELOC(&__stop___ftr_fixup));  
+      
+        do_feature_fixups(spec->mmu_features,  
+                  PTRRELOC(&__start___mmu_ftr_fixup),  
+                  PTRRELOC(&__stop___mmu_ftr_fixup));  
+      
+        do_lwsync_fixups(spec->cpu_features,  
+                 PTRRELOC(&__start___lwsync_fixup),  
+                 PTRRELOC(&__stop___lwsync_fixup));  
+      
+        return KERNELBASE + offset;  
+    }  
+
+在early_init中，首先需要注意的是在此阶段，内核运行时所在的地址可能与其连接地址有所不同，所以在访问静态数据时都要使用reloc和ptrreloc函数，这两个函数的定义在misc.s文件中，具体代码如下：
+
+    /*该函数返回(当前运行地址)减去(程序链接地址)的值，用于程序和数据 
+    未映射到KERNELBASE时使用*/  
+    _GLOBAL(reloc_offset)  
+        mflr    r0   /*链接寄存器的值*/  
+        bl  1f   /*跳转到1所在的地址，这就是当前代码所在的实际地址，这样通过mflr r3就将当前bl 1f的当前运行地址保存在r3中*/  
+    1:  mflr    r3  
+        PPC_LL  r4,(2f-1b)(r3)  /* PPC_LL意思为lwz,装载立即数,得到的r4为1f的链接地址*/  
+        subf    r3,r4,r3  /*二者相减，获取当前运行地址和链接地址的偏移*/  
+        mtlr    r0   /*恢复保存的函数地址*/  
+        blr  
+      
+        .align  3  
+    2:  PPC_LONG 1b  
+
+上面说到的KERNELBASE，它的定义位于asm\Page.h中，是内核起始的虚拟地址，通常情况下和PAGE_OFFSET相等。由于链接地址为0xc0000000(默认定义在configs/*_defconfig中)，所以相减结果必定为负值。根据PowerPC ABI的规范，r3为函数返回值寄存器，所以就得到了当前运行地址和链接地址之间的偏移量了。这里要注意：在这个函数中有一个很重要的隐含约定：那就是假设如果曾经开启了mmu，那么这个mmu的映射关系是1:1的映射，即虚拟地址和物理地址是相同的。这是因为reloc_offset在计算偏移的时候是用"当前正在运行的地址"-"代码链接的地址"，这个所谓当前正在运行的地址可以理解为实地址，如果mmu的映射不是1:1的话，那么在关闭了mmu之后，这个当前运行的地址要再加上一个偏移才能得到实地址，所以当前函数返回的偏移是假设mmu的映射为1:1时的偏移地址。切记这一点，在bootloader中如果要使用mmu，必须在映射bat寄存器时使用1:1的映射。
+
+    然后函数清空bss，这里的__bss_start和__bss_stop的值是在Boot/zImage.lds.S中定义的，再确定CPU的类型(identify_cpu)，之后根据特定的CPU做相关的fix_up操作。至于identify_cpu里的代码，在之前版本的内核里是定义在misc.s中的汇编代码，现在成C语言的了，理解起来不是很困难，大致的步骤就是先通过PVR&pvr_mask== pvr_value在cpu_specs数组中找到与CPU对应的类型，找到后，将匹配的一组cpu参数当输入值调用setup_cpu_spec函数。这个也是个很简单的函数，注释比代码还懂，相信各位一定能看懂的，它主要实现的功能是将原数组中定义的不足弥补，譬如PMC(Performance Monitor Countor性能监视器)的个数，还有一个OPROFILE，是Linux下的性能分析工具，具体机制没细看，待高手分析吧，以及工作于兼容模式的解决办法。这里就不再赘述。来看一下函数early_init的后面三个fixup函数，这六个函数中的变量__start___**_fixup、__stop___**_fixup都在vmlinux.lds.s文件中定义，这里，linux使用了一个很高级的技巧来复用代码。因为不同的处理器具有不同的特性，如单独的指令、数据Cache；统一的指令数据Cache；动态电源管理特性；硬件或软件TLB查找等，绝大部分CPU之间只是有特性的差异，其它部分如指令集都是一样的，专门为这些处理器提供不同的源文件显得多余，同时又不便于统一维护。因此，Linux在操作有关处理器特性的代码前后加上特殊的宏定义，将此类代码放到单独的一个段中，一旦CPU类型被确定以后，如果CPU具有某特性，则操作该特性的代码不作任何处理，如果CPU不具备该特性，则把操作该特性的代码全部替换成空操作指令（nop），所有的处理都在这个单独的段中完成。这种做法对于操作代码某特性代码量较少的情况下非常有用，这样比使用判断然后跳转的组合指令来得更加有效，上面提的六个变量在vmlinux.lds.S中这个段的定义为：
+
+. = ALIGN(8);
+
+__ftr_fixup : AT(ADDR(__ftr_fixup) - LOAD_OFFSET) {
+
+       __start___ftr_fixup = .;
+
+       *(__ftr_fixup)
+
+       __stop___ftr_fixup = .;
+
+}
+
+此外，在include/asm/Feature-fixup.h中有如下定义：
+
+#define BEGIN_FTR_SECTION_NESTED(label)      START_FTR_SECTION(label)
+
+#define BEGIN_FTR_SECTION         START_FTR_SECTION(97)
+
+ 
+
+#define END_FTR_SECTION_NESTED(msk, val, label)         \
+
+       FTR_SECTION_ELSE_NESTED(label)                           \
+
+       MAKE_FTR_SECTION_ENTRY(msk, val, label, __ftr_fixup)
+
+ 
+
+#define END_FTR_SECTION(msk, val)            \
+
+       END_FTR_SECTION_NESTED(msk, val, 97)
+
+    所有特性相关的代码都放在BEGIN_FTR_SECTION和END_FTR_SECTION中。END_FTR_SECTION_IFSET的含义是指当cpu具有某项特性时，包含在中间的代码有效，不用替换；对于END_FTR_SECTION_IFCLR则表示当cpu不具有某项特性时，包含在中间的代码有效，不用替换。包含在在BEGIN_XXX和END_XXX宏之间的代码在链接时存放到__ftr_fixup段中。至于那三个函数也就是实现这样的功能的，通过特定的CPU获取其特性，若需要特殊处理则添加相应功能，否则置空。
+
+完成了early_init函数后，再跳转执行mmu_off函数，用于关闭MMU功能，包括清空BAT和TLB(快表)，这里是为了后面初始化MMU做准备，保证系统环境的干净。在mmu_off函数后，程序还会继续跳转到clear_bats和flush_tlbs两个函数中执行清空的工作，确保完全消除之前MMU开启的影响。具体的代码如下：
+
+    mmu_off:  
+        addi    r4, r3, __after_mmu_off - _start   /*r4为__after_mmu_off的偏移地址*/  
+        mfmsr   r3  
+        andi.   r0,r3,MSR_DR|MSR_IR     /*通过检查MSR的DR和IR位判断MMU是否开启*/  
+        beqlr   /*若未开启则直接返回*/  
+        andc    r3,r3,r0   /*否则,将r0取反,即关闭MMU*/  
+        mtspr   SPRN_SRR0,r4  
+        mtspr   SPRN_SRR1,r3  
+        sync  
+        RFI     /*Return From Interrupt,中断返回，从SRR中重加载*/  
+
+    其中的SRR为PowerPC中的machine status save/restore寄存器，CPU在管理员模式下有两个SSR，其中SSR0用于存放产生中断时的指令地址以及RFI(中断返回)命令执行时CPU的返回地址，SSR1存放产生中断和恢复时的机器状态。该函数中的r3是由early_init返回的，包含了当前运行的物理地址。这样说明了之后，该段代码就好理解了，先是将r3和r4分别加载当前机器状态和__after_mmu_off的运行地址，然后判断当前CPU的MMU是否开启，若开启，则发生中断去执行__after_mmu_off，完成后再返回。__after_mmu_off代码很简单，就是两个调用跳转到clear_bats和flush_tlbs，这两个函数代码简略如下：
+
+    clear_bats:      
+        li  r10,0  
+        mfspr   r9,SPRN_PVR  
+        rlwinm  r9,r9,16,16,31     /*r9右移16位判断，r9 = 1 for 601, 4 for 604 */  
+        cmpwi   r9, 1  
+        beq 1f  
+    /*写0清空*/  
+        mtspr   SPRN_DBAT0U,r10  
+        …..  
+        mtspr   SPRN_DBAT3L,r10  
+    1:  
+        mtspr   SPRN_IBAT0U,r10  
+        …..  
+        mtspr   SPRN_IBAT3L,r10  
+    blr  
+    flush_tlbs:  
+        lis r10, 0x40  
+    1:  addic.  r10, r10, -0x1000  
+        tlbie   r10   /*tlbie为PowerPC操作码,对应POWER的为tlbi,意为使TLB入口无效*/  
+        bgt 1b    /*大于则跳转*/  
+        sync  
+        blr  
+
+    流程比较简单，自我感觉注释也清晰的很，执行完这几个函数后，CPU将重新初始化BAT寄存器。注意，这里使用BAT的目的是为了在完全启用MMU之前先使用简单的BAT映射来设置Linux的运行环境，从而使后面复杂的操作可以使用C语言完成。CPU再跳转执行initial_bats代码如下：
+
+    initial_bats:  
+        lis r11,PAGE_OFFSET@h   /*默认为0xc0000000,定义于configs/mpc83xx_defconfig*/  
+        mfspr   r9,SPRN_PVR  
+        rlwinm  r9,r9,16,16,31      /* r9 = 1 for 601, 4 for 604 */  
+        cmpwi   0,r9,1  
+        bne 4f  
+        ori r11,r11,4       /* set up BAT registers for 601 */  
+        li  r8,0x7f         /* valid, block length = 8MB */  
+        mtspr   SPRN_IBAT0U,r11     /* N.B. 601 has valid bit in */  
+        mtspr   SPRN_IBAT0L,r8      /* lower BAT register */  
+        addis   r11,r11,0x800000@h  
+        addis   r8,r8,0x800000@h  
+        mtspr   SPRN_IBAT1U,r11  
+        mtspr   SPRN_IBAT1L,r8  
+        addis   r11,r11,0x800000@h  
+        addis   r8,r8,0x800000@h  
+        mtspr   SPRN_IBAT2U,r11  
+        mtspr   SPRN_IBAT2L,r8  
+        isync  
+        blr  
+    4:  tophys(r8,r11)    /*此处相当于addis r8,r11,0指令*/  
+    #ifdef CONFIG_SMP   
+        ori r8,r8,0x12      /* R/W access, M=1 */  
+    #else   
+        ori r8,r8,2         /* R/W access */  
+    #endif /* CONFIG_SMP */   
+        ori r11,r11,BL_256M<<2|0x2    /* set up BAT registers for 604 */  
+      
+        mtspr   SPRN_DBAT0L,r8      /* N.B. 6xx (not 601) have valid */  
+        mtspr   SPRN_DBAT0U,r11     /* bit in upper BAT register */  
+        mtspr   SPRN_IBAT0L,r8  
+        mtspr   SPRN_IBAT0U,r11  
+        isync  
+        blr  
+
+这段代码我注释的很少，因为在我的板的datasheet里没有对BAT寄存器的各位详细说明，所以还是看原来的解释吧。基本的意思就是在601平台，使用的是3个8M的BAT，位于PAGE_OFFSET起始的24M内存中，而在其他平台，则是一个256M的。这里三组BAT的24M空间对于当前的Linux内核，并且在启动过程中没有动态内存分配来说足够了。启动早期初始化完成后，CPU开始调用setup_cpu函数初始化CPU了，该函数名为call_setup_cpu，位于misc_32.s文件中(注意：由于此时MMU一直处于关闭状态，所以都要在开始时调用reloc_offset得到偏移并通过r3传出。后面的几个函数也是，列代码时为节省空间就不贴该代码了)，具体代码如下：
+
+    _GLOBAL(call_setup_cpu)  
+        addis   r4,r3,cur_cpu_spec@ha  
+        addi    r4,r4,cur_cpu_spec@l    /*cur_cpu_spec即为对应结构体*/  
+        lwz r4,0(r4)  
+        add r4,r4,r3  
+        lwz r5,CPU_SPEC_SETUP(r4)  /*寻找对应cpu_spec结构体中的cpu_setup_t成员*/  
+        cmpwi   0,r5,0  
+        add r5,r5,r3  
+        beqlr  
+        mtctr   r5  
+        bctr  
+
+    这里的宏定义CPU_SPEC_SETUP定义于asm-offsets.c文件中，具体定义为DEFINE(CPU_SPEC_SETUP, offsetof(struct cpu_spec, cpu_setup))，即寻找cpu_setup_t成员。函数中的r3为数据偏移，r4为指向cpu_spec的指针(重定位之后的，即reloc_offset)。这里我的mpc83xx系列的CPU为603的，结构较为简单，需要初始化的包括FPU(Floating Point Unit)、HID0和清空LRU，具体代码如下：
+
+    _GLOBAL(__setup_cpu_603)  
+        mflr    r4  
+    BEGIN_MMU_FTR_SECTIO    /*宏定义在Feature-fixups.h中,此句为MMU feature dependent sections*/  
+        li  r10,0  
+        mtspr   SPRN_SPRG_603_LRU,r10       /* init SW LRU tracking，将SPRG4写0，即清空LRU:Least Recently Used*/  
+    END_MMU_FTR_SECTION_IFSET(MMU_FTR_NEED_DTLB_SW_LRU)     
+    BEGIN_FTR_SECTION    /* CPU feature dependent sections*/  
+        bl  __init_fpu_registers    /*初始化FPU寄存器*/  
+    END_FTR_SECTION_IFCLR(CPU_FTR_FPU_UNAVAILABLE)  
+        bl  setup_common_caches   /*初始化配置HID0,使能Cache*/  
+        mtlr    r4    /*重加载LR，跳回来*/  
+        blr  
+
+    如上，至于那四个BEGIN_**的宏，含义就和上面说的一样，为了代码的重用，使得针对特定CPU的特性决定是否执行宏之间的操作。第一句将SPRG4写0，这里要说明一下，至于SPRG的概念，可以看我之前一篇对E300处理器内核介绍的文章，在32位PowerPC处理器中，SPRG0、1用于存放异常向量表，SPRG2用于指定当前正处于RTAS(Run-Time Abstraction Services)，SPRG3用于存放线程信息(thread_info)的指针，SPRG4中填充TLB和LRU的数据。该函数主要的两个功能就是初始化FPU和配置HID0，代码分别如下：
+
+    初始化FPU：
+
+    _GLOBAL(__init_fpu_registers)  
+        mfmsr   r10  
+        ori r11,r10,MSR_FP /*写r10 | Floating Point Enable*/  
+        mtmsr   r11  
+        isync  
+        addis   r9,r3,empty_zero_page@ha  /*定义于head_32.S中*/  
+        addi    r9,r9,empty_zero_page@         /*将empty_zero_page加载到r9*/l  
+        REST_32FPRS(0,r9)    /*多个lfd(装载浮点数)指令*/  
+        sync  
+        mtmsr   r10  
+        isync  
+        blr  
+

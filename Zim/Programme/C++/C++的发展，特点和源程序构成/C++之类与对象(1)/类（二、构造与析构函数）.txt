@@ -1,0 +1,51 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-07T09:45:25+08:00
+
+====== 类（二、构造与析构函数） ======
+Created Sunday 07 August 2011
+
+1 #include<iostream>
+2 using namespace std;
+3
+4 class Clock {1 #include<iostream>
+2 using namespace std;
+3
+4 class Clock {
+5 public:
+6 /*----------------------------------构造函数------------------------*/
+7 Clock(int i,int j,int k); // 函数重载
+8 Clock() { // __内联函数的隐式表示__
+9 h=0;
+10 m=0;
+11 s=0;
+12 }
+13 /*----------------------------------析构函数------------------------*/
+14 ~Clock() {
+15 cout<<"析构函数已被调用！"<<endl; // 在对象撤销时调用
+16 }
+17 void setTime(int newH=0,int newM=0,int newS=0); // 设置函数的参数默认值，只有当函数
+18 void showTime();
+19 private:
+20 int h,m,s;
+21 };
+22 Clock::Clock(int i,int j,int k) { //__ 构造函数定义，不需要声明类型。__
+23 h=i;
+24 m=j;
+25 s=k;
+26 }
+27 void Clock::setTime(int newH,int newM,int newS) {
+28 h=newH;
+29 m=newM;
+30 s=newS;
+31 }
+32
+33 inline void Clock::showTime() { //__ inline位于类型void前，显式表示__
+34 cout<<h<<":"<<m<<":"<<s<<endl;
+35 }
+36
+37 int main() {
+38 Clock myclock(23,10,32);
+39 myclock.showTime();
+40 return 0;
+41 }

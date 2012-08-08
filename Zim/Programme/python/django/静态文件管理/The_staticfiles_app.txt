@@ -1,0 +1,313 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-22T16:21:38+08:00
+
+====== The staticfiles app ======
+Created Saturday 22 October 2011
+
+https://docs.djangoproject.com/en/dev/ref/contrib/staticfiles/#std:setting-STATICFILES_STORAGE
+
+New in Django 1.3: Please, see the release notes
+
+**django.contrib.staticfiles **collects static files from each of your applications (and any other places you specify with STATICFILES_DIRS) into a** single location** that can easily be served** in production**.
+
+django.contrib.staticfiles 的作用是将所有Web应用（其静态文件位于statics／下）和指定目录下的静态文件搜集到一个目录下以便于管理和使用。
+
+=== See also ===
+
+For an introduction to the static files app and some usage examples, see [[../Managing_static_files.txt|Managing static files]].
+
+===== Settings =====
+
+=== Note ===
+
+The following settings control the behavior of the staticfiles app.
+
+===== 1. STATICFILES_DIRS =====
+
+Default: []
+
+This setting defines the** additional locations **the staticfiles app will traverse if the **FileSystemFinder finder** is enabled, e.g. if you use the **collectstatic **or **findstatic** management command or use the __static file serving view__
+
+注意Django__处理静态文件__时就是从STATICFILES_DIRS中列出的目录中查找,所以用Django处理静态文件时一定要指定该变量(可以不指定STATIC_ROOT)。
+
+这个变量设置staticfiles应用将要搜索的额外目录(除了在INSTALLED_APPS中指定的应用的静态文件目录)
+This should be set to a list or tuple of strings that contain full paths to your additional files directory(ies) e.g.:
+
+**STATICFILES_DIRS = (**
+**    "/home/special.polls.com/polls/static",**
+**    "/home/polls.com/polls/static",**
+**    "/opt/webfiles/common",**
+**)**
+**默认情况下，staticfiles将该目录中的所有静态文件放到STATIC_ROOT目录下，指定Prefixes后可以将其放到子目录下。**
+
+=== Prefixes (optional) ===
+
+In case you want to refer to files in one of the locations with **an additional namespace**, you can optionally provide a prefix as (prefix, path) tuples, e.g.:
+
+STATICFILES_DIRS = (
+    # ...
+    ("downloads", "/opt/webfiles/stats"),
+)
+
+Example:
+
+Assuming you have __STATIC_URL__ set '/static/', the **collectstatic** management command would **collect the "stats" files in a 'downloads' subdirectory of STATIC_ROOT**.
+(collectstatic 管理命令会将/opt/webfiles/stats下的所有文件收集到STATIC _ROOT指定的绝对路径下的downloads目录中)
+
+This would allow you to refer to the local file '/opt/webfiles/stats/polls_20101022.tar.gz' with '/static/downloads/polls_20101022.tar.gz' in your __templates__, e.g.:
+
+<a href="{ {  STATIC_URL } } downloads/polls_20101022.tar.gz">
+
+===== 2. STATICFILES_STORAGE =====
+
+**Default**: 'django.contrib.staticfiles.storage.StaticFilesStorage'
+
+The **file storage engine **to use when collecting static files with the __collectstatic __management command.
+这个变量指定了当用collectstatic管理命令将收集到的静态文件__统一存储__是使用的存储引擎(默认是存储到本地文件系统中)。
+
+New in Django Development version.
+
+A ready-to-use instance of the storage backend defined in this setting can be found at **django.contrib.staticfiles.storage.staticfiles_storage.**
+
+For an example, see Serving static files from a cloud service or CDN.
+
+===== STATICFILES_FINDERS =====
+
+**Default:**
+
+("django.contrib.staticfiles.finders.FileSystemFinder",
+ "django.contrib.staticfiles.finders.AppDirectoriesFinder")
+
+The list of **finder backends **that know how to **find static files in various locations**.
+这个变量指定了collectstatic管理命令在收集文件时使用的**搜索后台**
+The default will find files stored in the STATICFILES_DIRS setting (using django.contrib.staticfiles.finders.FileSystemFinder) and in a __static__ subdirectory of each app (using django.contrib.staticfiles.finders.AppDirectoriesFinder)
+
+One finder is disabled by default: **django.contrib.staticfiles.finders.DefaultStorageFinder**. If added to your STATICFILES_FINDERS setting, it will look for static files in the default file storage as defined by the__ DEFAULT_FILE_STORAGE__ setting.
+
+=== Note ===
+
+When using the__ AppDirectoriesFinder __finder, make sure your apps can be found by staticfiles. Simply add the app to the __INSTALLED_APPS__ setting of your site.
+
+Static file finders are currently considered a private interface, and this interface is thus undocumented.
+
+===== Management Commands =====
+
+django.contrib.staticfiles exposes three management commands.
+
+==== collectstatic ====
+
+**django-admin.py collectstatic**
+
+Collects the static files into__ STATIC_ROOT__. 
+注意：一旦执行该命令，APP的static目录以及其中的所有文件都会被移动到STATIC_ROOT目录中。因此若用Django处理静态文件，有两种方式：
+1. 如果没有执行collectstatic命令，即所有的静态文件都放在APP/static目录下：
+      在INSTALLED_APPS中加入**django.contrib.staticfiles , **这样Django查找静态文件时会查找所有APP/static目录同时查找STATICFILES_DIRS中指定的目录。
+2. 如果执行了collectstatic命令，所有APP的static文件都会移动到STATIC_ROOT下：
+	1). 将当前project目录加入到INSTALLED_APPS中，这样Django会找到它下的static目录。
+        2)或者，将project下的static目录加入到STATICFILES_DIRS中，但是这只能用于开发、调试且不能再执行colletcstatic命令(因为STATIC_ROOT和STATICFILES_DIRS包含相同的文件目录)。
+
+Duplicate file names are by default resolved in a similar way to how template resolution works: the file that is __first found__ in one of the specified locations will be used. If you're confused, the__ findstatic__ command can help show you which files are found.
+
+Files are searched by using the enabled **finders.** The default is to look in all locations defined in __STATICFILES_DIRS__ and in the '__static'__ directory of apps specified by the INSTALLED_APPS setting.
+
+== New in Django Development version. ==
+
+The collectstatic management command calls the post_process() method of the STATICFILES_STORAGE after each run and passes a list of paths that have been found by the management command. It also receives all command line options of collectstatic. This is used by the CachedStaticFilesStorage by default.
+
+Some commonly used options are:
+
+--noinput
+
+    Do NOT prompt the user for input of any kind.
+
+-i <pattern>
+
+--ignore <pattern>
+
+    Ignore files or directories matching this glob-style pattern. Use multiple times to ignore more.
+
+-n
+
+--dry-run
+
+    Do everything except modify the filesystem.
+
+-c
+
+--clear
+    New in Django Development version.
+
+    Clear the existing files before trying to copy or link the original file.
+
+-l
+
+--link
+
+    Create a symbolic link to each file instead of copying.
+
+--no-post-process
+    New in Django Development version.
+
+    Don't call the post_process() method of the configured STATICFILES_STORAGE storage backend.
+
+--no-default-ignore
+
+    Don't ignore the common private glob-style patterns 'CVS', '.*' and '*~'.
+
+For a full list of options, refer to the commands own help by running:
+
+**$ python manage.py collectstatic --help**
+
+===== findstatic =====
+
+django-admin.py findstatic
+
+Searches for one or more relative paths with the enabled** finders**.
+
+For example:
+
+$ python manage.py findstatic    css/base.css     admin/js/core.js
+/home/special.polls.com/core/static/css/base.css
+/home/polls.com/core/static/css/base.css
+/home/polls.com/src/django/contrib/admin/media/js/core.js
+
+By default, all matching locations are found. To only return the first match for each relative path, use the --first option:
+
+$ python manage.py findstatic css/base.css --first
+/home/special.polls.com/core/static/css/base.css
+
+This is a debugging aid; it'll show you exactly which static file will be collected for a given path.
+
+===== runserver =====
+
+
+django-admin.py runserver
+
+Overrides the **core runserver **command(./manager.py runserver) if the staticfiles app is installed and adds **automatic serving of static files** and the following new options.
+
+注意：**django默认是不提供静态文件存取服务**的(这是web server的功能)，它只提供动态页面的生成服务。
+
+--nostatic
+
+Use the --nostatic option to disable serving of static files with the staticfiles app entirely. This option is only available if the staticfiles app is in your project's INSTALLED_APPS setting.
+
+== Example usage: ==
+
+django-admin.py runserver --nostatic
+
+--insecure
+
+Use the --insecure option to force serving of static files with the staticfiles app even if the __DEBUG setting is False__. By using this you acknowledge the fact that it's grossly__ inefficient and probably insecure__. This is only intended for local development, should never be used in production and is only available if the staticfiles app is in your project's INSTALLED_APPS setting.
+
+Example usage:
+
+django-admin.py runserver --insecure
+
+===== Storages =====
+
+**StaticFilesStorage**
+
+class storage.StaticFilesStorage
+
+    A subclass of the** FileSystemStorage** storage backend that uses the __STATIC_ROOT__ setting as the base file system location and the __STATIC_URL__ setting respectively as the **base URL**.
+
+**    post_process(paths, **options)**
+
+
+== New in Django Development version. ==
+
+    This method is called by the __collectstatic__ management command after each run and gets passed the paths of found files, as well as the command line options.
+
+    The CachedStaticFilesStorage uses this behind the scenes to replace the paths with their hashed counterparts and update the cache appropriately.
+
+**CachedStaticFilesStorage**
+
+class storage.CachedStaticFilesStorage
+    
+
+== New in Django Development version. ==
+
+    A subclass of the__ StaticFilesStorage__ storage backend which caches the files it saves by **appending the MD5 hash of the file's content to the filename**. For example, the file **css/styles.css **would also be saved as **css/styles.55e7cbb9ba48.css.**
+
+    The purpose of this storage is to **keep serving the old files** in case some pages still refer to those files, e.g. because they are cached by you or a 3rd party proxy server. Additionally, it's very helpful if you want to apply far future Expires headers to the deployed files to speed up the load time for subsequent page visits.
+
+    The storage backend automatically **replaces the paths found in the saved files matching other saved files with the path of the cached copy **(using the post_process() method). 
+
+The regular expressions used to find those paths (django.contrib.staticfiles.storage.CachedStaticFilesStorage.cached_patterns) by default cover the @import rule and url() statement of Cascading Style Sheets. For example, the 'css/styles.css' file with the content
+
+    @import url("../admin/css/base.css");
+
+    would be replaced by calling the url() method of the CachedStaticFilesStorage storage backend, ultimatively saving a 'css/styles.55e7cbb9ba48.css' file with the following content:
+
+    @import url("/static/admin/css/base.27e20196a850.css");
+
+    To enable the CachedStaticFilesStorage you have to make sure the following requirements are met:
+
+* the __STATICFILES_STORAGE__ setting is set to 'django.contrib.staticfiles.storage.CachedStaticFilesStorage'
+* the DEBUG setting is set to False
+* you use the staticfiles static template tag to refer to your static files in your templates
+* you've collected all your static files by using the collectstatic management command
+
+    Since creating the MD5 hash can be a performance burden to your website during runtime, staticfiles will automatically try to cache the hashed name for each file path using Django's caching framework. If you want to override certain options of the cache backend the storage uses, simply specify a custom entry in the CACHES setting named 'staticfiles'. It falls back to using the 'default' cache backend.
+
+===== Template tags =====
+
+**static**
+
+== New in Django Development version. ==
+
+Uses the configued S__TATICFILES_STORAGE __storage to create the full URL for the given relative path, e.g.:
+
+{% load static from staticfiles %}
+<img src="{% static "css/base.css" %}" />
+
+The previous example is equal to calling the url method of an instance of STATICFILES_STORAGE with "css/base.css". This is especially useful when using a non-local storage backend to deploy files as documented in Serving static files from a cloud service or CDN.
+
+==== Other Helpers ====
+
+There are a few other helpers outside of the staticfiles app to work with static files:
+
+* The django.core.context_processors.static() context processor which adds__ STATIC_URL__ to every template context rendered with RequestContext contexts.
+* The builtin template tag__ static __which takes a path and urljoins it with the static prefix STATIC_URL.
+* The builtin template tag __get_static_prefix__ which populates a template variable with the static prefix STATIC_URL to be used as a variable or directly.
+* The similar template tag__ get_media_prefix__ which works like get_static_prefix but uses MEDIA_URL.
+
+===== Static file development view =====
+
+**django.contrib.staticfiles.views.serve(request, path)**
+
+This view function serves static files in development.
+
+===== Warning =====
+
+This view will only work if **DEBUG is True**.
+
+That's because this view is grossly inefficient and probably insecure. This is only intended for** local development**, and should never be used in production.
+
+This view is **automatically enabled by runserver** (with a DEBUG setting set to True). To use the view with a different local development server, add the following snippet to the end of your primary URL configuration:
+
+**from django.conf import settings**
+
+**if settings.DEBUG:**
+**    urlpatterns += patterns('django.contrib.staticfiles.views',**
+**        url(r'^static/(?P<path>.*)$', 'serve'),**
+**    )**
+
+Note, the beginning of the pattern (r'^static/') should be your __STATIC_URL__ setting.
+
+Since this is a bit finicky, there's also a helper function that'll do this for you:
+
+**django.contrib.staticfiles.urls.staticfiles_urlpatterns()**
+
+This will return the proper URL pattern for serving static files to your already defined pattern list. Use it like this:
+
+from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+
+# ... the rest of your URLconf here ...
+
+urlpatterns += staticfiles_urlpatterns()
+
+Warning
+
+This helper function will only work if DEBUG is True and your STATIC_URL setting is neither empty nor a full URL such as http://static.example.com/.

@@ -1,0 +1,90 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-21T19:39:02+08:00
+
+====== 引号的使用 ======
+Created Wednesday 21 December 2011
+
+bash的引号包括三种类型: 单引号，双引号，和反引号。单/双引号可用来包含有空白字符的字符串，而反引号的功能是命令行替换(不转义时需要配对使用)。
+
+**************bash的所有数据类型为字符串，而且对**不转义**的引号不敏感，在命令行解析的最后阶段会将这些__引号删去__。如果要保留引号则必须对其进行转义。
+[geekard@geekard ~]$ echo 'df'df"df"
+dfdfdf
+[geekard@geekard ~]$
+[geekard@geekard ~]$ echo 2 + 3
+2 + 3
+[geekard@geekard ~]$ echo df"df"df
+dfdfdf
+[geekard@geekard ~]$
+
+************ 引号间可以嵌套,外层的引号需要配对且__保护内层的引号(内层的引号正常输出)__，内层引号可以不配对.
+[geekard@geekard ~]$ echo 'df"df"dkf'
+df"df"dkf
+[geekard@geekard ~]$ echo "dlf'df'df"
+dlf'df'df
+[geekard@geekard ~]$ echo "dfj'df"
+dfj'df
+[geekard@geekard ~]$ 
+
+************ 单引号对其内的所有shell特殊字符转义，双引号不对"$" "!" "`" "\" (转义字符) 转义
+[geekard@geekard ~]$ echo 'PWD: $PWD'
+PWD: $PWD
+[geekard@geekard ~]$ echo "PWD:__ $PWD__"
+PWD: /home/geekard
+[geekard@geekard ~]$ 
+[geekard@geekard ~]$ echo __"PWD:`pwd`"__
+PWD:/home/geekard
+[geekard@geekard ~]$ 
+[geekard@geekard ~]$ echo __"dfsd\"fdf\"fdf"__
+dfsd"fdf"fdf
+[geekard@geekard ~]$ echo__ "dfsd"fdf"fdf"__
+dfsdfdffdf
+[geekard@geekard ~]$ 
+[geekard@geekard ~]$ echo __"df\n\d\c"  __    
+df\n\d\c
+[geekard@geekard ~]$ 
+#只有当\后的字符具有特殊含义时(对于双引号中的特殊字符包括__$ ! " ` ' \和回车__)，\才具有转义字符的含义(将其后的字符作为正常字符输出，同时本\**不输出**)，否则**\和其后的字符正常显示**。
+
+[geekard@geekard ~]$ date
+Wed Dec 21 19:48:05 CST 2011
+[geekard@geekard ~]$** echo 'date: !!'**
+date: !!
+[geekard@geekard ~]$** echo "date: **__!!__**"    #双引号不对其中的“!”字符转义，因此!!代表上一个命令**
+echo "date: //echo 'date: !!'//"
+date: echo 'date: !!'
+[geekard@geekard ~]$ 
+[geekard@geekard ~]$ echo** '!fdf'**
+!fdf
+[geekard@geekard ~]$ echo **"'!fdf'"**
+bash: !fdf: event not found
+[geekard@geekard ~]$ echo "dfs!"   
+echo "dfs"     #bash进行历史记录查找后的结果                                
+dfs
+[geekard@geekard ~]$ echo __"dfs! "__  #除非__!后为空格__，否则双引号中的！会被视为历史记录查找特殊字符。
+dfs! 
+[geekard@geekard ~]$ echo "dfs! s"
+dfs! s
+[geekard@geekard ~]$ 
+
+
+
+
+*********** 字符串中若含有空格、换行、TAB键，则必须要用引号包围：
+[geekard@geekard ~]$ echo "dfd\df"
+dfd\df
+[geekard@geekard ~]$ echo 'df    #字符串中可以包含换行，但是C语言的字符串中不行(必须要使用转义字符)。
+> df'
+df
+df
+[geekard@geekard ~]$ echo "df
+> df"
+df
+df
+[geekard@geekard ~]$ echo 'df\  #单引号中的字符都无特殊含义
+> df'
+df\
+df
+[geekard@geekard ~]$ echo "df\   #__双引号中的转义字符“\”起作用__
+> df"
+dfdf
+[geekard@geekard ~]$ 

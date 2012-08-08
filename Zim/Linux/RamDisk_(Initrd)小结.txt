@@ -1,0 +1,173 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-23T22:20:00+08:00
+
+====== RamDisk (Initrd)小结 ======
+Created Friday 23 December 2011
+
+http://molinux.blog.51cto.com/2536040/506906
+
+原创作品，允许转载，转载时请务必以超链接形式标明文章 原始出处 、作者信息和本声明。否则将追究法律责任。http://molinux.blog.51cto.com/2536040/506906
+
+
+===== 名称： =====
+  initrd -- boot loader initialized RAM disk，就是由启动加载器进行**初始化的RAM DISK**；
+
+===== 描述： =====
+/dev/initrd这个特殊文件是一个只读的**块设备文件**。/dev/initrd设备文件是一个在__内核被启动之前__由启动加载器进行初始化的RAM disk。
+随后，内核利用/dev/initrd设备文件的内容进行__两个阶段__的(系统)启动。
+
+boot loader 会将存储介质中的内核文件及 initrd文件(initrd会解压缩后再释放)加载到内存，然后内核进行初始化，内核启动时会在__访问磁盘上真正的根文件系统前先访问该内存中的 initrd 文件系统__。
+
+在(系统)自举的第一个阶段，挂载/dev/initrd中**精简的根文件系统**。这个根文件系统包含__必备的liunx目录和程序__，甚至也有一个__init脚本__(或程序linuxrc;在RedHat5中是init)，必需的一些__驱动模块__；然后执行init脚本，完成加载驱动及模块的任务；脚本执行后期，会借助刚才加载的驱动及模块__挂载真正的根文件系统__，并且__切换根文件系统__从精简的initrd根文件系统到根文件系统；
+
+
+在第二个阶段，根文件系统已经被挂载，系统会运行真正根文件系统中的__/sbin/init__继续完成系统其它的初始化工作；(在桌面或服务器 Linux 系统中，initrd 是一个__临时的文件系统__。其生存周期很短，只会用作到真实文件系统的一个**桥梁**。在很多没有存储设备的嵌入式系统中，initrd 是永久的根文件系统；）
+   
+
+===== 补充： =====
+在真正的运行环境中，对内核需求是短小而精悍，不应该__静态__包含进太多驱动模块；所以其采用模块化设计，大部分设备模块是在__需要__使用时才加载相应驱动的。但是Linux内核启动__最后一步__，需要挂载根文件系统，然后运行/sbin/init创建init内核线程来引导初始化系统。而根文件系统可能在硬盘、磁盘阵列、nfs、flash上，同时根文件系统的格式也是五花八门。此时,要是实在不想包含这么多驱动到内核的话，可以使用initrd作为一个过渡。另外，内核在编译的时候，是可以选择__是否支持initrd__，__如果使用initrd，则系统启动过程是两段式的，有initrd中的init脚本负责所有的启动工作。如果不使用initrd，需要编译进去各种驱动__(没做过相关实验，不发表见解：网上编译内核教程一堆堆的，但是貌似很多问题，你要感觉那是理所当然的...就引导了o(╯□╰)o)；并且如果换新的文件系统，但是恰好内核又没有更换，这是胡恐怕只有重新编译内核了而不是仅仅的只mkinitrd就完事大吉了。
+
+
+下面是2.6内核对模块选择路径：
+Linux Kernel Configuration
+  -> Device Drivers
+   ->Block devices
+    ->__RAM block device support__
+     ->Default number of RAM disks　 (设定Ramdisk的个数,默认是16)
+     ->Default RAM disk size (kbytes) (设定Ramdisk的大小,默认4096k)
+Linux Kernel Configuration
+  ->General setup
+   ->Inital RAM filesystem and RAM disk(__initramfs/initrd__) support
+ 
+
+如果对Ramdisk的支持已经编译进内核，我们就可以使用它了，当然对于我RedHat5.4来说__默认启用__该项的；
+
+===== RamDisk文件系统中脚本init作用 =====
+init文件是RamDisk的核心文件，其中的其他文件都是为该脚本服务的；__当内核被配置为两阶段启动时会自动将initrd挂载为零食rootfs，然后将第二阶段的启动控制权完全交给该文件系统中的init脚本文件__ ，这个文件将实际加载真实物理root所需要的设备驱动模块(如raid或scsi驱动)，和文件系统驱动模块，所有必需的驱动调入后，这个脚本将物理root Mount上，并卸下Ramdisk虚拟根文件系统，此时根文件系统就已经为真实根文件系统了，然后系统进入**正常引导**，加载各__service daemon,__启动应用程序；
+
+
+init脚本的格式：
+
+    #!/bin/nash 
+    mount -t proc /proc /proc 
+    setquiet 
+    echo Mounting proc filesystem 
+    echo Mounting sysfs filesystem 
+    mount -t sysfs /sys /sys 
+    echo Creating /dev 
+    mount -o mode=0755 -t tmpfs /dev /dev 
+    mkdir /dev/pts 
+    mount -t devpts -o gid=5,mode=620 /dev/pts /dev/pts 
+    mkdir /dev/shm 
+    mkdir /dev/mapper 
+    echo Creating initial device nodes 
+    mknod /dev/null c 1 3 
+    mknod /dev/zero c 1 5 
+    mknod /dev/systty c 4 0 
+    mknod /dev/tty c 5 0 
+    mknod /dev/console c 5 1 
+    mknod /dev/ptmx c 5 2 
+    mknod /dev/rtc c 10 135 
+    mknod /dev/tty0 c 4 0 
+    mknod /dev/tty1 c 4 1 
+    mknod /dev/tty2 c 4 2 
+    mknod /dev/tty3 c 4 3 
+    mknod /dev/tty4 c 4 4 
+    mknod /dev/tty5 c 4 5 
+    mknod /dev/tty6 c 4 6 
+    mknod /dev/tty7 c 4 7 
+    mknod /dev/tty8 c 4 8 
+    mknod /dev/tty9 c 4 9 
+    mknod /dev/tty10 c 4 10 
+    mknod /dev/tty11 c 4 11 
+    mknod /dev/tty12 c 4 12 
+    mknod /dev/ttyS0 c 4 64 
+    mknod /dev/ttyS1 c 4 65 
+    mknod /dev/ttyS2 c 4 66 
+    mknod /dev/ttyS3 c 4 67 
+    echo Setting up hotplug. 
+    hotplug 
+    echo Creating block device nodes. 
+    mkblkdevs 
+    echo "Loading uhci-hcd.ko module" 
+    insmod /lib/uhci-hcd.ko  
+    echo "Loading ohci-hcd.ko module" 
+    insmod /lib/ohci-hcd.ko  
+    echo "Loading ehci-hcd.ko module" 
+    insmod /lib/ehci-hcd.ko  
+    mount -t usbfs /proc/bus/usb /proc/bus/usb 
+    echo "Loading jbd.ko module" 
+    insmod /lib/jbd.ko  
+    echo "Loading ext3.ko module" 
+    insmod /lib/ext3.ko  
+    echo "Loading scsi_mod.ko module" 
+    insmod /lib/scsi_mod.ko  
+    echo "Loading sd_mod.ko module" 
+    insmod /lib/sd_mod.ko  
+    echo "Loading scsi_transport_spi.ko module" 
+    insmod /lib/scsi_transport_spi.ko  
+    echo "Loading mptbase.ko module" 
+    insmod /lib/mptbase.ko  
+    echo "Loading mptscsih.ko module" 
+    insmod /lib/mptscsih.ko  
+    echo "Loading mptspi.ko module" 
+    insmod /lib/mptspi.ko  
+    echo "Loading dm-mod.ko module" 
+    insmod /lib/dm-mod.ko  
+    echo "Loading dm-mirror.ko module" 
+    insmod /lib/dm-mirror.ko  
+    echo "Loading dm-zero.ko module" 
+    insmod /lib/dm-zero.ko  
+    echo "Loading dm-snapshot.ko module" 
+    insmod /lib/dm-snapshot.ko  
+    echo Waiting for driver initialization. 
+    stabilized --hash --interval 250 /proc/scsi/scsi 
+    echo Making device-mapper control node 
+    mkdmnod 
+    mkblkdevs 
+    echo Scanning logical volumes 
+    lvm vgscan --ignorelockingfailure 
+    echo Activating logical volumes 
+    lvm vgchange -ay --ignorelockingfailure   VolGroup00 
+    resume /dev/VolGroup00/LogVol01 
+    echo Creating root device. 
+    mkrootdev -t ext3 -o defaults,ro /dev/VolGroup00/LogVol00 
+    echo Mounting root filesystem. 
+    mount /sysroot 
+    echo Setting up other filesystems. 
+    setuproot 
+    echo Switching to new root and running init. 
+    switchroot 
+     
+
+
+===== 脚本执行过程分析： =====
+  第一行#!/bin/nash是一个redhat自己的微型解释器。只包含精简的命令，能做基本的mount、insmod、mkdev等，主要是为了减小iitrd体积；
+   
+  mount命令挂载上了initrd释放出来的各种内核文件系统/proc、/sys、/dev到相应的位置；
+
+  mknod生成各种设备节点；hotplug开始监听系统总线热插拔的磁盘等uevent事件。mkblkdevs将这些热插拔的磁盘节点创建到/dev下。
+
+  接着insmod开始安装usb，block设备，scsi设备，ide设备，device-mapper的设备驱动，随后系统总线就会收到这些事件，mkblkdevs又会把他们的节点创建到/dev下。我们的硬盘多数是在这个阶段被找到并创建了相应的设备节点。然后是加载启动逻辑卷管理，使我们的设备能使用逻辑卷名称。这一步可以不要的
+
+    然后是加载启动逻辑卷管理，使我们的设备能使用逻辑卷名称；(该步骤非必要)
+
+  (重要)下面mkrootdev:该命令可以创建根文件系统的设备节点；查找内核参数当中的“root=”项；然后解析mkrootdev后面的-t 和-o参数，如果-t是nfs，而且,-o中包含dhcp,那么root的相关信息从dhcp主机取得，如果-o选项不包含dhcp或者-t不是nfs， 则从root=内核参数取真正root文件系统的位置，如果没有root=参数，使用mkrootdev后面的设备作为root设备。如果是-t nfs那么直接添加入口到/etc/fstab文件，包括-t的文件系统类型和-o的选项。如果-t指定的文件系统不是nfs，那么它创建名称为/dev/root的节点，它的Major,Minor设备号使用root=参数的设备号（如果有），或mkrootdev后面的设备的设备号。；它不仅能够根据root=/dev/xxx来生成对应的设备节点，还能够在碰到root=LABEL=/ 的情况下探测所有的硬盘分区，以便找到对应着卷标为/的分区。
+
+  所以，mkrootdev -t ext3 -o defaults,ro /dev/VolGroup00/LogVol00这行，会将一条入口信息写入内存中的/etc/fstab，如： /dev/root /sysroot ext3 defaults,ro 0 0 ；注意此时设备是/dev/root.而不是/dev/VolGroup00/LogVol00，但他们的设备号是一样的。 
+ 
+  紧接着后面的mount  /sysroot；就会读取/etc/fstab并加载刚刚mkrootdev写入的这条入口信息所指定的设备，这就是加载/dev/root 到/sysroot下。这时我们的真正的root才被加载到了系统中。nash在mount时，如果只有一个参数，以它作为root加载点，且它必须是 /sysroot（会同fstab中的做比较）。如果有加载点和设备参数，-t -o必须也被提供，mount丢弃/etc/fstab中的入口的内容，而使用参数提供的信息加载root设备。若如本例，至此/sysroot下是真正物理系统的root分区。/是initrd的内存盘。 
+ 
+  setuproot 并不接受任何参数，而以上面的/sysroot作为我们的root。安装所有的子分区到/sysroot下。也就是建立我们的根文件系统树，如果我们的root 不是由单个分区组成的话。这些信息从/sysroot/etc/fstab.sys中读取。如果它不存在，就从initrd的/etc /fstab.sys中读取。如果仍然不存在，就建立默认的文件系统树： 
+ 
+  挂载(Bind挂载方式)/proc 到/sysroot/proc ，/sys到/sysroot/sys 
+ 
+  最后switchroot卸载/dev,/proc,/sys文件系统，挂载(移动挂载方式)/sysroot到/下面.，然后卸载initrd的/。打开 /dev/console到描述符3，将stdin,stdout,stderr全部定向到3(console)，分析内核参数，寻找init=,如果有，以它作为init程序执行，否则，执行默认：搜寻第一个找到的/sbin/init；/etc/init；/bin/init；/bin/sh执行，这就 是所有进程的父进程0 
+ 
+
+文章参考：
+* 关于**Linux-gate.so.1**的含义： http://www.linuxidc.com/Linux/2007-07/6221.htm
+* Linux boot process (initrd part)：http://bbs.kylin-linux.com/htm_data/9/1003/209.html
+* http://www.mike.org.cn/articles/linux-xiangjie-linux-initrd/
+* 拓展参考： http://www.ibm.com/developerworks/cn/linux/l-initrd.html(IBM上面用busybox实现了一个精简的initrd) 

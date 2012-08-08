@@ -1,0 +1,10 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-23T09:33:10+08:00
+
+====== USB和sysfs文件系统 ======
+Created Wednesday 23 November 2011
+http://hi.baidu.com/zengzhaonong/blog/item/926729d18026413a9b5027e8.html
+
+2007年08月31日 星期五 19:32
+ 

@@ -1,0 +1,30 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-16T13:31:07+08:00
+
+====== KDE Plasma Desktop Introduction ======
+Created Wednesday 16 November 2011
+{{~/sync/notes/zim/Linux/KDE/The_KDE_Workspaces/1.jpg}}
+KDE has for a long time been one of the most popular desktops around. But for Linux newcomers or people looking for a change, maybe I can share some insight. With the introduction of the Plasma desktop some users were left confused and intimidated so hopefully this will clear things up for everyone thinking about making the switch. **The idea of Plasma basically consists of widgets, applets, or small desktop applications called Plasmoids, and containers for those Plasma items.** When using the KDE Plasma desktop the panels are simply considered** containers **with widgets, that goes for the desktop as well. All said, Plasma is not very complicated, there is simply different terminology.
+
+===== Plasma Desktop Panel =====
+{{~/sync/notes/zim/Linux/KDE/The_KDE_Workspaces/2.jpg}}
+As for KDE on Kubuntu 11.04 this is what you can expect, though other distributions may vary. Your main desktop panel already has a few widgets that you can use. Most importantly is the **Kickoff application launcher **which can be used to start applications, change your settings, or shutdown your computer. The next item in your panel is your **show desktop button**, it looks like a computer monitor. The next widget is your workspace pager that you can use to switch between virtual desktops. There is also an area in your panel where all of your open windows will be displayed, and of course your** system tray** where notifications and important desktop tools are generally displayed.
+
+=== Kickoff Application Launcher ===
+{{~/sync/notes/zim/Linux/KDE/The_KDE_Workspaces/3.jpg}}
+The different tabs inside your Kickoff launcher menu keep all of your important information neatly organized. Your favorites tab will hold all of your favorite application and more can be added simply by finding the item you want to add inside your menu and right clicking on it, then click add to favorites. The next tab is for your applications, but many settings and configuration options can be found here also. Your computer tab can be used to find files or documents on your computer, or manage your installed software. The next tab is your recent documents which is pretty straight forward, then your system tab which can be used to log out or shutdown your system.
+
+=== Adding New Widgets ===
+{{~/sync/notes/zim/Linux/KDE/The_KDE_Workspaces/4.jpg}}
+You can add new widgets to a panel or **container** simply by right clicking an empty spot on the panel or by opening your panel toolbox in the top right corner of your desktop. After opening your menu just click add new widget and drag the widget wherever you want it. In the add widget menu you can also download new items simply by clicking get new widgets. Or just right click on an individual widget in your panel if you want to remove it. Here are a few of my favorites. A Facebook widget, folder view, incoming message, notes, weather, now playing, and a system monitor. But there are a variety of other widgets that people should find helpful for different day to day tasks.
+
+
+===== The KDE Plasma Desktop =====
+{{~/sync/notes/zim/Linux/KDE/The_KDE_Workspaces/5.jpg}}
+The desktop is just another __container__ that you can use and freely control. Desktop **applets **can easily be scaled, moved or even rotated usually by right clicking on the item you want to adjust, or hovering the mouse pointer over it to see the options. More options can be found by right clicking on the desktop background itself, then click **desktop settings**. Here you can select wallpapers for your desktop or find new wallpapers directly through the desktop settings interface. The window theme interface also offers the ability to download new themes through the interface which is quite helpful. KDE is a versatile desktop worth taking the time to experiment with.
+
+
+===== Adding Containers Or Activities =====
+{{~/sync/notes/zim/Linux/KDE/The_KDE_Workspaces/6.jpg}}
+When using the KDE** Plasma desktop**, applet or widget containers are often referred to as __activities__. You can add new activities using the desktop toolbox icon in the top right hand corner of your desktop, just look for the activities button in the left click menu. Container or __activity templates __are available from the options to make things easier. After you create a container you can just choose the container you want and click add widgets inside the same window. Using activities you can keep desktop items categorized. You might want separate containers for different items such as desktop icons, system monitor widgets, and social or internet widgets.

@@ -1,0 +1,40 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2010-08-03T21:48:43.110870
+
+====== 5.1 How to specify devices ======
+Created Tuesday 03 August 2010
+
+The device syntax is like this:
+
+     `(DEVICE[,PART-NUM][,BSD-SUBPART-LETTER])'
+
+   `[]' means the parameter is optional. DEVICE should be either `fd'
+or `hd' followed by a digit, like `fd0'.  But you can also set DEVICE
+to a hexadecimal or a decimal number which is a BIOS drive number, so
+the following are equivalent:
+
+     (hd0)
+     (0x80)
+     (128)
+
+   PART-NUM represents the partition number of DEVICE, starting from
+one for primary partitions and from five for extended partitions, and
+BSD-SUBPART-LETTER represents the BSD disklabel subpartition, such as
+`a' or `e'.
+
+   A shortcut for specifying BSD subpartitions is
+`(DEVICE,BSD-SUBPART-LETTER)', in this case, GRUB searches for the
+first PC partition containing a BSD disklabel, then finds the
+subpartition BSD-SUBPART-LETTER. Here is an example:
+
+     (hd0,a)
+
+   The syntax `(hd0)' represents using the entire disk (or the MBR when
+installing GRUB), while the syntax `(hd0,1)' represents using the first
+partition of the disk (or the boot sector of the partition when
+installing GRUB).
+
+   If you enabled the network support, the special drive, `(nd)', is
+also available. Before using the network drive, you must initialize the
+network. *Note Network::, for more information.

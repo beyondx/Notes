@@ -1,0 +1,852 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-03T20:37:32+08:00
+
+====== 配置 ======
+Created 星期五 03 六月 2011
+http://man.chinaunix.net/newsoft/Emac/book.html
+<< Back to man.ChinaUnix.net
+
+Emacs 中文化指南
+Jerry 最后更新时间: 2004年3月21日
+
+本文件仅收集我个人在使用Emacs中的一些经验和技巧, 本文可以随意转载, 无需通知作者, 本文最新文档可以从http://zhdotemacs.sourceforge.net上获得, E-mail: unidevel@yahoo.com.cn. 不定期更新 如有错误, 敬请指出, E-mail: unidevel@yahoo.com.cn
+[ Split HTML / Single HTML ]
+
+Table of Contents
+1 最近更新
+
+    1.1 2004年08月11日
+    1.2 2004年05月01日
+    1.3 2004年04月20日
+    1.4 2004年03月21日
+    1.5 2004年01月20日
+    1.6 2003年12月19日
+    1.7 2003年12月17日
+
+2 Emacs 安装
+
+    2.1 下载Emacs源代码
+    2.2 安装Emacs
+    2.3 遇到问题怎么办
+    2.4 Emacs 基本编辑命令(1)
+    2.5 Emacs基本编辑指令(2)
+
+3 Emacs 中文设置
+
+    3.1 系统对多语言的支持性
+
+        3.1.1 Console环境
+        3.1.2 Windows系统
+        3.1.3 X Window系统
+
+    3.2 中文设置
+
+        3.2.1 通用配置
+        3.2.2 Windows配置
+        3.2.3 X Window设置
+
+    3.3 Emacs输入法
+
+4 一些常用的Emacs功能
+
+    4.1 auto-insert -- 自动插入功能
+    4.2 QuickURL -- 快速插入地址
+    4.3 time-stamp -- 记录修改时间
+    4.4 我最最讨厌的
+
+5 Emacs 扩展包安装
+
+    5.1 Tramp -- Transparent Remote Access, Multiple Protocol
+
+        5.1.1 tramp简介
+        5.1.2 Tramp原理
+        5.1.3 tramp的安装及使用
+        5.1.4 常见问题
+
+    5.2 session
+
+        5.2.1 session简介
+        5.2.2 session的使用
+
+    5.3 Emacs mew -- 强大的Emacs Email客户端
+
+        5.3.1 Emacs Mew的安装
+        5.3.2 Emacs mew配置
+        5.3.3 常见问题
+        5.3.4 一些mew的屏幕截图
+
+    5.4 Color Theme -- 让你的Emacs更多彩
+
+        5.4.1 color-theme的安装
+        5.4.2 color-theme的使用
+
+6 一些小巧的Emacs lisp
+
+    6.1 tab-display.el
+    6.2 wb-line-number.el
+    6.3 keisen-mode
+
+7 自己写的一些Emacs lisp
+8 Emacs中一些有趣的功能
+
+    8.1 Emacs中的游戏
+
+9 迷你型的Emacs
+
+    9.1 zile 中文设置
+
+10 Emacs网络资源汇总
+
+    10.1 中文资源
+    10.2 Lisp资源
+    10.3 文档资源
+
+Chapter 1 最近更新
+Jerry
+1.1 2004年08月11日
+
+    更新Section 10.2中的mule-gbk的链接.
+
+    由于更换了操作系统，以前使用FreeBSD docproj编写的文档暂时无法更新
+
+1.2 2004年05月01日
+
+    新增 Section 9.1zile中文设置.
+
+1.3 2004年04月20日
+
+    新增 Section 5.3.3设置多个邮件.
+
+1.4 2004年03月21日
+
+    新增 Chapter 7自己写的一些Emacs lisp.
+
+1.5 2004年01月20日
+
+    新增 Section 5.3.3mew发送和接收邮件.
+
+1.6 2003年12月19日
+
+    新增 Chapter 9迷你型的Emacs.
+
+    修改 Section 4.4我最最讨厌的, 新增step 10如何忽略错误.
+
+1.7 2003年12月17日
+
+    新增 Section 4.3 time-stamp -- 记录修改时间.
+
+    修改 Section 3.2.2 Windows配置, 新增不使用intlfonts的配置.
+
+    修改 Section 10.1 中文资源, 新增邮件列表.
+
+Chapter 2 Emacs 安装
+Jerry
+
+Emacs可以运行于*NIX及Windows平台, 我用它来搭建统一的开发环境
+
+不过首先最好认识一下Stallman.
+2.1 下载Emacs源代码
+
+Emacs最新版本的源代码可以从http://ftp.gnu.org/pub/emacs上获得, 或者通过cvs获得开发版及稳定版的源代码, 我一般选择稳定的版本, 毕竟很多扩展包都经过了测试, 使用起来稳定可靠(Windows下的应该除外, 我用过几个版本, 总是会出一些问题, Linux上的Emacs比较稳定, 通过FreeBSD ports安装的Emacs也比较稳定), 不过感觉Emacs 21.3对中 文支持并不如从CVS中编译的好, 因此本文就是使用CVS下载Emacs的源代 码在FreeBSD 5.1-Current下编译的.
+2.2 安装Emacs
+
+FreeBSD下推荐通过ports或者安装包直接安装, 也可以从cvs中下载最新代码编译, 编译时则可以使用./configure调整编译选项进行编译, 请不要使用--without-xim选项, 该选项使Emacs不使用XIM输入协议, 因此使用该选项则不能使用像chinput, xcin等使用XIM协议的输入法, 虽然Emacs子带输入系统, 但是中文的输入实在太差, 后面我会讲到如何扩展Emacs的输入法, 我在FreeBSD下编译Emacs(CVS)的命令如下,
+
+$script emacs_build.log
+$CPPFLAGS=-I/usr/local/include CXXFLAGS=-I/usr/local/include \
+ CFLAGS=-I/usr/local/include LDFLAGS=-I/usr/local/lib \
+ ./configure --prefix=/dtroot --with-xpm --with-jpeg \
+ --with-tiff -with-gif --with-png --with-x --with-xim
+$make -j4 bootstrap
+$make install
+$exit
+   
+
+或者使用--with-gtk, 来使用gtk的外观
+
+$script emacs_build.log
+$CPPFLAGS=-I/usr/local/include CXXFLAGS=-I/usr/local/include \
+ CFLAGS=-I/usr/local/include LDFLAGS=-I/usr/local/lib \
+ ./configure --prefix=/dtroot --with-xpm --with-jpeg \
+ --with-tiff -with-gif --with-png --with-x --with-xim --with-gtk
+$make -j4 bootstrap
+$make install
+$exit
+   
+
+假如你是用cvs获得的源代码, configure后应该使用 make bootstrap编译
+2.3 遇到问题怎么办
+
+以我的经验来看, 最好的办法就是先找找对应的FAQ, 然后找手册, 再去 对应的邮件列表上问一下, 最后就是自己调试程序.
+2.4 Emacs 基本编辑命令(1)
+
+Emacs的强大功能相信大家都已经听说过了, 熟悉vi或windows下IDE 工具开始使用时Emacs会觉得十分难受. 这一节讲一下基本的几个编译命 令, 首先说明一下以`C-'开头的是 `Ctrl'键加上后面的键一块按下, 例如 `C-x 0'就是Ctrl键和 x键一块按下, 然后再按下0, 以 `M-'开头的就是META键, 一般就是 Alt键.
+
+    `C-x C-f 文件名' -- 打开文件
+
+    `C-x C-s' -- 保存文件
+
+    `C-x C-c' -- 退出Emacs
+
+    `C-x u' -- 取消上一次操作
+
+有了这四个基本指令就可以进行通常的编辑保存功能了, 不过现在你 肯定感觉不到Emacs的强大功能. 甚至会觉得Emacs还不如Windows的 Notepad, 别急, 熟悉一下Emacs后我们再来感受Emacs的超强功能.
+2.5 Emacs基本编辑指令(2)
+
+我们继续讲解Emacs的基本指令, 这一部分讲解基本的光标指令, 你 可以用Emacs打开一个文件, 我们一起来"运动"
+
+    `C-v' -- 向后翻一页
+
+    `M-v' -- 向前翻一页
+
+    `C-l' -- 将当前行居中
+
+    `C-f' -- 向前移动一个字符
+
+    `M-f' -- 向前移动一个单词
+
+    `C-b' -- 向后移动一个字符
+
+    `M-b' -- 向后移动一个单词
+
+    `C-n' -- 向下移动一行
+
+    `C-p' -- 向上移动一行
+
+    `C-a' -- 移至当前行的第一个字符
+
+    `M-a' -- 移至当前所在句子的第一个字符
+
+    `C-e' -- 移至当前行的最后一个字符
+
+    `C-p' -- 移至当前所在句子的最后一个字符
+
+    `M-<' -- 移动到当前窗口的第一个字符
+
+    `M->' -- 移动到当前窗口的最后一个字符
+
+    注意: `M-<'输入时要同时键入`Alt', `Shift'和`,'
+
+这些命令前可以加入`C-u N'表示重复N次, 例如向下移动8行可以这 样按键`C-u 8 C-n'
+
+好了, 基本的移动指令就介绍完了, 可能这些键使用起来是不太顺手, 在本章最后, 我们将讲一下如何定制这些键, 使Emacs更加符合个人的使用 习惯.
+Chapter 3 Emacs 中文设置
+Jerry
+
+Emacs发展到今天, 功能已经十分完善和强大, Emacs有强大的多语言编辑功 能, 当然设置的得当才能发挥出Emacs的强大功能, 下面讲述一下在Windows 以及X Window上的多语言的设置问题
+3.1 系统对多语言的支持性
+3.1.1 Console环境
+
+这里的Console是像Windows下的cmd, command, Unix下的console, tty 的统称, Console环境下, 只要本身能正常显示中文就可以了, Emacs自 带输入法, 基本上不用怎么设置就可以使用
+3.1.2 Windows系统
+
+Windows本身对多语言支持的已经是十分完善了, 只是要切换缺省语言 比较麻烦, 设置完后总要重启(针对Windows 2000和Windows XP), Emacs对中文的支持也因版本的不同而不同, 通常的方法和在X Window 下类似, 需要设置对应的字体, 而Windows下最好使用bdf字体, 相关的 字体可以在XEmacs站点上下载到, 我用的是intlfonts-1.2
+3.1.3 X Window系统
+
+X Window下首先需要汉化X, 使X能正常使用中文, 其实和Windows差不 多, 也不过是设置字体, 因为X本身已经对多语言提供支持(建议使用 XFree86 V4.2及以上版本), X上最好是把Windows下的那些ttf和ttc的 字体拿来使用, 毕竟不是免费字体, 作工还是要好一些
+3.2 中文设置
+3.2.1 通用配置
+
+这一部分是所有系统都要设置的
+
+(set-language-environment 'Chinese-GB)
+(set-keyboard-coding-system 'euc-cn)
+(set-clipboard-coding-system 'euc-cn)
+(set-terminal-coding-system 'euc-cn)
+(set-buffer-file-coding-system 'euc-cn)
+(set-selection-coding-system 'euc-cn)
+(modify-coding-system-alist 'process "*" 'euc-cn)
+(setq default-process-coding-system 
+            '(euc-cn . euc-cn))
+(setq-default pathname-coding-system 'euc-cn)
+   
+
+3.2.2 Windows配置
+
+这一部分设置Windows下的字体, 解压intlfonts-1.2, 设置变量 fonts-dir为所安装的字体目录
+
+(setq fonts-dir "<path to intlfonts>")
+(setq bdf-directory-list 
+      (list 
+       (expand-file-name "Asian" fonts-dir)
+       (expand-file-name "Chinese" fonts-dir)
+       (expand-file-name "Chinese.BIG" fonts-dir)
+       (expand-file-name "Chinese.X" fonts-dir)
+       (expand-file-name "Ethiopic" fonts-dir)
+       (expand-file-name "European" fonts-dir)
+       (expand-file-name "European.BIG" fonts-dir)
+       (expand-file-name "Japanese" fonts-dir)
+       (expand-file-name "Japanese.BIG" fonts-dir)
+       (expand-file-name "Japanese.X" fonts-dir)
+       (expand-file-name "Korean.X" fonts-dir)
+       (expand-file-name "Misc" fonts-dir)
+       (expand-file-name "TrueType" fonts-dir)
+       (expand-file-name "Type1" fonts-dir)))
+(setq w32-bdf-filename-alist
+      (w32-find-bdf-fonts bdf-directory-list))
+(create-fontset-from-fontset-spec
+ "-*-fixed-medium-r-normal-*-16-*-*-*-c-*-fontset-bdf,
+ chinese-gb2312:-*-*-medium-r-normal-*-16-*-*-*-*-*-gb2312.1980-*,
+ japanese-jisx0208:-*-*-medium-r-normal-*-16-*-*-*-c-*-jisx0208.1983-*,
+ katakana-jisx0201:-*-*-medium-r-normal-*-16-*-*-*-c-*-jisx0201*-*,
+ latin-jisx0201:-*-*-medium-r-normal-*-16-*-*-*-c-*-jisx0201*-*,
+ japanese-jisx0208-1978:-*-*-medium-r-normal-*-16-*-*-*-c-*-jisx0208.1978-*,
+ thai-tis620:-misc-fixed-medium-r-normal--16-160-72-72-m-80-tis620.2529-1,
+ lao:-misc-fixed-medium-r-normal--16-160-72-72-m-80-MuleLao-1,
+ tibetan-1-column:-TibMdXA-fixed-medium-r-normal--16-160-72-72-m-80-MuleTibetan-1,
+ ethiopic:-Admas-Ethiomx16f-Medium-R-Normal--16-150-100-100-M-160-Ethiopic-Unicode,
+ tibetan:-TibMdXA-fixed-medium-r-normal--16-160-72-72-m-160-MuleTibetan-0")
+(setq font-encoding-alist
+      (append '(("MuleTibetan-0" (tibetan . 0))
+        ("GB2312"        (chinese-gb2312 . 0))
+        ("JISX0208"      (japanese-jisx0208 . 0))
+        ("JISX0212"      (japanese-jisx0212 . 0))
+        ("VISCII"        (vietnamese-viscii-lower . 0))
+        ("KSC5601"       (korean-ksc5601 . 0))
+        ("MuleArabic-0"  (arabic-digit . 0))
+        ("MuleArabic-1"  (arabic-1-column . 0))
+        ("MuleArabic-2"  (arabic-2-column . 0))) font-encoding-alist))
+(set-default-font "fontset-bdf")
+     
+
+注意: 上面的中文字体的大小只能为16,24,40,48, 因为intlfonts 中的BDF字体只有这几种大小的中文字体能匹配上面的chinese-gb2312的配置, 此外在Emacs 21.3中还可以这样设置
+
+(set-language-environment 'Chinese-GB)
+(set-default-font "-outline-新宋体-normal-r-normal-normal-12-*-96-96-c-*-gb2312")
+     
+
+假如你不知道系统的字体就M-x set-default-font, 然后使用TAB 键来看一下补全的字体信息
+3.2.3 X Window设置
+
+X的中文设置我就不说了, 自己搞定吧, 我拷贝了Windows的simsun.ttc 和mingliu.ttc来使用, 看简繁体中文不成问题了, 设置好X的字体后, 通过配置X Resources, 来设置emacs的字体, 通常就是配置$HOME/.Xdefaults, 1024x768的分辨率下可以设置字体为8x16, 800x600可以设置7x14的字体就可以达到字体等宽的效果
+
+emacs.font:  8x16
+emacs.paneFont:  8x16
+Emacs.pane.menubar.font: 8x16
+Emacs.foreground: white
+Emacs.background: black
+emacs.geometry:  100x32
+     
+
+3.3 Emacs输入法
+
+Emacs自带多种输入法, 当然不止一种语言了, 但它自带的中文输入 法实在是太......, 想必不会有谁去用它的中文输入法来输入汉字吧, 不过 还是有几种比较好的输入法像自然码等, 我从fcitx和xcin的源码包中转换出 几种输入法, 有五笔, 注音, 双拼等, 下面说一下使用方法, 可以从 http://sourceforge.net/projects/zhdotemacs/ 下载到emacsim.tar.bz2
+
+安装及使用方法, 参见安装包中的INSTALL文件
+
+    安装输入法
+
+    $tar -xvjf emacsim.tar.bz2
+    $cd emacsim
+    $cp -R gb big5 ${emacs-install-dir}/share/emacs/${emacs-version}/leim
+       
+
+    配置输入法, 拿gb/pingyin.el为例, 把下面的代码加入到文件 ${emacs-install-dir}/share/emacs/${emacs-version}/leim/leim-list.el中
+
+    (register-input-method
+     "chinese-pinyin-gb" "Chinese-CNS" 'quail-use-package
+     "拼音" "汉字输入∷【拼音】∷"
+     "gb/pinyin")
+       
+
+    输入法的使用, 按照上面的例子, 使用 `M-x set-input-method RET chinese-pinyin-gb RET' 就可以使用了
+
+Chapter 4 一些常用的Emacs功能
+Jerry
+
+这一部分对Emacs安装后自带的一些实用的扩展功能进行讲解
+4.1 auto-insert -- 自动插入功能
+
+auto-insert是一个十分有用的功能, 比如我们在写一个C语言的头文 件时, 一般会加入下面的代码
+
+#ifndef XXX_H
+#define XXX_H
+
+#endif /* XXX_H */
+   
+
+auto-insert就方便了我们, 不用每次都要手工输入这些代码, 新建 一个头文件时, 它会询问是否要加入这些自动生成的代码, 下面来看一下 auto-insert如何使用
+
+`M-x auto-insert'会根据当前的mode在新建的文 件插入一些预定的文本, 如果想在打开文件时自动插入的话, 将下面的代 码加入~/.emacs中
+
+(add-hook 'find-file-hooks 'auto-insert)
+   
+
+修改`auto-insert-alist'可以定制插入的模板, 可以使用`defint-auto-insert'来加入或者修改 `auto-insert-alist'
+
+变量`auto-insert'用来定制自动插入时的动作类 型
+
+    `nil' 什么都不作, 即不执行插入动作
+
+    `t'根据auto-insert-alist和当前的mode执 行对应的插入动作
+
+    其他值 同`t', 但是自动插入文本后, 不置 文档修改标志
+
+变量`auto-insert-query'定义自动插入文本前是 否询问, `Non-nil'表示自动插入文本前要询问.
+
+变量`auto-insert-prompt'设定询问的语句, 如 果有%s, 则将被替换为执行插入的条件
+
+变量`auto-insert-directory'设定模板的路径, 注意必须以`/'结尾
+
+下面是一个比价完整的配置
+
+(setq auto-insert t)
+(setq auto-insert-query t)
+(add-hook 'find-file-hooks 'auto-insert)
+(setq auto-insert-directory "~/insert/")
+(define-auto-insert '("^build\\.xml\\'" . "Ant编译脚本") "build.xml")
+   
+
+常见问题, auto-insert-directory的值必须以`/'结尾, 否则就不能 正常工作
+4.2 QuickURL -- 快速插入地址
+
+QuickURL允许我们快速的插入一个单词对应的地址, 也允许加入新的 地址, 这有点像浏览器的收藏夹, 对于经常写这些文档的我来说十分方便实 用, 同时也可以收藏一些好文章的地址.
+
+QuickURL是Emacs自带的, 所以不需要特殊的配置就可以直接使用, 常用功能如下:
+
+    `quickurl-ask'在当前位置插入所选的URL
+
+    `quickurl-add'加入新的URL
+
+    `quickurl-list'列出所有的URL
+
+    `quickurl-edit'编辑所有的URL
+
+QuickURL还有一些其他的指令, 自己看看帮助吧, 希望它能对你有用
+4.3 time-stamp -- 记录修改时间
+
+打开time-stamp可以记录最后运行time-stamp的时间, 所以一般将 time-stamp 加入 write-file-hooks 中, 记录文件的最后修改时间, ~/.emacs 配置如下:
+
+(add-hook 'write-file-hooks 'time-stamp)
+(setq time-stamp-format "%:u %02m/%02d/%04y %02H:%02M:%02S")
+   
+
+上面设置写入文件时执行time-stamp, 并设置时间格式为"%:u %02m/%02d/%04y %02H:%02M:%02S", 缺省的情况下, 在所编辑文件的前八行内插入如下标记
+
+Time-stamp: <>
+   
+
+或者
+
+Time-stamp: " "
+   
+
+Emacs在保存时就会运行write-file-hooks中的time-stamp, 从而加 入修改时间, 结果类似下面所示
+
+Time-stamp: <jerry 12/17/2003 12:00:54 (unidevel.com)>
+   
+
+或者
+
+Time-stamp: "jerry 12/17/2003 12:00:54 (unidevel.com)"
+   
+
+要使用中文表示, 可以这样设置
+
+(setq time-stamp-start "最后更新时间:[     ]+\\\\?")
+(setq time-stamp-end: "\n")
+(setq time-stamp-format: "%:y年%:m月%:d日")
+   
+
+上面设置了如果碰到"最后更新时间:"的字样, time-stamp就将其后 面的字符替换为当前时间的"XXXX年XX月XX日", 注意, time-stamp-end的结束符 为换行符, 所以"最后更新时间:"行后所有字符都将无条件被替换为"XXXX年XX月XX日" 格式的时间, 本文首页上的更新时间就是这样做出来的
+4.4 我最最讨厌的
+
+    不要打入 TAB 时总是听到 PC 喇叭嘀嘀嘀的叫
+
+    (setq visible-bell t)
+
+    不要总是没完没了的问yes or no, 为什么不能用 y/n
+
+    (fset 'yes-or-no-p 'y-or-n-p)
+
+    为什么不能显示个时间什么的
+
+    (display-time)
+
+    为什么不显示当前所在的行号和列号
+
+    (column-number-mode t)
+
+    为什么不能像Windows下编辑器那样, 高亮显示要拷贝的区域
+
+    (transient-mark-mode t)
+
+    我要显示匹配的括号
+
+    (show-paren-mode t)
+
+    为什么使用语法显示的大文件在移动时如此之慢
+
+    (setq lazy-lock-defer-on-scrolling t)
+    (setq font-lock-support-mode 'lazy-lock-mode)
+    (setq font-lock-maximum-decoration t)
+       
+
+    不要那个如此大的工具条
+
+    (tool-bar-mode -1)
+       
+
+    在mozilla, openoffice等拷贝的中文文字无法正确粘贴在Emacs中(Emacs 21.3 发布版有此问题, 至少在我的FreeBSD下是这样的)
+
+    (set-clipboard-coding-system 'ctext)
+       
+
+    启动Emacs报错, ~/.emacs中有问题, 如何忽略错误
+
+     (condition-case err
+         (progn
+         (require 'xxx) )
+       (error
+        (message "Can't load xxx-mode %s" (cdr err))))
+       
+
+    如上所示, 可以截获progn内部出错, 在mini-buffer下打出错误信息
+
+    不要生成临时文件
+
+    (setq-default make-backup-files nil)
+       
+
+Chapter 5 Emacs 扩展包安装
+Jerry
+
+Emacs的扩展包可谓无所不有, 我只把关于开发的一些常用工具的安装 和配置及问题写一下
+5.1 Tramp -- Transparent Remote Access, Multiple Protocol
+5.1.1 tramp简介
+
+tramp提供给我们的是可以使用Emacs对本地/远程的文件进行编辑, 保存, 版本管理等, tramp的功能十分强大, 它可以使用多种协议(telnet, ftp, ssh等)进行文件的获取和保存, 也可以使用这些协议的组合来编辑和保存文件, 对本地文件的一个比较方便的操作是su, 即使用其他用户编辑只有这些用户才有权限进行编辑的文件. 例如以普通用户jerry运行Emacs 对只有root可以编辑的/etc/inetd.conf进行编辑和保存, 免去了再开一个shell以root登陆编辑的步骤
+5.1.2 Tramp原理
+
+Tramp的原理是使用标准的协议ftp, rsync, smb等直接获取和保存文件, 使用ssh, telnet, rsh等加上uuencode, uudecode等一些编码解码程序对文件进行 获取和保存
+5.1.3 tramp的安装及使用
+
+我使用的是tramp-2.0.33, 它加入了对smb支持(暂时还不是很完善, 如编辑一些中文名称的文件), 及对ftp的改进. 安装过程如下:
+
+    下载 tramp-2.0.33.tar.gz
+
+    假设安装到/tmp/tramp目录下, 解包tramp到/tmp/tramp下
+
+    $tar -xvzf tramp-2.0.33.tar.gz
+    $mv tramp-2.0.33 /tmp/tramp
+         
+
+    编译tramp
+
+    $./configure --with-emacs
+    $gmake
+         
+
+    安装tramp, 在~/.emacs中加入下面的代码
+
+    (add-to-list 'load-path "/tmp/tramp/lisp")
+    (setq tramp-default-method "scp")
+    (setq tramp-auto-save-directory "/tmp")
+    (setq auto-save-file-name-transforms
+          '(("\\`/[^/]*:\\(.+/\\)*\\(.*\\)" "/tmp/\\2")))
+    (setq tramp-chunksize 328)
+    (require 'ange-ftp)
+    (require 'tramp)
+         
+
+    重新启动Emacs或使用C-x C-e顺序执行上述代码就可以了
+
+5.1.4 常见问题
+
+tramp在一些版本的Emacs上会出现读出正常, 保存就无响应的现象, 设置tramp-chunksize为小于500的整数就可以了, 因为一些版本的Emacs中 process-send-string按照文档记载最长只能为500.
+
+此外tramp和ange-ftp有些冲突, 因为ange-ftp使用autoload装入, ange-ftp会设置 file-name-handler-alist变量, 从而将tramp设置的值覆盖掉, 因此使用 (require 'ange-ftp)首先装入ange-ftp, 然后使用(require 'tramp)装入tramp, 就不会出现这种问题.
+
+上述配置在windows平台上不能使Emacs正常使用tramp. Windows上推荐 使用tramp+putty, 相关配置可以使用Google查到.
+5.2 session
+5.2.1 session简介
+
+session扩展包可以使Emacs保存每次编辑的一些历史记录, 这样, 在下次打开Emacs时就可以使用上下键在以前输入的信息中选取, 十分方便实用.
+5.2.2 session的使用
+
+session的使用十分简单, 只需要在~/.emacs中加入如下几句就可 以了:
+
+(add-to-list 'load-path "<path to session>")
+(require 'session)
+(add-hook 'after-init-hook 'session-initialize)
+     
+
+5.3 Emacs mew -- 强大的Emacs Email客户端
+
+Emacs mew是一个由日本人编写的Emacs邮件客户端, 对中文支持非常 之好也是我选择它的原因. 废话少说, 开始----
+5.3.1 Emacs Mew的安装
+
+Emacs mew的最新版本和源代码可以从 http://www.mew.org上下 载, 下载后解压, 使用make进行编译安装, 路径可以修改一下Makefile 中的prefix, elispdir和etcdir, 注意${prefix}/bin必须在PATH变量 中, 没有的话作个符号链接也可以, 对于NTEmacs的用户, 要把下载mew 安装包中的几个exe文件拷贝到emacs安装目录的bin下.
+5.3.2 Emacs mew配置
+
+把下面的代码加入~/.emacs中, 把用户名, 主机名换成对应的就可 以了
+
+(autoload 'mew "mew" nil t)
+(autoload 'mew-send "mew" nil t)
+(if (boundp 'read-mail-command)
+    (setq read-mail-command 'mew))
+(autoload 'mew-user-agent-compose "mew" nil t)
+(if (boundp 'mail-user-agent)
+    (setq mail-user-agent 'mew-user-agent))
+(if (fboundp 'define-mail-user-agent)
+    (define-mail-user-agent
+       'mew-user-agent
+       'mew-user-agent-compose
+       'mew-draft-send-message
+       'mew-draft-kill
+       'mew-send-hook))
+(setq mew-pop-size 0)
+(setq mew-smtp-auth-list nil)
+(setq toolbar-mail-reader 'Mew)
+(set-default 'mew-decode-quoted 't)  
+(setq mew-prog-pgp "gpg")
+(setq mew-name "显示的用户名")
+(setq mew-user "用户名")
+(setq mew-smtp-user "用户名")
+(setq mew-mail-domain "主机的域名")
+(setq mew-smtp-auth-list nil)
+(setq mew-smtp-server "SMTP主机")
+(setq mew-pop-server "POP主机")
+(setq mew-pop-user "用户名")
+(setq mew-pop-auth 'pass) ;;认证方式
+(setq mew-use-cached-passwd t)
+(setq mew-nntp-server "NNTP服务器")
+(setq mew-icon-directory (expand-file-name "mew/etc" dtsite-dir))
+(when (boundp 'utf-translate-cjk)
+      (setq utf-translate-cjk t)
+      (custom-set-variables
+         '(utf-translate-cjk t)))
+(if (fboundp 'utf-translate-cjk-mode)
+    (utf-translate-cjk-mode 1)) 
+(require 'flyspell) ;;非常好用的英文的拼写检查
+     
+
+5.3.3 常见问题
+
+    无法从网上下载所有邮件，总是报告类似"no new messages (3 messages left)"的消息
+
+    删除Mail/.mew-uidl文件使Mew将邮件认为新邮件，设置(setq mew-pop-size 0) 使mew下载所有邮件，不论大小, 注意首先要使 用'Q'退出new ( 'Q' is 'shift' + 'q', not just 'q'), 保证 mew重新加载~/Mail/.mew-uidl
+
+    如何在mew将邮件地址加入地址簿?
+
+    C-cC-a加入地址簿, C-uC-cC-a加入地址和用户信息, 在发送邮件时可以使用TAB补全, 使用M-TAB将地址转换为User<address>的样子
+
+    无法发送和接收邮件
+
+    在mew的分发包中一般包含mewls, mewl, mewencode, mewdecode, incm等可执行文件, 检查它们所在路径是否包含在环境变量PATH中, 或者拷贝这些文件到emacs安装目录的bin目录下
+
+    设置多个邮件
+
+    mew提供多邮件设置, 这是通过设置mew-config-alist变量完成的, 例如我的邮箱设置 (可以设置在~/.emacs或者~/.mew.el中)
+
+    (setq mew-config-alist
+          '(("yahoo"
+         ("name"         .  "Jerry")
+         ("user"         .  "myname")
+         ("smtp-server"  .  "127.0.0.1")
+         ("smtp-port"    .  "5059")
+         ("pop-server"   .  "127.0.0.1")
+         ("pop-port"     .  "5058")
+         ("smtp-user"    .  "myname")
+         ("pop-user"     .  "myname")
+         ("mail-domain"  .  "nonexist.com")
+         ("mailbox-type" .  pop)
+         ("pop-auth"     .  pass)
+         ("smtp-auth-list" . ("PLAIN" "LOGIN" "CRAM-MD5"))
+         )
+        ("default"
+         ("name"         .  "Jerry")
+         ("user"         .  "sample")
+         ("smtp-server"  .  "127.0.0.1")
+         ("smtp-port"    .  "25")
+         ("pop-server"   .  "127.0.0.1")
+         ("pop-port"     .  "110")
+         ("smtp-user"    .  "sample")
+         ("pop-user"     .  "sample")
+         ("mail-domain"  .  "sample.net")
+         ("mailbox-type" .  pop)
+         ("pop-auth"     .  pass)
+         ("smtp-auth-list" . ("PLAIN" "LOGIN" "CRAM-MD5"))
+         )))
+         
+
+    设置好后, 可以通过在summary列表下输入`C'切换设置, 不过需要注意 "mailbox-type"和"pop-auth"设置的值是没有引号的
+
+5.3.4 一些mew的屏幕截图
+
+mew屏幕截图1
+
+mew屏幕截图2
+
+5.4 Color Theme -- 让你的Emacs更多彩
+
+这个扩展包与开发工具没有多大关系, 不过还是有一点点的, 至少可 以帮助htmlize生成的html有不同的背景, 它主要是为Emacs配置不同的色 彩搭配, 使之像Windows那样据有不同的色彩主题, 例如某些变变总是把 各种IDE的编辑器设置的像是控制台下的VI一样黑底白字.
+5.4.1 color-theme的安装
+
+想不起来在哪里下载的了, 用Google搜索一下吧, 安装起来比较简单, 就是将安装目录加入load-path, 调入color-theme, 需要的话再选择一个缺 省的theme就可以了, 例如将color-theme.el放在/tmp下, 则配置如下:
+
+(add-to-list 'load-path "/tmp")
+(require 'color-theme)
+(color-theme-dark-blue)
+     
+
+5.4.2 color-theme的使用
+
+安装完后, Tools菜单下会有一个Color Theme的菜单项, 可以用这 个定制color-theme, color-theme自带有不少的颜色主题
+Chapter 6 一些小巧的Emacs lisp
+Jerry
+
+有很多的Emacs lisp, 非常小巧而实用, 下面就介绍一些我常用的
+6.1 tab-display.el
+
+tab-display.el是用来以'<'字符标识出文件中的那些tab字符, 对于编辑某些文件来说非常有用, 它清楚地标明那些字符是tab的字符
+
+点击这里下载tab-display.el
+
+使用十分简单, 只需要在~/.emacs中加入(require 'tab-display)就可以了, 当然首先你要作的是把tab-display.el所在的路径加入load-path中
+
+tab-display屏幕截图
+
+6.2 wb-line-number.el
+
+wb-line-number.el可以在窗口左侧分割出一个显示行号的小窗口, 比那个mode-line上的行号看的更清楚一些
+
+点击这里下载wb-line-number.el
+
+使用时在~/.emacs中加入下面的语句(不要总是要我提醒你注意load-path设置哦)
+
+(set-scroll-bar-mode nil)   ; no scroll bar, even in x-window system
+(require 'wb-line-number)
+   
+
+在需要显示行号的buffer打入M-x wb-line-number-toggle就可以了, 或者像我这样在~/.emacs中再加入一句(wb-line-number-enable)缺省显示行号
+
+wb-line-number屏幕截图
+
+6.3 keisen-mode
+
+keisen-mode是一个用来绘制表格的好工具, 尤其是绘制中文表格, 比起那个table.el来说好多了, kersen-mode是小日本写的, 点击这里下载 keisen-mule.lzh, 文件使用lha压缩, 使用时在~/.emacs中加入下面的语句
+
+(if window-system
+    (autoload 'keisen-mode "keisen-mouse" "MULE table" t)
+  (autoload 'keisen-mode "keisen-mule" "MULE table" t))
+   
+
+操作起来只要使用Emacs中的移动键或者鼠标移动, 就可以绘制出各种表格了, 它会自动计算各个连接点, 简单方便
+
+keisen-mode屏幕截图
+
+Chapter 7 自己写的一些Emacs lisp
+Jerry
+
+    Emacs MPG123歌词同步显示 -- lrc.el, 点击下载, 可以显示大部分lrc格式的歌词, 还有一些BUG, 导致某些的歌词无法显示, 正在修改中
+
+    安装说明: 替换掉mpg123.el, 删去原来的mpg123.el,mpg123.elc, 在~/.emacs中加入下面的代码就可以了
+
+    (setq lrc-lyric-dir "lrc文件的路径") to ~/.emacs
+    (require 'mpg123)
+         
+
+    歌词显示在minibuffer中, 点击看大图
+
+以前的一些这里下载
+Chapter 8 Emacs中一些有趣的功能
+Jerry
+8.1 Emacs中的游戏
+
+Emacs自带了一些小游戏, 介绍几个
+
+    M-x tetris
+
+    俄罗斯方块
+
+    M-x gomoku
+
+    五子棋游戏
+
+    M-x mpuz
+
+    填数字游戏
+
+    M-x snake
+
+    贪吃蛇游戏
+
+    M-x zone
+
+    一个Emacs的屏保, 因为抓不出动的效果, 所以还是自己体验吧, 我第一次用它时把同事吓了一跳, 被误认作病毒
+
+    M-x dunnet
+
+    一个Mud游戏, 比较难玩, 推荐英文比较好的一定玩一下
+
+    M-x nethack
+
+    这个可不是Emacs自带的, 给那些nethack的faners, 需要下载nethack.el, 自己搜一下吧, 不过记得要重新编译nethack来支持Emacs
+
+剩下的那些不是我不会玩就是不好玩, 故不浪费时间介绍了, 自己体会吧
+Chapter 9 迷你型的Emacs
+Jerry
+
+网上有一些类似Emacs的编辑程序, 十分小巧, 比较著名的有下面几个
+
+    em, 下载地址http://www3.famille.ne.jp/~ncc1701/em/
+
+    zile 下载地址http://sourceforge.net/projects/zile/
+
+    qemacs 下载地址http://fabrice.bellard.free.fr/qemacs/
+
+当你的机器无法忍受庞大的Emacs时, 不妨试试这些小巧的编辑器, 我在一台PII266/64M RAM 的笔记本上就使用zile来进行开发
+9.1 zile 中文设置
+
+zile安装完毕后需要修改缺省的配置来显示中文, 一般就是在$HOME/.zilerc中加入或者修改 displayable-characters, 修改成下面的样子
+
+      displayable-characters = "0x20-0xff"
+   
+
+Chapter 10 Emacs网络资源汇总
+Jerry
+10.1 中文资源
+
+1. 我在yahoo groups上申请了邮件列表, 希望大家可以参与讨论
+
+    :Linux:Utils:emacs:参与讨论:zhdotemacs@yahoogroups.com [1]
+
+    :Linux:Utils:emacs:订阅:zhdotemacs-subscribe@yahoogroups.com [2]
+
+    :Linux:Utils:emacs:退订:zhdotemacs-unsubscribe@yahoogroups.com [3]
+
+此外, 可以通过http://groups.yahoo.com/group/zhdotemacs/来查看以往信件, 不过必须注册一个yahoo帐号.
+10.2 Lisp资源
+
+    Emacs Lisp List--- Emacs Lisp大全
+
+    Mule-GBK--- Emacs的GBK编码
+
+10.3 文档资源
+
+    Emacs 快速指南(官方) --- 官方的快速指南
+
+    Emacs wiki中文版
+
+    王春宇的Emacs中文资料 --- emacs和gnus的配置资料和一些非常有用的参考资料
+
+    王垠的Emacs资料 --- 一些Emacs的配置和使用技巧
+
+    Emacs/Cygwin配置资料 --- NTEmacs与Cygwin环境的整合, 推荐NTEmacs的用户看一下
+
+    Emacs wiki -- 大量的Emacs资源
+
+    Emacs dotfiles -- 大量的.emacs的配置样本
+
+Notes
+[1] 	
+
+首先需要订阅, 订阅后可以向zhdotemacs@yahoogroups.com发送邮件参与讨论
+[2] 	
+
+订阅时向zhdotemacs-subscribe@yahoogroups.com发送一封邮件, 主题上写"subscribe"就可以了, 注意不要加上引号, 收到确认信后, 按照内容中所说的回复或点击对应链接就可以了
+[3] 	
+
+退订时向zhdotemacs-unsubscribe@yahoogroups.com发送一封邮件, 主题上写"unsubscribe"就可以了, 注意不要加上引号, 收到确认信后, 按照内容中所说的回复或点击对应链接就可以了

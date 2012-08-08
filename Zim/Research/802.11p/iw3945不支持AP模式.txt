@@ -1,0 +1,9 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-22T20:55:12+08:00
+
+====== iw3945不支持AP模式 ======
+Created Wednesday 22 February 2012
+Driver 	Manufacturer 	cfg80211 	AP	IBSS	mesh	monitor	PHY modes 	Buses
+ath5k 	Atheros 		yes 		yes 	yes 	yes 		yes 		A/B/G 		PCI / PCI-E / PCMCIA
+iwl3945 	Intel 		yes 		__no__ 	__yes__ 	no 		no 		A/B/G 		PCI-E

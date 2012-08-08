@@ -1,0 +1,56 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-19T14:30:07+08:00
+
+====== How to install Ubuntu Linux from USB Stick ======
+Created Monday 19 December 2011
+www.ubuntugeek.com/how-to-install-ubuntu-linux-from-usb-stick.html
+
+This tutorial describes how to install Ubuntu by __copying__ the contents of the installation CD to an USB memory stick (aka flash drive) and making the stick bootable. This is handy for machines like ultra portable notebooks that do not have a CD drive but can boot from USB media.
+
+In short here’s what you do:
+
+* Prepare the USB flash drive
+* Boot the computer from your USB flash drive.
+* Install Ubuntu as you would from a normal boot CD
+
+===== Prerequisites =====
+
+A running Ubuntu 8.04 or any ubuntu version installation
+
+A USB device (stick, pen-drive, USB hard disk) that has already been **formatted** with FAT32 and has enough free space to hold your Ubuntu installation image
+
+A Ubuntu CD image downloaded from the Ubuntu servers or mirrors (*.iso file) or from here
+
+===== Step 1 =====
+
+On the root directory of your USB device, create a folder “install”
+Copy the__ installer kernel and the initramdisk__ into this folder (Download source below.You need the files “vmlinux” and “initrd.gz”).
+
+You need to download the files “vmlinux” and “initrd.gz”.
+
+===== Step 2 =====
+
+Note: You need to have the __installer__ that fits the architecture of your Ubuntu version you want to install. In other words, you need a amd64 installer if you want to install an amd64 Ubuntu .iso image and the i386 installer for an i386 iso.
+
+===== Step 3 =====
+
+From the installation iso image you downloaded, copy the folder “__isolinux__” to the root directory of your USB device (right-click on the .iso file, choose “extract here”). Rename “isolinux” into “__syslinux__”. Go inside the directroy “syslinux”. There, rename the file “isolinux.cfg” into “__syslinux.cfg__”.
+
+===== Step 4 =====
+
+Make the stick bootable: Use fdisk to set the __boot flag__,
+
+Install syslinux using the following command
+
+sudo aptitude install syslinux
+
+Now use syslinux to install a __boot sector __on your USB device
+
+**sudo syslinux /dev/sdbX**
+
+where sdbX is the device name and number of your USB device, check with “sudo mount”. A file called “**ldlinux.sys**” will be created in the root direcotry of the USB device.
+
+===== Step 5 =====
+
+Copy the Ubuntu CD image in the root directory of your USB device (Contents of USB you can see as follows).If you are using i386 you need to copy the complete .iso image in to the root directory of your USB device.

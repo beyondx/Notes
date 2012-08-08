@@ -1,0 +1,3327 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-19T00:01:14+08:00
+
+====== Emacs Tips ======
+Created Friday 19 August 2011
+https://twiki.cern.ch/twiki/bin/view/CDS/EmacsTips#U2_Ergonomic_colors
+    About
+    User Interface
+        U1. Ergonomic bell
+        U2. Ergonomic colors
+        U3. Ergonomic font
+        U4. Ergonomic mouse
+        U5. Ergonomic menus
+        U6. Ergonomic keys
+        U7. Highlight syntax
+        U8. Highlight recent changes
+        U9. Highlight current line 
+    Buffers
+        B1. Tab bar mode
+        B2. Ido
+        B3. Desktop
+        B4. Saving window configurations
+        B5. Multi-buffer operations 
+    File operations
+        F1. Backup files
+        F2. Remembering file locations
+        F3. Remote file editing
+        F4. Automatic GPG encryption/decryption
+        F5. File difference
+        F6. Multi-file operations 
+    OS operations
+        O1. Emacs shell
+        O2. ANSI terminals
+        O3. Lightweight Emacs as a shell editor 
+    Macros and Elisp
+        M1. Repeat last shell command
+        M2. Elisp shortcuts
+        M3. Regexps
+        M4. Keyboard macros 
+    Autocompletion
+        A1. Autocompletion, first take
+        A2. Autocompletion, second take
+        A3. Visual kill ring 
+    Coding
+        C1. Code folding: outline
+        C2. Code folding: narrowing
+        C3. Programming modes
+        C4. Code tags/indexes
+        C5. IDE
+        C6. Electric pairs and parentheses
+        C7. Code snippets
+        C8. Which function am I editing?
+        C9. Trailing whitespace
+        C10. Spaces instead of tabs
+        C11. Code-friendly spell checking
+        C12. Making on the fly
+        C13. Running on the fly
+        C14. Look up the specs
+        C15. Autocompletion, third take 
+    Version control
+        V1. Interfacing CVS repository
+        V2. Interfacing Git repository 
+    Web browsers
+        W1. w3m 
+    Dictionaries and Encyclopedias
+        D1. Dictionary tools
+        D2. Translation tools
+        D3. French conjugator
+        D4. Spell checking
+        D5. Encyclopaedia Britannica
+        D6. Wikipedia 
+    Publishing and Organizing
+        P1. TWiki
+        P2. Muse
+        P3. Org-mode
+        P4. Calendar and diary 
+    Mail and Usenet
+        M1. Gnus 
+    Instant Messaging and Chatting
+        I1. IRC
+        I2. Jabber 
+    Games and Fun
+        G1. Psychotherapy
+        G2. Tetris
+        G3. Butterfy
+        G4. Uptime
+        G5. Artist 
+    Further reading 
+
+About
+
+This wiki page presents some tips and tricks on how to use Emacs more productively.
+
+To start up with Emacs, read the EmacsAdvocacy and EmacsGettingStarted pages.
+
+To hack on CDS Invenio in Emacs, see also a sample elisp startup file at http://invenio-demo.cern.ch/hacking/cdsware.el.
+
+User Interface
+
+U1. Ergonomic bell
+
+Annoyed by the audible bell? This is how you switch to the visual one:
+
+   $ grep bell ~/.emacs
+   (setq visible-bell t)
+
+Don't forget also to:
+
+   $ cat ~/.inputrc
+   set bell-style none
+
+U2. Ergonomic colors
+
+You may want to use a different, more eye-friendly colour scheme in Emacs. There is color-theme package enabling you to easily customize this. http://www.emacswiki.org/cgi-bin/wiki/ColorTheme
+
+1. Download ``color-theme''. On Debian, apt-get install emacs-goodies-el. On Gentoo, emerge app-emacs/color-theme.
+
+2. If you download it manually, then put it into your own private Emacs Lisp directory somewhere. E.g. if you have your Emacs Lisp files in the ~/private/lib/emacs directory, then set up load path into your $HOME/.emacs:
+
+    (setq load-path (cons (expand-file-name "~/private/lib/emacs/") load-path))
+
+and put this into your ~/.emacs to set up a colour theme:
+
+    (when (locate-library "color-theme")
+      (require 'color-theme)
+      (color-theme-initialize)
+      (color-theme-ld-dark))
+
+3. As for the themes, personally I like themes such as `color-theme-ld-dark', `color-theme-charcoal-black', `color-theme-clarity', `color-theme-gnome2', etc. For an overview of various predefined themes and what they look like when editing C files, see http://gnuemacscolorthemetest.googlecode.com/svn/html/index-c.html.
+
+4. If you happen to like a color scheme like `color-theme-gnome2', and you are using Emacs inside a terminal over ssh connection, then you may find that this color scheme is not very nice due to colour depth. You may prefer e.g. `color-theme-midnight'' in this context. To install such a color combination automatically depending on the graphical vs terminal context, do:
+
+     (if (eq (symbol-value 'window-system) nil)
+         (color-theme-midnight)
+         (color-theme-gnome2)))
+
+U3. Ergonomic font
+
+I quite like the ETL font family.
+
+   $ grep -i emacs ~/.Xresources
+   Emacs.font: -etl-fixed-medium-r-normal-*-16-160-*-*-*-*-*-*
+   Emacs*Background: black
+   Emacs*Foreground: white
+
+   $ grep xrdb ~/.xsession
+   xrdb -merge ~/.Xresources &
+
+U4. Ergonomic mouse
+
+To enable mouse wheel, do:
+
+   ;; wheel mouse scroll enabled:
+   (mouse-wheel-mode t)
+
+U5. Ergonomic menus
+
+You may want to hide the splash screen, the menu bar, the tool bar, the scroll bar, and the like; they only eat valuable screen space. If you need menu bar to help launch some command you forgot the key combination for, then invoke it temporarily via =M-x menu-bar-mode RET=. SO let us hide them all:
+
+   ;; scrolling, parens, cursor, menu, and such:
+   (scroll-bar-mode nil)
+   (blink-cursor-mode nil)
+   (setq transient-mark-mode t)
+   (menu-bar-mode nil)
+   (tool-bar-mode nil)
+
+   ;; no splash screen:
+   (setq inhibit-startup-message t)
+   (setq inhibit-splash-screen t)
+
+On the other hand, you may want to display some interesting things in the status bar like the column numbers or the day and time:
+
+   ;; display column numbers in status bar:
+   (column-number-mode 't)
+
+   ;; display time in status bar:
+   (setq display-time-24hr-format t)
+   (setq display-time-day-and-date t)
+   (display-time)
+
+or, if you are working on a laptop, the battery status and the temperature:
+
+   ;; battery mode:
+   (require 'battery)
+   (setq battery-mode-line-format " [%L %p%% %dC]")
+   (display-battery-mode)
+
+See also below the coding recipe C7 about how to display current function name in the status bar.
+
+U6. Ergonomic keys
+
+As one joke has it, Emacs is an acronym for Escape-Meta-Alt-Control-Shift. Which means you may be pressing these key combinations a lot, which means you should (1) learn about effective editing facilities Emacs offers, and (2) map them to key combinations that suit your editing style, in order to be more productive with your editing.
+
+Firstly, you can remap meaning of your keys via commands like global-set-key and local-set-key. It is of course a matter of personal choice and preferences.
+
+For example, you can change the useless Caps Lock key into a Control key in your OS.
+
+For example, if your keyboard has a Windows key, your keyboard layout can map this key into the `Super' key that you can use to define your own key combinations in Emacs.
+
+For example, if you use Dvorak keyboard layout, you may find it practical to map key combinations with a Ctrl-c prefix that will use the left pinkie and the right middle finger effectively.
+
+For example, if you use join-line command frequently, then you can define a global keyboard shortcut to achieve this:
+
+   ;; join lines:
+   (global-set-key (kbd "C-c j") 'join-line)
+
+For example, if you are used to use C-a and C-e to move to the beginning and end of the line, then you may want to remap your Home and End keys to move to the beginning and end of the buffer instead:
+
+   ;; let us use Home/End for buffer (while C-a, C-e for line):
+   (global-set-key [home] 'beginning-of-buffer)
+   (global-set-key [end] 'end-of-buffer)
+
+You will see more global and local key (re)definitions in other sections of this wiki page.
+
+Secondly, you should learn carefully about various editing possibilities Emacs offers, in order to move around and edit more quickly and effectively. For example, to have an ergonomic forward movement within your Emacs buffer, you have options like:
+
+    C-f ... forward-char, to move one character forward
+    M-f ... forward-word, to move one word forward
+    M-e ... forward-sentence, to move one sentence forward
+    M-} ... forward-paragraph, to move one paragraph forward
+    C-x ] ... forward-page, to move one page forward 
+
+Some movement commands may be less known but are rather practical. For example:
+
+    M-m ... back-to-indentation; jump to first non-blank char on the line, useful e.g. for Python source code
+    C-u C-SPC ... pop-global-mark; visit place you have been at last: e.g. jump to beginning of buffer, do some stuff like replace, then press this jump back to where you have been
+    M-g g ... goto-line; see also M-x linum-mode RET 
+
+Movement command keyboard scheme typically mirror to other facilities, such as transposition commands to cite one example:
+
+    C-t ... transpose letters
+    M-t ... transpose words
+    M-x ... transpose-sentences RET
+    M-x ... transpose-paragraphs RET
+    M-C-t ... transpose-sepxs (in Lisp mode)
+    C-x C-t ... transpose-lines 
+
+Some of the deletion commands:
+
+    M-d ...kill-word, to kill to the end of the word
+    M-DEL ... backward-kill-word, to kill the the beginning of the word
+    M-z ... zap-to-char, to kill up to a given char
+    C-x C-o -- delete-blank-lines, to remove all but one empty line around the point 
+
+Some of the grepping commands:
+
+    M-x grep RET ... brings you to a cool grep mode
+    M-s o ... occur, simpler alternative 
+
+Some of the marking commands:
+
+    M-@ ... mark-word, to mark words without having to move around (more ergonomic than pressing C-SPC M-f)
+    M-h ... mark-paragraph, without moving around
+    C-x h ... mark-whole-buffer
+    C-x C-x ... exchange-point-and-mark 
+
+Some locally useful on-the-spot editing commands may be handy, like:
+
+    M-c ... capitalize-word, i.e. Make It Like This
+    M-l ... downcase-word, i.e. make it like this
+    M-u .... upcase-word, i.e. MAKE IT LIKE THIS 
+
+Thirdly, if you are editing code, you will be using some specific language mode, which brings a lot of facilities and shortcuts for most common operations. This will be described elsewhere on this wiki page, but you should develop a habit of discovering via help commands what the mode offers, such as to describe the given mode, to find where certain functions are bound, or what a pressing a certain key combination does:
+
+    C-h m ... describe-mode, to describe given modes
+    C-h b ... describe-bindings, to describe key bindings
+    C-h k ... describe-key, to describe what some key does 
+
+or to learn about Emacs functions and variables itself:
+
+    C-h v ... describe-variable
+    C-h f ... describe-function
+    C-h a ... apropos-command 
+
+Finally, the rest of this wiki page provides some specific hits on how to be effective in various editing situations, combining keys and facilities together.
+
+U7. Highlight syntax
+
+Color syntax highlighting is virtually a must:
+
+   ;; setting color syntax highlighting:
+   (require 'font-lock)
+   (global-font-lock-mode t)
+   (setq-default font-lock-auto-fontify t)
+
+U8. Highlight recent changes
+
+To track which parts of a big file you have just changed, you can use the highlight-changes-mode:
+
+   M-x highlight-changes-mode RET
+
+U9. Highlight current line
+
+To track which line you are currently editing, use the hl-line mode:
+
+   ;; highlight current line:
+   (global-hl-line-mode 1)
+   (set-face-background 'hl-line "#666666")
+
+Buffers
+
+B1. Tab bar mode
+
+Tabbar mode adds a tiny line giving you a fast tab-style overview of open buffers and group of buffers and permits you to cycle easily between them. It is good to have this mode off by default (to save the screen space) and quickly switch it on and off in case of need via a keyboard shortcut. An excerpt from my $HOME/.emacs:
+
+   (require 'tabbar)
+   (global-set-key [(control f10)] 'tabbar-mode)
+   (global-set-key [(control down)] 'tabbar-backward-group)
+   (global-set-key [(control up)] 'tabbar-forward-group)
+   (global-set-key [(control left)] 'tabbar-backward)
+   (global-set-key [(control right)] 'tabbar-forward)
+
+See http://www.emacswiki.org/cgi-bin/wiki/TabBarMode for more.
+
+B2. Ido
+
+A nicer buffer navigation method than the standard one or than the tab bar mode is provided by ido.
+
+For example, if you have a file named search_engine.py, then press C-x b s_e RET to go to that buffer. (That is, s_e will be fuzzily autocompleted to search_engine.)
+
+Another example: the buffers are offered according to the visit frequency, so one types less when doing C-x b.
+
+Yet another example: in order to open a file called search_engine.py that lives somewhere in your home directory, just press C-x f and type the file name and wait a second or two and ido will find the proper file for you, based on your editing history and visit frequency. No need to be located or remember in the directory where the file lives in order to open it.
+
+   ;; IDO:
+   (require 'ido)
+   (ido-mode t)
+   (setq ido-enable-flex-matching t)
+
+B3. Desktop
+
+Want to keep all your buffers in the position you left them then next time you start Emacs? You can use the desktop-save-mode, just put in your ~/.emacs the following:
+
+   ;; save desktop:
+   (desktop-save-mode 1)
+
+or invoke manually:
+
+   M-x desktop-save RET
+
+to save the desktop, and:
+
+   M-x desktop-read RET
+
+to restore it.
+
+(Although personally I prefer not to have desktop but to simply let files open on the position I left them; see the recipe F2 on this page.)
+
+B4. Saving window configurations
+
+If you work with different frame window configurations, say one layout for Gnus and ERC, another layout for source code and gdb, then it may be practical to save your various frame window layouts and quickly restore them depending on what you are doing.
+
+To achieve this, you can save your current window configuration via C-x r w to some register, say `g' for Gnus, and then use C-x r j to jump back to it.
+
+B5. Multi-buffer operations
+
+You may like your buffer menu window to behave more like dired (see the tips in the next section (F6)). This can be achieved by using ibuffer:
+
+   ;; ibuffer:
+   (require 'ibuffer)
+   (setq ibuffer-default-sorting-mode 'major-mode)
+   (setq ibuffer-always-show-last-buffer t)
+   (setq ibuffer-view-ibuffer t)
+   (global-set-key (kbd "C-x C-b") 'ibuffer-other-window)
+
+Now just press C-x C-b h and read about the multitude of commands available, such as searching and replacing in selected buffers, etc.
+
+File operations
+
+F1. Backup files
+
+By default emacs create backup copies of FILE with FILE~. This will clutter your filesystem and may be a security threat if you are editing for example files visible via the Web, because trying URLs like http://example.com/index.php~ may lead to source code exposure.
+
+To make fancy versioned backups (a la VMS OS) into a specific directory $HOME/.saves, you can do:
+
+   (setq backup-by-copying t      ; don't clobber symlinks
+         backup-directory-alist
+         '(("." . "~/.saves"))    ; don't litter my fs tree
+         delete-old-versions t
+         kept-new-versions 6
+         kept-old-versions 2
+         version-control t)       ; use versioned backups
+
+See also http://www.emacswiki.org/cgi-bin/wiki?BackupDirectory.
+
+F2. Remembering file locations
+
+When you open a file, do you want to jump right to the location where you were the last time you were visiting this file? Use saveplace to achieve this.
+
+   ;; instead of save desktop, rather save last editing place in files,
+   ;; as well as minibuffer:
+   (require 'saveplace)
+   (setq-default save-place t)
+   (savehist-mode t)
+
+F3. Remote file editing
+
+You can use tramp to edit remote files via ssh in your local Emacs session. Put the following in your $HOME/.emacs:
+
+   ;; tramp: (app-emacs/tramp)
+   (when (locate-library "tramp")
+     (require 'tramp)
+     (setq tramp-default-method "sshx"))
+
+and evaluate it (or restart Emacs) after which you can do:
+
+   C-x C-f /cdsware.cern.ch:/tmp/foo.txt
+
+to edit file ``foo'' located on machine ``sunuds99''.
+
+Or to edit some files as root:
+
+   C-x C-f /sudo::/etc/conf.d/net
+
+For more info, see tramp's info manual (C-h i tramp RET) or its Emacs wiki page http://www.emacswiki.org/cgi-bin/wiki/TrampMode.
+
+F4. Automatic GPG encryption/decryption
+
+Do you have some GPG-encrypted files in your home that you would like to have automatically decrypted/encrypted when opening/editing/saving them in Emacs? Again there are several alternatives, out of which easypg is very nice.
+
+   ;; automatic GPG encryption/decryption support: (app-emacs/easypg)
+   (require 'epa-file)
+   (epa-file-enable)
+
+F5. File difference
+
+Another valuable goodie is diff between two files. Emacs has very nice ediff for this. Put this into your $HOME/.emacs:
+
+   (setq ediff-window-setup-function 'ediff-setup-windows-plain)
+
+and then do M-x ediff RET or, when you are in eshell:
+
+   $ ediff file1 file2
+
+which will bring you to an ediff mode, where in the control window you can type e.g. 'n' to go to the next difference between the files.
+
+For more info see manual on diff mode.
+
+   C-h i ediff RET
+
+or wiki page http://www.emacswiki.org/cgi-bin/wiki/EdiffMode.
+
+Ediff plays nicely with CVS backend, for example.
+
+F6. Multi-file operations
+
+The dired mode is an Emacs interface to the filesystem, enabling you to perform certain operations on multiple files. The dired mode can be combined with other Emacs goodies such as the search and replace tool into a powerful multi-file editing tool.
+
+Dired Example One: we would like to rename all files named *.shtml.wml into *.php.wml in a certain directory such as /tmp. You may know of the Linux CLI tool mmv with which we could do:
+
+   $ mmv '*.shtml.wml' '#1.php.wml'
+
+but what if we are on a system where mmv is not available? Shall we try to install it or write a little script to achieve what we want? What about using Emacs's dired and its dired-do-rename-regexp command (bound on % R) instead. Firstly, press C-x d /tmp RET to launch dired on our working directory (or dired /tmp in the eshell). Then use this dired file regexp renaming command:
+
+   % R ^\(.*\)\.shtml\.wml$ RET \1.php.wml RET
+
+and press y or n or ! to rename some or all of the matched files, and we are done.
+
+Dired Example Two: we are moving away from javadoc-style of docstrings to epydoc-style of docstrings in our coding project, so we would like to replace all occurrences of @param foo bar by @param foo: bar recursively in all our sources.
+
+Firstly, search for all the files containing @param something space, i.e. when the variable name not followed by a colon, and let us make a dired buffer out of these files, by means of find-grep-dired:
+
+   M-x find-grep-dired RET ~/src/cds-invenio/modules RET @param \(\w*\) SPC RET
+
+Secondly, in the dired buffer, mark only the Python files for further processing:
+
+   % m \.py$ RET
+
+Thirdly, replace wanted expressions in the preselected files:
+
+   Q @param \(\w+\) SPC RET @param \1: SPC RET
+
+Now choose interactively y or n to replace or not the given occurrence of the param regexp, or use ! to replace silently every occurrence, etc.
+
+Finally, save all buffers:
+
+   C-x s !
+
+and we are done.
+
+Another advantage of doing these replacements inside Emacs itself rather than via CLI one-liners is a much better interactivity: we can easily test our regexps, replace only some occurrences while not touching others, revert some of the edits back, etc.
+
+OS operations
+
+O1. Emacs shell
+
+Another valuable goodie I'm using all the time is eshell, the Emacs shell. It's a normal Unix shell but within Emacs itself. (It works also under MS Windows that represents a survival feature in that `promptless' OS.)
+
+To start Emacs shell, do:
+
+   M-x eshell RET
+
+If you are using C-a to jump to the beginning of the line, it may be good to make it jump to the command start in eshell:
+
+   ;; eshell C-a to jump to command start only:
+   (defun eshell-maybe-bol ()
+     "C-a goes to the beginning of command, not beginning of line."
+     (interactive)
+     (let ((p (point)))
+       (eshell-bol)
+       (if (= p (point))
+           (beginning-of-line))))
+   (add-hook 'eshell-mode-hook
+             '(lambda () (define-key eshell-mode-map "\C-a" 'eshell-maybe-bol)))
+
+If you prefer to have bash-like file completion, use:
+
+   ;; eshell completion to behave like bash:
+   (setq eshell-cmpl-cycle-completions nil)
+
+You can configure eshell to launch some commands in ANSI terminal; see also the next tip (O2):
+
+   ;; eshell to launch certain apps in ansi-term:
+   (require 'em-term)
+   (add-to-list 'eshell-visual-commands "vim")
+
+You can create eshell shortcuts like:
+
+   eshell> alias invenio-make-etags 'cd ~/private/src/cds-invenio; make etags; cd -'
+
+For more hints about eshell, see http://www.emacswiki.org/cgi-bin/wiki/CategoryEshell.
+
+O2. ANSI terminals
+
+If eshell cannot run some programs to due terminal capabilities, then try ansi-term:
+
+   M-x ansi-term RET
+
+or else multi-term that can be downloaded from http://www.emacswiki.org/emacs/MultiTerm:
+
+   M-x multi-term RET
+
+Note also that you can customize eshell-visual-commands; see previous tip (O1).
+
+O3. Lightweight Emacs as a shell editor
+
+While I'm often using vim to edit small config files and other stuff inside shell or over SSH, it is nice to have an option of using independent lightweight Emacs processes launched in terminal as the main shell editor, because it loads really fast and can do a very nice moderately-long editing job over SSH. To this effect you can define e and ee aliases like:
+
+   $ grep emacs ~/.bashrc
+   alias e="emacs -q -nw -eval \"(progn (setq inhibit-startup-message t)(global-font-lock-mode t))\""
+   alias ee="emacs -q -nw --no-site -eval \"(progn (setq inhibit-startup-message t)(global-font-lock-mode t))\""
+   export VISUAL="emacs -q -nw -eval \"(progn (setq inhibit-startup-message t)(global-font-lock-mode t))\""
+   export EDITOR="emacs -q -nw -eval \"(progn (setq inhibit-startup-message t)(global-font-lock-mode t))\""
+
+and then you can type in shell:
+
+   $ e foo.py
+
+Note that for an even more lightweight Emacs, you can run ee that does not load site packages (so you may lack python mode etc).
+
+   $ ee foo.py
+
+Also note that the lightweight Emacs process will get opened for commands such as:
+
+   $ crontab -e
+
+Macros and Elisp
+
+M1. Repeat last shell command
+
+It is an often-done thing to perform last shell command once more. Put this function into your $HOME/.emacs :
+
+   ;; repeat last shell command:
+   (defun repeat-last-shell-command ()
+     "Repeat last command passed to shell-command.
+      From <http://www.dotemacs.de/dotfiles/KilianAFoth.emacs.html>."
+     (interactive)
+     (save-buffer)
+     (or shell-command-history (error "Nothing to repeat."))
+     (shell-command (car shell-command-history)))
+   (global-set-key "\C-cj" 'repeat-last-shell-command)
+
+Then when you edit ``guide.html.wml'' in emacs, you first do:
+
+   M-! make install RET
+
+which will install the file, and then after you edit the file again in the future you may press:
+
+   C-c j
+
+that will save the buffer for you and that will launch the last shell command, in occurrence `make install'. This means that you only press C-c j in order to save and install your changes, again and again.
+
+M2. Elisp shortcuts
+
+If you run some shell commands often, such as make install and apachectl restart, you may want to create keyboard shortcuts for them in order to run them easily from within Emacs:
+
+   ;; shortcuts for make install and friends:
+   (defun tsi-make-install ()
+     "Run make install"
+     (interactive)
+     (save-buffer)
+     (shell-command "make install"))
+   (defun tsi-make-install-and-apache-restart ()
+     "Run make install and apache restart"
+     (interactive)
+     (save-buffer)
+     (shell-command "make install")
+     (shell-command "sudo /soft/bin/apachectl restart"))
+   (global-set-key [(control f8)] 'tsi-make-install)
+   (global-set-key [(control f9)] 'tsi-make-install-and-apache-restart)
+
+M3. Regexps
+
+Emacs regexps is a powerful tool but EMacs regexps behave a bit differently than usual. E.g. parens are to be escaped, so instead of (\w+) you would type \(\w+\). In order to help learn these regexp diffs, there is M-x re-builder RET. You can try out your regexp and re-builder will highlights matches in the given buffer as you type.
+
+M4. Keyboard macros
+
+Need to run a certain operation on a bunch of lines? E.g. add some text after a certain column or to the end of every line in a buffer? With keyboard macros you can perform your line operations `live' for a line, while recording them, and then replay them for the other lines.
+
+How to record a macro: position yourself to the beginning of line, press C-x ( to start recording keyboard macro, then do some stuff such as C-e to jump to end of line to write some text, then press C-a C-n to jump to start of the next line, then C-x ) to end macro recording.
+
+How to replay a macro: C-x e to replay it once, then keep pressing e to replay it for other lines. Or, to replay it for the following 1234 lines, do C-u 1234 C-x e. Or, to replay macro to all lines in a region, do C-x C-k r.
+
+You can combine macros with register counters in order to rapidly help Bart Simpson:
+
+   C-u 1 C-x r n a   ;; store number 1 in register `a'
+   C-x (             ;; start recording macro
+   C-x r i a         ;; insert contents of register `a'
+   C-f . I will not waste chalk. RET ;; enter our text
+   C-x r + a         ;; increment register `a'
+   C-x )             ;; end recording macro
+   C-u 7 C-x e       ;; apply macro 7 times
+
+which will produce this output:
+
+   1. I will not waste chalk.
+   2. I will not waste chalk.
+   3. I will not waste chalk.
+   4. I will not waste chalk.
+   5. I will not waste chalk.
+   6. I will not waste chalk.
+   7. I will not waste chalk.
+   8. I will not waste chalk.
+
+Autocompletion
+
+A1. Autocompletion, first take
+
+Regardless of the programming language or text mode, you can use a simple autocompletion via M-/. This feature is called dynamic abbrevs. Look up Emacs info for more on abbrevs.
+
+Instead of using dabbrev-expand, you may perhaps prefer to use hippie-expand which is a bit more permissive (e.g. autocompletion on file names). But often you may want to distinguish them, e.g dabbrev expand may be more precise than hippie expand when auto-completing code. So I'm using two different bindings:
+
+   ;; autocompletion, take 1:
+   (global-set-key [(meta /)] 'dabbrev-expand)
+   (global-set-key [(control /)] 'hippie-expand)
+
+See also the section below about source code tags, and on third take on autocompletion.
+
+A2. Autocompletion, second take
+
+If you rather prefer to use visual completion of options from a drop down menu, install auto-complete package.
+
+   ;; autocompletion, take 2:
+   (when (require 'auto-complete nil t)
+     (require 'auto-complete-yasnippet)
+     (require 'auto-complete-semantic)
+     (require 'auto-complete-css)
+     (set-face-foreground 'ac-menu-face "wheat")
+     (set-face-background 'ac-menu-face "darkslategrey")
+     (set-face-underline 'ac-menu-face "wheat")
+     (set-face-foreground 'ac-selection-face "white")
+     (set-face-background 'ac-selection-face "darkolivegreen")
+     (setq ac-auto-start 4) ; start auto-completion after 4 chars only
+     (global-set-key "\C-c1" 'auto-complete-mode) ; easy key to toggle AC on/off
+     (define-key ac-complete-mode-map "\t" 'ac-complete)
+     (define-key ac-complete-mode-map "\r" nil)
+     (global-auto-complete-mode t))1
+
+A3. Visual kill ring
+
+Want to copy-paste some old deleted text? C-y inserts the latest deleted one from the kill ring, and M-u enables to cycle though past ones in order to find the one you want.
+
+Would like to have some more intuitive, graphical tool? Install browse-kill-ring and do M-x browse-kill-ring RET.
+
+Coding
+
+C1. Code folding: outline
+
+When you program, it is very interesting to be able to temporarily show/hide pieces of code. (I think some editors calls this ``code folding''.)
+
+One way is to use an outline mode for this. When you edit a text file, e.g. a documentation, you can use major outline mode:
+
+   M-x outline-mode RET
+
+see e.g. the Show/Hide menu that should have appeared.
+
+When you program, the outline mode can co-exist with various programming modes as a minor outline mode. You can configure separate code folding strategies for all the various languages you code in.
+
+For example, for Python:
+
+   ;; python mode combined with outline minor mode:
+   (add-hook 'python-mode-hook
+      (lambda ()
+        (outline-minor-mode 1)
+        (setq outline-regexp "def\\|class ")
+        (setq coding-system-for-write 'utf-8)
+        (local-set-key "\C-c\C-a" 'show-all)
+        (local-set-key "\C-c\C-t" 'hide-body)
+        (local-set-key "\C-c\C-s" 'outline-toggle-children)))
+
+C2. Code folding: narrowing
+
+Another way to achieve code folding is to use narrowing. This can be combined with the outlining mentioned previously. Here are some narrowing functions:
+
+   C-x n d ... narrow to def
+   C-x n n ... narrow to region
+   C-x n p ... narrow to page
+   C-x n w ... widen back
+
+E.g. when you are editing a function definition, and want to abstract away from the surrounding code, then you can press C-x n d to see only the function definition, and work on it.
+
+E.g. you can narrow your buffer to some region only, and then you can run your keyboard macros on the whole region via C-u 0 C-x e in one go, without disturbing the rest of your buffer.
+
+When you are finished with changes, widen back via C-x n w.
+
+C3. Programming modes
+
+Install some programming helper modes for Emacs:
+
+   $ apt-get install html-helper-mode css-mode python-mode nxml-mode
+
+When editing, say, Python file, see all the keyboard bindings for Python mode by doing:
+
+   M-x describe-bindings RET
+
+and discover useful ones or add ones you use often but are missing. For example, C-c p to run Pylint, or C-c w to run Pychecker:
+
+   (autoload 'python-mode "python-mode" "Python editing mode." t)
+   (setq interpreter-mode-alist (cons '("python" . python-mode) interpreter-mode-alist))
+   (global-set-key "\C-cp" 'pylint)
+   (global-set-key "\C-cw" 'py-pychecker-run)
+   ; workaround for Emacs22 and pylint/pychecker:
+   (setq compilation-scroll-output t)
+
+C4. Code tags/indexes
+
+Index the class/methods/function definitions of your sources via etags, for example by doing:
+
+   $ make etags
+
+in CDS Invenio sources, or invoke manually:
+
+   $ find . -name "*.py" -print | xargs etags
+   $ ls -l TAGS
+
+Then, when editing this project files' in Emacs, do:
+
+   M-.      ... to find first definition of a symbol (use TAB to complete)
+   C-u M-.             ... to find alternative definition(s) of a symbol
+   M-x tags-search RET ... to find locations where symbol is used (called)
+   M-,                 ... to find the next location
+   M-x tags-query-replace RET ... to replace symbol in all positions
+
+See Emacs Manual section about Tags.
+
+C5. IDE
+
+In addition to editing programming modes, you can use CEDET and ECB to have fancy browsing features such as list of functions/classes/methods in the file, speedbars, etc. See ECB screenshots and ECB overview.
+
+Get the software:
+
+   $ sudo emerge app-emacs/cedet app-emacs/ecb
+
+and configure it like:
+
+   ;; CEDET/ECB/semantic:
+   (require 'cedet)
+   (require 'ecb)
+   (setq semantic-load-turn-useful-things-on t)
+   (setq global-semantic-show-tag-boundaries-mode nil)
+   (setq global-semantic-show-parser-state-mode nil)
+   (setq semanticdb-default-save-directory "/tmp")
+   (setq semanticdb-global-mode nil)
+   (setq semanticdb-persistent-path (quote (never)))
+   (semantic-load-enable-code-helpers)
+   (global-semantic-auto-parse-mode -1)
+   (global-semantic-show-unmatched-syntax-mode -1)
+   (setq truncate-partial-width-windows nil)
+   ;(ecb-activate)
+
+Then start/stop ECB on your Python files by doing:
+
+   M-x ecb-activate RET
+   M-x ecb-deactivate RET
+
+And use fancy functions like to move into method browser window:
+
+   C-c . g m
+
+or toggle ECB windows on and off:
+
+   C-c . l w
+
+etc. See http://www.emacswiki.org/cgi-bin/wiki/EmacsCodeBrowser.
+
+C6. Electric pairs and parentheses
+
+You want naturally to match parentheses:
+
+   (show-paren-mode t)
+
+But don't you also want to type ( and let the editor enter complete () pair for you? Do you want to enter more characters in pairs, such as quotes? There are several options how to achieve this, one of which is to use skeleton:
+
+   ;; input parens in pairs in py-mode:
+   (require 'skeleton)
+   (setq skeleton-pair t)
+   (global-set-key (kbd "(") 'skeleton-pair-insert-maybe)
+   (global-set-key (kbd "[") 'skeleton-pair-insert-maybe)
+   (global-set-key (kbd "{") 'skeleton-pair-insert-maybe)
+   (global-set-key (kbd "'") 'skeleton-pair-insert-maybe)
+   (global-set-key (kbd "\"") 'skeleton-pair-insert-maybe)
+
+Better pairing with skeleton (e.g. to delete pairs in one go) can be achieved by doing also:
+
+   ;; better pairing: <http://www.emacswiki.org/emacs/AutoPairs>
+   (setq skeleton-pair-alist
+         '((?\( _ ?\))
+           (?[  _ ?])
+           (?{  _ ?})
+           (?\'  _ ?\')
+           (?\" _ ?\")))
+
+   (defun insert-pair-or-move-forward (arg)
+     (interactive "P")
+     (cond
+      ((and (not arg)
+            (not mark-active)
+            (or (not (assq last-command-char skeleton-pair-alist))
+                (eq last-command-char
+                    (car (last (assq last-command-char
+                                     skeleton-pair-alist)))))
+            (eq (char-after) last-command-char))
+       (forward-char 1))
+      (t
+       (skeleton-pair-insert-maybe arg))))
+
+   (defadvice delete-backward-char (before delete-empty-pair activate)
+     (if (eq (char-after)
+             (car (last (assq (char-before) skeleton-pair-alist))))
+         (and (char-after) (delete-char 1))))
+
+   (global-set-key "("  'insert-pair-or-move-forward)
+   (global-set-key ")"  'insert-pair-or-move-forward)
+   (global-set-key "["  'insert-pair-or-move-forward)
+   (global-set-key "]"  'insert-pair-or-move-forward)
+   (global-set-key "{"  'insert-pair-or-move-forward)
+   (global-set-key "}"  'insert-pair-or-move-forward)
+   (global-set-key "\'" 'insert-pair-or-move-forward)
+   (global-set-key "\"" 'insert-pair-or-move-forward)
+
+Note that if you are editing Lisp code, there is nothing better than paredit to edit/move/etc in S expressions.
+
+   ;; insert parens and quotes in pairs, navigate intelligently in S
+   ;; expressions:
+   (require 'paredit)
+
+For an overview of commands of the paredit mode, please see the paredit reference card http://mumble.net/~campbell/emacs/paredit.html.
+
+It also helps to dim the parens off via parenface:
+
+   ;; dim off the parens:
+   (defface paren-face
+       '((((class color))
+          (:foreground "AntiqueWhite4")))
+     "Face for displaying a paren."
+     :group 'faces)
+   (require 'parenface)
+
+since the Lisp code, quite like the Python code, is read by indentation, not by parens.
+
+C7. Code snippets
+
+Want to type try in the Python mode and have your editor complete the try/except code snippet for you? Or type class and have your editor complete a full template for entering a new class for you? Again, there are several alternatives, out of which I like yasnippet the most. It comes with snippets predefined for many languages. However, Pythonic yasnippets are not so numerous, so I created some custom ones (e.g. to have epytext docstring friendly def/class snippets).
+
+   ;; yasnippet for Python:
+   (require 'yasnippet)
+   (yas/initialize)
+   (set-face-background  'yas/field-highlight-face "Grey10")
+   (set-face-background  'yas/mirror-highlight-face "Grey10")
+   (yas/load-directory "/usr/share/emacs/etc/yasnippet/snippets")
+   (yas/load-directory "~/private/lib/emacs/yasnippets") ;; load also my custom snippets
+
+Example of how to define a custom snippet:
+
+   $ cat ~/private/lib/emacs/yasnippets/text-mode/python-mode/try
+   # name: try ... except ...
+   # group: exceptions
+   # contributor: Tibor Simko <tibor.simko@cern.ch>
+   # --
+   try:
+       $1
+   except ${2:ImportError}:
+       ${3:pass}
+
+Now just type try TAB and see the code skeleton being generated for you, and press TAB to complete the skeleton places, etc.
+
+For more Pythonic yasnippets, <see /afs/cern.ch/user/s/simko/public/yasnippets.
+
+C8. Which function am I editing?
+
+When editing body of a looong function (taking more than one screen), it would be nice to always see the name of the function we are editing in the status bar. which-function-mode is one option to achieve this. (Emacs 23 only.)
+
+   ;; which function am I editing?
+   (when (>= emacs-major-version 23)
+     (add-hook 'python-mode-hook
+               (lambda ()
+                 (which-function-mode t))))
+
+C9. Trailing whitespace
+
+It is not good to keep trailing whitespace in a code that other programmers can contribute to using other editors; the line changes consisting of trailing whitespace may be seen by the version control system as significant, depending on how editors are configured. So it is usually best not to have any trailing whitespaces in the code.
+
+Here is how to configure Emacs to display trailing whitespaces as warnings:
+
+   ;; show trailing whitespaces is some programming modes:
+   (mapc (lambda (hook)
+      (add-hook hook (lambda ()
+             (setq show-trailing-whitespace t))))
+         '(text-mode-hook
+      c-mode-hook
+      emacs-lisp-mode-hook
+      lisp-mode-hook
+      java-mode-hook
+      python-mode-hook
+      shell-script-mode-hook))
+
+You can then delete trailing whitespace in a buffer explicitly by calling:
+
+   M-x delete-trailing-whitespace RET
+
+Alternatively, to set up an automatic deletion of trailing whitespace upon saving your buffers, use:
+
+   ;; delete trailing whitespace before saving:
+   (add-hook 'before-save-hook 'delete-trailing-whitespace)
+
+C10. Spaces instead of tabs
+
+You definitely want to use spaces instead of tabs:
+
+   ;; spaces instead of tabs:
+   (setq-default indent-tabs-mode nil)
+
+C11. Code-friendly spell checking
+
+To spell check only your docstrings and code comments, use flyspell-prog-mode:
+
+   ;; spell check only strings/comments when in Python mode:
+   (add-hook 'python-mode-hook 'flyspell-prog-mode)
+
+C12. Making on the fly
+
+Flymake brings an on-the-fly code checking capabilities while you edit the code. For example, when hacking on Python, you can use flymake in connection with pyflakes to discover syntax errors, undefined variables, etc as soon as you type.
+
+   ;; flymake with pyflakes:
+   (when (load "flymake" t)
+     (defun flymake-pyflakes-init ()
+       (let* ((temp-file (flymake-init-create-temp-buffer-copy
+                          'flymake-create-temp-inplace))
+              (local-file (file-relative-name
+                           temp-file
+                           (file-name-directory buffer-file-name))))
+         (list "pyflakes" (list local-file))))
+     (add-to-list 'flymake-allowed-file-name-masks
+                  '("\\.py\\'" flymake-pyflakes-init)))
+   (add-hook 'find-file-hook 'flymake-find-file-hook)
+
+   ;; display flymake warnings without mouse:
+   ;; <http://paste.lisp.org/display/60617,1/raw>
+   (load-file "~/private/lib/emacs/misc/flymake-cursor.el")
+   (global-set-key (kbd "C-`") 'flymake-goto-next-error)
+
+C13. Running on the fly
+
+When hacking a dynamic language, there are easy possibilities to ``test as we code'' in dynamic interpreters. SLIME for Common Lisp is a perfect example of such a powerful run-as-you-edit combination. For hacking Python, one can use ipython.el that provides better Python interpreter than the standard one:
+
+   (when (locate-library "ipython")
+     (require 'ipython)
+     (setq py-python-command-args '("-colors" "Linux")))
+
+ipython enhancements cover functionality like:
+
+    e.g. xmode Verbose to see stack variables in the traceback
+    e.g. `pdb on' to use ipdb and there `locals()' and `up/down' the stack
+    e.g. lsmagic to see all the magic functions available
+    e.g. macro and history list
+    e.g. bg to execute in the background thread
+    e.g. mixing shell and python vars, x = uptime and then x.n 
+
+Then, when hacking Python code, you can start Python interpreter with C-c , (re)evaluate your buffer with C-c C-c, (re)evaluate your function definition with C-M-x, go retest stuff in the ipython buffer, etc.
+
+You may also like to alter comint bindings: for history:
+
+   ;; comint mode:
+   (require 'comint)
+   (define-key comint-mode-map [(control p)]
+     'comint-previous-matching-input-from-input)
+   (define-key comint-mode-map [(control n)]
+     'comint-next-matching-input-from-input)
+   (define-key comint-mode-map [(control meta n)]
+     'comint-next-input)
+   (define-key comint-mode-map [(control meta p)]
+     'comint-previous-input)
+
+You can run ipython outside of Emacs too, of course. For more information on ipython, you can watch ``The IPython Interactive Shell'' screencast series by Jeff Rush at http://showmedo.com/videotutorials/series?name=CnluURUTV.
+
+C14. Look up the specs
+
+Some programming modes offer easy to use remote documentation lookup facilities. For example, for hacking Python, there is pylookup one can use. Install it like:
+
+   $ git clone git://github.com/tsgates/pylookup.git
+   $ rm pylookup.db
+   $ ./pylookup.py -u http://docs.python.org
+
+Then configure it:
+
+   ;; pylookup, to look though online Python docs
+   ;; (git clone git://github.com/tsgates/pylookup.git)
+   (load-file "~/private/lib/emacs/pylookup/pylookup.el")
+   (eval-when-compile (require 'pylookup))
+   (setq pylookup-program "~/private/lib/emacs/pylookup/pylookup.py")
+   (setq pylookup-db-file "~/private/lib/emacs/pylookup/pylookup.db")
+   (autoload 'pylookup-lookup "pylookup"
+     "Lookup SEARCH-TERM in the Python HTML indexes." t)
+   (autoload 'pylookup-update "pylookup"
+     "Run pylookup-update and create the database at `pylookup-db-file'." t)
+   (global-set-key "\C-ch" 'pylookup-lookup)
+
+Then use C-c h RET set RET to lookup online documentation on Pythonic sets from docs.python.org in another Emacs buffer.
+
+C15. Autocompletion, third take
+
+In addition to the previous two generic auto-completion tools, one can use the programming mode advanced completion methods that take into account given programming language features. For example, to hack on Python, there is pymacs and ropemacs:
+
+   ;; autocompletion, take 3: (app-emacs/pymacs, ropemacs)
+   (require 'pymacs)
+   (pymacs-load "ropemacs" "rope-")
+   (define-key ropemacs-local-keymap [(meta /)] 'dabbrev-expand)
+   (define-key ropemacs-local-keymap [(control /)] 'hippie-expand)
+   (define-key ropemacs-local-keymap [(control c) (control /)] 'rope-code-assist)
+
+I prefer to have this bound separately from usual dabbrev and hippie autocompletion features, hence the define-key's above.
+
+Now, just type:
+
+   import os
+   os.un
+
+and C-c C-/ to see autocompletion offers for un (unsetenv, uname, unlink) that the os module offers. This works naturally for locally defined Python objects as well, so you can type:
+
+   from invenio import search_engine
+   search.engine.s
+
+and ask ropemacs to show menu of possible function names to complete.
+
+Version control
+
+V1. Interfacing CVS repository
+
+Another goodie is version control giving you CVS backend right in Emacs. Put this into your $HOME/.emacs:
+
+   (setq vc-default-back-end 'CVS)
+
+Then you can open ``foo.py'' and e.g. do ``C-x v ='' to see changes from CVS HEADER, C-x v l to see the log, there d to inspect differences, etc.
+
+For example, press C-x v g to annotate every source code line with revision and committer and date, producing:
+
+   [...]
+   1.1          (tibor    15-Jun-04):     def clean(self):
+   1.1          (tibor    15-Jun-04):         "Cleans the words table."
+   1.34         (kaplun   06-Jun-07):         self.value = {}
+   1.1          (tibor    15-Jun-04):
+   1.23         (tibor    29-Aug-06):     def put_into_db(self, mode="normal"):
+   1.19         (tibor    20-Jun-06):         """Updates the current words table in the corresponding DB
+   1.1          (tibor    15-Jun-04):            idxFOO table.  Mode 'normal' means normal execution,
+   1.1          (tibor    15-Jun-04):            mode 'emergency' means words index reverting to old state.
+   1.1          (tibor    15-Jun-04):            """
+   1.35         (kaplun   08-Jun-07):         write_message("%s %s wordtable flush started" % (self.tablename, mode), verbose=2)
+   1.35         (kaplun   08-Jun-07):         write_message('...updating %d words into %s started' % \
+   1.35         (kaplun   08-Jun-07):                 (len(self.value), self.tablename), verbose=2)
+   1.35         (kaplun   08-Jun-07):         task_update_progress("%s flushed %d/%d words" % (self.tablename, 0, len(self.value)))
+   1.32         (tibor    15-May-07):
+   1.1          (tibor    15-Jun-04):         self.recIDs_in_mem = beautify_range_list(self.recIDs_in_mem)
+   [...]
+
+For example, C-x v d to get the status of a directory under version control.
+
+For more tips on Emacs version control, see e.g. wiki page http://www.emacswiki.org/cgi-bin/wiki/VersionControl.
+
+V2. Interfacing Git repository
+
+The default VC mode of Emacs works well with git, but the annotate functionality may require some tweaking, depending on your Emacs version:
+
+   ;; fix Emacs version control system co-operation with git:
+   (defun tsi-fix-git-annotate ()
+     "This command will fix Emacs 22.3.1 VC system with git 1.6.0.4 annotate (C-x v g)."
+     (interactive)
+     (defun vc-git-annotate-command (file buf &optional rev)
+       ;; FIXME: rev is ignored
+       (let ((name (file-relative-name file)))
+         (vc-git-command buf 0 name "blame"))))
+
+To work with Git more, there is a powerful mode provided by magit:
+
+   ;; better git mode:
+   (setq load-path (cons (expand-file-name "~/private/lib/emacs/magit/") load-path))
+   (require 'magit)
+
+Just do M-x magit-status RET and operate from there. To learn more about magit, watch a nice screencast at http://vimeo.com/2871241.
+
+Web browsers
+
+W1. w3m
+
+A very nice Emacs-integrated web browser is emacs-w3m. Set it up like this:
+
+   ;; emacs browser: (app-emacs/emacs-w3m)
+   (require 'browse-url)
+   (when (locate-library "w3m")
+     (require 'w3m)
+     (setq browse-url-browser-function 'w3m-browse-url)
+     (setq w3m-symbol 'w3m-default-symbol)
+     (setq w3m-default-display-inline-images t))
+ 
+
+You may want to define a keyboard shortcut:
+
+   (global-set-key "\C-cb" 'browse-url)
+
+after which you can type C-c b gg: Higgs boson RET to launch a search for Higgs boson on Google.
+
+For hints on how to extend w3m with more search shortcuts like gg, see the section D4 below on encyclopedias.
+
+Dictionaries and Encyclopedias
+
+D1. Dictionary tools
+
+There are nice modes to have dictionary lookups in Emacs. Load them in the $HOME/.emacs file:
+
+   ;; dictionary tools: (app-emacs/dictionary)
+   (when (locate-library "dictionary")
+     (require 'dictionary)
+     (global-set-key "\C-cd" 'dictionary-search)
+     (global-set-key "\C-cm" 'dictionary-match-words))
+
+then use them by pressing C-c d on a word.
+
+D2. Translation tools
+
+Use babel.el from http://www.hoetzel.info/Hacking/emacs/emacs-interface-to-web-translation-services-such/.
+
+   ;; translation tools: (install into ~/private/lib/emacs/misc)
+   ;; <http://www.hoetzel.info/Hacking/emacs/emacs-interface-to-web-translation-services-such/>
+   (require 'babel)
+
+Now select a region and call M-x babel-region RET to translate it, using services such as Apertium, Babelfish, Google Translate, or FreeTranslation.
+
+D3. French conjugator
+
+If you write frequently emails in French, you may find handy this interface to the French configator verbiste:
+
+   ;; French conjugator: (app-dicts/verbiste)
+   (defun tsi-french-conjugator (word)
+     "Call french-conjugator on WORD."
+     (interactive "sWord to conjugate in French: ")
+     (save-excursion
+       (let ((old-buffer (current-buffer)))
+         (get-buffer-create "*tsi-french-conjugator*")
+         (set-buffer "*tsi-french-conjugator*")
+         (erase-buffer)
+         (set-buffer old-buffer))
+       (call-process "french-conjugator" nil "*tsi-french-conjugator*" t word)
+       (display-buffer "*tsi-french-conjugator*")))
+   (global-set-key "\C-cf" 'tsi-french-conjugator)
+
+Now just type C-c f avoir RET to consult the conjugation tables for the verb `avoir'.
+
+D4. Spell checking
+
+I prefer aspell to ispell, so I use:
+
+   ;; spelling checker: (app-text/aspell, app-dicts/aspell-en, app-dicts/aspell-fr)
+   (setq ispell-program-name "aspell")
+
+To make spell checking on the fly, as you type, use flyspell mode. E.g. to make flyspell checking of your buffer:
+
+   M-x flyspell-buffer RET
+
+To setup flyspell checking automatically:
+
+   ;; check spelling on the fly:
+   (dolist (hook '(text-mode-hook))
+     (add-hook hook (lambda () (flyspell-mode 1))))
+   (dolist (hook '(change-log-mode-hook log-edit-mode-hook))
+     (add-hook hook (lambda () (flyspell-mode -1))))
+   (global-set-key "\C-cs" 'flyspell-buffer)
+
+When flyspell checking, you can press:
+
+   C-,   ... go to next error
+   C-.   ... auto correct given word
+   C-c $ ... propose pop-down menu to choose from
+
+so a quick series of C-, and C-. is usually enough to correct the text.
+
+To change the spell checker dictionary to French, do:
+
+   M-x ispell-change-dictionary RET francais RET
+
+For help on how to spell check programs, see another tip of this page (C11).
+
+D5. Encyclopaedia Britannica
+
+You may want to defined a new w3m shortcut (mentioned in W1) in order to have direct access to Encyclopaedia Britannica via w3m.
+
+   (eval-after-load "w3m-search"
+     '(progn
+        (add-to-list 'w3m-search-engine-alist
+           '("encyclopaedia-britannica"
+             "http://search.eb.com/search?query=%s&ct="
+             nil))
+        (add-to-list 'w3m-uri-replace-alist
+           '("\\`eb:" w3m-search-uri-replace "encyclopaedia-britannica"))))
+
+Now, in a w3m buffer, type U eb:higgs RET to launch a search for Higgs boson in Encyclopaedia Britannica. Or, with the web shortcut defined earlier in section W1, type C-c b gg: Higgs boson RET in any buffer.
+
+D6. Wikipedia
+
+Similarly, let us defined another useful w3m shortcut for Wikipedia searches:
+
+   (require 'w3m-search)
+   (eval-after-load "w3m-search"
+     '(progn
+        (add-to-list 'w3m-search-engine-alist
+           '("wikipedia-en"
+             "http://en.wikipedia.org/wiki/Special:Search?search=%s"
+             nil))
+        (add-to-list 'w3m-uri-replace-alist
+           '("\\`wp:" w3m-search-uri-replace "wikipedia-en"))))
+
+so that we can type C-c b wp: higgs_boson RET to go directly to the Wikipedia page about Higgs boson.
+
+Publishing and Organizing
+
+P1. TWiki
+
+Emacs has a nice mode for editing TWiki pages, called erin http://www.neilvandyke.org/erin-twiki-emacs/. Just install it into your ~/private/lib/emacs/misc and edit your $HOME/.emacs like this:
+
+   $ cd private/lib/emacs/misc
+   $ wget http://www.neilvandyke.org/erin-twiki-emacs/erin.el
+   $ cat $HOME/.emacs
+   (setq load-path (cons (expand-file-name "~/private/lib/emacs/misc/") load-path))
+   (require 'erin)
+   (setq auto-mode-alist (cons '("w3mtmp" . erin-mode) auto-mode-alist))
+   (setq auto-mode-alist (cons '("mozex.textarea" . erin-mode) auto-mode-alist))
+   (server-start)
+
+Then you can view TWiki pages in your favourite Web browser by configuring it to use an external editor emacsclient.
+
+For example, if you use w3m, then edit w3m's config file like this:
+
+   $ grep editor ~/.w3m/config
+   editor /usr/bin/emacsclient
+
+which will open an Emacs buffer for editing wiki pages.
+
+Another example: if you are using Firefox, then install mozex extension that enables you to configure Firefox to use external programs for various things such as editing textareas, mailto links, etc. When mozex is installed, press RightMouseClick -> mozex -> Configuration -> Textarea and put /usr/bin/emacsclient %t there. Then, when you are editing a textarea in Firefox, you may either use the native Firefox editor, or you can do RightMouseClick -> mozex -> Edit Textarea to jump into an Emacs buffer to edit the wiki page.
+
+When you are done with editing the wiki page in emacsclient buffer, press C-x # to commit your edits back to the browser, and use preview etc functionalities as usual.
+
+It also helps to combine erin mode with outline mode for section folding/unfolding:
+
+   ;; twiki mode, combined with outline minor mode:
+   (require 'erin)
+   (add-hook 'erin-mode-hook
+     (lambda ()
+       (interactive)
+       (outline-minor-mode 1)
+       (flyspell-mode 1)
+       (make-local-variable 'outline-regexp)
+       (setq outline-regexp "---\*+")
+       (local-set-key "\C-c\C-a" 'show-all)
+       (local-set-key "\C-c\C-t" 'hide-body)
+       (local-set-key "\C-c\C-s" 'outline-toggle-children)))
+
+Note: speaking of Firefox extensions, an alternative to Mozex is an extension called ``It's All Text!''. It names its temporary files differently. To edit twiki.cern.ch pages, it helps to set:
+
+   (setq auto-mode-alist (cons '("twiki" . erin-mode) auto-mode-alist))
+
+Or just configure IAT to use the `.twiki' file extension.
+
+P2. Muse
+
+I use Emacs Muse quite a lot for writing web sites, personal wikis, and keeping journal. See http://mwolson.org/projects/EmacsMuse.html.
+
+Muse can be nicely combined with outline mode:
+
+   ;; muse: (app-emacs/muse)
+   (require 'outline)
+   (require 'muse)
+   (require 'muse-colors)
+   (require 'muse-mode)
+   (require 'muse-blosxom)
+   (require 'muse-docbook)
+   (require 'muse-html)
+   (require 'muse-latex)
+   (require 'muse-latex2png)
+   (require 'muse-texinfo)
+   (require 'muse-wiki)
+   (require 'muse-xml)
+   (require 'muse-journal)
+   (require 'muse-project)
+
+   ;; muse combined with outline minor mode:
+   (add-hook 'muse-mode-hook
+      (lambda ()
+        (outline-minor-mode 1)
+        (setq outline-regexp "*+")
+        (setq coding-system-for-write 'utf-8)
+        (local-set-key "\C-c\C-a" 'show-all)
+        (local-set-key "\C-c\C-t" 'hide-body)
+        (local-set-key "\C-c\C-s" 'outline-toggle-children)))
+
+The muse projects and publishing styles are then defined like:
+
+   ;; muse project:
+   (setq muse-project-alist
+         `(("homepage" (,@(muse-project-alist-dirs "~/private/muse/homepage")
+                          :force-publish ("sitemap" "index"))
+                       ,@(muse-project-alist-styles "~/private/muse/homepage"
+                                                    "~/www"
+                                                    "html"))
+           ("journal" ("~/private/muse/journal" :default "index")
+                      (:base "journal-html" :path "~/www/journal"))))
+   (setq muse-html-header "
+   <!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\">
+   <html>
+     <head>
+       <title>simko.info :: <lisp>
+     (concat (muse-publishing-directive \"title\")
+             (let ((author (muse-publishing-directive \"author\")))
+               (if (not (string= author (user-full-name)))
+                   (concat \" (by \" author \")\"))))</lisp></title>
+       <meta name=\"generator\" content=\"muse.el\">
+       <meta http-equiv=\"<lisp>muse-html-meta-http-equiv</lisp>\"
+             content=\"<lisp>muse-html-meta-content-type</lisp>\">
+       <link rel=\"stylesheet\" type=\"text/css\" href=\"simko.info.css\">
+       <lisp>
+         (let ((maintainer (muse-style-element :maintainer)))
+           (when maintainer
+             (concat \"<link rev=\\\"made\\\" href=\\\"\" maintainer \"\\\">\")))
+       </lisp>
+     </head>
+     <body>
+       <div class=\"header\"><div class=\"headerlogo\"><code>.o.</code><br><code>..o</code><br><code>ooo</code></div><div class=\"headertitle\">http://simko.info/</div><div class=\"headersubtitle\">Tibor Simko's Vademecum and Essays</div></div>
+       <h1><lisp>
+     (concat (muse-publishing-directive \"title\")
+             (let ((author (muse-publishing-directive \"author\")))
+               (if (not (string= author (user-full-name)))
+                   (concat \" (by \" author \")\"))))</lisp></h1>")
+   (setq muse-html-footer "
+       <div class=\"navfoot\">
+         <table width=\"100%\" border=\"0\">
+           <tr>
+             <td width=\"33%\" align=\"left\">
+                 <a class=\"foothome\" href=\"http://simko.info/\">Home</a> ::
+                 <a class=\"foothome\" href=\"http://simko.info/vademecum/sitemap.html\">Sitemap</a>
+             </td>
+             <td width=\"33%\" align=\"center\">
+                 Powered by
+                 <a class=\"foothome\" href=\"http://www.emacswiki.org/cgi-bin/wiki/MuseMode\">Emacs Muse</a>
+             </td>
+             <td width=\"33%\" align=\"right\">
+               <lisp>
+                     (concat
+                      \"<span class=\\\"footdate\\\">Last updated \"
+                      (format-time-string \"%Y-%m-%d\"
+                       (nth 5 (file-attributes muse-publishing-current-file)))
+                      \"</span>\")
+               </lisp>
+             </td>
+           </tr>
+         </table>
+       </div>
+     </body>
+   </html>\n")
+   (setq muse-journal-html-entry-template "
+   <div class=\"entry\">
+     <a name=\"%anchor%\" style=\"text-decoration: none\">&nbsp;</a>
+     <div class=\"entry-body\">
+       <div class=\"entry-head\">
+         <div class=\"entry-date\">
+           <span class=\"date\">%date%</span>
+         </div>
+       </div>
+       <div class=\"entry-text\">
+         <div class=\"entry-qotd\">
+           <p>%qotd%</p>
+         </div>
+   %text%
+       </div>
+     </div>
+   </div>\n\n")
+
+P3. Org-mode
+
+One publishing alternative to Muse is Org-mode that you can also use as a better outline mode. It is great for keeping your notes and TODO lists and otherwise staying better organized.
+
+Write your files like this:
+
+* Chapter
+   ** Section
+   *** Subsection
+* Next Chapter
+
+and then do things like:
+
+    C-c C-c to add a tag to a headline
+    C-c \ to search for a tag
+    C-c , to set priorities to headlines
+    C-c C-e h to export as HTML 
+
+See sources like:
+
+    read nice short tutorial at http://dto.github.com/notebook/orgtutorial.html
+    read long toturial at http://doc.norang.ca/org-mode.html
+    watch Google Tech Talk video at http://www.youtube.com/watch?v=oJTwQvgfgMM
+    print out Org-mode reference card http://orgmode.org/orgcard.pdf 
+
+P4. Calendar and diary
+
+Emacs calendar and diary setup can look like:
+
+   ;; calendar and diary:
+   (setq diary-file "~/.diary")
+   (setq mark-holidays-in-calendar t)
+   (setq mark-diary-entries-in-calendar t)
+   (setq view-diary-entries-initially t)
+   (setq calendar-latitude 46.20) ;; 46n12, see <URL:http://www.astro.ch/>
+   (setq calendar-longitude 6.15) ;; 06e09, see <URL:http://www.astro.ch/>
+   (setq calendar-location-name "Geneva, CH")
+   (add-hook 'diary-display-hook 'fancy-diary-display)
+   (setq diary-schedule-interval-time 60)
+   (add-hook 'list-diary-entries-hook 'include-other-diary-files)
+   (add-hook 'mark-diary-entries-hook 'mark-included-diary-files)
+   (add-hook 'diary-hook 'appt-make-list)
+
+The ~/.diary file can look like:
+
+   &%%(diary-cyclic 7 7 13 2005) 10:00 CDS Section Meeting
+
+   Dec 16, 2005 9:00 Meeting with Foo
+   Dec 17, 2005 10:00 Meeting with Bar
+
+Note how we defined a cyclic event repeating every 7 days.
+
+Now, when in calendar mode (M-x calendar RET), go to some day and press i d to insert an event into diary for the given day, press S to check out the sunrise/sunset times, etc.
+
+Mail and Usenet
+
+M1. Gnus
+
+I recommend Gnus, powerful and featureful mail and news reader; see http://gnus.org/. Some excerpts of my ~/.gnus.el configuration:
+
+   ;; set directories:
+   (setq gnus-startup-file "~/private/gnus/.newsrc")
+   (setq nnmail-message-id-cache-file "~/private/gnus/.nnmail-cache")
+   (setq gnus-home-directory "~/private/gnus")
+   (setq message-directory "~/private/gnus/Mail/")
+   (setq message-auto-save-directory "~/private/gnus/Mail/drafts")
+   (setq gnus-directory "~/private/gnus/News/")
+   (setq gnus-cache-directory "~/private/gnus/News/cache")
+
+   ;; personal stuff
+   (setq user-full-name "Tibor Simko"
+         mail-host-address "cern.ch"
+         user-mail-address "tibor.simko@cern.ch"
+         message-from-style 'angles)
+
+   ;; select stuff
+   (setq gnus-select-method '(nnnil "")
+         mail-sources '((file :path "/var/mail/simko"))
+         gnus-secondary-select-methods '((nnml "")
+                                         (nnimap "imap.cern.ch"
+                                                 (nnimap-address "imap.cern.ch")
+                                                 (nnimap-stream ssl)
+                                                 (nnimap-server-port 993)
+                                                 (nnimap-logout-timeout 10)
+                                                 (nnimap-list-pattern ("INBOX" "Cern Spam" "mail.*" ))
+                                                 (nnir-search-engine imap))
+                                         (nntp "gmane" (nntp-address "news.gmane.org"))))
+
+   ;; outgoing mail:
+   (load "~/private/lib/emacs/misc/smtpmail.el")
+   (require 'smtpmail)
+   (setq message-send-mail-function 'smtpmail-send-it     ;; for gnus/message
+         send-mail-function 'smtpmail-send-it)            ;; for `mail'
+   (setq smtpmail-smtp-service 25
+         smtpmail-smtp-server "smtp.cern.ch")
+   (setq smtpmail-auth-credentials '(("smtp.cern.ch" 25 "simko" nil)))
+   (setq smtpmail-starttls-credentials '(("smtp.cern.ch" 25 nil nil)))
+   (setq smtpmail-default-smtp-server "smtp.cern.ch")
+   ;(setq smtpmail-debug-info t)
+   ;(setq smtpmail-debug-verb t)
+
+   ;; cache setup:
+   (setq gnus-use-cache t)
+   (setq gnus-cacheable-groups "^nntp")
+
+   ;; no newlines at the end:
+   (setq next-line-add-newlines nil)
+
+   ;; nnimap splitting stuff:
+   (setq nnimap-crosspost nil)
+   (setq nnimap-split-inbox '("INBOX"))
+   (setq nnimap-split-predicate "UNDELETED")
+   (setq nnimap-split-rule 'nnimap-split-fancy)
+   (setq nnimap-split-fancy
+      '(|  ;; to boot, I don't like duplicates:
+           ("Gnus-Warning" "This is a duplicate" "mail.spam.duplicates")
+           ;; firstly let us detect obvious spam:
+           ("Content-Type" "big5\\|gb2312\\|ks_c_.*\\|euc-kr" "mail.spam.asian")
+           ("Content-Type" "koi8-r\\|windows-1251" "mail.spam.russian")
+           ("Subject" ".*[Â¹Â²Â°Â¶Â¿Â&#188;].*\\|   [0-9A-Z]\\|webcam.*\\|ks_c_.*\\|Pravdepodobne spam" "mail.spam.misc")
+           ("Keywords" "CERN SpamKiller Note: [1-9][0-9]" "mail.spam.kill")
+           ("Content-Type" "text/html" "mail.spam.html")
+           ;; secondly let us detect mailing lists I am subscribed to:
+           ("List-ID" "ding\\.gnus\\.org" "mail.app.emacs.gnus")
+           ...
+           ;; thirdly let us detect trustable mail aliases I am in:
+           ("To" "club-games" "mail.cern.club-games")
+           ...
+           ;; fourthly let us detect personal email:
+           (any "simko.cern\\.ch" "mail.personal")
+           ;; by default we do not trust the rest
+           "mail.personal.misc"))
+
+   ;; posting styles:
+   (setq ts-cds-sig "Tibor Simko ** CERN Document Server ** <http://cds.cern.ch/>")
+   (setq ts-games-sig "Tibor Simko ** CERN Go Club ** <http://games.cern.ch/go.html>")
+   (setq gnus-posting-styles
+         '((".*"
+            (organization "CERN -- European Organization for Nuclear Research")
+            (body "\n\nBest regards")
+            (signature ts-cds-sig))
+           ("^nnml:mail.cern.club-games"
+            (body "\n\nBest regards")
+            (signature ts-games-sig))
+           ((header "To" "club-games@cern\\.ch")
+            (body "\n\nBest regards")
+            (signature ts-games-sig))
+           ((header "Cc" "club-games@cern\\.ch")
+            (body "\n\nBest regards")
+            (signature ts-games-sig))))
+
+   ;; citation stuff
+   (setq message-citation-line-function 'message-insert-formatted-citation-line)
+   (setq message-citation-line-format "On %a, %d %b %Y, %N wrote:")
+
+   ;; ispell automatic invocation:
+   (add-hook 'message-send-hook 'ispell-message)
+   ;(setq message-send-hook nil) ;; how to switch ispell off temporarily
+
+   ;; preferred coding systems:
+   (setq mm-coding-system-priorities '(iso-8859-1 iso-8859-2 iso-8859-15 utf-8))
+
+   ;; expiring stuff:
+   (setq gnus-auto-expirable-newsgroups "^nnml\\|^nnimap")
+   (setq nnmail-expiry-wait 15)
+
+   ;; saving articles:
+   (setq gnus-update-message-archive-method t)
+   (setq gnus-message-archive-method
+        '(nnimap "imap.cern.ch"))
+   (setq gnus-message-archive-group
+              '((if (message-news-p)
+                    "mail.sent.news"
+                  (concat "mail.sent." (format-time-string
+                                   "%Y-%m" (current-time))))))
+
+   ;; group & summary formats:
+   (setq gnus-group-line-format "%5y%5i: %(%g%)\n")
+   (setq gnus-summary-line-format "%U%R%z %-6,6d %I%(%[%4L,%c: %-20,20f%]%) %s\n")
+
+   ;; treat article hook:
+   (setq gnus-article-display-hook
+         '(gnus-article-hide-headers-if-wanted
+           gnus-article-date-lapsed
+           gnus-article-hide-pgp
+           gnus-article-hide-boring-headers
+           gnus-article-treat-overstrike
+           gnus-article-de-quoted-unreadable
+           gnus-article-strip-leading-blank-lines
+           gnus-article-remove-trailing-blank-lines
+           gnus-article-strip-multiple-blank-lines
+           gnus-article-highlight
+           gnus-article-emphasize))
+
+   ;; make gnus faster:
+   (setq gnus-treat-buttonize 5000
+         gnus-treat-emphasize 5000
+         gnus-treat-highlight-signature nil
+         gnus-treat-strip-pgp 5000
+         gnus-treat-strip-banner 5000)
+
+   ;; discourage HTML mail:
+   (eval-after-load "mm-decode"
+    '(progn
+         (add-to-list 'mm-discouraged-alternatives "text/html")
+         (add-to-list 'mm-discouraged-alternatives "text/richtext")))
+
+   ;; wide reply:
+   (setq message-dont-reply-to-names "tibor\\.simko@cern\\.ch")
+
+   ;; read articles stay read and don't get expired when revisited:
+   (remove-hook 'gnus-mark-article-hook
+                'gnus-summary-mark-read-and-unread-as-read)
+   (add-hook 'gnus-mark-article-hook 'gnus-summary-mark-unread-as-read)
+
+   ;; nnir for seaching:
+   (require 'nnir)
+
+Instant Messaging and Chatting
+
+I1. IRC
+
+ERC.
+
+I2. Jabber
+
+I like jabber.el. Use commands like C-x C-j C-c to connect to a server or two, C-x C-j C-r to visit your roster, RET to launch a chat with someone, C-x C-j C-a to send `away' presence, etc.
+
+If you have had enough chatting, and you go back to writing some code (or some email, or ...), so your chat buffers become not visible anymore, then if you have some new incoming IM activity, be it a private message or a groupchat message or a subscription request, then your Emacs mode line will gently change and display the name of the contacts/groupchats that have seen some new IM activity since you last visited them. You can then use C-x C-j C-l to switch right to the correct jabber buffer to continue the chat. After you are done, press C-x C-j C-l again to go back to the coding place you have been to.
+
+A nicely inobtrusive way of IM operations. Needless to say, you can configure things to be as obtrusive as desired, if that is what you prefer.
+
+If you have usually several frames open, please see my activity flag patch at http://article.gmane.org/gmane.emacs.jabber.general/913.
+
+If you would like to log groupchat history, please see my history logger patch at http://article.gmane.org/gmane.emacs.jabber.general/915.
+
+Games and Fun
+
+G1. Psychotherapy
+
+Too much hacking? Want a little psychotherapy? Try M-x doctor RET. Or M-x psychoanalyze-pinhead RET.
+
+G2. Tetris
+
+Too much hacking? Want a little gaming break? Try M-x tetris RET.
+
+G3. Butterfy
+
+Using Emacs 23? Go try C-h f butterfly RET. No kidding.
+
+Using an older Emacs? Go read http://xkcd.com/378/ before upgrading.
+
+G4. Uptime
+
+How long has it been since we booted Emacs? Use M-x emacs-uptime RET.
+
+G5. Artist
+
+Need to create some ASCII art? Use M-x artist-mode RET, drag the mouse around, and middle-click for menu.
+
+Further reading
+
+Besides reading the fine manual (C-h i), I heartily suggest reading Emacs wiki and Planet Emacsen. Some of the above recipes were taken from or inspired by these fine sources. 
+    About
+    User Interface
+        U1. Ergonomic bell
+        U2. Ergonomic colors
+        U3. Ergonomic font
+        U4. Ergonomic mouse
+        U5. Ergonomic menus
+        U6. Ergonomic keys
+        U7. Highlight syntax
+        U8. Highlight recent changes
+        U9. Highlight current line 
+    Buffers
+        B1. Tab bar mode
+        B2. Ido
+        B3. Desktop
+        B4. Saving window configurations
+        B5. Multi-buffer operations 
+    File operations
+        F1. Backup files
+        F2. Remembering file locations
+        F3. Remote file editing
+        F4. Automatic GPG encryption/decryption
+        F5. File difference
+        F6. Multi-file operations 
+    OS operations
+        O1. Emacs shell
+        O2. ANSI terminals
+        O3. Lightweight Emacs as a shell editor 
+    Macros and Elisp
+        M1. Repeat last shell command
+        M2. Elisp shortcuts
+        M3. Regexps
+        M4. Keyboard macros 
+    Autocompletion
+        A1. Autocompletion, first take
+        A2. Autocompletion, second take
+        A3. Visual kill ring 
+    Coding
+        C1. Code folding: outline
+        C2. Code folding: narrowing
+        C3. Programming modes
+        C4. Code tags/indexes
+        C5. IDE
+        C6. Electric pairs and parentheses
+        C7. Code snippets
+        C8. Which function am I editing?
+        C9. Trailing whitespace
+        C10. Spaces instead of tabs
+        C11. Code-friendly spell checking
+        C12. Making on the fly
+        C13. Running on the fly
+        C14. Look up the specs
+        C15. Autocompletion, third take 
+    Version control
+        V1. Interfacing CVS repository
+        V2. Interfacing Git repository 
+    Web browsers
+        W1. w3m 
+    Dictionaries and Encyclopedias
+        D1. Dictionary tools
+        D2. Translation tools
+        D3. French conjugator
+        D4. Spell checking
+        D5. Encyclopaedia Britannica
+        D6. Wikipedia 
+    Publishing and Organizing
+        P1. TWiki
+        P2. Muse
+        P3. Org-mode
+        P4. Calendar and diary 
+    Mail and Usenet
+        M1. Gnus 
+    Instant Messaging and Chatting
+        I1. IRC
+        I2. Jabber 
+    Games and Fun
+        G1. Psychotherapy
+        G2. Tetris
+        G3. Butterfy
+        G4. Uptime
+        G5. Artist 
+    Further reading 
+
+About
+
+This wiki page presents some tips and tricks on how to use Emacs more productively.
+
+To start up with Emacs, read the EmacsAdvocacy and EmacsGettingStarted pages.
+
+To hack on CDS Invenio in Emacs, see also a sample elisp startup file at http://invenio-demo.cern.ch/hacking/cdsware.el.
+
+User Interface
+
+U1. Ergonomic bell
+
+Annoyed by the audible bell? This is how you switch to the visual one:
+
+   $ grep bell ~/.emacs
+   (setq visible-bell t)
+
+Don't forget also to:
+
+   $ cat ~/.inputrc
+   set bell-style none
+
+U2. Ergonomic colors
+
+You may want to use a different, more eye-friendly colour scheme in Emacs. There is color-theme package enabling you to easily customize this. http://www.emacswiki.org/cgi-bin/wiki/ColorTheme
+
+1. Download ``color-theme''. On Debian, apt-get install emacs-goodies-el. On Gentoo, emerge app-emacs/color-theme.
+
+2. If you download it manually, then put it into your own private Emacs Lisp directory somewhere. E.g. if you have your Emacs Lisp files in the ~/private/lib/emacs directory, then set up load path into your $HOME/.emacs:
+
+    (setq load-path (cons (expand-file-name "~/private/lib/emacs/") load-path))
+
+and put this into your ~/.emacs to set up a colour theme:
+
+    (when (locate-library "color-theme")
+      (require 'color-theme)
+      (color-theme-initialize)
+      (color-theme-ld-dark))
+
+3. As for the themes, personally I like themes such as `color-theme-ld-dark', `color-theme-charcoal-black', `color-theme-clarity', `color-theme-gnome2', etc. For an overview of various predefined themes and what they look like when editing C files, see http://gnuemacscolorthemetest.googlecode.com/svn/html/index-c.html.
+
+4. If you happen to like a color scheme like `color-theme-gnome2', and you are using Emacs inside a terminal over ssh connection, then you may find that this color scheme is not very nice due to colour depth. You may prefer e.g. `color-theme-midnight'' in this context. To install such a color combination automatically depending on the graphical vs terminal context, do:
+
+     (if (eq (symbol-value 'window-system) nil)
+         (color-theme-midnight)
+         (color-theme-gnome2)))
+
+U3. Ergonomic font
+
+I quite like the ETL font family.
+
+   $ grep -i emacs ~/.Xresources
+   Emacs.font: -etl-fixed-medium-r-normal-*-16-160-*-*-*-*-*-*
+   Emacs*Background: black
+   Emacs*Foreground: white
+
+   $ grep xrdb ~/.xsession
+   xrdb -merge ~/.Xresources &
+
+U4. Ergonomic mouse
+
+To enable mouse wheel, do:
+
+   ;; wheel mouse scroll enabled:
+   (mouse-wheel-mode t)
+
+U5. Ergonomic menus
+
+You may want to hide the splash screen, the menu bar, the tool bar, the scroll bar, and the like; they only eat valuable screen space. If you need menu bar to help launch some command you forgot the key combination for, then invoke it temporarily via =M-x menu-bar-mode RET=. SO let us hide them all:
+
+   ;; scrolling, parens, cursor, menu, and such:
+   (scroll-bar-mode nil)
+   (blink-cursor-mode nil)
+   (setq transient-mark-mode t)
+   (menu-bar-mode nil)
+   (tool-bar-mode nil)
+
+   ;; no splash screen:
+   (setq inhibit-startup-message t)
+   (setq inhibit-splash-screen t)
+
+On the other hand, you may want to display some interesting things in the status bar like the column numbers or the day and time:
+
+   ;; display column numbers in status bar:
+   (column-number-mode 't)
+
+   ;; display time in status bar:
+   (setq display-time-24hr-format t)
+   (setq display-time-day-and-date t)
+   (display-time)
+
+or, if you are working on a laptop, the battery status and the temperature:
+
+   ;; battery mode:
+   (require 'battery)
+   (setq battery-mode-line-format " [%L %p%% %dC]")
+   (display-battery-mode)
+
+See also below the coding recipe C7 about how to display current function name in the status bar.
+
+U6. Ergonomic keys
+
+As one joke has it, Emacs is an acronym for Escape-Meta-Alt-Control-Shift. Which means you may be pressing these key combinations a lot, which means you should (1) learn about effective editing facilities Emacs offers, and (2) map them to key combinations that suit your editing style, in order to be more productive with your editing.
+
+Firstly, you can remap meaning of your keys via commands like global-set-key and local-set-key. It is of course a matter of personal choice and preferences.
+
+For example, you can change the useless Caps Lock key into a Control key in your OS.
+
+For example, if your keyboard has a Windows key, your keyboard layout can map this key into the `Super' key that you can use to define your own key combinations in Emacs.
+
+For example, if you use Dvorak keyboard layout, you may find it practical to map key combinations with a Ctrl-c prefix that will use the left pinkie and the right middle finger effectively.
+
+For example, if you use join-line command frequently, then you can define a global keyboard shortcut to achieve this:
+
+   ;; join lines:
+   (global-set-key (kbd "C-c j") 'join-line)
+
+For example, if you are used to use C-a and C-e to move to the beginning and end of the line, then you may want to remap your Home and End keys to move to the beginning and end of the buffer instead:
+
+   ;; let us use Home/End for buffer (while C-a, C-e for line):
+   (global-set-key [home] 'beginning-of-buffer)
+   (global-set-key [end] 'end-of-buffer)
+
+You will see more global and local key (re)definitions in other sections of this wiki page.
+
+Secondly, you should learn carefully about various editing possibilities Emacs offers, in order to move around and edit more quickly and effectively. For example, to have an ergonomic forward movement within your Emacs buffer, you have options like:
+
+    C-f ... forward-char, to move one character forward
+    M-f ... forward-word, to move one word forward
+    M-e ... forward-sentence, to move one sentence forward
+    M-} ... forward-paragraph, to move one paragraph forward
+    C-x ] ... forward-page, to move one page forward 
+
+Some movement commands may be less known but are rather practical. For example:
+
+    M-m ... back-to-indentation; jump to first non-blank char on the line, useful e.g. for Python source code
+    C-u C-SPC ... pop-global-mark; visit place you have been at last: e.g. jump to beginning of buffer, do some stuff like replace, then press this jump back to where you have been
+    M-g g ... goto-line; see also M-x linum-mode RET 
+
+Movement command keyboard scheme typically mirror to other facilities, such as transposition commands to cite one example:
+
+    C-t ... transpose letters
+    M-t ... transpose words
+    M-x ... transpose-sentences RET
+    M-x ... transpose-paragraphs RET
+    M-C-t ... transpose-sepxs (in Lisp mode)
+    C-x C-t ... transpose-lines 
+
+Some of the deletion commands:
+
+    M-d ...kill-word, to kill to the end of the word
+    M-DEL ... backward-kill-word, to kill the the beginning of the word
+    M-z ... zap-to-char, to kill up to a given char
+    C-x C-o -- delete-blank-lines, to remove all but one empty line around the point 
+
+Some of the grepping commands:
+
+    M-x grep RET ... brings you to a cool grep mode
+    M-s o ... occur, simpler alternative 
+
+Some of the marking commands:
+
+    M-@ ... mark-word, to mark words without having to move around (more ergonomic than pressing C-SPC M-f)
+    M-h ... mark-paragraph, without moving around
+    C-x h ... mark-whole-buffer
+    C-x C-x ... exchange-point-and-mark 
+
+Some locally useful on-the-spot editing commands may be handy, like:
+
+    M-c ... capitalize-word, i.e. Make It Like This
+    M-l ... downcase-word, i.e. make it like this
+    M-u .... upcase-word, i.e. MAKE IT LIKE THIS 
+
+Thirdly, if you are editing code, you will be using some specific language mode, which brings a lot of facilities and shortcuts for most common operations. This will be described elsewhere on this wiki page, but you should develop a habit of discovering via help commands what the mode offers, such as to describe the given mode, to find where certain functions are bound, or what a pressing a certain key combination does:
+
+    C-h m ... describe-mode, to describe given modes
+    C-h b ... describe-bindings, to describe key bindings
+    C-h k ... describe-key, to describe what some key does 
+
+or to learn about Emacs functions and variables itself:
+
+    C-h v ... describe-variable
+    C-h f ... describe-function
+    C-h a ... apropos-command 
+
+Finally, the rest of this wiki page provides some specific hits on how to be effective in various editing situations, combining keys and facilities together.
+
+U7. Highlight syntax
+
+Color syntax highlighting is virtually a must:
+
+   ;; setting color syntax highlighting:
+   (require 'font-lock)
+   (global-font-lock-mode t)
+   (setq-default font-lock-auto-fontify t)
+
+U8. Highlight recent changes
+
+To track which parts of a big file you have just changed, you can use the highlight-changes-mode:
+
+   M-x highlight-changes-mode RET
+
+U9. Highlight current line
+
+To track which line you are currently editing, use the hl-line mode:
+
+   ;; highlight current line:
+   (global-hl-line-mode 1)
+   (set-face-background 'hl-line "#666666")
+
+Buffers
+
+B1. Tab bar mode
+
+Tabbar mode adds a tiny line giving you a fast tab-style overview of open buffers and group of buffers and permits you to cycle easily between them. It is good to have this mode off by default (to save the screen space) and quickly switch it on and off in case of need via a keyboard shortcut. An excerpt from my $HOME/.emacs:
+
+   (require 'tabbar)
+   (global-set-key [(control f10)] 'tabbar-mode)
+   (global-set-key [(control down)] 'tabbar-backward-group)
+   (global-set-key [(control up)] 'tabbar-forward-group)
+   (global-set-key [(control left)] 'tabbar-backward)
+   (global-set-key [(control right)] 'tabbar-forward)
+
+See http://www.emacswiki.org/cgi-bin/wiki/TabBarMode for more.
+
+B2. Ido
+
+A nicer buffer navigation method than the standard one or than the tab bar mode is provided by ido.
+
+For example, if you have a file named search_engine.py, then press C-x b s_e RET to go to that buffer. (That is, s_e will be fuzzily autocompleted to search_engine.)
+
+Another example: the buffers are offered according to the visit frequency, so one types less when doing C-x b.
+
+Yet another example: in order to open a file called search_engine.py that lives somewhere in your home directory, just press C-x f and type the file name and wait a second or two and ido will find the proper file for you, based on your editing history and visit frequency. No need to be located or remember in the directory where the file lives in order to open it.
+
+   ;; IDO:
+   (require 'ido)
+   (ido-mode t)
+   (setq ido-enable-flex-matching t)
+
+B3. Desktop
+
+Want to keep all your buffers in the position you left them then next time you start Emacs? You can use the desktop-save-mode, just put in your ~/.emacs the following:
+
+   ;; save desktop:
+   (desktop-save-mode 1)
+
+or invoke manually:
+
+   M-x desktop-save RET
+
+to save the desktop, and:
+
+   M-x desktop-read RET
+
+to restore it.
+
+(Although personally I prefer not to have desktop but to simply let files open on the position I left them; see the recipe F2 on this page.)
+
+B4. Saving window configurations
+
+If you work with different frame window configurations, say one layout for Gnus and ERC, another layout for source code and gdb, then it may be practical to save your various frame window layouts and quickly restore them depending on what you are doing.
+
+To achieve this, you can save your current window configuration via C-x r w to some register, say `g' for Gnus, and then use C-x r j to jump back to it.
+
+B5. Multi-buffer operations
+
+You may like your buffer menu window to behave more like dired (see the tips in the next section (F6)). This can be achieved by using ibuffer:
+
+   ;; ibuffer:
+   (require 'ibuffer)
+   (setq ibuffer-default-sorting-mode 'major-mode)
+   (setq ibuffer-always-show-last-buffer t)
+   (setq ibuffer-view-ibuffer t)
+   (global-set-key (kbd "C-x C-b") 'ibuffer-other-window)
+
+Now just press C-x C-b h and read about the multitude of commands available, such as searching and replacing in selected buffers, etc.
+
+File operations
+
+F1. Backup files
+
+By default emacs create backup copies of FILE with FILE~. This will clutter your filesystem and may be a security threat if you are editing for example files visible via the Web, because trying URLs like http://example.com/index.php~ may lead to source code exposure.
+
+To make fancy versioned backups (a la VMS OS) into a specific directory $HOME/.saves, you can do:
+
+   (setq backup-by-copying t      ; don't clobber symlinks
+         backup-directory-alist
+         '(("." . "~/.saves"))    ; don't litter my fs tree
+         delete-old-versions t
+         kept-new-versions 6
+         kept-old-versions 2
+         version-control t)       ; use versioned backups
+
+See also http://www.emacswiki.org/cgi-bin/wiki?BackupDirectory.
+
+F2. Remembering file locations
+
+When you open a file, do you want to jump right to the location where you were the last time you were visiting this file? Use saveplace to achieve this.
+
+   ;; instead of save desktop, rather save last editing place in files,
+   ;; as well as minibuffer:
+   (require 'saveplace)
+   (setq-default save-place t)
+   (savehist-mode t)
+
+F3. Remote file editing
+
+You can use tramp to edit remote files via ssh in your local Emacs session. Put the following in your $HOME/.emacs:
+
+   ;; tramp: (app-emacs/tramp)
+   (when (locate-library "tramp")
+     (require 'tramp)
+     (setq tramp-default-method "sshx"))
+
+and evaluate it (or restart Emacs) after which you can do:
+
+   C-x C-f /cdsware.cern.ch:/tmp/foo.txt
+
+to edit file ``foo'' located on machine ``sunuds99''.
+
+Or to edit some files as root:
+
+   C-x C-f /sudo::/etc/conf.d/net
+
+For more info, see tramp's info manual (C-h i tramp RET) or its Emacs wiki page http://www.emacswiki.org/cgi-bin/wiki/TrampMode.
+
+F4. Automatic GPG encryption/decryption
+
+Do you have some GPG-encrypted files in your home that you would like to have automatically decrypted/encrypted when opening/editing/saving them in Emacs? Again there are several alternatives, out of which easypg is very nice.
+
+   ;; automatic GPG encryption/decryption support: (app-emacs/easypg)
+   (require 'epa-file)
+   (epa-file-enable)
+
+F5. File difference
+
+Another valuable goodie is diff between two files. Emacs has very nice ediff for this. Put this into your $HOME/.emacs:
+
+   (setq ediff-window-setup-function 'ediff-setup-windows-plain)
+
+and then do M-x ediff RET or, when you are in eshell:
+
+   $ ediff file1 file2
+
+which will bring you to an ediff mode, where in the control window you can type e.g. 'n' to go to the next difference between the files.
+
+For more info see manual on diff mode.
+
+   C-h i ediff RET
+
+or wiki page http://www.emacswiki.org/cgi-bin/wiki/EdiffMode.
+
+Ediff plays nicely with CVS backend, for example.
+
+F6. Multi-file operations
+
+The dired mode is an Emacs interface to the filesystem, enabling you to perform certain operations on multiple files. The dired mode can be combined with other Emacs goodies such as the search and replace tool into a powerful multi-file editing tool.
+
+Dired Example One: we would like to rename all files named *.shtml.wml into *.php.wml in a certain directory such as /tmp. You may know of the Linux CLI tool mmv with which we could do:
+
+   $ mmv '*.shtml.wml' '#1.php.wml'
+
+but what if we are on a system where mmv is not available? Shall we try to install it or write a little script to achieve what we want? What about using Emacs's dired and its dired-do-rename-regexp command (bound on % R) instead. Firstly, press C-x d /tmp RET to launch dired on our working directory (or dired /tmp in the eshell). Then use this dired file regexp renaming command:
+
+   % R ^\(.*\)\.shtml\.wml$ RET \1.php.wml RET
+
+and press y or n or ! to rename some or all of the matched files, and we are done.
+
+Dired Example Two: we are moving away from javadoc-style of docstrings to epydoc-style of docstrings in our coding project, so we would like to replace all occurrences of @param foo bar by @param foo: bar recursively in all our sources.
+
+Firstly, search for all the files containing @param something space, i.e. when the variable name not followed by a colon, and let us make a dired buffer out of these files, by means of find-grep-dired:
+
+   M-x find-grep-dired RET ~/src/cds-invenio/modules RET @param \(\w*\) SPC RET
+
+Secondly, in the dired buffer, mark only the Python files for further processing:
+
+   % m \.py$ RET
+
+Thirdly, replace wanted expressions in the preselected files:
+
+   Q @param \(\w+\) SPC RET @param \1: SPC RET
+
+Now choose interactively y or n to replace or not the given occurrence of the param regexp, or use ! to replace silently every occurrence, etc.
+
+Finally, save all buffers:
+
+   C-x s !
+
+and we are done.
+
+Another advantage of doing these replacements inside Emacs itself rather than via CLI one-liners is a much better interactivity: we can easily test our regexps, replace only some occurrences while not touching others, revert some of the edits back, etc.
+
+OS operations
+
+O1. Emacs shell
+
+Another valuable goodie I'm using all the time is eshell, the Emacs shell. It's a normal Unix shell but within Emacs itself. (It works also under MS Windows that represents a survival feature in that `promptless' OS.)
+
+To start Emacs shell, do:
+
+   M-x eshell RET
+
+If you are using C-a to jump to the beginning of the line, it may be good to make it jump to the command start in eshell:
+
+   ;; eshell C-a to jump to command start only:
+   (defun eshell-maybe-bol ()
+     "C-a goes to the beginning of command, not beginning of line."
+     (interactive)
+     (let ((p (point)))
+       (eshell-bol)
+       (if (= p (point))
+           (beginning-of-line))))
+   (add-hook 'eshell-mode-hook
+             '(lambda () (define-key eshell-mode-map "\C-a" 'eshell-maybe-bol)))
+
+If you prefer to have bash-like file completion, use:
+
+   ;; eshell completion to behave like bash:
+   (setq eshell-cmpl-cycle-completions nil)
+
+You can configure eshell to launch some commands in ANSI terminal; see also the next tip (O2):
+
+   ;; eshell to launch certain apps in ansi-term:
+   (require 'em-term)
+   (add-to-list 'eshell-visual-commands "vim")
+
+You can create eshell shortcuts like:
+
+   eshell> alias invenio-make-etags 'cd ~/private/src/cds-invenio; make etags; cd -'
+
+For more hints about eshell, see http://www.emacswiki.org/cgi-bin/wiki/CategoryEshell.
+
+O2. ANSI terminals
+
+If eshell cannot run some programs to due terminal capabilities, then try ansi-term:
+
+   M-x ansi-term RET
+
+or else multi-term that can be downloaded from http://www.emacswiki.org/emacs/MultiTerm:
+
+   M-x multi-term RET
+
+Note also that you can customize eshell-visual-commands; see previous tip (O1).
+
+O3. Lightweight Emacs as a shell editor
+
+While I'm often using vim to edit small config files and other stuff inside shell or over SSH, it is nice to have an option of using independent lightweight Emacs processes launched in terminal as the main shell editor, because it loads really fast and can do a very nice moderately-long editing job over SSH. To this effect you can define e and ee aliases like:
+
+   $ grep emacs ~/.bashrc
+   alias e="emacs -q -nw -eval \"(progn (setq inhibit-startup-message t)(global-font-lock-mode t))\""
+   alias ee="emacs -q -nw --no-site -eval \"(progn (setq inhibit-startup-message t)(global-font-lock-mode t))\""
+   export VISUAL="emacs -q -nw -eval \"(progn (setq inhibit-startup-message t)(global-font-lock-mode t))\""
+   export EDITOR="emacs -q -nw -eval \"(progn (setq inhibit-startup-message t)(global-font-lock-mode t))\""
+
+and then you can type in shell:
+
+   $ e foo.py
+
+Note that for an even more lightweight Emacs, you can run ee that does not load site packages (so you may lack python mode etc).
+
+   $ ee foo.py
+
+Also note that the lightweight Emacs process will get opened for commands such as:
+
+   $ crontab -e
+
+Macros and Elisp
+
+M1. Repeat last shell command
+
+It is an often-done thing to perform last shell command once more. Put this function into your $HOME/.emacs :
+
+   ;; repeat last shell command:
+   (defun repeat-last-shell-command ()
+     "Repeat last command passed to shell-command.
+      From <http://www.dotemacs.de/dotfiles/KilianAFoth.emacs.html>."
+     (interactive)
+     (save-buffer)
+     (or shell-command-history (error "Nothing to repeat."))
+     (shell-command (car shell-command-history)))
+   (global-set-key "\C-cj" 'repeat-last-shell-command)
+
+Then when you edit ``guide.html.wml'' in emacs, you first do:
+
+   M-! make install RET
+
+which will install the file, and then after you edit the file again in the future you may press:
+
+   C-c j
+
+that will save the buffer for you and that will launch the last shell command, in occurrence `make install'. This means that you only press C-c j in order to save and install your changes, again and again.
+
+M2. Elisp shortcuts
+
+If you run some shell commands often, such as make install and apachectl restart, you may want to create keyboard shortcuts for them in order to run them easily from within Emacs:
+
+   ;; shortcuts for make install and friends:
+   (defun tsi-make-install ()
+     "Run make install"
+     (interactive)
+     (save-buffer)
+     (shell-command "make install"))
+   (defun tsi-make-install-and-apache-restart ()
+     "Run make install and apache restart"
+     (interactive)
+     (save-buffer)
+     (shell-command "make install")
+     (shell-command "sudo /soft/bin/apachectl restart"))
+   (global-set-key [(control f8)] 'tsi-make-install)
+   (global-set-key [(control f9)] 'tsi-make-install-and-apache-restart)
+
+M3. Regexps
+
+Emacs regexps is a powerful tool but EMacs regexps behave a bit differently than usual. E.g. parens are to be escaped, so instead of (\w+) you would type \(\w+\). In order to help learn these regexp diffs, there is M-x re-builder RET. You can try out your regexp and re-builder will highlights matches in the given buffer as you type.
+
+M4. Keyboard macros
+
+Need to run a certain operation on a bunch of lines? E.g. add some text after a certain column or to the end of every line in a buffer? With keyboard macros you can perform your line operations `live' for a line, while recording them, and then replay them for the other lines.
+
+How to record a macro: position yourself to the beginning of line, press C-x ( to start recording keyboard macro, then do some stuff such as C-e to jump to end of line to write some text, then press C-a C-n to jump to start of the next line, then C-x ) to end macro recording.
+
+How to replay a macro: C-x e to replay it once, then keep pressing e to replay it for other lines. Or, to replay it for the following 1234 lines, do C-u 1234 C-x e. Or, to replay macro to all lines in a region, do C-x C-k r.
+
+You can combine macros with register counters in order to rapidly help Bart Simpson:
+
+   C-u 1 C-x r n a   ;; store number 1 in register `a'
+   C-x (             ;; start recording macro
+   C-x r i a         ;; insert contents of register `a'
+   C-f . I will not waste chalk. RET ;; enter our text
+   C-x r + a         ;; increment register `a'
+   C-x )             ;; end recording macro
+   C-u 7 C-x e       ;; apply macro 7 times
+
+which will produce this output:
+
+   1. I will not waste chalk.
+   2. I will not waste chalk.
+   3. I will not waste chalk.
+   4. I will not waste chalk.
+   5. I will not waste chalk.
+   6. I will not waste chalk.
+   7. I will not waste chalk.
+   8. I will not waste chalk.
+
+Autocompletion
+
+A1. Autocompletion, first take
+
+Regardless of the programming language or text mode, you can use a simple autocompletion via M-/. This feature is called dynamic abbrevs. Look up Emacs info for more on abbrevs.
+
+Instead of using dabbrev-expand, you may perhaps prefer to use hippie-expand which is a bit more permissive (e.g. autocompletion on file names). But often you may want to distinguish them, e.g dabbrev expand may be more precise than hippie expand when auto-completing code. So I'm using two different bindings:
+
+   ;; autocompletion, take 1:
+   (global-set-key [(meta /)] 'dabbrev-expand)
+   (global-set-key [(control /)] 'hippie-expand)
+
+See also the section below about source code tags, and on third take on autocompletion.
+
+A2. Autocompletion, second take
+
+If you rather prefer to use visual completion of options from a drop down menu, install auto-complete package.
+
+   ;; autocompletion, take 2:
+   (when (require 'auto-complete nil t)
+     (require 'auto-complete-yasnippet)
+     (require 'auto-complete-semantic)
+     (require 'auto-complete-css)
+     (set-face-foreground 'ac-menu-face "wheat")
+     (set-face-background 'ac-menu-face "darkslategrey")
+     (set-face-underline 'ac-menu-face "wheat")
+     (set-face-foreground 'ac-selection-face "white")
+     (set-face-background 'ac-selection-face "darkolivegreen")
+     (setq ac-auto-start 4) ; start auto-completion after 4 chars only
+     (global-set-key "\C-c1" 'auto-complete-mode) ; easy key to toggle AC on/off
+     (define-key ac-complete-mode-map "\t" 'ac-complete)
+     (define-key ac-complete-mode-map "\r" nil)
+     (global-auto-complete-mode t))1
+
+A3. Visual kill ring
+
+Want to copy-paste some old deleted text? C-y inserts the latest deleted one from the kill ring, and M-u enables to cycle though past ones in order to find the one you want.
+
+Would like to have some more intuitive, graphical tool? Install browse-kill-ring and do M-x browse-kill-ring RET.
+
+Coding
+
+C1. Code folding: outline
+
+When you program, it is very interesting to be able to temporarily show/hide pieces of code. (I think some editors calls this ``code folding''.)
+
+One way is to use an outline mode for this. When you edit a text file, e.g. a documentation, you can use major outline mode:
+
+   M-x outline-mode RET
+
+see e.g. the Show/Hide menu that should have appeared.
+
+When you program, the outline mode can co-exist with various programming modes as a minor outline mode. You can configure separate code folding strategies for all the various languages you code in.
+
+For example, for Python:
+
+   ;; python mode combined with outline minor mode:
+   (add-hook 'python-mode-hook
+      (lambda ()
+        (outline-minor-mode 1)
+        (setq outline-regexp "def\\|class ")
+        (setq coding-system-for-write 'utf-8)
+        (local-set-key "\C-c\C-a" 'show-all)
+        (local-set-key "\C-c\C-t" 'hide-body)
+        (local-set-key "\C-c\C-s" 'outline-toggle-children)))
+
+C2. Code folding: narrowing
+
+Another way to achieve code folding is to use narrowing. This can be combined with the outlining mentioned previously. Here are some narrowing functions:
+
+   C-x n d ... narrow to def
+   C-x n n ... narrow to region
+   C-x n p ... narrow to page
+   C-x n w ... widen back
+
+E.g. when you are editing a function definition, and want to abstract away from the surrounding code, then you can press C-x n d to see only the function definition, and work on it.
+
+E.g. you can narrow your buffer to some region only, and then you can run your keyboard macros on the whole region via C-u 0 C-x e in one go, without disturbing the rest of your buffer.
+
+When you are finished with changes, widen back via C-x n w.
+
+C3. Programming modes
+
+Install some programming helper modes for Emacs:
+
+   $ apt-get install html-helper-mode css-mode python-mode nxml-mode
+
+When editing, say, Python file, see all the keyboard bindings for Python mode by doing:
+
+   M-x describe-bindings RET
+
+and discover useful ones or add ones you use often but are missing. For example, C-c p to run Pylint, or C-c w to run Pychecker:
+
+   (autoload 'python-mode "python-mode" "Python editing mode." t)
+   (setq interpreter-mode-alist (cons '("python" . python-mode) interpreter-mode-alist))
+   (global-set-key "\C-cp" 'pylint)
+   (global-set-key "\C-cw" 'py-pychecker-run)
+   ; workaround for Emacs22 and pylint/pychecker:
+   (setq compilation-scroll-output t)
+
+C4. Code tags/indexes
+
+Index the class/methods/function definitions of your sources via etags, for example by doing:
+
+   $ make etags
+
+in CDS Invenio sources, or invoke manually:
+
+   $ find . -name "*.py" -print | xargs etags
+   $ ls -l TAGS
+
+Then, when editing this project files' in Emacs, do:
+
+   M-.      ... to find first definition of a symbol (use TAB to complete)
+   C-u M-.             ... to find alternative definition(s) of a symbol
+   M-x tags-search RET ... to find locations where symbol is used (called)
+   M-,                 ... to find the next location
+   M-x tags-query-replace RET ... to replace symbol in all positions
+
+See Emacs Manual section about Tags.
+
+C5. IDE
+
+In addition to editing programming modes, you can use CEDET and ECB to have fancy browsing features such as list of functions/classes/methods in the file, speedbars, etc. See ECB screenshots and ECB overview.
+
+Get the software:
+
+   $ sudo emerge app-emacs/cedet app-emacs/ecb
+
+and configure it like:
+
+   ;; CEDET/ECB/semantic:
+   (require 'cedet)
+   (require 'ecb)
+   (setq semantic-load-turn-useful-things-on t)
+   (setq global-semantic-show-tag-boundaries-mode nil)
+   (setq global-semantic-show-parser-state-mode nil)
+   (setq semanticdb-default-save-directory "/tmp")
+   (setq semanticdb-global-mode nil)
+   (setq semanticdb-persistent-path (quote (never)))
+   (semantic-load-enable-code-helpers)
+   (global-semantic-auto-parse-mode -1)
+   (global-semantic-show-unmatched-syntax-mode -1)
+   (setq truncate-partial-width-windows nil)
+   ;(ecb-activate)
+
+Then start/stop ECB on your Python files by doing:
+
+   M-x ecb-activate RET
+   M-x ecb-deactivate RET
+
+And use fancy functions like to move into method browser window:
+
+   C-c . g m
+
+or toggle ECB windows on and off:
+
+   C-c . l w
+
+etc. See http://www.emacswiki.org/cgi-bin/wiki/EmacsCodeBrowser.
+
+C6. Electric pairs and parentheses
+
+You want naturally to match parentheses:
+
+   (show-paren-mode t)
+
+But don't you also want to type ( and let the editor enter complete () pair for you? Do you want to enter more characters in pairs, such as quotes? There are several options how to achieve this, one of which is to use skeleton:
+
+   ;; input parens in pairs in py-mode:
+   (require 'skeleton)
+   (setq skeleton-pair t)
+   (global-set-key (kbd "(") 'skeleton-pair-insert-maybe)
+   (global-set-key (kbd "[") 'skeleton-pair-insert-maybe)
+   (global-set-key (kbd "{") 'skeleton-pair-insert-maybe)
+   (global-set-key (kbd "'") 'skeleton-pair-insert-maybe)
+   (global-set-key (kbd "\"") 'skeleton-pair-insert-maybe)
+
+Better pairing with skeleton (e.g. to delete pairs in one go) can be achieved by doing also:
+
+   ;; better pairing: <http://www.emacswiki.org/emacs/AutoPairs>
+   (setq skeleton-pair-alist
+         '((?\( _ ?\))
+           (?[  _ ?])
+           (?{  _ ?})
+           (?\'  _ ?\')
+           (?\" _ ?\")))
+
+   (defun insert-pair-or-move-forward (arg)
+     (interactive "P")
+     (cond
+      ((and (not arg)
+            (not mark-active)
+            (or (not (assq last-command-char skeleton-pair-alist))
+                (eq last-command-char
+                    (car (last (assq last-command-char
+                                     skeleton-pair-alist)))))
+            (eq (char-after) last-command-char))
+       (forward-char 1))
+      (t
+       (skeleton-pair-insert-maybe arg))))
+
+   (defadvice delete-backward-char (before delete-empty-pair activate)
+     (if (eq (char-after)
+             (car (last (assq (char-before) skeleton-pair-alist))))
+         (and (char-after) (delete-char 1))))
+
+   (global-set-key "("  'insert-pair-or-move-forward)
+   (global-set-key ")"  'insert-pair-or-move-forward)
+   (global-set-key "["  'insert-pair-or-move-forward)
+   (global-set-key "]"  'insert-pair-or-move-forward)
+   (global-set-key "{"  'insert-pair-or-move-forward)
+   (global-set-key "}"  'insert-pair-or-move-forward)
+   (global-set-key "\'" 'insert-pair-or-move-forward)
+   (global-set-key "\"" 'insert-pair-or-move-forward)
+
+Note that if you are editing Lisp code, there is nothing better than paredit to edit/move/etc in S expressions.
+
+   ;; insert parens and quotes in pairs, navigate intelligently in S
+   ;; expressions:
+   (require 'paredit)
+
+For an overview of commands of the paredit mode, please see the paredit reference card http://mumble.net/~campbell/emacs/paredit.html.
+
+It also helps to dim the parens off via parenface:
+
+   ;; dim off the parens:
+   (defface paren-face
+       '((((class color))
+          (:foreground "AntiqueWhite4")))
+     "Face for displaying a paren."
+     :group 'faces)
+   (require 'parenface)
+
+since the Lisp code, quite like the Python code, is read by indentation, not by parens.
+
+C7. Code snippets
+
+Want to type try in the Python mode and have your editor complete the try/except code snippet for you? Or type class and have your editor complete a full template for entering a new class for you? Again, there are several alternatives, out of which I like yasnippet the most. It comes with snippets predefined for many languages. However, Pythonic yasnippets are not so numerous, so I created some custom ones (e.g. to have epytext docstring friendly def/class snippets).
+
+   ;; yasnippet for Python:
+   (require 'yasnippet)
+   (yas/initialize)
+   (set-face-background  'yas/field-highlight-face "Grey10")
+   (set-face-background  'yas/mirror-highlight-face "Grey10")
+   (yas/load-directory "/usr/share/emacs/etc/yasnippet/snippets")
+   (yas/load-directory "~/private/lib/emacs/yasnippets") ;; load also my custom snippets
+
+Example of how to define a custom snippet:
+
+   $ cat ~/private/lib/emacs/yasnippets/text-mode/python-mode/try
+   # name: try ... except ...
+   # group: exceptions
+   # contributor: Tibor Simko <tibor.simko@cern.ch>
+   # --
+   try:
+       $1
+   except ${2:ImportError}:
+       ${3:pass}
+
+Now just type try TAB and see the code skeleton being generated for you, and press TAB to complete the skeleton places, etc.
+
+For more Pythonic yasnippets, <see /afs/cern.ch/user/s/simko/public/yasnippets.
+
+C8. Which function am I editing?
+
+When editing body of a looong function (taking more than one screen), it would be nice to always see the name of the function we are editing in the status bar. which-function-mode is one option to achieve this. (Emacs 23 only.)
+
+   ;; which function am I editing?
+   (when (>= emacs-major-version 23)
+     (add-hook 'python-mode-hook
+               (lambda ()
+                 (which-function-mode t))))
+
+C9. Trailing whitespace
+
+It is not good to keep trailing whitespace in a code that other programmers can contribute to using other editors; the line changes consisting of trailing whitespace may be seen by the version control system as significant, depending on how editors are configured. So it is usually best not to have any trailing whitespaces in the code.
+
+Here is how to configure Emacs to display trailing whitespaces as warnings:
+
+   ;; show trailing whitespaces is some programming modes:
+   (mapc (lambda (hook)
+      (add-hook hook (lambda ()
+             (setq show-trailing-whitespace t))))
+         '(text-mode-hook
+      c-mode-hook
+      emacs-lisp-mode-hook
+      lisp-mode-hook
+      java-mode-hook
+      python-mode-hook
+      shell-script-mode-hook))
+
+You can then delete trailing whitespace in a buffer explicitly by calling:
+
+   M-x delete-trailing-whitespace RET
+
+Alternatively, to set up an automatic deletion of trailing whitespace upon saving your buffers, use:
+
+   ;; delete trailing whitespace before saving:
+   (add-hook 'before-save-hook 'delete-trailing-whitespace)
+
+C10. Spaces instead of tabs
+
+You definitely want to use spaces instead of tabs:
+
+   ;; spaces instead of tabs:
+   (setq-default indent-tabs-mode nil)
+
+C11. Code-friendly spell checking
+
+To spell check only your docstrings and code comments, use flyspell-prog-mode:
+
+   ;; spell check only strings/comments when in Python mode:
+   (add-hook 'python-mode-hook 'flyspell-prog-mode)
+
+C12. Making on the fly
+
+Flymake brings an on-the-fly code checking capabilities while you edit the code. For example, when hacking on Python, you can use flymake in connection with pyflakes to discover syntax errors, undefined variables, etc as soon as you type.
+
+   ;; flymake with pyflakes:
+   (when (load "flymake" t)
+     (defun flymake-pyflakes-init ()
+       (let* ((temp-file (flymake-init-create-temp-buffer-copy
+                          'flymake-create-temp-inplace))
+              (local-file (file-relative-name
+                           temp-file
+                           (file-name-directory buffer-file-name))))
+         (list "pyflakes" (list local-file))))
+     (add-to-list 'flymake-allowed-file-name-masks
+                  '("\\.py\\'" flymake-pyflakes-init)))
+   (add-hook 'find-file-hook 'flymake-find-file-hook)
+
+   ;; display flymake warnings without mouse:
+   ;; <http://paste.lisp.org/display/60617,1/raw>
+   (load-file "~/private/lib/emacs/misc/flymake-cursor.el")
+   (global-set-key (kbd "C-`") 'flymake-goto-next-error)
+
+C13. Running on the fly
+
+When hacking a dynamic language, there are easy possibilities to ``test as we code'' in dynamic interpreters. SLIME for Common Lisp is a perfect example of such a powerful run-as-you-edit combination. For hacking Python, one can use ipython.el that provides better Python interpreter than the standard one:
+
+   (when (locate-library "ipython")
+     (require 'ipython)
+     (setq py-python-command-args '("-colors" "Linux")))
+
+ipython enhancements cover functionality like:
+
+    e.g. xmode Verbose to see stack variables in the traceback
+    e.g. `pdb on' to use ipdb and there `locals()' and `up/down' the stack
+    e.g. lsmagic to see all the magic functions available
+    e.g. macro and history list
+    e.g. bg to execute in the background thread
+    e.g. mixing shell and python vars, x = uptime and then x.n 
+
+Then, when hacking Python code, you can start Python interpreter with C-c , (re)evaluate your buffer with C-c C-c, (re)evaluate your function definition with C-M-x, go retest stuff in the ipython buffer, etc.
+
+You may also like to alter comint bindings: for history:
+
+   ;; comint mode:
+   (require 'comint)
+   (define-key comint-mode-map [(control p)]
+     'comint-previous-matching-input-from-input)
+   (define-key comint-mode-map [(control n)]
+     'comint-next-matching-input-from-input)
+   (define-key comint-mode-map [(control meta n)]
+     'comint-next-input)
+   (define-key comint-mode-map [(control meta p)]
+     'comint-previous-input)
+
+You can run ipython outside of Emacs too, of course. For more information on ipython, you can watch ``The IPython Interactive Shell'' screencast series by Jeff Rush at http://showmedo.com/videotutorials/series?name=CnluURUTV.
+
+C14. Look up the specs
+
+Some programming modes offer easy to use remote documentation lookup facilities. For example, for hacking Python, there is pylookup one can use. Install it like:
+
+   $ git clone git://github.com/tsgates/pylookup.git
+   $ rm pylookup.db
+   $ ./pylookup.py -u http://docs.python.org
+
+Then configure it:
+
+   ;; pylookup, to look though online Python docs
+   ;; (git clone git://github.com/tsgates/pylookup.git)
+   (load-file "~/private/lib/emacs/pylookup/pylookup.el")
+   (eval-when-compile (require 'pylookup))
+   (setq pylookup-program "~/private/lib/emacs/pylookup/pylookup.py")
+   (setq pylookup-db-file "~/private/lib/emacs/pylookup/pylookup.db")
+   (autoload 'pylookup-lookup "pylookup"
+     "Lookup SEARCH-TERM in the Python HTML indexes." t)
+   (autoload 'pylookup-update "pylookup"
+     "Run pylookup-update and create the database at `pylookup-db-file'." t)
+   (global-set-key "\C-ch" 'pylookup-lookup)
+
+Then use C-c h RET set RET to lookup online documentation on Pythonic sets from docs.python.org in another Emacs buffer.
+
+C15. Autocompletion, third take
+
+In addition to the previous two generic auto-completion tools, one can use the programming mode advanced completion methods that take into account given programming language features. For example, to hack on Python, there is pymacs and ropemacs:
+
+   ;; autocompletion, take 3: (app-emacs/pymacs, ropemacs)
+   (require 'pymacs)
+   (pymacs-load "ropemacs" "rope-")
+   (define-key ropemacs-local-keymap [(meta /)] 'dabbrev-expand)
+   (define-key ropemacs-local-keymap [(control /)] 'hippie-expand)
+   (define-key ropemacs-local-keymap [(control c) (control /)] 'rope-code-assist)
+
+I prefer to have this bound separately from usual dabbrev and hippie autocompletion features, hence the define-key's above.
+
+Now, just type:
+
+   import os
+   os.un
+
+and C-c C-/ to see autocompletion offers for un (unsetenv, uname, unlink) that the os module offers. This works naturally for locally defined Python objects as well, so you can type:
+
+   from invenio import search_engine
+   search.engine.s
+
+and ask ropemacs to show menu of possible function names to complete.
+
+Version control
+
+V1. Interfacing CVS repository
+
+Another goodie is version control giving you CVS backend right in Emacs. Put this into your $HOME/.emacs:
+
+   (setq vc-default-back-end 'CVS)
+
+Then you can open ``foo.py'' and e.g. do ``C-x v ='' to see changes from CVS HEADER, C-x v l to see the log, there d to inspect differences, etc.
+
+For example, press C-x v g to annotate every source code line with revision and committer and date, producing:
+
+   [...]
+   1.1          (tibor    15-Jun-04):     def clean(self):
+   1.1          (tibor    15-Jun-04):         "Cleans the words table."
+   1.34         (kaplun   06-Jun-07):         self.value = {}
+   1.1          (tibor    15-Jun-04):
+   1.23         (tibor    29-Aug-06):     def put_into_db(self, mode="normal"):
+   1.19         (tibor    20-Jun-06):         """Updates the current words table in the corresponding DB
+   1.1          (tibor    15-Jun-04):            idxFOO table.  Mode 'normal' means normal execution,
+   1.1          (tibor    15-Jun-04):            mode 'emergency' means words index reverting to old state.
+   1.1          (tibor    15-Jun-04):            """
+   1.35         (kaplun   08-Jun-07):         write_message("%s %s wordtable flush started" % (self.tablename, mode), verbose=2)
+   1.35         (kaplun   08-Jun-07):         write_message('...updating %d words into %s started' % \
+   1.35         (kaplun   08-Jun-07):                 (len(self.value), self.tablename), verbose=2)
+   1.35         (kaplun   08-Jun-07):         task_update_progress("%s flushed %d/%d words" % (self.tablename, 0, len(self.value)))
+   1.32         (tibor    15-May-07):
+   1.1          (tibor    15-Jun-04):         self.recIDs_in_mem = beautify_range_list(self.recIDs_in_mem)
+   [...]
+
+For example, C-x v d to get the status of a directory under version control.
+
+For more tips on Emacs version control, see e.g. wiki page http://www.emacswiki.org/cgi-bin/wiki/VersionControl.
+
+V2. Interfacing Git repository
+
+The default VC mode of Emacs works well with git, but the annotate functionality may require some tweaking, depending on your Emacs version:
+
+   ;; fix Emacs version control system co-operation with git:
+   (defun tsi-fix-git-annotate ()
+     "This command will fix Emacs 22.3.1 VC system with git 1.6.0.4 annotate (C-x v g)."
+     (interactive)
+     (defun vc-git-annotate-command (file buf &optional rev)
+       ;; FIXME: rev is ignored
+       (let ((name (file-relative-name file)))
+         (vc-git-command buf 0 name "blame"))))
+
+To work with Git more, there is a powerful mode provided by magit:
+
+   ;; better git mode:
+   (setq load-path (cons (expand-file-name "~/private/lib/emacs/magit/") load-path))
+   (require 'magit)
+
+Just do M-x magit-status RET and operate from there. To learn more about magit, watch a nice screencast at http://vimeo.com/2871241.
+
+Web browsers
+
+W1. w3m
+
+A very nice Emacs-integrated web browser is emacs-w3m. Set it up like this:
+
+   ;; emacs browser: (app-emacs/emacs-w3m)
+   (require 'browse-url)
+   (when (locate-library "w3m")
+     (require 'w3m)
+     (setq browse-url-browser-function 'w3m-browse-url)
+     (setq w3m-symbol 'w3m-default-symbol)
+     (setq w3m-default-display-inline-images t))
+ 
+
+You may want to define a keyboard shortcut:
+
+   (global-set-key "\C-cb" 'browse-url)
+
+after which you can type C-c b gg: Higgs boson RET to launch a search for Higgs boson on Google.
+
+For hints on how to extend w3m with more search shortcuts like gg, see the section D4 below on encyclopedias.
+
+Dictionaries and Encyclopedias
+
+D1. Dictionary tools
+
+There are nice modes to have dictionary lookups in Emacs. Load them in the $HOME/.emacs file:
+
+   ;; dictionary tools: (app-emacs/dictionary)
+   (when (locate-library "dictionary")
+     (require 'dictionary)
+     (global-set-key "\C-cd" 'dictionary-search)
+     (global-set-key "\C-cm" 'dictionary-match-words))
+
+then use them by pressing C-c d on a word.
+
+D2. Translation tools
+
+Use babel.el from http://www.hoetzel.info/Hacking/emacs/emacs-interface-to-web-translation-services-such/.
+
+   ;; translation tools: (install into ~/private/lib/emacs/misc)
+   ;; <http://www.hoetzel.info/Hacking/emacs/emacs-interface-to-web-translation-services-such/>
+   (require 'babel)
+
+Now select a region and call M-x babel-region RET to translate it, using services such as Apertium, Babelfish, Google Translate, or FreeTranslation.
+
+D3. French conjugator
+
+If you write frequently emails in French, you may find handy this interface to the French configator verbiste:
+
+   ;; French conjugator: (app-dicts/verbiste)
+   (defun tsi-french-conjugator (word)
+     "Call french-conjugator on WORD."
+     (interactive "sWord to conjugate in French: ")
+     (save-excursion
+       (let ((old-buffer (current-buffer)))
+         (get-buffer-create "*tsi-french-conjugator*")
+         (set-buffer "*tsi-french-conjugator*")
+         (erase-buffer)
+         (set-buffer old-buffer))
+       (call-process "french-conjugator" nil "*tsi-french-conjugator*" t word)
+       (display-buffer "*tsi-french-conjugator*")))
+   (global-set-key "\C-cf" 'tsi-french-conjugator)
+
+Now just type C-c f avoir RET to consult the conjugation tables for the verb `avoir'.
+
+D4. Spell checking
+
+I prefer aspell to ispell, so I use:
+
+   ;; spelling checker: (app-text/aspell, app-dicts/aspell-en, app-dicts/aspell-fr)
+   (setq ispell-program-name "aspell")
+
+To make spell checking on the fly, as you type, use flyspell mode. E.g. to make flyspell checking of your buffer:
+
+   M-x flyspell-buffer RET
+
+To setup flyspell checking automatically:
+
+   ;; check spelling on the fly:
+   (dolist (hook '(text-mode-hook))
+     (add-hook hook (lambda () (flyspell-mode 1))))
+   (dolist (hook '(change-log-mode-hook log-edit-mode-hook))
+     (add-hook hook (lambda () (flyspell-mode -1))))
+   (global-set-key "\C-cs" 'flyspell-buffer)
+
+When flyspell checking, you can press:
+
+   C-,   ... go to next error
+   C-.   ... auto correct given word
+   C-c $ ... propose pop-down menu to choose from
+
+so a quick series of C-, and C-. is usually enough to correct the text.
+
+To change the spell checker dictionary to French, do:
+
+   M-x ispell-change-dictionary RET francais RET
+
+For help on how to spell check programs, see another tip of this page (C11).
+
+D5. Encyclopaedia Britannica
+
+You may want to defined a new w3m shortcut (mentioned in W1) in order to have direct access to Encyclopaedia Britannica via w3m.
+
+   (eval-after-load "w3m-search"
+     '(progn
+        (add-to-list 'w3m-search-engine-alist
+           '("encyclopaedia-britannica"
+             "http://search.eb.com/search?query=%s&ct="
+             nil))
+        (add-to-list 'w3m-uri-replace-alist
+           '("\\`eb:" w3m-search-uri-replace "encyclopaedia-britannica"))))
+
+Now, in a w3m buffer, type U eb:higgs RET to launch a search for Higgs boson in Encyclopaedia Britannica. Or, with the web shortcut defined earlier in section W1, type C-c b gg: Higgs boson RET in any buffer.
+
+D6. Wikipedia
+
+Similarly, let us defined another useful w3m shortcut for Wikipedia searches:
+
+   (require 'w3m-search)
+   (eval-after-load "w3m-search"
+     '(progn
+        (add-to-list 'w3m-search-engine-alist
+           '("wikipedia-en"
+             "http://en.wikipedia.org/wiki/Special:Search?search=%s"
+             nil))
+        (add-to-list 'w3m-uri-replace-alist
+           '("\\`wp:" w3m-search-uri-replace "wikipedia-en"))))
+
+so that we can type C-c b wp: higgs_boson RET to go directly to the Wikipedia page about Higgs boson.
+
+Publishing and Organizing
+
+P1. TWiki
+
+Emacs has a nice mode for editing TWiki pages, called erin http://www.neilvandyke.org/erin-twiki-emacs/. Just install it into your ~/private/lib/emacs/misc and edit your $HOME/.emacs like this:
+
+   $ cd private/lib/emacs/misc
+   $ wget http://www.neilvandyke.org/erin-twiki-emacs/erin.el
+   $ cat $HOME/.emacs
+   (setq load-path (cons (expand-file-name "~/private/lib/emacs/misc/") load-path))
+   (require 'erin)
+   (setq auto-mode-alist (cons '("w3mtmp" . erin-mode) auto-mode-alist))
+   (setq auto-mode-alist (cons '("mozex.textarea" . erin-mode) auto-mode-alist))
+   (server-start)
+
+Then you can view TWiki pages in your favourite Web browser by configuring it to use an external editor emacsclient.
+
+For example, if you use w3m, then edit w3m's config file like this:
+
+   $ grep editor ~/.w3m/config
+   editor /usr/bin/emacsclient
+
+which will open an Emacs buffer for editing wiki pages.
+
+Another example: if you are using Firefox, then install mozex extension that enables you to configure Firefox to use external programs for various things such as editing textareas, mailto links, etc. When mozex is installed, press RightMouseClick -> mozex -> Configuration -> Textarea and put /usr/bin/emacsclient %t there. Then, when you are editing a textarea in Firefox, you may either use the native Firefox editor, or you can do RightMouseClick -> mozex -> Edit Textarea to jump into an Emacs buffer to edit the wiki page.
+
+When you are done with editing the wiki page in emacsclient buffer, press C-x # to commit your edits back to the browser, and use preview etc functionalities as usual.
+
+It also helps to combine erin mode with outline mode for section folding/unfolding:
+
+   ;; twiki mode, combined with outline minor mode:
+   (require 'erin)
+   (add-hook 'erin-mode-hook
+     (lambda ()
+       (interactive)
+       (outline-minor-mode 1)
+       (flyspell-mode 1)
+       (make-local-variable 'outline-regexp)
+       (setq outline-regexp "---\*+")
+       (local-set-key "\C-c\C-a" 'show-all)
+       (local-set-key "\C-c\C-t" 'hide-body)
+       (local-set-key "\C-c\C-s" 'outline-toggle-children)))
+
+Note: speaking of Firefox extensions, an alternative to Mozex is an extension called ``It's All Text!''. It names its temporary files differently. To edit twiki.cern.ch pages, it helps to set:
+
+   (setq auto-mode-alist (cons '("twiki" . erin-mode) auto-mode-alist))
+
+Or just configure IAT to use the `.twiki' file extension.
+
+P2. Muse
+
+I use Emacs Muse quite a lot for writing web sites, personal wikis, and keeping journal. See http://mwolson.org/projects/EmacsMuse.html.
+
+Muse can be nicely combined with outline mode:
+
+   ;; muse: (app-emacs/muse)
+   (require 'outline)
+   (require 'muse)
+   (require 'muse-colors)
+   (require 'muse-mode)
+   (require 'muse-blosxom)
+   (require 'muse-docbook)
+   (require 'muse-html)
+   (require 'muse-latex)
+   (require 'muse-latex2png)
+   (require 'muse-texinfo)
+   (require 'muse-wiki)
+   (require 'muse-xml)
+   (require 'muse-journal)
+   (require 'muse-project)
+
+   ;; muse combined with outline minor mode:
+   (add-hook 'muse-mode-hook
+      (lambda ()
+        (outline-minor-mode 1)
+        (setq outline-regexp "*+")
+        (setq coding-system-for-write 'utf-8)
+        (local-set-key "\C-c\C-a" 'show-all)
+        (local-set-key "\C-c\C-t" 'hide-body)
+        (local-set-key "\C-c\C-s" 'outline-toggle-children)))
+
+The muse projects and publishing styles are then defined like:
+
+   ;; muse project:
+   (setq muse-project-alist
+         `(("homepage" (,@(muse-project-alist-dirs "~/private/muse/homepage")
+                          :force-publish ("sitemap" "index"))
+                       ,@(muse-project-alist-styles "~/private/muse/homepage"
+                                                    "~/www"
+                                                    "html"))
+           ("journal" ("~/private/muse/journal" :default "index")
+                      (:base "journal-html" :path "~/www/journal"))))
+   (setq muse-html-header "
+   <!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\">
+   <html>
+     <head>
+       <title>simko.info :: <lisp>
+     (concat (muse-publishing-directive \"title\")
+             (let ((author (muse-publishing-directive \"author\")))
+               (if (not (string= author (user-full-name)))
+                   (concat \" (by \" author \")\"))))</lisp></title>
+       <meta name=\"generator\" content=\"muse.el\">
+       <meta http-equiv=\"<lisp>muse-html-meta-http-equiv</lisp>\"
+             content=\"<lisp>muse-html-meta-content-type</lisp>\">
+       <link rel=\"stylesheet\" type=\"text/css\" href=\"simko.info.css\">
+       <lisp>
+         (let ((maintainer (muse-style-element :maintainer)))
+           (when maintainer
+             (concat \"<link rev=\\\"made\\\" href=\\\"\" maintainer \"\\\">\")))
+       </lisp>
+     </head>
+     <body>
+       <div class=\"header\"><div class=\"headerlogo\"><code>.o.</code><br><code>..o</code><br><code>ooo</code></div><div class=\"headertitle\">http://simko.info/</div><div class=\"headersubtitle\">Tibor Simko's Vademecum and Essays</div></div>
+       <h1><lisp>
+     (concat (muse-publishing-directive \"title\")
+             (let ((author (muse-publishing-directive \"author\")))
+               (if (not (string= author (user-full-name)))
+                   (concat \" (by \" author \")\"))))</lisp></h1>")
+   (setq muse-html-footer "
+       <div class=\"navfoot\">
+         <table width=\"100%\" border=\"0\">
+           <tr>
+             <td width=\"33%\" align=\"left\">
+                 <a class=\"foothome\" href=\"http://simko.info/\">Home</a> ::
+                 <a class=\"foothome\" href=\"http://simko.info/vademecum/sitemap.html\">Sitemap</a>
+             </td>
+             <td width=\"33%\" align=\"center\">
+                 Powered by
+                 <a class=\"foothome\" href=\"http://www.emacswiki.org/cgi-bin/wiki/MuseMode\">Emacs Muse</a>
+             </td>
+             <td width=\"33%\" align=\"right\">
+               <lisp>
+                     (concat
+                      \"<span class=\\\"footdate\\\">Last updated \"
+                      (format-time-string \"%Y-%m-%d\"
+                       (nth 5 (file-attributes muse-publishing-current-file)))
+                      \"</span>\")
+               </lisp>
+             </td>
+           </tr>
+         </table>
+       </div>
+     </body>
+   </html>\n")
+   (setq muse-journal-html-entry-template "
+   <div class=\"entry\">
+     <a name=\"%anchor%\" style=\"text-decoration: none\">&nbsp;</a>
+     <div class=\"entry-body\">
+       <div class=\"entry-head\">
+         <div class=\"entry-date\">
+           <span class=\"date\">%date%</span>
+         </div>
+       </div>
+       <div class=\"entry-text\">
+         <div class=\"entry-qotd\">
+           <p>%qotd%</p>
+         </div>
+   %text%
+       </div>
+     </div>
+   </div>\n\n")
+
+P3. Org-mode
+
+One publishing alternative to Muse is Org-mode that you can also use as a better outline mode. It is great for keeping your notes and TODO lists and otherwise staying better organized.
+
+Write your files like this:
+
+* Chapter
+   ** Section
+   *** Subsection
+* Next Chapter
+
+and then do things like:
+
+    C-c C-c to add a tag to a headline
+    C-c \ to search for a tag
+    C-c , to set priorities to headlines
+    C-c C-e h to export as HTML 
+
+See sources like:
+
+    read nice short tutorial at http://dto.github.com/notebook/orgtutorial.html
+    read long toturial at http://doc.norang.ca/org-mode.html
+    watch Google Tech Talk video at http://www.youtube.com/watch?v=oJTwQvgfgMM
+    print out Org-mode reference card http://orgmode.org/orgcard.pdf 
+
+P4. Calendar and diary
+
+Emacs calendar and diary setup can look like:
+
+   ;; calendar and diary:
+   (setq diary-file "~/.diary")
+   (setq mark-holidays-in-calendar t)
+   (setq mark-diary-entries-in-calendar t)
+   (setq view-diary-entries-initially t)
+   (setq calendar-latitude 46.20) ;; 46n12, see <URL:http://www.astro.ch/>
+   (setq calendar-longitude 6.15) ;; 06e09, see <URL:http://www.astro.ch/>
+   (setq calendar-location-name "Geneva, CH")
+   (add-hook 'diary-display-hook 'fancy-diary-display)
+   (setq diary-schedule-interval-time 60)
+   (add-hook 'list-diary-entries-hook 'include-other-diary-files)
+   (add-hook 'mark-diary-entries-hook 'mark-included-diary-files)
+   (add-hook 'diary-hook 'appt-make-list)
+
+The ~/.diary file can look like:
+
+   &%%(diary-cyclic 7 7 13 2005) 10:00 CDS Section Meeting
+
+   Dec 16, 2005 9:00 Meeting with Foo
+   Dec 17, 2005 10:00 Meeting with Bar
+
+Note how we defined a cyclic event repeating every 7 days.
+
+Now, when in calendar mode (M-x calendar RET), go to some day and press i d to insert an event into diary for the given day, press S to check out the sunrise/sunset times, etc.
+
+Mail and Usenet
+
+M1. Gnus
+
+I recommend Gnus, powerful and featureful mail and news reader; see http://gnus.org/. Some excerpts of my ~/.gnus.el configuration:
+
+   ;; set directories:
+   (setq gnus-startup-file "~/private/gnus/.newsrc")
+   (setq nnmail-message-id-cache-file "~/private/gnus/.nnmail-cache")
+   (setq gnus-home-directory "~/private/gnus")
+   (setq message-directory "~/private/gnus/Mail/")
+   (setq message-auto-save-directory "~/private/gnus/Mail/drafts")
+   (setq gnus-directory "~/private/gnus/News/")
+   (setq gnus-cache-directory "~/private/gnus/News/cache")
+
+   ;; personal stuff
+   (setq user-full-name "Tibor Simko"
+         mail-host-address "cern.ch"
+         user-mail-address "tibor.simko@cern.ch"
+         message-from-style 'angles)
+
+   ;; select stuff
+   (setq gnus-select-method '(nnnil "")
+         mail-sources '((file :path "/var/mail/simko"))
+         gnus-secondary-select-methods '((nnml "")
+                                         (nnimap "imap.cern.ch"
+                                                 (nnimap-address "imap.cern.ch")
+                                                 (nnimap-stream ssl)
+                                                 (nnimap-server-port 993)
+                                                 (nnimap-logout-timeout 10)
+                                                 (nnimap-list-pattern ("INBOX" "Cern Spam" "mail.*" ))
+                                                 (nnir-search-engine imap))
+                                         (nntp "gmane" (nntp-address "news.gmane.org"))))
+
+   ;; outgoing mail:
+   (load "~/private/lib/emacs/misc/smtpmail.el")
+   (require 'smtpmail)
+   (setq message-send-mail-function 'smtpmail-send-it     ;; for gnus/message
+         send-mail-function 'smtpmail-send-it)            ;; for `mail'
+   (setq smtpmail-smtp-service 25
+         smtpmail-smtp-server "smtp.cern.ch")
+   (setq smtpmail-auth-credentials '(("smtp.cern.ch" 25 "simko" nil)))
+   (setq smtpmail-starttls-credentials '(("smtp.cern.ch" 25 nil nil)))
+   (setq smtpmail-default-smtp-server "smtp.cern.ch")
+   ;(setq smtpmail-debug-info t)
+   ;(setq smtpmail-debug-verb t)
+
+   ;; cache setup:
+   (setq gnus-use-cache t)
+   (setq gnus-cacheable-groups "^nntp")
+
+   ;; no newlines at the end:
+   (setq next-line-add-newlines nil)
+
+   ;; nnimap splitting stuff:
+   (setq nnimap-crosspost nil)
+   (setq nnimap-split-inbox '("INBOX"))
+   (setq nnimap-split-predicate "UNDELETED")
+   (setq nnimap-split-rule 'nnimap-split-fancy)
+   (setq nnimap-split-fancy
+      '(|  ;; to boot, I don't like duplicates:
+           ("Gnus-Warning" "This is a duplicate" "mail.spam.duplicates")
+           ;; firstly let us detect obvious spam:
+           ("Content-Type" "big5\\|gb2312\\|ks_c_.*\\|euc-kr" "mail.spam.asian")
+           ("Content-Type" "koi8-r\\|windows-1251" "mail.spam.russian")
+           ("Subject" ".*[Â¹Â²Â°Â¶Â¿Â&#188;].*\\|   [0-9A-Z]\\|webcam.*\\|ks_c_.*\\|Pravdepodobne spam" "mail.spam.misc")
+           ("Keywords" "CERN SpamKiller Note: [1-9][0-9]" "mail.spam.kill")
+           ("Content-Type" "text/html" "mail.spam.html")
+           ;; secondly let us detect mailing lists I am subscribed to:
+           ("List-ID" "ding\\.gnus\\.org" "mail.app.emacs.gnus")
+           ...
+           ;; thirdly let us detect trustable mail aliases I am in:
+           ("To" "club-games" "mail.cern.club-games")
+           ...
+           ;; fourthly let us detect personal email:
+           (any "simko.cern\\.ch" "mail.personal")
+           ;; by default we do not trust the rest
+           "mail.personal.misc"))
+
+   ;; posting styles:
+   (setq ts-cds-sig "Tibor Simko ** CERN Document Server ** <http://cds.cern.ch/>")
+   (setq ts-games-sig "Tibor Simko ** CERN Go Club ** <http://games.cern.ch/go.html>")
+   (setq gnus-posting-styles
+         '((".*"
+            (organization "CERN -- European Organization for Nuclear Research")
+            (body "\n\nBest regards")
+            (signature ts-cds-sig))
+           ("^nnml:mail.cern.club-games"
+            (body "\n\nBest regards")
+            (signature ts-games-sig))
+           ((header "To" "club-games@cern\\.ch")
+            (body "\n\nBest regards")
+            (signature ts-games-sig))
+           ((header "Cc" "club-games@cern\\.ch")
+            (body "\n\nBest regards")
+            (signature ts-games-sig))))
+
+   ;; citation stuff
+   (setq message-citation-line-function 'message-insert-formatted-citation-line)
+   (setq message-citation-line-format "On %a, %d %b %Y, %N wrote:")
+
+   ;; ispell automatic invocation:
+   (add-hook 'message-send-hook 'ispell-message)
+   ;(setq message-send-hook nil) ;; how to switch ispell off temporarily
+
+   ;; preferred coding systems:
+   (setq mm-coding-system-priorities '(iso-8859-1 iso-8859-2 iso-8859-15 utf-8))
+
+   ;; expiring stuff:
+   (setq gnus-auto-expirable-newsgroups "^nnml\\|^nnimap")
+   (setq nnmail-expiry-wait 15)
+
+   ;; saving articles:
+   (setq gnus-update-message-archive-method t)
+   (setq gnus-message-archive-method
+        '(nnimap "imap.cern.ch"))
+   (setq gnus-message-archive-group
+              '((if (message-news-p)
+                    "mail.sent.news"
+                  (concat "mail.sent." (format-time-string
+                                   "%Y-%m" (current-time))))))
+
+   ;; group & summary formats:
+   (setq gnus-group-line-format "%5y%5i: %(%g%)\n")
+   (setq gnus-summary-line-format "%U%R%z %-6,6d %I%(%[%4L,%c: %-20,20f%]%) %s\n")
+
+   ;; treat article hook:
+   (setq gnus-article-display-hook
+         '(gnus-article-hide-headers-if-wanted
+           gnus-article-date-lapsed
+           gnus-article-hide-pgp
+           gnus-article-hide-boring-headers
+           gnus-article-treat-overstrike
+           gnus-article-de-quoted-unreadable
+           gnus-article-strip-leading-blank-lines
+           gnus-article-remove-trailing-blank-lines
+           gnus-article-strip-multiple-blank-lines
+           gnus-article-highlight
+           gnus-article-emphasize))
+
+   ;; make gnus faster:
+   (setq gnus-treat-buttonize 5000
+         gnus-treat-emphasize 5000
+         gnus-treat-highlight-signature nil
+         gnus-treat-strip-pgp 5000
+         gnus-treat-strip-banner 5000)
+
+   ;; discourage HTML mail:
+   (eval-after-load "mm-decode"
+    '(progn
+         (add-to-list 'mm-discouraged-alternatives "text/html")
+         (add-to-list 'mm-discouraged-alternatives "text/richtext")))
+
+   ;; wide reply:
+   (setq message-dont-reply-to-names "tibor\\.simko@cern\\.ch")
+
+   ;; read articles stay read and don't get expired when revisited:
+   (remove-hook 'gnus-mark-article-hook
+                'gnus-summary-mark-read-and-unread-as-read)
+   (add-hook 'gnus-mark-article-hook 'gnus-summary-mark-unread-as-read)
+
+   ;; nnir for seaching:
+   (require 'nnir)
+
+Instant Messaging and Chatting
+
+I1. IRC
+
+ERC.
+
+I2. Jabber
+
+I like jabber.el. Use commands like C-x C-j C-c to connect to a server or two, C-x C-j C-r to visit your roster, RET to launch a chat with someone, C-x C-j C-a to send `away' presence, etc.
+
+If you have had enough chatting, and you go back to writing some code (or some email, or ...), so your chat buffers become not visible anymore, then if you have some new incoming IM activity, be it a private message or a groupchat message or a subscription request, then your Emacs mode line will gently change and display the name of the contacts/groupchats that have seen some new IM activity since you last visited them. You can then use C-x C-j C-l to switch right to the correct jabber buffer to continue the chat. After you are done, press C-x C-j C-l again to go back to the coding place you have been to.
+
+A nicely inobtrusive way of IM operations. Needless to say, you can configure things to be as obtrusive as desired, if that is what you prefer.
+
+If you have usually several frames open, please see my activity flag patch at http://article.gmane.org/gmane.emacs.jabber.general/913.
+
+If you would like to log groupchat history, please see my history logger patch at http://article.gmane.org/gmane.emacs.jabber.general/915.
+
+Games and Fun
+
+G1. Psychotherapy
+
+Too much hacking? Want a little psychotherapy? Try M-x doctor RET. Or M-x psychoanalyze-pinhead RET.
+
+G2. Tetris
+
+Too much hacking? Want a little gaming break? Try M-x tetris RET.
+
+G3. Butterfy
+
+Using Emacs 23? Go try C-h f butterfly RET. No kidding.
+
+Using an older Emacs? Go read http://xkcd.com/378/ before upgrading.
+
+G4. Uptime
+
+How long has it been since we booted Emacs? Use M-x emacs-uptime RET.
+
+G5. Artist
+
+Need to create some ASCII art? Use M-x artist-mode RET, drag the mouse around, and middle-click for menu.
+
+Further reading
+
+Besides reading the fine manual (C-h i), I heartily suggest reading Emacs wiki and Planet Emacsen. Some of the above recipes were taken from or inspired by these fine sources. 

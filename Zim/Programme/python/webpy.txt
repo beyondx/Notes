@@ -1,0 +1,11 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-16T19:22:55+08:00
+
+====== webpy ======
+Created Sunday 16 October 2011
+
+web.py+mako+sqlalchemy+postgresql 
+web.py + jinja2 + sqlalchemy + postgresql
+豆瓣开发的时候用的是 quixote 框架，并不是这个框架突出，而是因为当时可选择的框架很少
+现在 豆瓣的后台管理用的是 web.py 框架。 

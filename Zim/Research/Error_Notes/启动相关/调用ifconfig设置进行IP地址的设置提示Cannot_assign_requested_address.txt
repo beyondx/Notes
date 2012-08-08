@@ -1,0 +1,17 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-22T13:02:36+08:00
+
+====== 调用ifconfig设置进行IP地址的设置提示Cannot assign requested address ======
+Created Wednesday 22 February 2012
+
+http://hi.baidu.com/wang_jianguang/blog/item/e6d4904c9e0ecd3aaec3abdb.html
+
+Linux昨天晚上终于跑起来了，文件系统也可以用了，我在开机时调用ifconfig设置进行IP地址的设置，可是总是会显示：
+ifconfig: SIOCSIFFLAGS: Cannot assign requested address
+很纳闷，网上查了一下，__原来是MAC地址的问题__，经过以下的处理，就OK啦~
+# ifconfig eth0 down
+# ifconfig eth0 hw ether 00:00:AA:BB:CC:DD
+# ifconfig eth0 up
+eth0: link down
+# ifeth0: link up, 100Mbps, full-duplex, lpa 0xCDE1

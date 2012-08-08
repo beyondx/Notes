@@ -1,0 +1,189 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-03T23:52:38+08:00
+
+====== 命名范例 ======
+Created Tuesday 03 May 2011
+http://www.web7d.com.cn/2010/01/css-div-xhtml-naming-rule/
+DIV+CSS+XHTML命名规则
+一月 28, 2010 by zeze · Leave a Comment    
+作为设计人员，良好的规范化程序是必须的也是必要的。在如今DIV+CSS的标准化设计中，如果才能使得自己代码规范呢？你是否做到了真正的SEO标准操作。希望这篇文章对你也有一点儿用处吧。
+CSS命名规则
+页头：header
+登录条：loginBar
+标志：logo
+侧栏：sideBar
+广告：banner
+导航：nav
+子导航：subNav
+菜单：menu
+子菜单：subMenu
+搜索：search
+滚动：scroll
+页面主体：main
+内容：content
+标签页：tab
+文章列表：list
+提示信息：msg
+小技巧：tips
+栏目标题：title
+加入：joinus
+指南：guild
+服务：service
+热点：hot
+新闻：news
+下载：download
+注册：register
+状态：status
+按钮：btn
+投票：vote
+合作伙伴：partner
+友情链接：friendLink
+页脚：footer
+版权：copyRight
+XHTML文件中id的命名
+(1)页面结构
+容器: container
+页头：header
+内容：content/container
+页面主体：main
+页尾：footer
+导航：nav
+侧栏：sidebar
+栏目：column
+页面外围控制整体布局宽度：wrapper
+左右中：left right center
+(2)导航
+导航：nav
+主导航：mainbav
+子导航：subnav
+顶导航：topnav
+边导航：sidebar
+左导航：leftsidebar
+右导航：rightsidebar
+菜单：menu
+子菜单：submenu
+标题: title
+摘要: summary
+(3)功能
+标志：logo
+广告：banner
+登陆：login
+登录条：loginbar
+注册：regsiter
+搜索：search
+功能区：shop
+标题：title
+加入：joinus
+状态：status
+按钮：btn
+滚动：scroll
+标签页：tab
+文章列表：list
+提示信息：msg
+当前的: current
+小技巧：tips
+图标: icon
+注释：note
+指南：guild
+服务：service
+热点：hot
+新闻：news
+下载：download
+投票：vote
+合作伙伴：partner
+友情链接：link
+版权：copyright
+做网页时，常会因为不会命名和命名重复而造成好多不不必要的麻烦，正确的命名的确很重要，我这里也收集了一些命名规则，发上来大家共享下。
+CSS ID 的命名
+
+外　套：　　wrap
+主导航：　　mainnav
+子导航：　　subnav
+页　脚：　　footet
+整个页面：　content
+页　眉：　　header
+页　脚：　　footer
+商　标：　　label
+标　题：　　title
+主导航：　　nav（mainnav/globalnav）
+顶导航：　　topnav
+边导航：　　sidebar
+左导航：　　leftsidebar
+右导航：　　rightsidebar
+当前位置：　loc
+旗　志：　　logo
+标　语：　　banner
+菜单内容1： menu1 content
+菜单容量：　menu container
+子菜单：　　submenu
+边导航图标：sidebarIcon
+注释：　　　note
+面包屑：　　breadcrumb(即页面所处位置导航提示）
+容器：　　　container
+内容：　　　content
+搜索：　　　search
+登陆：　　　Login
+功能区：　　shop(如购物车，收银台)
+当前的　　　current
+网站公用相关
+
+Container div        #container 容器
+Header or banner div      #header 页头部分
+Main or global navigation div      #main-nav 主导航
+Menu     #menu 菜单
+Sub Menu     #submenu 子菜单
+Left or right side columns    #sidebar-a,    #sidebar-b  左边栏或右边栏
+Main div      #main 页面主体
+Content div       #content 内容部分
+The main content area       #content-main 主要内容区域
+Footer div      #footer 页脚部分
+Tag      #tag 标签
+Message     #msg      #message 提示信息
+Tips         #tips 小技巧
+Vote      #vote 投票
+Friend Link      #friendlink 友情连接
+Title        #title 标题
+Summary    #summary 摘要
+Sub-navigation list      #sub-nav 二级导航
+Search input      #search-input 搜索输入框
+Search output    #search-output 搜索输出和搜索结果相似
+Search      #search 搜索
+Search results      #search-results   搜索结果
+Copyright information     #copyright   版权信息
+brand     #branding 商标
+branding-logo      #branding-logo      LOGO
+Site information      #siteinfo 网站信息
+Copyright information etc.    #siteinfo-legal     法律声明
+Designer or other credits     #siteinfo-credits   信誉
+Join us     #joinus     加入我们
+Partnership opportunities    #partner   作伙伴
+Services    #service   服务
+Regsiter    #regsiter   注册
+Status    #status    状态
+电子贸易相关
+
+Products     .products 产品
+Products prices     .products-prices 产品价格
+Products description     .products-description 产品描述
+Products review    .products-review 产品评论
+Editor’s review     .editor-review 编辑评论
+New release    .news-release 最新产品
+Publisher    .publisher 生产商
+Screen shot    .screenshot 缩略图
+FAQ       .faqs 常见问题
+Keyword      .keyword 关键词
+Blog     .blog 博客
+Forum    .forum 论坛
+另外在编辑样式表时可用的注释可这样写：
+<– Footer –>
+内容区
+<– End Footer –>
+样式文件命名
+
+主要的 master.css
+布局，版面 layout.css
+专栏 columns.css
+文字 font.css
+打印样式 print.css
+主题 themes.css

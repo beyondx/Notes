@@ -1,0 +1,87 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-25T16:58:27+08:00
+
+====== Process Substitution ======
+Created Sunday 25 December 2011
+http://www.linuxjournal.com/content/shell-process-redirection
+
+In addition to the fairly common forms of input/output redirection the shell recognizes something called process substitution. Although not documented as a form of input/output redirection, its syntax and its effects are similar.
+
+The syntax for process substitution is:
+
+  <(list)
+or
+  >(list)
+
+where each list is a command or a pipeline of commands. The effect of process substitution is to__ make each list act like a file__. This is done by **giving the list a name** in the file system and then** substituting that name in the command line**. The list is given a name either by connecting the list to named** pipe** or by using a file in **/dev/fd **(if supported by the O/S). By doing this, the command simply sees a file name and is unaware that its reading from or writing to a command pipeline.
+
+To substitute a command pipeline for an** input file** the syntax is:
+
+  command ... <(list) ...
+
+To substitute a command pipeline for an **output file** the syntax is:
+
+  command ... >(list) ...
+
+At first process substitution may seem rather pointless, for example you might imagine something simple like:
+
+  uniq <(sort a)
+
+to sort a file and then find the unique lines in it, but this is more commonly (and more conveniently) written as:
+
+  sort a | uniq
+
+The power of process substitution comes when you have __multiple command pipelines that you want to connect to a single command__.
+
+For example, given the two files:
+
+  # cat a
+  e
+  d
+  c
+  b
+  a
+  # cat b
+  g
+  f
+  e
+  d
+  c
+  b
+
+To view the lines **unique to each of these** two unsorted files you might do something like this:
+
+  # sort a | uniq >tmp1
+  # sort b | uniq >tmp2
+  # comm -3 tmp1 tmp2
+  a
+        f
+        g
+  # rm tmp1 tmp2
+
+With process substitution we can do all this with one line:
+
+  # __comm -3 <(sort a | uniq) <(sort b | uniq)__
+  a
+        f
+        g
+
+Depending on your shell settings you may get an error message similar to:
+
+  syntax error near unexpected token `('
+
+when you try to use process substitution, particularly if you try to use it within a shell script. Process substitution is not a POSIX compliant feature and so it may have to be enabled via:
+
+  set +o posix
+
+Be careful not to try something like:
+
+  if [[ $use_process_substitution -eq 1 ]]; then
+    set +o posix
+    comm -3 <(sort a | uniq) <(sort b | uniq)
+  fi
+
+The command set +o posix enables not only the execution of process substitution but the recognition of the syntax. So, in the example above the shell tries to parse the process substitution syntax before the "set" command is executed and therefore still sees the process substitution syntax as illegal.
+
+Of course, note that all shells may not support process substitution, these examples will work with bash. 

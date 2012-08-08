@@ -1,0 +1,89 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-28T14:45:43+08:00
+
+====== 2 ======
+Created Saturday 28 May 2011
+http://blog.csdn.net/lyflower/archive/2010/01/02/5120128.aspx
+
+我的urxvt配置文件如下
+
+～／.Xresources
+
+! urxvt color set
+URxvt.multichar_encoding:utf-8
+URxvt.background:black
+URxvt.foreground:green
+
+URxvt.colorBD:yellow
+URxvt.colorUL:green
+URxvt.cursorColor:red3
+URxvt.color0:black
+URxvt.color1:red3
+URxvt.color2:springgreen
+URxvt.color3:wheat3
+URxvt.color4:navy
+URxvt.color5:magenta4
+URxvt.color6:steelblue1
+URxvt.color7:gray85
+URxvt.color8:gray10
+URxvt.color9:orangered2
+URxvt.color10:chartreuse3
+URxvt.color11:lightgoldenrod2
+URxvt.color12:skyblue1
+URxvt.color13:pink1
+URxvt.color14:lightblue1
+
+! scroll set
+URxvt.scrollBar:True
+URxvt.scrollBar_right:True
+URxvt.scrollBar_floating:True
+URxvt.scrollstyle:plain
+URxvt.scrollWithBuffer:false
+URxvt.saveLines:5000
+
+! font set
+URxvt.font:xft:Bitstream Vera Sans Mono-12,xft:Microsoft Yahei:pixelsize=16
+URxvt.boldFont:xft:Bitstream Vera Sans Mono-12:Bold,xft:Microsoft Yahei:pixelsize=16:Bold
+
+! Input Method set
+URxvt.inputMethod:SCIM
+!URxvt.imLocale:zh_CN.utf8
+URxvt.imFont:Microsoft Yahei
+URxvt.preeditType: Root
+
+! window geometry set
+URxvt.geometry: 90x25+180+200
+URxvt.title:Rxvt
+
+! bg transparent set
+URxvt.inheritPixmap: true
+URxvt.tintCddolor: white
+URxvt.shading: 80
+
+! Tab set
+URxvt.perl-ext-common: default,tabbed
+URxvt.tabbed.tab-fg: 12
+URxvt.tabbed.tab-bg: 0
+URxvt.tabbed.tabbar-fg: 4
+
+Rxvt.menu:/etc/X11/rxvt.menu
+Rxvt.preeditType:Root
+Rxvt.transparency:255
+
+在gentoo中出现如下问题：
+urxvt: unable to load base fontset, please specify a valid one using -fn, aborting.
+
+x有两套字体机制.xvt-unicode的编译选项:
+USE="perl -afterimage -iso14755 -truetype"
+
+原来是没有编译truetype字体支持!Bitstream Vera Sans Mono字体是使用xft机制的!此机制就是使用truetype字体的基本!
+
+重新编译rxvt-unicode:
+# USE="truetype" emerge rxvt-unicode
+
+问题解决
+
+xrdb -merge $HOME/.Xresources
+
+使配置文件生效。

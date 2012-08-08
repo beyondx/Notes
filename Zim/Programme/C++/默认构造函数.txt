@@ -1,0 +1,7 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-28T21:19:39+08:00
+
+====== 默认构造函数 ======
+Created Friday 28 October 2011
+

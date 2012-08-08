@@ -1,0 +1,902 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-11T22:46:44+08:00
+
+====== squid工作原理及3.1.4版本源代码安装配置实例指南 ======
+Created Thursday 11 August 2011
+http://fengzhilinux.blog.51cto.com/1343279/348486
+
+目录：
+
+? 一.测试安装环境
+
+? 二.编译安装
+
+? 三.Squid工作模式及原理
+
+n 3.1 SQUID如何工作
+
+u 3.1.1 [传统代理]
+
+u 3.1.2[透明代理]
+
+u 3.1.3[反向代理]
+
+n 3.2 SQUID工作原理
+
+u 3.2.1 SQUID缓存的存放方式：
+
+u 3.2.2SQUID的查询方式
+
+u 3.2.3SQUID服务器之间的关系：
+
+u 3.2.4SQUID运作模式
+
+? 四.Squid 配置
+
+n 4.1 主配置文档配置
+
+n 4.2验证squid.conf的语法和配置
+
+n 4.3初始化cache目录
+
+n 4.4前台启动squid，查看是否报错
+
+n 4.5透明代理设置
+
+n 4.6反向代理设置
+
+? 五.Squid语法
+
+? 六.Squid优化
+
+n 6.1 日志优化
+
+n 6.2目录优化
+
+n 6.3 Cache优化
+
+n 6.4最大文件描述符数量限制优化
+
+n 6.5 脚本优化优化
+
+u 6.5.1 log脚本：
+
+u 6.5.2squid脚本：
+
+u 6.5.3Cache 脚本：
+
+? 七.脚本用法
+
+n 7.1 log脚本：
+
+n 7.2 squid脚本：
+
+n 7.3 Cache 脚本：
+
+? 八.补充
+
+n 8.1 打补丁
+
+n 8.2 重运行configure
+
+n 8.3 nginx 与squid
+
+? 九.Cachemgr.cgi监控squid运行状态
+
+n 9.1 Cachemgr.cgi配置过程
+
+n 9.2 生成口令文件
+
+n 9.3 验证
+
+? 十.错误总结
+
+n 10.1 权限问题
+
+n 10.2 不能识别它自己的完整可验证域名
+
+n 10.3 版本更新问题
+
+n 10.4 Squid无法反向代理多个后台WEB服务器
+
+n 10.5 在运行一段时间后，Squid变慢了
+
+声明：
+
+本文档参考网上很多squid配置文档结合自己的实际配置写出来的，主要针对的是squid配置方面。对于其认证和限制方面没有太多的介绍，请大家则而观之，一面浪费自己宝贵的时间。有机会的话，我会把认证和限制方面的做部分介绍。
+
+===============================================================================
+
+感慨：
+
+古人云：温故而知新。此言绝非说说而已，在离开学堂才短短3个月而已，一个简单的squid竟然困扰了我两天才把基本的测试页显示出来。想当初这只是几分钟的事啊！！真是惭愧！！哎。现在趁热打铁，赶紧将自己以前忘记的都记下来，这里有什么太过简单的东西，请大家海涵！
+
+===============================================================================
+
+++++++++++++++++++++++++++++++++++++++++++++++++
+
+一．测试安装环境：
+
+Squid Server IP：
+
+eth0 192.168.77.222
+
+eth1 192.168.7.222
+
+Http Server IP：
+
+eth0 192.168.77.225
+
+Client Ip：
+
+eth0 192.168.7.223
+
+CentOS 内核版本：
+
+[root@rs_200_143 ~]# uname -r
+
+2.6.18-128.el5xen
+
+Squid源代码包版本号：
+
+http://www.squid-cache.org/Versions/v3/3.1/ squid-3.1.4.tar.gz
+
+squid-3.1.4
+
+安装目录：
+
+/usr/local/squid
+
+squid log目录：
+
+/usr/local/squid/var/logs
+
++++++++++++++++++++++++++++++++++++++++++++
+
+二．编译安装：
+
+[root@song squid-3.1.4]#./configure --prefix=/usr/local/squid \
+--enable-gnuregex \
+--disable-carp \
+--enable-async-io=240 \
+--with-pthreads \
+--enable-storeio=ufs,aufs,diskd \
+--disable-wccp \
+–enable-icmp \
+--enable-kill-parent-hack \
+--enable-cachemgr-hostname=localhost \
+--enable-default-err-language=Simplify_Chinese \
+--with-maxfd=65535 \
+--enable-poll \
+--enable-linux-netfilter \
+--enable-large-cache-files \
+--disable-ident-lookups \
+--enable-default-hostsfile=/etc/hosts \
+--with-dl \
+--with-large-files \
+--enable-delay-pools \
+--enable-snmp \
+--disable-internal-dns \
+
+–enable-underscore\
+
+–enable-arp-acl
+
+[root@song Squid]# make && make install
+
+释：
+
+–prefix=/usr/local/squid :指定软件的安装路径
+–enable-gnuregex :支持GNU正则表达式。
+–disable-carp: Cache数组路由协议（CARP）用来转发丢失的cache到父cache的数组或cluste
+
+–enable-async-io=240等同于同时打开./configure如下三个选项
+
+--with-aufs-threads=N_THREADS
+
+--with-pthreads
+
+--enable-storeio=ufs,aufs
+
+这个主要是设置async模式来运行squid，我的理解是设置用线程来运行squid，如果服务器配置很不错，有1G以上内存，cpu使用SMP的方式的话可以考虑设成160或者更高。如果服务器比较糟糕就根据实际情况设了。另外此项还另cache文件支持aufs
+
+--disable-wccp用于阻止或分发HTTP请求到一个或多个caches
+
+–enable-icmp :加入icmp支持
+–enable-kill-parent-hack :关掉suqid的时候，要不要连同父进程一起关掉
+
+--enable-cachemgr-hostname=localhost：指定cachemgr-hostname值为localhost
+
+-- enable-snmp :此选项可以让MRTG使用SNMP协议对服务器的流量状态进行监测，因此必须选择此项，使Squid支持SNMP接口。
+–disable-ident-lookups :防止系统使用RFC931规定的身份识别方法。
+
+--enable-delay-pools 开启squid延时池功能
+–enable-cahce-digests :加快请求时，检索缓存内容的速度。
+–enable-err-language=”Simplify_Chinese” 和
+–enable-default-err-languages=”Simplify_Chinese” :指定出错是显示的错误页面为简体中文
+--with-maxfd=65535指定最大文件描述
+
+–enable-poll :指定使用Poll()函数，提升性能就是啦。
+
+--disable-ident-lookups允许服务器利用客户端的特殊TCP连接来发现用户名
+–enable-linux-netfilter :可以支持透明代理
+--enable-large-cache-files开启大文件支持，支持2GB以上的文件
+
+--disable-internal-dns使用自己的内部DNS查询
+
+–enable-underscore :允许解析的URL中出现下划线，因为默认squid会认为带下划线的URL地址是非法的，并拒绝访问该地址
+
+–enable-arp-acl :可以在规则设置中直接通过客户端的MAC地址进行管理，防止客户使用IP欺骗。
+
+[root@song Squid]# make && make install
+
+释：
+
+–prefix=/usr/local/squid :指定软件的安装路径
+–enable-gnuregex :由于Squid大量使用字符串处理做各种判断，加入此项能更好的处理,激活使用GNU正则表达式。
+–disable-carp: Cache数组路由协议（CARP）用来转发丢失的cache到父cache的数组或cluste
+
+–enable-async-io=80 :等同于同时打开./configure如下三个选项
+
+--with-aufs-threads=N_THREADS
+
+--with-pthreads
+
+--enable-storeio=ufs,aufs
+
+这个主要是设置async模式来运行squid，我的理解是设置用线程来运行squid，如果服务器配置很不错，有1G以上内存，cpu使用SMP的方式的话可以考虑设成160或者更高。如果服务器比较糟糕就根据实际情况设了。另外此项还另cache文件支持aufs
+–enable-icmp :加入icmp支持
+–enable-kill-parent-hack :关掉suqid的时候，要不要连同父进程一起关掉
+–enable-snmp :此选项可以让MRTG使用SNMP协议对服务器的流量状态进行监测，因此必须选择此项，使Squid支持SNMP接口。
+–disable-ident-lookups :防止系统使用RFC931规定的身份识别方法。
+–enable-cahce-digests :加快请求时，检索缓存内容的速度。
+–enable-arp-acl :可以在规则设置中直接通过客户端的MAC地址进行管理，防止客户使用IP欺骗。
+–enable-err-language=”Simplify_Chinese” 和
+–enable-default-err-languages=”Simplify_Chinese” :指定出错是显示的错误页面为简体中文
+–enable-poll :应启用Poll()函数而不是select()函数，通常而言poll(轮询)比select要好，但configure(脚本程序)已知Poll在某 些平台下失效, 若你认为你比configure编译配置脚本程序要聪明的话，可以用这个选项启用Poll。总之就是用这个可以提升性能就是啦。
+–enable-linux-netfilter :可以支持透明代理
+–enable-underscore :允许解析的URL中出现下划先，因为默认squid会认为带下划线的URL地址是非法的，并拒绝访问该地址
+
++++++++++++++++++++++++++++++++++++++++++++
+
+三．Squid工作模式及原理
+
+环境：
+
+Squid:192.168.77.222
+
+Client:192.168.7.223
+
+Server: 192.168.77.223
+
++++++++++++++++++++++++++++++++
+
+SQUID如何工作
+__[传统代理]__
+1.SQUID被绑定到代理服务器的3128端口。
+2. 客户端浏览器被配置使用代理服务器的3128端口。
+~~3.客户端不需要配置DNS。~~
+
+4.代理服务器上需要配置代理服务器。
+5.客户端不需要 配置缺省路由为代理服务器。
+当我们在客户端浏览器中打开一个web请求，比如“http://www.baidu.com”，这时将陆续发生以下事件：
+1. **客户端使用某一端口（比如1025)连接代理服务器3128端口**，请求web页面“http://www.baidu.com”
+2.代理服务器向 DNS请求“www.baidu.com”,得到相应的IP地址192.168.77.223。然后，代理服务器使用某一端口（比如1037)向该IP地址的80端口发 起web连接请求，请求web页面。
+3.收到响应的web页面后，代理服务器把该数据传送给客户端。
+4.客户端浏览器显示该页面。
+从 www.baidu.com的角度看来，连接是在192.168.77.222地1037端口和192.168.77.223的80端口之间建立的。
+从client的角度看 来，连接是在192.168.7.223的1025端口和192.168.77.222的3128端口之间建立的。
+注意：普通代理模式下，浏览器将所有原本发往外网主机80端口的网页请求修改为代理服务器IP和其监听的3128，__squid返回的数据包源端口是3128__.
+
+
+__[透明代理]__
+
+（1）网关和代理服务器不在同一台主机上
+		在网关上将所有发往80端口的请求，重定向到：squid服务器IP: 3128（注意，squid事先要配置为透明代理模式，只有这样才将返回的内容的数据包中的源端口设为80.）
+  (2) 网关和代理服务器在同一台主机上。
+		在网关上将所有发往80端口的请求，重定向到3128（注意，__squid事先要配置为透明代理模式，只有这样才将返回的内容的数据包中的源端口设为80__.）
+透明代理的意思是客户端根本不需要知道有代理服务器 的存在。
+
+在以上基础上我们做以下工作：
+1.配置透明代理服务器软件运行在代理服务器的3128端口。
+2.配置代理服务器将所有**对 80端口的连接重定向到3128**端口。这个重定向的NAT功能可以由和代理服务器在同一台主机完成。
+3.配置客户端浏览器直接连解到Internet。
+4.在客户端配置好DNS.
+5.配置客 户端的缺省网关为192.168.1.1.
+当我们在客户端浏览器中打开一个web请求，比如 “http://www.baidu.com”，这时将陆续发生以下事件：
+1.客户端向DNS请求“www.baidu.com”,得到相应的 IP地址192.168.77.223。然后，客户端使用某一端口（比如1066)向该IP地址的80端口发起web连接请求，请求web页面。
+2.当该请求包 通过透明代理服务器时，__被防火墙将该数据包重定向到代理服务器的绑定端口3128__。于是，透明
+代理服务器用某一端口（比如1088)向 192.168.77.223的80端口发起web连接请求，请求web页面。
+3.收到响应的web页面后，代理服务器把该数据传送给客户端。
+4.客户 端浏览器显示该页面。
+从www.baidu.com的角度看来，连接是在192.168.77.222地1088端口和192.168.77.223的80端口之间建立的。从 client的角度看来，连接是在192.168.7.223的1066端口和192.168.77.223的80端口之间建立的。
+以上就是传统代理服务器和透 明代理服务器的区别所在。
+
+
+
+__[反向代理]__
+反向代理是相对于传统代理而言，是代理web服务器接受客户端的请求
+在此，我们忽略客户端的设置，假设客户端是可以直接访问互联网
+web服务器与客户端的结构如下：
+假设已经将www.baidu.com的域名指向了squid服务器所在的ip，并且__在web服务器集群里做了dns轮询__。（其实就是squid所在的“内网”服务器IP）
+web server1 -|
+web server2 -|- squid 服务器/ INTERNET / - Client
+web server3 -|
+1.客户端通过IE向DNS服务器发送访问www.baidu.com的请求，由客户所在地的DNS服务器解析www.baidu.com的IP为192.168.77.223并返回给用户。
+2.客户收到DNS返回的服务器IP地址，重新向 www.baidu.com指向的IP地址发送访问请求。
+3.squid服务器接收到用户的请求后，查询自身缓存中是否有用户请求内容，有则直接发送给客户端，如果没有则通过__内部DNS__轮询查询空闲服务器，并将客户请求发送到该服务器，在获取到用户数据并返回给用户的同时保留一份在自己本身的缓存当中。在用户看来，自己访问的是www.baidu.com这个服务器，实际上真正的WEB服务器为SQUID缓存后面的服务器或者服务器集群，通过外部DNS做CNAME转向，将用户请求转发到内部真正的web服务器上去
+
+
+===== SQUID工作原理 =====
+
+=== 一、SQUID缓存的存放方式： ===
+每一台Squid 代理服务器上都有若干颗硬盘，每颗硬盘又分割成多个分区，每一个分区又可建立很多目录，目录下才放文件(Squid 把它叫object)。
+
+=== 二、 SQUID的查询方式： ===
+SQUID通过查询表的方式来定位某个资源的位置，所查询的表叫Hash table 和Digest table;Digest table在这里可以称之为摘要或者索引，它记录了磁盘上每个分区，每个目录里存的缓存摘要，Hash table在这里可以称之为目录或者提纲，它记录所有的Digest table表信息，SQUID接受到请求后先查询Hash table，在根据Hash table所指向的Digest table查询需要的信息。
+
+=== 三、SQUID服务器之间的关系： ===
+SQUID 服务器存在两种工作关系，一种为Child、Parent，当child squid server没有用户需要的数据时，就象parent server发出请求，并持续等待，直到parent server回应自己为止；另外一种为ibling，当本地SQUID server没有用户请求数据时，会向sibling server发出请求,如果sibling server没有资料则会向上级sibling或者INTERNET发送数据请求
+
+
+=== 四、SQUID运作模式 ===
+1. 当Squid Server没有资料时，会先向Sibling 的Squid Server 要资料，如果Sibling没资料，就跳过它直接向Parent 要。
+2. 向Parent 要资料，然後一直等，直到Parent 给它资料为止(Parent 自己有的资料或上Internet 去拿)。
+3. 没有Parent 时，就自己上Internet 去拿。
+4. 如果这三者都拿不到资料，才向用户端回报拿不到资料。
+一般而言，把网路上 一层的Squid Server 设成Sibling 是不错的选择(例如：一个学校将所在城市网和附近的大学设成Sibling)，因为网路上一层的Squid Server 服务对象较多，其硬件功能较强，离我们比较近，速度也比较快；万一要不到资料，我们还可以自己上Internet 去拿。那什麽时候设Parent？当您的出口只有一个，或上一层Squid Server 拿不到资料，自己也一定拿不到，只好将上一层Squid Server 设为Parent。
+
++++++++++++++++++++++++++++++++++++++++++++
+
+===== 四．Squid 配置： =====
+
+赋/ usr/local/squid/var/logs/ 777 权限：
+
+[root@song squid]# chmod 777 /usr/local/squid/var/logs/
+
+主配置文档配置：
+
+/var/local/squid/etc/squid.conf
+
+#acl limit
+
+acl woyoSYS src 192.168.77.0/24
+
+http_access allow woyoSYS
+
+#cache limit
+
+cache_dir ufs /usr/local/squid/var/cache 100 16 256
+
+cache_mem 100 MB
+
+cache_swap_low 90
+
+cache_swap_high 95
+
+cache_access_log /usr/local/squid/var/logs/access.log
+
+cache_log /usr/local/squid/var/logs/cache.log
+
+cache_store_log /usr/local/squid/var/logs/store.log
+
+coredump_dir /usr/local/squid/var/cache
+
+cache_mgr sam_li@staff.woyo.com
+
+visible_hostname song.domain.com #必须指明自己的主机名，否则squid无法正常启动
+
+http_port 192.168.7.222:3128 transparent #squid监听192.168.7.222的3128端口
+
+验证squid.conf的语法和配置：
+
+[root@song ~]# /usr/local/squid/sbin/squid -k parse
+
+2010/07/06 05:38:15| Processing Configuration File: /usr/local/squid/etc/squid.conf (depth 0)
+
+2010/07/06 05:38:15| Starting Authentication on port 192.168.7.222:3128
+
+2010/07/06 05:38:15| Disabling Authentication on port 192.168.7.222:3128 (interception enabled)
+
+2010/07/06 05:38:15| Disabling IPv6 on port 192.168.7.222:3128 (interception enabled)
+
+初始化cache目录：
+
+在初次运行squid之前，或者无论何时你增加了新的cache_dir，你必须初始化cache目录。命令很简单
+
+[root@song sbin]# ./squid -z
+
+2010/07/05 18:06:36| Creating Swap Directories
+
+前台启动squid，查看是否报错：
+
+[root@song ~]# /usr/local/squid/sbin/squid __-N -d1__
+
+2010/07/06 05:42:43| Starting Squid Cache version 3.1.4 for i686-pc-linux-gnu...
+
+2010/07/06 05:42:43| Process ID 10240
+
+2010/07/06 05:42:43| With 1024 file descriptors available
+
+2010/07/06 05:42:43| Initializing IP Cache...
+
+2010/07/06 05:42:43| helperOpenServers: Starting 5/5 'dnsserver' processes
+
+2010/07/06 05:42:43| Unlinkd pipe opened on FD 19
+
+2010/07/06 05:42:44| Swap maxSize 102400 + 102400 KB, estimated 15753 objects
+
+2010/07/06 05:42:44| Target number of buckets: 787
+
+2010/07/06 05:42:44| Using 8192 Store buckets
+
+2010/07/06 05:42:44| Max Mem size: 102400 KB
+
+2010/07/06 05:42:44| Max Swap size: 102400 KB
+
+2010/07/06 05:42:44| Version 1 of swap file with LFS support detected...
+
+2010/07/06 05:42:44| Rebuilding storage in /usr/local/squid/var/cache (DIRTY)
+
+2010/07/06 05:42:44| Using Least Load store dir selection
+
+2010/07/06 05:42:44| Set Current Directory to /usr/local/squid/var/cache
+
+2010/07/06 05:42:44| Loaded Icons.
+
+2010/07/06 05:42:44| Accepting intercepted HTTP connections at 192.168.7.222:3128, FD 23.
+
+2010/07/06 05:42:44| HTCP Disabled.
+
+2010/07/06 05:42:44| Squid modules loaded: 0
+
+2010/07/06 05:42:44| Ready to serve requests.
+
+2010/07/06 05:42:44| Done reading /usr/local/squid/var/cache swaplog (1 entries)
+
+2010/07/06 05:42:44| Finished rebuilding storage from disk.
+
+2010/07/06 05:42:44| 1 Entries scanned
+
+2010/07/06 05:42:44| 0 Invalid entries.
+
+2010/07/06 05:42:44| 0 With invalid flags.
+
+2010/07/06 05:42:44| 1 Objects loaded.
+
+2010/07/06 05:42:44| 0 Objects expired.
+
+2010/07/06 05:42:44| 0 Objects cancelled.
+
+2010/07/06 05:42:44| 0 Duplicate URLs purged.
+
+2010/07/06 05:42:44| 0 Swapfile clashes avoided.
+
+2010/07/06 05:42:44| Took 0.10 seconds ( 9.63 objects/sec).
+
+2010/07/06 05:42:44| Beginning Validation Procedure
+
+2010/07/06 05:42:44| Completed Validation Procedure
+
+2010/07/06 05:42:44| Validated 27 Entries
+
+2010/07/06 05:42:44| store_swap_size = 4
+
+2010/07/06 05:42:44| storeLateRelease: released 0 objects
+
+有个下面这句就可以试着启动squid了
+
+2010/07/06 05:42:44| Ready to serve requests.
+
+===== 透明代理设置： =====
+
+1．透明代理中一定要把client的网关指向squid，否则无法使正常代理(前提是网关和squid在同一台主机上，同时还要做好内网到外网地址的NAT工作)
+
+2.Squid.conf编辑：http_port 192.168.7.222:3128 transparent #支持透明代理
+
+3. # iptables -t nat -A PREROUTING -s 192.168.7.223/32 -p tcp --dport 80 __-j REDIRECT __--to-port 3128
+
+4. # service iptables save
+
+===== 反向代理设置： =====
+
+1.Squid.conf编辑：http_port 192.168.7.222:80__ vhost vport__ #支持域名和IP的虚拟主机
+
+2. 实例：
+
+cache_peer 192.168.77.222 parent 81 0 no-query originserver weight=1 name=a
+cache_peer 192.168.77.222 parent 82 0 no-query originserver weight=1 name=b
+#cache_peer 192.168.77.253 parent 80 0 no-query originserver weight=1 name=c
+
+cache_peer_domain a www.serverA1.com
+cache_peer_domain b www.serverA2.com
+#cache_peer_domain c www.serverB.com
+
+＃以上六行配置，让 Squid 服务器知道：
+＃从客户端过来的请求，如果是 www.serverA1.com，则 Squid 向 ServerA 192.168.77.222 的端口 81发送请求；
+＃从客户端过来的请求，如果是 www.serverA2.com，则 Squid 向 ServerA 192.168.77.222 的端口 82发送请求；
+＃从客户端过来的请 求，如果是 www.serverB.com，则 Squid 向 ServerA 192.168.77.51 的端口 80发送请求；
+
++++++++++++++++++++++++++++++++++++++++++++
+
+===== 五．Squid语法： =====
+
+启动squid 服务
+
+# /usr/local/squid/sbin/squid -s
+
+停止squid 服务
+
+# /usr/local/squid/sbin/squid -k shutdown
+
+Squid用法帮助信息
+
+# /usr/local/squid/sbin/squid -h
+
+在初次运行squid之前，或者无论何时你增加了新的cache_dir，你必须初始化cache目录。命令很简单：
+
+#/usr/local/squid/sbin/squid -z
+
+重配置运行中的squid最好的方法是使用squid -k reconfigure命令：
+
+#/usr/local/squid/sbin/squid -k reconfigure
+
+周期性的滚动日志文件，以阻止它们变得太大
+
+#/usr/local/squid/sbin/squid -k rotate
+
+在前台启动squid，并输出启动过程。
+#squid/sbin/squid -N -d1
+
+可以根据这个测试命令用来验证squid.conf的语法和配置
+
+#/usr/local/squid/sbin/squid -k parse
+
++++++++++++++++++++++++++++++++++++++++++++
+
+===== 六．Squid优化： =====
+
+1.日志周期性滚动：
+
+0 4 * * * /usr/local/squid/sbin/squid -k rotate &
+
+2.Log 目录周期性检查：
+
+0 4 * * 6 /usr/local/squid/movelog.sh &
+
+3．Cache周期性优化：
+
+0 4 * * * /usr/local/squid/clear_squid_cache.sh gif &
+
+0 4 * * * /usr/local/squid/clear_squid_cache.sh swf &
+
+0 4 * * * /usr/local/squid/clear_squid_cache.sh gif &
+
+4.最大文件描述符数量限制优化：
+
+通常情况下，Squid 默认为1024个文件描述，一般情况已经够用。当系同高度繁忙时，肯能会用到4096个或更大。在编译 Squid 前推荐将描述符更改至，系统限制级别的 2～3倍
+
+-H 设置硬件资源限制.
+-S 设置软件资源限制
+
+-n size:设置内核可以同时打开的文件描述符的最大值.单位:n
+
+查看默认文件描述符数量：
+
+# ulimit -n
+
+1024
+
+临时修改文件描述符数量
+
+# ulimit –SHn 65536
+
+永久修改文件描述符数量
+
+# vim /usr/include/bits/typesizes.h
+
+#define __FD_SETSIZE 65536
+
+#vi /etc/security/limits.conf
+* hard nofile 102400
+* soft nofile 102400
+
+# vim /etc/sysctl.conf
+
+fs.file-max=102400
+
+# ulimit -n
+
+6553
+
+5.脚本优化：
+
+log脚本：
+
+# cat /usr/local/squid/movelog.sh
+
+#!/bin/bash
+
+SLOG=`du -sh /usr/local/squid/var/logs/ | awk '{print $1}' | awk -F '.' '{print $1}'`
+
+if [ $SLOG -gt 100 ];then
+
+if [ ! -d /var/log/squid ];then
+
+mkdir /var/log/squid
+
+else
+
+mv /usr/local/squid/var/logs/ /var/log/squid
+
+echo "move squid log to /var/logs" | mail -s sam_li@staff.woyo.com
+
+fi
+
+else
+
+echo "The size of /usr/local/squid/var/logs/ is `du -sh /usr/local/squid/var/logs/ | awk '{print $1}' | awk -F 'M' '{print $1}'`"
+
+fi
+
+squid脚本：
+
+# cat /usr/local/squid/squid.sh
+
+#!/bin/bash
+
+# this script is for Squid
+
+case "$1" in
+
+start)
+
+/usr/local/squid/sbin/squid –s
+
+sleep 1
+
+if netstat -tnulp | grep squid ;then echo "squid is start" ;else echo "please check it";fi
+
+;;
+
+stop)
+
+/usr/local/squid/sbin/squid -k shutdown
+
+sleep 1
+
+if ! netstat -tnulp | grep squid ;then echo "squid is stop" ;else echo "please check it";fi
+
+;;
+
+status)
+
+if netstat -tnulp | grep squid ;then echo "squid is running" ;else echo "squid is stop";fi
+
+;;
+
+reload)
+
+/usr/local/squid/sbin/squid -k reconfigure
+
+sleep 1
+
+if netstat -tnulp | grep squid ;then echo "squid is reload" ;else echo "please check it";fi
+
+;;
+
+restart)
+
+if netstat -tnulp | grep squid ;then echo "Squid proess is running" ;else
+
+/usr/local/squid/sbin/squid -k shutdown && /usr/local/squid/sbin/squid -s
+
+sleep 1
+
+if netstat -tnulp | grep squid ;then echo "squid is restart" ;else echo "please check it";fi
+
+fi
+
+;;
+
+esac
+
+Cache 脚本：
+
+# cat clear_squid_cache.sh
+
+#!/bin/bash
+
+squidcache_path="/usr/local/squid/var/cache"
+
+squidclient_path="/usr/local/squid/bin/squidclient"
+
+grep -a -r $1 $squidcache_path/* | strings | grep "http:" | awk -F'http:' '{print "http:"$2;}' | grep [a-zA-Z0-9]$ &gt; cache_list.txt
+
+for url in `cat cache_list.txt`; do
+
+$squidclient_path -m PURGE -p 3128 $url
+
+Done
+
++++++++++++++++++++++++++++++++++++++++++++++++
+
+七．脚本用法：
+
+Cache脚本用法：
+
+清楚所有Flash缓存(扩展名.swf)
+
+# /usr/local/squid/clear_squid_cache.sh swf
+
+Squid.sh脚本用法：
+
+/usr/local/squid/sbin/squid.sh | Squid.sh start | stop | status | restart | reload
+
++++++++++++++++++++++++++++++++++++++++++++
+
+八. 补充
+
+1． 打补丁
+
+在你运行squid一段时间后，你可能发现需要打源代码补丁，用以修正bug或者增加试验性的功能
+
+为了打补丁-或者有时候叫差别文件-你需要一个叫做"patch"的程序。你的操作系统必须有该程序。如果没有，你可以从GNU工具集里下载(http://www.gnu.org/directory/patch.html).
+
+为了打补丁，你必须把补丁文件存放在系统中某处。然后进入到squid的源代码目录，运行如下命令：
+
+#patch < /tmp/patch_file
+
+2． 重运行configure
+
+有时候你可能发现有必要重新运行./configure。例如，假如你调整了内核参数，你必须再次运行./configure以使它能发现新设置
+
+在运行./configure之后，你必须再次编译和安装squid。安全起见，建议先运行make clean：
+
+#make clean
+
+以相同的选项重运行./configure，使用如下命令：
+
+#config.status –recheck
+
+3. 假如想让squid既作cache代理，又作加速器，那么列出这2个端口：
+
+http_port 80
+
+http_port 3128
+
+这里啰嗦下，当squid监听自己的80端口作反向代理是时，client默认访问的就是自己的80端口，所以在client的IE中访问时就不用输入特定的代理端口号。这里我其实也不知道要表达一个什么意思，但是我以前在长时间没有接触squid时，在这里晕了。呵呵，如果大侠们没有在这里晕过话，不用考虑，直接过！希望新手们能稍稍注意下。呵呵
+
+4.nginx 与squid
+
+Nginx高并发处理能力远远大于Squid，因此，在分布大量的静态文件的时候，改变原来单独使用Squid的结构，将Nginx放在Squid之前， 实际的使用效果表明，比独立使用Squid要好很多，并发能力得以很大提高。
+
++++++++++++++++++++++++++++++++++++++++++++
+
+九． Cachemgr.cgi监控squid运行状态
+
+9.1Cachemgr.cgi配置过程
+
+#cp /usr/local/squid/libexec/cachemgr.cgi /var/www/cgi-bin/
+
+修改配置文件/etc/http/conf/http.conf
+
+            &lt;Location /cgi-bin/cachemgr.cgi>
+AuthType Basic
+AuthName "Squidadmin"
+AuthUserFile /usr/local/squid/etc/passwd/.htaccess
+require valid-user
+</Location>
+
+9.2生成口令文件
+
+htpasswd -c /usr/local/squid/etc/passwd/.htaccess squidadmin   “创建密码文件 ”
+New passwd：
+Re-type new passwd：
+Adding password for user squidadmin
+
+9.3验证
+
+在浏览器的地址列中键入 http://192.168.7.222(%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%9A%84%E5%90%8D%E7%A7%B0%E6%88%96IP%E5%9C%B0%E5%9D%80)/cgi-bin/cachemgr.cgi。
+
++++++++++++++++++++++++++++++++++++++++++++
+
+十．错误总结：
+
+1.权限问题：(squid的默认用户是nobody)
+
+[root@song sbin]# ./squid -k parse
+
+2010/07/05 17:49:19| Processing Configuration File: /usr/local/squid/etc/squid.conf (depth 0)
+
+WARNING: Cannot write log file: /usr/local/squid/var/logs/cache.log
+
+/usr/local/squid/var/logs/cache.log: Permission denied
+
+messages will be sent to 'stderr'.
+
+查看日志：
+
+[root@song sbin]# tail /var/log/messages
+
+Jul 5 17:52:58 song squid[30354]: Process ID 30354
+
+Jul 5 17:52:58 song squid[30354]: With 1024 file descriptors available
+
+Jul 5 17:52:58 song squid[30354]: Initializing IP Cache...
+
+Jul 5 17:52:58 song squid[30354]: helperOpenServers: Starting 5/5 'dnsserver' processes
+
+Jul 5 17:52:58 song squid[30354]: storeDirWriteCleanLogs: Starting...
+
+Jul 5 17:52:58 song squid[30354]: Finished. Wrote 0 entries.
+
+Jul 5 17:52:58 song squid[30354]: Took 0.00 seconds ( 0.00 entries/sec).
+
+Jul 5 17:52:58 song squid[30354]: Cannot open '/usr/local/squid/var/logs/access.log' for writing. The parent directory must be writeable by the user 'nobody', which is the cache_effective_user set in squid.conf.
+
+Jul 5 17:52:58 song squid[30324]: Squid Parent: child process 30354 exited with status 1
+
+Jul 5 17:52:58 song squid[30324]: Exiting due to repeated, frequent failures
+
+方法：
+
+赋/ usr/local/squid/var/logs/ 777 权限：
+
+[root@song squid]# chmod 777 /usr/local/squid/var/logs/
+
++++++++++++++++++++++++++++++++++++++++++++
+
+2.不能识别它自己的完整可验证域名，就会报这个错
+
+FATAL: Could not determine fully qualified hostname. Please set 'visible_hostname'
+
+visible_hostname my.host.name 192.168.77.225:80: (99) Cannot assign requested address
+
+方法：
+
+编辑squid.conf如下
+
+# vim squid.conf
+
+visible_hostname yourhostname.domain.com
+
++++++++++++++++++++++++++++++++++++++++++++
+
+3.版本更新问题：
+
+# squid.sh reload
+
+2010/07/06 11:21:57| cache_cf.cc(362) parseOneConfigFile: squid.conf:102 unrecognized: 'httpd_accel_host'
+
+2010/07/06 11:21:57| cache_cf.cc(362) parseOneConfigFile: squid.conf:103 unrecognized: 'httpd_accel_port'
+
+2010/07/06 11:21:57| cache_cf.cc(362) parseOneConfigFile: squid.conf:104 unrecognized: 'httpd_accel_uses_host_header'
+
+2010/07/06 11:21:57| cache_cf.cc(362) parseOneConfigFile: squid.conf:105 unrecognized: 'httpd_accel_with_proxy'
+
+在 squid-2.5中，反向代理所涉及到的关键配置指令是：httpd_accel_host,
+
+httpd_accel_port,httpd_accel_single_host,httpd_accel_with_proxy,httpd_accel_uses_host_header。httpd_accel_*这一系列的指令，在Squid-2.6中都已经去掉，取而带之的 是 cache_peer, cache_peer_domain, cache_peer_access 这三个指令
+
++++++++++++++++++++++++++++++++++++++++++++
+
+4. Squid无法反向代理多个后台WEB服务器
+
+在确保自己squid.conf配置文档没有错误的时候，查看下自己Apache的配置，很有可能是自己的Apache配置问题
+
+5．在运行一段时间后，Squid变慢了
+
+1. 减少cache_mem值
+
+2. 关掉内存池，用该选项：
+
+memory_pools off
+
+3.清掉/usr/local/squid/var/cache中没用的内用
+
+4.定期执行本文档中给出的clear_squid_cache.sh脚本
+
+更详细内容请参考<&lt;Squid中文权威指南>&gt;
+

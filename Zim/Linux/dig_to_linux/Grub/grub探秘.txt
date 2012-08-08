@@ -1,0 +1,204 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T20:00:36+08:00
+
+====== grub探秘 ======
+Created Sunday 27 March 2011
+
+这一次探秘的是进入linux世界的大门---开机引导程序Grub(GRand Unfied Bootloader).
+
+GRUB是GNU下的FSF开发的一套多重开机引导程序，在其主页上已经声明旧的版本将不在开发，以后的重点放在GRUB2上，所以这一次探秘将以GRUB2为例介绍，当然在阐述一些原理时会使用GRUB0.97的一些文件作类比。
+
+一、为何说Grub是进入linux世界的大门呢？
+在Ubuntu探秘之一：BIOS到底干啥用？中我提到过“BIOS最后一步的工作就是协助加载位于硬盘上的OS”，这是通过将程序指针指向硬盘的MBR中的bootloader程序完成的，而现在linux系统的bootloader就是由Grub提供的。通常MBR占用一个扇区即512字节，共分成以下三个部分：bootloader占用446字节，partition table即分区表64字节，Magic number 即标识MBR结束的字符占两字节其内容固定为"55aa"。简单地说，grub就是Computer启动时执行的第一个程序(BIOS除外，因其为固件程序不是由用户安装的)。它的主要任务是加载和传递参数给OS的kernle(如linux系统)，kernel负责初始化并控制此后的整个系统。
+
+另外再提下占64字节的分区表，通常大容量硬盘是要分区使用的，这便于数据的分类存储同时也提高了其安全性。分区时由于历史原因(主要是BIOS寻找的问题)被限定为最多只能建立4个主分区，其中每个主分区的开始地址、结束地址、分区类型(以固定数字表示用fdisk命令可以查看，如88表示linux分区，1表示FAT12分区)都存在MBR的分区表中，每个分区占16字节。需要注意的是各主分区建立后即使硬盘还有空闲空间，这时也不能使用，因为MBR能容纳的4个分区表已经全用了。解决的方法是拿出一个主分区的分区表用于建立扩展分区，在扩展分区的空间里可建立建立多个逻辑分区。所以常见的硬盘分区方案是三个主分区一个扩展分区，在扩展分区里建立多个逻辑分区。
+
+
+二、GRUB的主要特点如下：
+1.支持多种文件系统    这可以从/boot/grub下的许多mod文件看出来
+2.支持不可多重开机的OS如XP   这是通过链式(chainloader)加载完成的
+3.支持自动解压缩   kernel和initrd就是以压缩文件的形式被GRUB加载到内存中的
+3.配置文件及交互接口较人性化
+4.支持GRUB SHELL   在系统不能引导时，grub 的shell就显得非常重要！
+5.支持远程终端模式和无磁盘系统
+
+GRUB较其它bootloader的重要优点是其灵活性。它理解文件系统和kernel的可执行文件格式，所以你可以引导你喜欢的任意OS而不管它的kernel位于物理硬盘上的位置。在加载kernel时你只只需指明kernel的文件名以及所在设备和分区即可。用GRUB引导OS时你有两者选择(但在系统出现问题如grub.cfg文件丢失时你实际上只有一种选择即GRUB CLI)即command-line interface , or a menu interface。在使用command-line interface 时你需要手动指定kernel的名称及位于硬盘上的位置，在使用menu interface时，你只需要移动光标选择你要引导的OS即可，在menu interface时也可以切换到command-line interface。
+
+三、下面让我们看一下系统上安装了哪些和GRUB相关的软件包:
+geekard@geekard-laptop:~$ dpkg -l \*grub* |grep ii
+ii  grub-common                                     1.98-1ubuntu7                                   GRand Unified Bootloader, version 2 (common 
+ii  grub-pc                                         1.98-1ubuntu7                                   GRand Unified Bootloader, version 2 (PC/BIOS
+geekard@geekard-laptop:~$ 
+其中grub-pc软件包就是系统安装的GRUB套件，是我们探秘的重点，下面看一下它的功能和安装到系统中的文件
+geekard@geekard-laptop:~$ dpkg -s grub-pc 
+Package: grub-pc 
+。。。。
+Description: GRand Unified Bootloader, version 2 (PC/BIOS version) 
+GRUB is a portable, powerful bootloader.  This version of GRUB is based on a 
+cleaner design than its predecessors, and provides the following new features: 
+. 
+  - Scripting in grub.cfg using BASH-like syntax.                                 #注意配置文件是BASH-LIKE语法
+  - Support for modern partition maps such as GPT. 
+  - Modular generation of grub.cfg via update-grub.  Packages providing GRUB 
+    add-ons can plug in their own script rules and trigger updates by invoking 
+    update-grub2.                                                                #gru.cfg文件需要的模块(modular)是由update-grub工具生成的
+  - VESA-based graphical mode with background image support and complete 24-bit 
+    color set. 
+  - Support for extended charsets.  Users can write UTF-8 text to their menu 
+    entries. 
+。。。。。
+
+geekard@geekard-laptop:~$ dpkg -L grub-pc 
+/. 
+/usr 
+/usr/lib 
+/usr/lib/grub 
+/usr/lib/grub/i386-pc                        #这个目录很重要，在安装GRUB时(用grub-install命令)，/boot/grub目录下的大部分文件就是从这里copy过去的
+/usr/lib/grub/i386-pc/boot.img 
+/usr/lib/grub/i386-pc/cdboot.img 
+/usr/lib/grub/i386-pc/diskboot.img 
+/usr/lib/grub/i386-pc/kernel.img 
+/usr/lib/grub/i386-pc/lnxboot.img 
+/usr/lib/grub/i386-pc/pxeboot.img 
+......
+/usr/bin 
+/usr/bin/grub-mkimage                     #这是生成recure的命令
+/usr/sbin 
+/usr/sbin/grub-setup                      #这个是由grub-install调用的底层命令，用于将grub安装到指定位置
+/usr/sbin/update-grub2                  
+/usr/sbin/update-grub 
+/usr/sbin/grub-install                   #这个命令经常用到，即为grub安装命令
+/usr/sbin/grub-set-default 
+/usr/sbin/grub-reboot 
+/usr/sbin/upgrade-from-grub-legacy 
+/etc 
+/etc/grub.d 
+。。。。
+
+四、让我们再看看系统安装GRUB后生成的目录和文件
+
+/boot/grub目录中的文件
+
+*.mod        驱动模块，用于识别各种文件系统等
+command.lst  grub支持的命令列表
+fs.lst       grub支持的文件系统列表
+handler.lst   grub命令运行环境:sh
+moddep.lst   模块间的依赖关系
+grub.conf     grub配置文件
+
+/etc/grub.d/目录中的文件有：   00_header        10_linux     30_os-prober    05_debian_theme  20_memtest86+  40_custom，它们都是一些有编号的脚本文件，起到模板作用，用以产生grub.cfg的内容。/etc/default/grub控制grub.cfg文件的设置如timeout,hidden,default等。其中00_header    30_os-prober    05_debian_theme  是安装系统时自动生成的设置脚本，它们可有可无。10_linux记录了安装的系统，用户可以在40_custom 中添加自己要指定的系统具体格式可以参考：
+/usr/shard/doc/grub-common/example/grub.cfg
+
+
+五、GRUB引导程序的安装步骤：
+第一步：安装GRUB套件如grub-pc 及grub-common(可选，因为可用LIVECD或其它可引导且安装了该套件的磁盘)
+第二步：将bootloader安装到磁盘的bootloader上，有两种方法 可以达到此目的，一种是在linux系统上执行grub-install 另一种是从已经安装grub的引导盘或安装光盘上执行grub-install命令。 
+
+警告：most operating systems don't tell GRUB how to map BIOS drives to OS devices correctly--GRUB merely "guesses" the mapping. This will succeed in most cases, but not always. Therefore, GRUB provides you with a map file called the "device map", which you must fix if it is wrong.  If the output is wrong, it is unlikely that your computer will be able to boot with no problem. 
+device.map位于/boot/grub/,内容为BIOS drives 与 OS devices的对应关系：
+如：(hd0)    /dev/sda
+
+grub-install的语法为：
+#grub-install –root-directory=DIR   INSTALL_DEVICE   --root-directory 用于指定grub文件安装目录(默认为根目录)，而INSTALL_DEVICE用于指定安装的设备，通常为MBR或分区.
+
+grub 在DIR目录下建立boot/grub/*目录和文件(这些文件来自安装GRUB套件时产生的文件 /usr/lib/grub/i386-pc)，但不会生成grub.cfg 文件，可用grub-mkconfig 命令生成这个文件，也可以手动编辑。默认的root-directory为根目录。在用rescue mode 没有chroot安装grub时常用这个选项。
+
+第三步：手动编辑grub.conf文件
+
+(1)在讨论grub.cfg的格式之前，让我们看一下GRUB设备命名的注意事项：
+
+1、GRUB要求所有的设备名称要包含在括号中如：(hd0,3)。hd0中的0表示系统第一块磁盘，其它依次为1，2.。。。，第二个数字3表示第三个分区，分区号从1开始。
+注意第二个参数即分区好可以省略，这时表示整个磁盘。
+2、为了获得磁盘或分区中的文件，你需要在路径的开始指定设备或分区如(hd0,3)/boot/vmlinuz，可以用“root (hd0,3)”指定当文件的开始没有指定设备或分区时的默认值。
+在用绝对路径指定文件时若路径最前面没有device，则GRUB就默认由root device 指定的device，如root (hd0,2).但像root=/dev/sda1,由于绝对路径和=号之间没有空格，故没有这种关系。实际上linux命令行上的root参数一直是root=/dev/[sh]d[a-z][0-9]的格式，并不用在/dev前加空格和指定设备分区，因为这是传给kernel的参数，此时的设备文件其实是由initrd提供的。根目录是内存中由内核产生的rootfs.
+3、为了帮助你找到正确的分区号，GRUB的命令行支持自动补全，这意味着你只需输入root (然后按TAB键就会看到GRUB列出的所有设备、分区或文件。所以在GRUB的命令行操作时要善用TAB键。
+4、GRUB不区分IDE和SCSI接口，因此设备都是hd*的形式而没有sd*形式
+   
+(2)下面让我看一下grub.cfg的简单示例：
+
+grub.cfg 是由/usr/sbin/grub-mkconfig 工具根据/etc/grub.d 目录中的文件和/etc/default/grub中的配置生成的。当然也可以手动编辑。
+
+# 
+# Sample GRUB configuration file 
+# 
+
+# Boot automatically after 30 secs. 
+set timeout=30 
+
+# By default, boot the first entry. 
+set default=0 
+
+# Fallback to the second entry. 
+set fallback=1 
+
+# For booting GNU/Linux 
+menuentry "GNU/Linux" { 
+    set root=(hd0,1) 
+    linux /vmlinuz root=/dev/sda1 
+    initrd /initrd.img 
+} 
+
+# For booting Microsoft Windows 
+menuentry "Microsoft Windows" { 
+    set root=(hd0,1) 
+    chainloader +1 
+} 
+
+# For booting Memtest86+ 
+menuentry "Memtest86+" { 
+    set root=(hd0,1) 
+    linux16 /memtest86+.bin 
+} 
+
+# Change the colors. 
+menuentry "Change the colors" { 
+    set menu_color_normal=light-green/brown 
+    set menu_color_highlight=red/blue 
+}
+注意：linux 命令行参数中的root=/dev/[s,h]d[a-z][0-9]的形式是不变的，"=/"间不能有空格，因为这个参数这是传给kernel，此时的设备文件(即/dev/sda等)其实是由initrd提供的。根目录是内存中由内核产生的rootfs.
+
+六、GRUB引导OS的过程(以GRUB0.97为例)
+
+GRUB运行时其实分为三个阶段：第一个阶段执行MBR中bootloader中的内容(446字节)，第二阶段执行MBR后大约30KB的内容(其实就是*.mod中的一个文件的copy，用来识别kernel文件所在的文件系统)，第三阶段执行/boot/grub目录中的内容。若开机时GRUB不能读取该目录，则会提示：grub rescue >  这时只能重新安装GRUB。若能读取该目录但配置文件丢失时，会显示GRUB SHELL ,这时可以手动指定相关文件位置。之所以会分阶段进行是由于bootloader容纳的代码有限，不可能把全部功能(如识别文件系统、提供SHELL和菜单选项、加载kernel)都集中与此，解决方法就是将功能分解为三部分：bootloader主要负责引导、MBR后的30KB负责识别文件系统、其它的功能都是由文件系统中的/boot/grub目录中的文件提供，而这时程序大小是不受限制的同时kernle的在文件系统中的位置也是不受限制的(只要其位于GRUB第二阶段可识别的文件系统中即可)。
+
+
+七、关于grub-install命令的讨论(以GRUB0.97为例)
+
+grub-install命令用于将GRUB安装到磁盘的MBR或分区的bootloader上，在系统不能正常引导时经常使用。其语法为：
+
+#grub-install –root-directory=DIR   install_device   --root-directory 用于指定grub文件安装目录，而install_device用于指定安装的设备，通常为MBR或分区.
+
+讨论一：安装grub时的DIR和install_device可以不在同一个分区，但grub安装完成后，这种对应关系是确定的。也就是说stage1,stage1.5都写入到install_device上了，其中stage1.5中记录了stage2即—root-directory的位置信息，在stage1.5的文件中有这样一个参数：(hd*,*)/DIR/，它记录了这种对应关系。当DIR被移走或目录名修改如将DIR/boot改为DIR/boot2时，将会出现不能引导并显示grub rescue >,这是因为GRUB不能读取以前安装时定义的DIR/boot/grub中的文件信息(相当于stage2)。但DIR/boot/grub/grub.cfg丢失时，由于可以读去DIR/boot/grub中的文件故会出现grub shell提示符，这时可以手动配置。另外vmlinuz和initrd可位于任何位置，不一定位于DIR/boot中，这体现了GRUB的灵活性，即不管vmlinuz和initrd位于哪儿都可以引导。在grub.cfg文件中root用于指定vmlinuz和initrd所在的分区，这和grub的安装目录无关。
+
+讨论二：当建立单独的/boot分区时，手动安装和配置grub的方法：
+# grub-install  /dev/sda    默然安装到根目录中，并根据需要建立/boot/grub目录结构。
+配置方式：
+menuentry "GNU/Linux" { 
+    set root=(hd0,1)    指定含有 vmlinuz、initrd.img 的设备或分区，可以与grub的目录不在一个分区。
+    linux /vmlinuz root=/dev/sda1 
+    initrd /initrd.img }
+因为/dev/sda1 被挂载到/boot目录中故上述的 /vmlinuz 和/initrd.img 的/等价于/boot目录.
+
+讨论三：用LIVECD恢复GRUB受破坏而不能正常引导的主机其步骤为：
+1.开机时从光盘启动，插入LIVECD，选择“试用而不安装”进入GNOME桌面。
+2.打开终端，将硬盘上有rootfs的分区挂载到/mnt目录下。
+3.用root身份执行：grub-install  --root-directory=/mnt/  /dev/sda(安装到MBR)，重启即可
+
+
+八、常用GRUB命令
+geekard@geekard-laptop:~$ grub- 
+grub-mkdevicemap         生成device.map文件
+grub-probe                获取给定路径或设备的信息如fs|fs_uuid|drive|device|partmap|abstraction       
+
+grub-setup                将grub写入boot sector
+grub-install              安装grub到指定设备和目录，调用grub-setup   
+  
+grub-script-check        检查/etc/grub.d目录中脚本的正确性
+grub-mkconfig            根据/etc/grub.d和/etc/defaults/grub中的文件生成配置文件
+
+grub-set-default          设置default的 menuentry
+grub-reboot               设置下次启动时的menuentry
+  
+grub-mkrescue            生成rescue盘
+

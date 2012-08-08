@@ -1,0 +1,134 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-19T17:01:16+08:00
+
+====== What’s The Deal With The Git Index ======
+Created Sunday 19 February 2012
+
+http://www.gitguys.com/topics/whats-the-deal-with-the-git-index/
+
+Commands discussed in this section:
+    git add
+    git commit
+    git ls-files
+    git status
+    git mv
+    git rm
+
+===== The git index defined in 2 sentences =====
+
+* The git “index” is where you** place files **you want committed to the git repository.
+* Before you “commit” (checkin) files to the git repository, you need to** first** place the files in the git “index”.
+
+===== An index by any other name =====
+
+The git index goes by many names. But they all refer to the same thing. Some of the names you may have heard:
+
+* **Index**
+* Cache
+* Directory cache
+* Current directory cache
+* **Staging area**
+* Staged files
+
+Why so many names for the same thing?  Good question!  We don’t cover linguistics questions in this section, but you can be sure the answer would start with __“For historical reasons…”__
+
+===== The Index Isn’t The Working Directory =====
+
+The working directory is where you do your work: You add, remove, and modify files in the working directory.
+
+You can type a command such as __git status__ and git will tell you:
+
+* What files have been added to the git index (for example by using the git add filename command).
+* What files git notices that exist in the working directory, but aren’t in the git index.
+* What files have different contents between the version in the git index and the version in the working directory.
+
+===== The Index Isn’t The Git Repository =====
+
+Files in the git index are files that git **would commit to the git repository** if you used the__ git commit__ command.
+
+However, files in the git index don’t get committed to the repository until you use the git commit command.
+
+===== The Index: Compared with Legacy VCS’s =====
+
+Let’s say you have just created a new file named README. How do you add the file to your repository?
+
+In a legacy Version Control System (VCS):
+
+    You tell the VCS what file you want added to the repository (Perforce: p4 add README; Subversion: svn add README)
+    Then tell the VCS to save the file to the repository (Perforce: p4 submit; Subversion: svn commit …)
+
+Git behaves differently. With git, to add a new file to the git repository, you:
+
+* Use “git add README”. This causes git to: 
+        Copy the contents of the README file to the **git object** store and store its contents as a **blob.**
+        Record in the** git index**: Filename README and the hash of the README blob in the object store.
+        Mark (remember) the README file in the user’s working directory is now **“tracked”.**
+* Use “git commit” which takes the files that are referred to in the “git index” and saves them to the git repository.
+
+===== Git Index Example =====
+
+In the below example:
+
+* A git session is shown in the upper right portion of the diagrams.
+* The result of the session is shown in the lower right portion (words) and in the left portion (pictures).
+* The most recent command typed is shown in a brown font
+* The Session begins in a new, empty, directory immediately after a new git repository has been created (e.g. after “git init“).
+
+You can click on the thumbnails in the lower left hand corner to choose which image to display.
+{{./img0.png}}
+{{./img1.png}}
+{{./img2.png}}
+{{./img3.png}}
+{{./img4.png}}
+{{./img5.png}}
+{{./img6.png}}
+{{./img7.png}}
+{{./img8.png}}
+
+You can click on the thumbnails in the lower left hand corner to choose which image to display.
+
+===== A couple helpful index-related commands =====
+
+A couple of git commands can be very helpful in showing you what files are in the index, whether or not the filenames in the index have been changed in the working directory, etc.
+
+The git commands are:
+
+    git status: Show what git determines are differences between the working directory, index and the most recent commit. For example:
+    git ls-files: Show what files are in the git index
+
+See What’s in the index? What’s Changed? for examples of the git status and git ls-files commands.
+
+You can see examples of git diff which can show differences between the working directory, index, and repository.
+Renaming and Removing files
+
+To rename a file in the index and the working directory:
+
+$ git mv README readme
+$ git ls-files
+readme
+$ git status
+# On branch master
+# Changes to be committed:
+#   (use "git reset HEAD ..." to unstage)
+#
+#   renamed:    README -> readme
+#
+
+And to remove a file from the working directory and the index:
+
+$ rm README
+$ git rm README
+
+Next: What’s In The Index? What’s Changed? git status and git ls-files
+Previous: The Git Tag Object
+
+Related:
+
+git diff
+The Git Tag Object
+The Git Blob Object
+The Git Tree Object
+The Git Commit Object
+All Git Object Types: Blob, Tree, Commit And Tag
+What Is The Format Of A Git Blob?

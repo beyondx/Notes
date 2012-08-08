@@ -1,0 +1,110 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-23T20:48:21+08:00
+
+====== 在Django中使用CKEditor ======
+Created Sunday 23 October 2011
+
+http://2goo.info/blog/panjj/Django/2010/11/15/139
+
+在博客中使用富文本编辑器是很常见的，今天尝试在Django中使用比较知名的CKEditor。前提条件是通过静态文件的正确配置，可以参考之前写的《Django静态文件的配置》，今天不再累赘。
+
+一 前提条件：
+1. 找到第三方支持插件：django-ckeditor
+相关开源项目地址：https://github.com/dwaiter/django-ckeditor
+
+2. python中安装simplejson
+相关包地址：http://pypi.python.org/pypi/simplejson/
+安装方法和安装其他Python第三方库是一样的（下载该包，解压，到包的目录下，执行 python setup.py install，过程中python会自动寻找依赖的类库，所以你必须能连上网络）。
+
+二 配置CKEditor环境
+
+你可以选择把django-ckeditor安装到python里，也可以把下载的django-ckeditor作为自己的app来用。我选择后者。
+下载的django-ckeditor，目录结构：
+ckeditor
+setup.py
+...
+
+把django-ckeditor里的ckeditor直接粘贴到我们的项目中，然后把该app的templates和media挪出来，整个项目的目录结构：
+app_test #这是我特意创建的一个自己的app，作为测试用。
+ckeditor
+static
+--|ckeditor
+----|...
+--|css
+----|...
+templates
+--|ckeditor
+__init__.py
+manage.py
+settings.py
+url.py
+
+整个过程就是把下载的ckeditor文件夹当成一个全新的app，熟悉的Django的就不必一一介绍了，如果你和我一样是新手，不用担心，我们教程后面有一个基本的实例 供参考。
+
+我们在settings.py最后一行，给ckeditor写一些配置：
+CKEDITOR_CONFIGS = {
+    'default': {
+        'toolbar':[        
+            ['Source','-','Save','NewPage','Preview','-','Templates'],        
+            ['Cut','Copy','Paste','PasteText','PasteFromWord','-','Print','SpellChecker','Scayt'],        
+            ['Undo','Redo','-','Find','Replace','-','SelectAll','RemoveFormat'],        
+            ['Form','Checkbox','Radio','TextField','Textarea','Select','Button', 'ImageButton','HiddenField'], 
+            ['Bold','Italic','Underline','Strike','-','Subscript','Superscript'],        
+            ['NumberedList','BulletedList','-','Outdent','Indent','Blockquote'],        
+            ['JustifyLeft','JustifyCenter','JustifyRight','JustifyBlock'],        
+            ['Link','Unlink','Anchor'],        
+            ['Image','Flash','Table','HorizontalRule','Smiley','SpecialChar','PageBreak'],        
+            ['Styles','Format','Font','FontSize'],        
+            ['TextColor','BGColor'],        
+            ['Maximize','ShowBlocks','-','About']        
+        ],
+        'width': 650,
+        'height': 200,
+        'toolbarCanCollapse': False,
+    },
+
+    'simple_toolbar': {
+        'toolbar': [
+            [ 'Bold', 'Italic', 'Underline' ],
+        ],
+        'width': 650,
+        'height': 50,
+    },       
+}
+一个是默认的配置，几乎是ckeditor的全部功能，一个是简单的配置，仅仅提供几个再简单不过的功能。更具体的配置参考CKEditor官方网站吧。
+
+三 使用CKEidor
+涉及到表单控件的，我们习惯使用Django的forms。
+我们在app_test里定义了一个forms类
+#coding=utf-8
+from django import forms
+from ckedj.ckeditor.widgets import CKEditor #ckedj是定义的项目名
+
+class BlogPostForm(forms.Form):
+    title = forms.CharField()
+    # This field will render as a CKEditor with the 'simple_toolbar' config.
+    subtitle = forms.CharField(widget=CKEditor(ckeditor_config='simple_toolbar'))
+    # This field will render as a CKEditor with the 'default' config.
+    body = forms.CharField(widget=CKEditor())
+
+代码里，subtitle使用简易的配置，而body使用了默认的。
+
+在html文件中，注意要引用CKEditor的初始化脚本（前提是保证静态文件能成功解析哦，django-ckeditor说明文档中没有这个说明，所以过程中折腾了半天，别说我不提醒你...）,初始化脚本ckeditor.js在ckeditor/ckeditor下。废话少说，看代码，如：
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Page Title</title>
+    <script type="text/javascript" src="/site_media/ckeditor/ckeditor/ckeditor.js"></script>
+</head>
+<body>
+    <form>
+        <table border="0" cellspacing="0">
+            {{form.as_table}}
+        </table>
+    </form>
+</body>
+</html>
+
+这样就能在Django中正常使用CKEditor了。如图：
+

@@ -1,0 +1,104 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-02T22:06:06+08:00
+
+====== LnF Awards 2011 ======
+Created Saturday 02 April 2011
+https://bbs.archlinux.org/viewtopic.php?id=111878
+noticeable winners(so far)
+
+Display/Login Managers
+1. none/startx/xinit
+2. slim
+
+Tiling Window Managers
+1. dwm
+2. awesome
+3. xmonad
+
+Floating Window Managers
+1. openbox
+
+Desktop Environments
+1. xfce4
+
+Shells
+1. bash
+2. zsh
+
+Archive Managers
+1. xarchiver
+2. tar
+
+File Managers
+1. ranger
+2. thunar
+3. pcmanfm
+4. coreutils
+
+Image Editors (Raster)
+1. gimp
+
+Image Editors (Vector)
+1. inkscape
+
+Image Viewers
+1. feh
+2. gpicview
+3. mirage
+*updated
+
+Instant Messengers
+1.pidgin
+
+IRC Clients
+1. irssi
+
+Network Managers
+1. wicd
+2. netcfg
+
+Office Apps (Spreadsheet/Math)   
+1. libreoffice
+2. gnumeric
+
+Office Apps (Word Processing)
+1. abiword
+2. libreoffice
+
+Package Managers
+1. pacman
+2. yaourt
+
+PDF Readers
+1. zathura
+2. evince
+3. epdfview
+
+RSS Readers
+1. newsbeuter
+
+System Panels/Menus/Trayer
+1. tint2
+2. dzen2
+
+Terminal Emulators
+1. rxvt-unicode
+
+Text Editors
+1. vim/vi
+2. geany
+3. emacs
+
+Torrent Clients
+1. rtorrent
+2. transmission
+
+Video Players
+1. mplayer
+2. vlc
+3. smplayer
+
+Web Browsers
+1. firefox
+2. chromium

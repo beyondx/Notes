@@ -1,0 +1,46 @@
+Steve Papacharalambous <stevep@freescale.com> 20 September 2007
+
+This patch fixes build errors when building with later versions of gcc due
+to increased strictness when declaring array variables without a size:
+
+[snip]
+     CC       test-lexing.o
+In file included from test-lexing.c:18:
+token.h:59: array size missing in `name'
+token.h:140: array size missing in `data'
+make: *** [test-lexing.o] Error 1
+[/snip]
+
+diff -uNr sparse-0.4.orig/allocate.h sparse-0.4/allocate.h
+--- sparse-0.4.orig/allocate.h	Sat Sep 15 20:56:10 2007
++++ sparse-0.4/allocate.h	Thu Sep 20 08:45:03 2007
+@@ -4,7 +4,7 @@
+ struct allocation_blob {
+ 	struct allocation_blob *next;
+ 	unsigned int left, offset;
+-	unsigned char data[];
++	unsigned char *data;
+ };
+ 
+ struct allocator_struct {
+diff -uNr sparse-0.4.orig/token.h sparse-0.4/token.h
+--- sparse-0.4.orig/token.h	Sat Sep 15 20:56:10 2007
++++ sparse-0.4/token.h	Thu Sep 20 08:45:31 2007
+@@ -56,7 +56,7 @@
+ 	unsigned char tainted:1,
+ 	              reserved:1,
+ 		      keyword:1;
+-	char name[];		/* Actual identifier */
++	char *name;		/* Actual identifier */
+ };
+ 
+ enum token_type {
+@@ -137,7 +137,7 @@
+ 
+ struct string {
+ 	unsigned int length;
+-	char data[];
++	char *data;
+ };
+ 
+ /* will fit into 32 bits */

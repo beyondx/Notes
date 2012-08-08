@@ -1,0 +1,11 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-17T11:27:23+08:00
+
+====== KParts ======
+Created Thursday 17 November 2011
+http://techbase.kde.org/Development/Architecture/KDE4/KParts
+
+KParts is the name of the **component framework** for KDE. An individual component is called a __KPart__. As an example, Konsole is available as a KPart and is used in applications like Konqueror and Kate. Good examples about how KParts can be used are Konqueror, which (among other things) uses the KWord **part** to display documents, KMPlayer **part** to play multimedia, and Kontact, which embeds kdepim applications under one roof.
+
+KParts also provide flexibility in your software selection. For example, the KHTML** part** which is by default used by Konqueror for HTML rendering can very easily be exchanged by a Webkit KPart. 

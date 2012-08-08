@@ -1,0 +1,59 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-21T17:05:01+08:00
+
+====== xarg ======
+Created Thursday 21 April 2011
+
+Man page of xargs
+
+xargs reads items from the standard input, delimited by blanks (which can be protected with double or single quotes or a backslash) or newlines, and executes the command  (default is /bin/echo) one or more times with any initial-arguments followed by items read from standard input.  Blank lines on the standard input are ignored.
+
+我的理解：xargs从标准输入读取由空格或者换行符分隔的条目，并将其作为xargs后面所跟命令参数的一部分（默认使用/bin/echo，所接的命令可以带参数），然后执行命令。
+
+
+常用参数：
+
+-f file 从文件中读取条目而不是从标准输入；
+
+-0 读取的条目以null作为结束，而不是以空格或换行符进行分隔；
+
+-d delim 指定分隔符；
+
+--verbose 执行命令前显示所执行的命令；
+
+-n max-args 指定参数个数
+
+例1：xargs  –verbose       #从标准输入读，使用-f可从文件读参数
+
+输入：hello world (Ctrl + D)
+
+输出：/bin/echo hello world   #--verbose显示的执行命令
+
+hello world
+
+ 
+
+例2：ls /home/ydzhang/xargs | xargs rm –rf  #从管道读
+
+输入：/home/ydzhang/xargs目录下的条目
+
+输出：rm –rf a b c （a,b,c为/home/ydzhang/xargs下的文件）
+
+ 
+
+例3：find /home/ydzhang | xargs grep “hello” #从管道读
+
+输入：/home/ydzhang下的所有文件名
+
+输出：/home/ydzhang目录下所有包含hello的文件对应的行
+
+ 
+
+例4：find /home/ydzhang –print0 | xargs -0 grep “hello” #从管道读
+
+输入：以null作为字符串结束符的文件名序列（-print0），将这些参数传给xargs时，如果使用默认参数，xargs将不能正确解析，必须告诉xargs这个信息，即使用-0参数。
+
+输出：/home/ydzhang目录下所有包含hello的文件对应的行
+
+注意：find 的-print0效果类似-print，但是将每行输出信息末端的\n字符换为\0字符，如果find找出的文件名列表中含有空格，这时就必须用-print0代替-print .

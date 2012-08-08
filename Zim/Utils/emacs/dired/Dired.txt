@@ -1,0 +1,139 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-17T23:11:14+08:00
+
+====== Dired ======
+Created Wednesday 17 August 2011
+http://www.fengyj.net/emacs/Dired.html
+
+Dired
+
+在 dired 中移动
+在 dired 中删除文件(Flags)
+一次性标记很多文件
+在Dired中访问文件
+在Dired中用Mark
+操作文件
+在 dired 中使用shell命令
+dired 中的文件比较
+
+==== 在 dired 中移动 ====
+
+C-n，n，<space>向下移动一行。
+C-p，p，<del>向上移动一行。<del>同时还会去掉之前的标记。
+j：dired-goto-file，移动到指定目录或文件所在的行。
+
+==== 在 dired 中删除文件(Flags) ====
+d：给文件作一个删除标记(flag)。
+u：删除文件的删除标记。
+<del>：移动到上一行，然后移除上一行的删除标记。
+x：执行删除指令。
+
+被删除标记标记的文件或目录前会有一个 D 标记。
+一般情况下不能直接删除非空目录，除非变量 dired-recursive-deletes 不为空。
+
+==== 一次性标记很多文件 ====
+~：标记所有备份文件，形如“~文件名”的文件。
+% d REGEXP <REG>o：为符合正则表达式的文件作标记。
+
+==== 在Dired中访问文件 ====
+f：直接访问当前行所指示的文件。 <return>，e：和f一样。
+o：和f相似，但在另一个窗口打开文件，光标移到新窗口。
+c-o：和f相似，但在另一个窗口打开文件，光标还是在旧窗口。
+__^__：访问父级目录，相当于移到当前目录的".."行，然后按f键。
+v：和 f 类似，但是打开的文件是只读的。
+
+==== 在Dired中用Mark ====
+
+dired的删除标记叫做 flag，一般的标记则为 mark，dired-mark。
+
+* mark
+    用*给当前文件作标记。如果提供一个正数作为参数N，则标记从当前文件( 包括当前文件)开始向下的N个文件，如 C-u 3 * m 顺序标记3个文件，如果是负数则向上标记N个文件。
+* *
+    标记所有可执行文件，如果有个参数，则 unmark 这些可执行文件。
+* @
+    标记所有 链接 文件，如果有个参数，则 unmark 这些链接文件。
+* /
+    标记所有目录文件，**除了"."和".."目录**，如果有个参数，则 unmark 这些目录。
+__* s__
+    标记该目录下的所有文件及目录，除了"."和".."目录。
+* u
+    删除当前行的标记
+* <del>
+    移动到上一行，并删除那一行的 mark。
+U
+    移除当前 dired buffer 中的所有 mark，即当前目录中的所有 mark。
+__M-}__
+    移动到下一个 marked file。(dired-next-marked-file)
+M-{
+    移动到上一个 marked file。(dired-prev-marked-file)
+* t
+    mark 开关，也就是 marked files 在执行完命令后变成 unmarked files，而 unmarked files 变成 marked files。(dired-toggle-files)
+__* c__ OLD-CHARACTOR NEW-CHARACTOR
+    改变 marked 标记，用 new charactor 的 mark 替换 old character 的 mark，例如: * c * a，则所有星号的标记都会变成字符 a。用该命令可以实现将任意字符作为标记，包括空格字符，空格字符也代表 unmarked files。
+__* %__ REGEXP <enter>
+    标记所有文件名满足正则表达式的文件。这个和 % d 很类似，% d 是为了给文件作上删除标记。
+__* g__ % REGEXP
+    如果正则表达式匹配了 dired buffer 中的文件的__内容__，则标记该文件。(dired-mark-files-containing-regexp)
+C-/
+    dired undo，取消设定的 mark。
+
+==== 操作文件 ====
+
+    在命令前加入数字参数 N，就会操作以当前光标所在的行为基准，向下连续的N个文件，如果N是负数，则操作反方向的连续N个文件。
+    如果文件被 * 号标记，则操作所有被星号标记的文件。 再者就操作当前行的文件。
+
+    下面是操作dired中文件的命令：
+
+`C new <ret>'
+    复制特定文件(`dired-do-copy')。类似shell命令 cp，变量 `dired-recursive-copies' 控制是否遍历复制子目录，就像 cp -r，默认情况是 `nil'，意味不能复制子目录。
+`D'
+    删除指定文件(`dired-do-delete')。和shell中的 rm 命令类似。
+`R NEW <RET>'
+    重命名指定文件(`dired-do-rename')。如果指定的是单个文件，则仅仅完成重命名功能，如果指定的是多个文件，则 NEW 指示的是一个文件夹，命令会把指定的文件剪切到文件夹里，就像shell里的 mv 指令。
+`H NEW <RET>'
+    制作特定文件的硬链接(`diref-do-hardlink')。和shell命令的 ln 类似。
+`S NEW <RET>'
+    制作特定文件的符号链接(`dired-do-symlink')。和shell命令的 ln -s 类似。
+__`M__ MODESPEC <RET>'
+    改变文件的权限(`dired-do-chmod')。
+`G NEWGROUP <RET>'
+    改变文件所属的组为 NEWGROUP。(`dired-do-chgrp')。
+`O NEWOWNER <RET>'
+    改变文件的所有者为 NEWOWNER。(`dired-do-chown')。
+`T TIMESTAMP <RET>'
+    将文件的修改时间调整到当前时间，和shell命令中的 touch 类似(`dired-do-touch')。
+`P COMMAND <RET>'
+    (`dired-do-print')。
+__`Z'__
+    压缩特定的文件(`dired-do-compress')。如果文件已经是压缩文件，则Z会给该文件解压缩。
+`L'
+    装载特定的 Emace Lisp。
+
+==== 在 dired 中使用shell命令 ====
+
+dired 的命令 ! 会在 minibuffer 中提示你輸入 shell 命令，用此命令来操作指定的文件。
+
+有两种方式可以让shell command操作多个文件：
+
+* 命令行包含两边有空格的星号*
+    如果星号两边为空格，__命令只会执行一次__，* 号会代替当前dired buffer 中__标记__的所有文件名，文件名的顺序即为dired buffer中文件名的顺序。
+    因此，命令 `! tar czvf zip.tar.gz *' 将当前dired buffer 中的所有文件压缩到 *zip.tar.gz* 中。
+* 如果命令行不包括星号，命令会在__每个文件上执行一次__。
+        例如：`! uudecode <return>'会用uudecode命令依次执行每个文件。
+* 命令行上有星号，但两边没有空格，这时会将该星号传给shell当作通配符使用。匹配的文件会和标记的文件一起传给命令 如：
+* wl -l "*.cpp~" *    //会将当前目录下的所有以.cpp~结尾的文件与当前标记的所有文件一起传给wl命令。
+* wl -l "*cpp~"  //会将当前目录下的所有以.cpp~结尾的文件与当__前标记的文件一次一个__按先后顺序传给wl命令。
+* 命令行包括两边为空格的 ? 用指令操作当前文件，当前行的文件名会替代?。例如：
+     ! chmod 777 ? <return>    会将当前行的文件的权限改为777。
+
+! 用命令行执行的指令不会立即改变dired buffer，但可以用g强制刷新 dired buffer。
+
+==== dired 中的文件比较 ====
+
+有两个 dierd 命令用 diff 比较特定的文件：
+
+    ` = '
+    用当前文件(the file at the point)来比较另外一个文件(the file at the mark)，利用的是dired的diff程序(`dired-diff')。用 mark标记的文件不是dired的mark，而是__emacs的标准mark__，用快捷键 C-SPACE或C-@所作的mark。
+    `M-='
+    用当前文件的备份文件于当前文件进行比较。(`dired-backup-diff')。

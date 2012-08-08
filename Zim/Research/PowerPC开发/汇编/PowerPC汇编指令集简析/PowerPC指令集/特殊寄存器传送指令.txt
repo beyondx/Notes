@@ -1,0 +1,152 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-04T22:23:54+08:00
+
+====== 特殊寄存器传送指令 ======
+Created Sunday 04 December 2011
+
+http://hi.baidu.com/power_nq/blog/item/6b0fc1fb3e2d19849e51469c.html
+
+
+表6 特殊寄存器传送指令
+
+名称							助记符			语法格式
+
+读取机器状态寄存器				mfmsr			rD
+写入机器状态寄存器				mtmsr			rS
+读取特殊功能寄存器				mfspr			rD, SPR
+写入特殊功能寄存器				mtspr			SPR, rS
+读取段寄存器						__mfsr__			rD, SR
+写入段寄存器						mtsr			SR, rS
+间接读取段寄存器					__mfsrin__			rD, rB
+间接写入段寄存器					mtsrin			rS, rB
+读取时基寄存器					mftb			rD, TBR
+
+（1） 读取机器状态寄存器指令mfmsr
+
+指令的编码格式：
+指令的语法格式：
+mfmsr rD
+
+读取MSR的内容放入rD中，这是__超级用户层__指令，不影响其他寄存器。
+
+（2）写入机器状态寄存器指令mtmsr
+
+指令的编码格式：
+指令的语法格式：
+
+mtmsr rS
+
+把rS的内容存入MSR中，这是超级用户指令。
+
+（1） 读取特殊功能寄存器指令mfspr
+
+指令的编码格式：
+指令的语法格式：
+
+mfspr rD，SPR
+
+指令操作：
+
+n<—spr[5-9]||spr[0-4]
+rD<—spr(n)
+
+特殊功能寄存器（SPR）的编码如表7所示，将SPR的内容存入rD中。
+
+表7 Power PC UISA SPR编码
+
+					spr									寄存器名						
+编码n				
+				spr[5-9]			spr[0-4]				
+1				00000			00001					XER
+8				00000			01000					LR
+9				00000			01001					CR
+
+（2） 写入特殊功能寄存器指令mtspr
+
+指令的编码格式：
+指令的语法格式：
+mtspr spr，rS
+
+把rS的内容存入到指定的特殊功能寄存器中。
+
+（3） 读取段寄存器指令mfsr
+
+指令的编码格式：
+指令的语法格式：
+
+mfsr rD，SR
+
+指令操作：
+
+rD<—SEGREG（SR）
+
+将段寄存器SR的内容读入rD中，这是一个超级用户层指令。
+
+
+（1） 写入段寄存器指令mtsr
+
+指令的编码格式：
+指令的语法格式：
+
+mtsr SR，rS
+
+将rS中的内容读入SR，这是一个__超级用户层__指令。
+
+（2） 间接读取段寄存器指令mfsrin
+
+指令的编码格式：
+
+指令的语法格式：
+
+mfsrin rD，rB
+
+指令操作：
+
+rD<—SEGREG（rB[0-3]）
+
+由rB寄存器的__0～3位选取的段寄存器__的内容，复制到rD zhong。这是一个超级用户层指令。
+
+（3） 间接写入段寄存器指令mtsrin
+
+指令的编码格式：
+
+指令的语法格式：
+
+mtsrin rS，rB
+
+指令操作：
+
+SEGREG（rB[0-3]）<—（rS）
+
+将rS中的内容复制到由rB的0～3位__所指定的寄存器__中。这是一个超级用户层指令。
+
+（4） 读取时基寄存器指令mftb
+
+指令的编码格式：
+
+指令的语法格式：
+
+mftb rD，TBR
+
+指令操作：
+
+n<—tbr[5-9]||tbr[0-4]
+
+if n=268 then
+
+rD<—TBL
+
+else if n=269 then
+
+rD<—TBU
+
+该指令的TBR编码如表8所示。
+
+表8 指令mftb的TBR编码
+
+TBR		寄存器名					访问
+
+编码		tbr[5-9]		tbr[0-4]
+268			01000		01100		TBL			用户
+269			01000		01101		TBR		用户

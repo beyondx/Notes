@@ -1,0 +1,75 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-30T13:30:36+08:00
+
+====== 随机化算法(5) — 蒙特卡罗(Monte Carlo)算法 ======
+Created Saturday 30 July 2011
+蒙特卡罗法（Monte Carlo method）是以概率和统计的理论、方法为基础的一种计算方法，将所求解的问题同一定的概率模型相联系，用电子计算机实现统计模拟或抽样，以获得问题的近似解，故又称统计模拟法或统计试验法。
+
+蒙特卡罗算法在一般情况下可以保证对问题的所有实例都以高概率给出正确解，但是通常无法判定一个具体解是否正确。
+
+设p是一个实数，且1/2 <p <1。如果一个蒙特卡罗算法对于问题的任一实例得到正确解的概率不小于p，则称该蒙特卡罗算法是p正确的，且称p – 1/2是该算法的优势。如果对于同一实例，蒙特卡罗算法不会给出2个不同的正确解答，则称该蒙特卡罗算法是一致的。
+
+有些蒙特卡罗算法除了具有描述问题实例的输入参数外，还具有描述错误解可接受概率的参数。这类算法的计算时间复杂性通常由问题的实例规模以及错误解可接受概率的函数来描述。对于一个一致的p正确蒙特卡罗算法，要提高获得正确解的概率，只要执行该算法若干次，并选择出现频次最高的解即可。
+
+对于一个解所给问题的蒙特卡罗算法MC(x)，如果存在问题实例的子集X使得：
+
+(1)当x不属于X时，MC(x)返回的解是正确的；
+
+(2)当x属于X时，正确解是y0，但MC(x)返回的解未必是y0。
+
+称上述算法MC(x)是偏y0的算法。
+
+这一章蒙特卡罗算法我感觉没必要多讲，因为王晓东那本书上讲得比较详细，且概念较多，而且网上关于这个算法的资源很多。如果我再多说就有点画蛇添足的味道了。我在数学中国社区就看到有专门这个板块叫蒙特卡罗算法，大家可以去看看。  
+
+在这里，我只给出书上讲的主元素问题：设T[1:n]是一个含有n个元素的数组。当|{i|T[i]=x}|>n/2时，称元素x是数组T的主元素。以下是代码：
+
+/*
+* Author: Tanky woo
+* Blog:   www.WuTianQi.com
+* Date:   2010.12.9
+* 蒙特卡罗(Monte Carlo)算法解决主元素问题
+* 代码来至王晓东《计算机算法设计与分析》
+*/
+#include "RandomNumber.h"
+#include <iostream>
+#include <cmath>
+using namespace std;
+ 
+RandomNumber rnd;
+ 
+template <typename Type>
+bool Majority(Type *T, int n)
+{
+	// 判定主元素的蒙特卡罗算法
+	int i = rnd.Random(n) + 1;
+	Type x = T[i];    // 随机选择数组元素
+	int k = 0;
+	for(int j = 0; j < n; ++j)
+		if(T[j] == x)
+			++k;
+	return (k > n/2);
+}
+ 
+template <typename Type>
+bool MajorityMC(Type *T, int n, double e)
+{
+	// 重复调用算法Majority
+	int k = ceil(log(1.0/e) / log(2.0));
+	for(int i = 1; i <= k; ++i)
+		if(Majority(T, n))
+			return true;
+	return false;
+}
+ 
+int main()
+{
+	int arr[10] = {3, 5, 7, 3, 9, 3, 3, 1, 3, 3};
+	cout << MajorityMC(arr, 10, 0.1) << endl;
+	return 0;
+ 
+}
+
+有机会我会在网上找一些好的讲蒙特卡罗算法的资料，然后补充到这篇文章里供大家下载。  
+
+下一篇我应该会写《随机化算法(6) — 一些概率题目》。

@@ -1,0 +1,90 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-15T22:07:30+08:00
+
+====== Pimpl机制 ======
+Created Wednesday 15 February 2012
+http://developer.51cto.com/art/201106/267942.htm
+
+pImpl惯用手法的运用方式大家都很清楚，其主要作用是解开类的使用接口和实现的耦合。本文从Pimpl机制分析开始讲起，一起来看。
+
+AD：
+
+Pimpl机制是Private Implementation的缩写，我们常常听到诸如“不要改动你的公有接口”这样的建议，所以我们一般都会修改私有接口，但是这会导致包含该头文件的所有源文件都要重新编译，这会是个麻烦事儿。Pimpl机制，顾名思义，将实现私有化，力图使得头文件对改变不透明。
+
+机制分析
+
+首先，我们先看看不使用这个机制的一个实现：
+
+    // MyBase.h  
+    class MyBase {  
+    public:  
+    int foo();  
+    };  
+    // MyDerived.h  
+    #include "MyBase.h"  
+    class MyDerived : public MyBase {  
+    public:  
+    int bar();  
+    }; 
+
+假设你现在希望在MyBase.h中加入一个新的private和protected成员函数，那么MyDerived和所有包含MyBase.h的源文件都需要重新编译。在一个大工程中，这样的修改可能导致重新编译时间的激增。你可以使用Doxygen或者SciTools看看头文件依赖。
+
+一般来说，不在头文件中包含头文件是一个比较好的习惯，但是这也不能完全消除修改MyBase.h带来的重新编译代价。有没有一个机制可以使得对私有接口做修改时我们可以减小重新编译的代价。
+
+在Pimpl机制中，我们使用前置声明一个Impl类，并将这个类的一个指针实例放入主类中，如下：
+
+    // MyClass.h  
+    class MyClassImpl; // forward declaration  
+    class MyClass {  
+    public:  
+    MyClass();  
+    ~MyClass();  
+    int foo();  
+    private:  
+    MyClassImpl *m_pImpl;  
+    }; 
+
+现在，除非我们修改MyClass的公有接口，否则这个头文件是不会被修改了。然后，我们用这个Impl类的实现来完成主类的细节实现，在主类的构造函数中，我们完成了实现类指针的实例化：
+
+    // MyClass.cpp  
+    class MyClassImpl {  
+    public:  
+    int foo() {  
+    return bar();  
+    }  
+    int bar() { return var++; }  
+    int var;  
+    };  
+    MyClass::MyClass() : m_pImpl(new MyClassImpl){}  
+    MyClass::~MyClass()  
+    {  
+    try {  
+    delete m_pImpl;  
+    }  
+    catch (...) {}  
+    }  
+    int MyClass::foo(){ return m_pImpl->foo(); } 
+
+Pimpl机制其实这是桥接模式的一种变种。我们可以对实现类随意的进行增删和修改，而不会导致包含MyClass.h的源代码重新编译。当然，这样做的时间开销和空间开销也是有的。
+
+在实践中，我们常常采用内部类来完成Pimpl机制：
+
+    // header  
+    class fruit  
+    {  
+    public:   
+    private:  
+    class impl;  
+    impl* pimpl_;  
+    }   
+    // implementation  
+    class fruit::impl  
+    {   
+    };   
+    fruit::fruit()  
+    {  
+    pimpl_ = new impl();  
+    } 
+
+希望看后本文，你会有收获。

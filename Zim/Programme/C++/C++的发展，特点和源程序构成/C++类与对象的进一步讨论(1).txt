@@ -1,0 +1,574 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-07T10:37:00+08:00
+
+====== C++类与对象的进一步讨论(1) ======
+Created Sunday 07 August 2011
+
+上一系列主要讲了C++中的类和对象的一些基础概念，但也是面向对象程序设计中重要的一部分。接下来，我将在上一系列的基础上对C++的类与对象做进一步的讨论。从而更加熟悉类和对象在编程中的应用和进一步理解其作用。那么今天的主要讲的__C++类与对象中的静态成员__，其中实例代码中会涉及到__对象数组与对象指针的应用__，还有就是讲一下C++中的友元,包括__友元类和友元函数__;
+
+　　1.如果一个类有多个对象，那么每个对象分别有自己的数据成员，不同对象的数据成员互不相干，各自独立。但是有时候我们希望有一个或几个__数据成员被所有对象所共享__。于是C++就提出了__静态成员__的概念。静态成员包括静态数据成员和静态成员函数。也许有人会问，那我们把多个对象要共享的数据，声明为全局变量不就行了吗？的确是，共享的目的是达到了，但是使用全局变量会带来不安全性，且与面向对象的封装性特征相矛盾。
+
+　　在类中静态数据成员用关键字static来说明。格式：static 数据类型 数据成员名;
+
+ 1 #include "stdafx.h"
+ 2 #include<iostream>
+ 3 #include<string>
+ 4 
+ 5 class Employee
+ 6 {
+ 7     private:
+ 8         std::string id;
+ 9         std::string name;
+10         double salary;
+11        __ static int count; //静态成员变量__
+12     public:
+13         Employee(std::string id,std::string name,double salary);
+14         void showEmployee();
+15         void showEmployeeCount();
+16 
+17 };
+18 
+19 Employee::Employee(std::string id,std::string name,double salary):id(id),name(name),salary(salary)
+20 {
+21     ++count;
+22 }
+23 
+24 void Employee::showEmployee()
+25 {
+26     std::cout<<"编号："<<this->id<<std::endl;
+27     std::cout<<"姓名："<<this->name<<std::endl;
+28     std::cout<<"薪水："<<this->salary<<std::endl;
+29     std::cout<<"--------------------------------"<<std::endl;
+30 }
+31 
+32 void Employee::showEmployeeCount()
+33 {
+34     std::cout<<"雇员总数："<<this->count<<std::endl;
+35     std::cout<<"********************************"<<std::endl;
+36 }
+37 
+38 __int Employee::count=0;   //对于静态数据成员，必须在类界面定义之外对其进行初始化。__
+39 
+40 int main()
+41 {
+42 
+43     Employee employee[3]={                //对象数组
+44         Employee("0001","aaa",6000),
+45         Employee("0002","bbb",7000),
+46         Employee("0003","ccc",10000)
+47     };
+48 
+49     Employee *emp=employee;    //给对象指针赋值(值为对象数组首地址)
+50 __// 注意：不能将数组名赋值给引用类型。__
+51     for(int i=0;i<3;i++)    
+52     {
+53         employee[i].showEmployee();
+54     }
+55 
+56     employee->showEmployeeCount();//输出雇员个数
+57     
+58     for(int i=0;i<3;i++)
+59     {
+60         (emp++)->showEmployee(); //emp++对象指针加1，即指向下一个对象数组元素的地址
+61         ;
+62     }
+63 
+64     emp->showEmployeeCount();//输出雇员个数
+65     
+66     return 0;
+67 }
+
+结果：
+
+　　针对上述实例中，尽管静态数据成员只涉及到了雇员人数cout，但我补充几个注意点：
+(1)静态数据成员的初始化与普通成员初始化不同：__静态数据成员初始化应该是在类外单独进行，而且应在定义对象之前进行__,比如上述中
+int Employee::count=0//__前面不需要加static,当没有给其赋初值时，int Employee::count,那么系统将自动赋予初值0;__
+(2)__静态数据成员属于类__，而不像普通成员属于对象，因此可以用"类名::"访问静态数据成员;
+(3)__静态数据成员在对象定义之前就存在__，公有的静态数据成员可在对象定义之前被访问;
+
+同样的，还是用static来说明成员函数为静态成员函数。__静态成员函数也属于类，它主要是用来处理静态数据成员__。
+格式： static 返回类型 静态成员函数名(参数表);我们把上述的例子稍加改动，在成员函数void showEmployeeCount()前加上static,再把该__函数实现部分里的this->去掉__。改后代码示例如下：
+
+__静态成员函数一般不访问类中的非静态成员数据，如果确实需要，只能通过对象名、对象指针和对象引用访问对象的非静态成员。__比如：
+
+ 1 #include "stdafx.h"
+ 2 #include<iostream>
+ 3 #include<string>
+ 4 
+ 5 class Employee
+ 6 {
+ 7     private:
+ 8         std::string id;
+ 9         std::string name;
+10         double salary;
+11         **static int count; //静态成员变量**
+12     public:
+13         Employee(std::string id,std::string name,double salary);
+14         **static void showSalary(Employee &emp);**
+**15       static void showEmployeeCount();//静态成员函数**
+16 
+17 };
+18 
+19 Employee::Employee(std::string id,std::string name,double salary):id(id),name(name),salary(salary)
+20 {
+21     ++count;
+22 }
+23 
+24 void Employee::showEmployeeCount()
+25 {
+26     std::cout<<"雇员总数："<<count<<std::endl;//把this->count该为count
+27     std::cout<<"********************************"<<std::endl;
+28 }
+29 
+30  void Employee::showSalary(Employee &emp)
+31  {
+32     std::cout<<"姓名："<<__emp.name__<<std::endl;
+33     std::cout<<"薪水："<<__emp.salary__<<std::endl;
+34     std::cout<<"--------------------------------"<<std::endl;
+35  }
+36 
+37 int Employee::count=0;
+38 
+39 int main()
+40 {
+41 
+42     Employee employee[3]={                //对象数组
+43         Employee("0001","aaa",6000),
+44         Employee("0002","bbb",7000),
+45         Employee("0003","ccc",10000)
+46     };
+47 
+48     Employee *emp=employee;    //给对象指针赋值(值为对象数组首地址)
+49 
+50     for(int i=0;i<3;i++)    
+51     {
+52         __employee[i].showSalary(employee[i]);//或Employee::showSalary(employee[i]);__
+53         
+54     }
+55 
+56     employee->showEmployeeCount();//输出雇员个数
+57     
+58     for(int i=0;i<3;i++)
+59     {
+60         (emp++)->showSalary(employee[i]);//或Employee::showSalary(employee[i]);
+61     }
+62 
+63     emp->showEmployeeCount();//输出雇员个数
+64 
+65     return 0;
+66 }
+
+结果：
+
+ 　　刚刚之前有说到，当我给成员函数void showEmployeeCount()前加上static,就需要把该函数实现部分里的this->去掉(不去掉，错误提示__"this"只能用于非静态成员函数内部__)。
+为什么呢？其实静态成员函数和非静态成员函数最重要的区别在于：__前者木有this指针而后者有__。因为静态成员函数是属于类的，而不是对象。那为什么属于类的就没有this指针呢？这个问题在上节C++之类与对象(3)中有具体说明；
+
+===== 2. =====
+ 类体现了数据隐藏性和封装性，类的私有成员只能在类定义的范围内使用，也就是私有成员只能有成员函数来访问。那么在不放弃私有成员数据安全的情况下，__能使普通函数或类中的成员函数来访问封装于某一类中的私有，公有或保护信息呢，C++中用友元(friend)实现这个要求。__C++中的友元包括友元函数和友元类，而友元函数又分为友元非成员函数和友元成员函数；分别举两个实例来说明：
+
+ 1 #include "stdafx.h"
+ 2 #include<iostream>
+ 3 #include<string>
+ 4 
+ 5 class Employee
+ 6 {
+ 7     private:
+ 8         std::string id;
+ 9         std::string name;
+10         double salary;
+11         static int count; //静态成员变量
+12     public:
+13         Employee(std::string id,std::string name,double salary);
+14        __ friend void showEmployee(Employee &emp);//友元非成员函数__
+15         static void showEmployeeCount();//静态成员函数
+16 
+17 };
+18 
+19 Employee::Employee(std::string id,std::string name,double salary):id(id),name(name),salary(salary)
+20 {
+21     ++count;
+22 }
+23 
+24 __void showEmployee(Employee &emp)__
+25 {
+26     std::cout<<"编号："<<emp.id<<std::endl; //可访问私有成员变量id
+27     std::cout<<"姓名："<<emp.name<<std::endl;//可访问私有成员变量name
+28     std::cout<<"薪水："<<emp.salary<<std::endl;//可访问私有成员变量salary
+29     std::cout<<"--------------------------------"<<std::endl;
+30 }
+31 
+32 
+33 void Employee::showEmployeeCount()
+34 {
+35     std::cout<<"雇员总数："<<count<<std::endl;//把this->count该为count
+36     std::cout<<"********************************"<<std::endl;
+37 }
+38 
+39 
+40 int Employee::count=0;
+41 
+42 int main()
+43 {
+44 
+45     Employee employee[3]={                //对象数组
+46         Employee("0001","aaa",6000),
+47         Employee("0002","bbb",7000),
+48         Employee("0003","ccc",10000)
+49     };
+50 
+51     for(int i=0;i<3;i++)    
+52     {
+53         showEmployee(employee[i]);//友元非成员函数调用
+54     }
+55 
+56     employee->showEmployeeCount();//输出雇员个数
+57             
+58     return 0;
+59 }
+
+结果：
+
+　　__在类中声明友元函数要在其函数名前加关键字friend__。友元函数的定义可以放在类内部，也可以定义在外部；如果我们把上述代码中的friend关键字去掉，那么对对象employee[i]的私有数据访问是非法的。该__友元函数为非成员函数__，那么在定义该函数时不用在前面加"类名::",同样的它也没有所谓的this指针。
+
+　　
+
+===== 友元成员函数 =====
+：__友元成员函数不仅可以访问自己所在类对象中的私有，公有或保护成员，也可以访问friend声明语句所在的类对象中的所有成员，这样就实现了类与类之前的协作。__
+
+ 1 #include "stdafx.h"
+ 2 #include<iostream>
+ 3 #include<string>
+ 4 
+ 5 __class Salary;//对Salary类的提前引用声明__
+ 6 class Employee
+ 7 {
+ 8     private:
+ 9         std::string id;
+10         std::string name;
+11         double salary;
+12         static int count; //静态成员变量
+13     public:
+14         Employee(std::string id,std::string name);
+15         void showEmployee(Salary &sal);//成员函数
+16         static void showEmployeeCount();//静态成员函数
+17 
+18 };
+19 
+20 
+21 Employee::Employee(std::string id,std::string name):id(id),name(name)
+22 {
+23     ++count;
+24 }
+25 
+26 
+27 void Employee::showEmployeeCount()
+28 {
+29     std::cout<<"雇员总数："<<count<<std::endl;//把this->count该为count
+30     std::cout<<"********************************"<<std::endl;
+31 }
+32 
+33 int Employee::count=0;
+34 
+35 __class Salary__
+36 {
+37     private:
+38         double wage;//工资
+39         double bonus;//奖金
+40         double commission;//提成
+41         double allowance;//津贴
+42         double subsidy;//补贴
+43     public:
+44         Salary(double wage,double bonus,double commission,double allowance,double subsidy);
+45 
+46         __friend void Employee::showEmployee(Salary &sal);//是类Salary的友元函数，也是Employee类的成员函数__
+47 
+48 };
+49 
+50 Salary::Salary(double wage,double bonus,double commission,double allowance,double subsidy):wage(wage),bonus(bonus),commission(commission),allowance(allowance),subsidy(subsidy)
+51 {
+52 
+53 }
+54 
+55__ void Employee::showEmployee(Salary &sal)__
+56 {
+57     std::cout<<"编号："<<id<<std::endl; //可访问本类中的私有变量id，name
+58     std::cout<<"姓名："<<name<<std::endl;
+59     std::cout<<"薪水："<<std::endl;
+60     std::cout<<"  工资："<<sal.wage<<std::endl;//可访问薪水类里私有成员变量wage,bonus等
+61     std::cout<<"  奖金："<<sal.bonus<<std::endl;
+62     std::cout<<"  提成："<<sal.commission<<std::endl;
+63     std::cout<<"  补贴："<<sal.subsidy<<std::endl;
+64     std::cout<<"  津贴："<<sal.allowance<<std::endl;
+65     salary=sal.allowance+sal.bonus+sal.commission+sal.subsidy+sal.wage;
+66     std::cout<<"薪水总数："<<salary<<std::endl;
+67     std::cout<<"--------------------------------"<<std::endl;
+68 }
+69 
+70 int main()
+71 {
+72 
+73     Employee employee[3]={                //对象数组
+74         Employee("0001","aaa"),
+75         Employee("0002","bbb"),
+76         Employee("0003","ccc")
+77     };
+78 
+79     Salary salary[3]={
+80         Salary(3000,3000,0,200,100),
+81         Salary(3000,4000,0,200,0),
+82         Salary(4000,6000,0,0,0),
+83     };
+84 
+85     Employee *emp=employee;    //给对象指针赋值(值为对象数组首地址)
+86     
+87     for(int i=0;i<3;i++)
+88     {
+89         (emp++)->showEmployee(salary[i]);//友元成员函数调用
+90     }
+91 
+92     emp->showEmployeeCount();//输出雇员个数
+93 
+94     return 0;
+95 }
+
+结果：
+
+　　在实例代码中的第5行中，__Salary提前引用声明__，因为函数showEmployee(Salary &sal)中的参数要用到，而定义可以推迟;
+
+　　除了友元函数，还有就是__友元类__了，如果能够很好地理解友元函数，那么友元类也不再话下，__如果一个类被说明为另一个类的友元类，那么这个类的所有成员函数都将成为另一个类的友元函数。__比如，我们把上述中的Salary的友元函数改为friend Employee;
+
+ 1 #include "stdafx.h"
+ 2 #include<iostream>
+ 3 #include<string>
+ 4 
+ 5 class Salary;//对Salary类的提前引用声明
+ 6 
+ 7 class Employee
+ 8 {
+ 9     private:
+10         std::string id;
+11         std::string name;
+12         double salary;
+13         static int count; //静态成员变量
+14     public:
+15         Employee(std::string id,std::string name);
+16         __void showEmployee(Salary &sal);//成员函数__
+17         static void showEmployeeCount();//静态成员函数
+18 
+19 };
+20 
+21 Employee::Employee(std::string id,std::string name):id(id),name(name)
+22 {
+23     ++count;
+24 }
+25 
+26 void Employee::showEmployeeCount()
+27 {
+28     std::cout<<"雇员总数："<<count<<std::endl;//把this->count该为count
+29     std::cout<<"********************************"<<std::endl;
+30 }
+31 
+32 int Employee::count=0;
+33 
+34 class Salary
+35 {
+36     private:
+37         double wage;//工资
+38         double bonus;//奖金
+39         double commission;//提成
+40         double allowance;//津贴
+41         double subsidy;//补贴
+42     public:
+43         Salary(double wage,double bonus,double commission,double allowance,double subsidy);
+44        __ friend Employee;//Salary的友元类Employee__
+45 };
+46 
+47 Salary::Salary(double wage,double bonus,double commission,double allowance,double subsidy):wage(wage),bonus(bonus),commission(commission),allowance(allowance),subsidy(subsidy)
+48 {
+49 
+50 }
+51 
+52 void Employee::showEmployee(Salary &sal)
+53 {
+54     std::cout<<"编号："<<id<<std::endl; //可访问本类中的私有变量id，name
+55     std::cout<<"姓名："<<name<<std::endl;
+56     std::cout<<"薪水："<<std::endl;
+57     std::cout<<"  工资："<<sal.wage<<std::endl;//可访问薪水类里私有成员变量wage,bonus等
+58     std::cout<<"  奖金："<<sal.bonus<<std::endl;
+59     std::cout<<"  提成："<<sal.commission<<std::endl;
+60     std::cout<<"  补贴："<<sal.subsidy<<std::endl;
+61     std::cout<<"  津贴："<<sal.allowance<<std::endl;
+62     salary=sal.allowance+sal.bonus+sal.commission+sal.subsidy+sal.wage;
+63     std::cout<<"薪水总数："<<salary<<std::endl;
+64     std::cout<<"--------------------------------"<<std::endl;
+65 }
+66 
+67 int main()
+68 {
+69 
+70     Employee employee[3]={                //对象数组
+71         Employee("0001","aaa"),
+72         Employee("0002","bbb"),
+73         Employee("0003","ccc")
+74     };
+75 
+76     Salary salary[3]={
+77         Salary(3000,3000,0,200,100),
+78         Salary(3000,4000,0,200,0),
+79         Salary(4000,6000,0,0,0),
+80     };
+81 
+82     Employee *emp=employee;    //给对象指针赋值(值为对象数组首地址)
+83 
+84     
+85     for(int i=0;i<3;i++)
+86     {
+87         (emp++)->showEmployee(salary[i]);//友元成员函数调用
+88     }
+89 
+90     emp->showEmployeeCount();//输出雇员个数
+91     
+92     return 0;
+93 }
+
+　　结果和上一个实例一样，另外我在补充一点：__友元关系是单向的，不具有交换性，也不具有传递性__。比如类A为类B的友元类，类B为类C的友元类，并不代表类A为类C的友元类，是不是友元类，看其类A有没有在类C中声明；  
+
+　　友元的内容就说到这里，好像写得有点长了，那么我用书中的一个比喻来小结一下友元这东东，自己认为这了比喻很生动很形象：__私有的数据就像是一度不透明的封闭的墙，而友元就是在这堵墙上开了个小孔，外界可以通过这个小孔来窥视类中的秘密，友元是一扇通向私有成员的后门；__
+
+　　3.最后还是一样用一个实例来总结一下今天的内容(开发工具：vs2010)：
+View Code
+
+  1 #include "stdafx.h"
+  2 #include<iostream>
+  3 #include<string>
+  4 
+  5 class Salary;//对Salary类的提前引用声明
+  6 
+  7 class Employee
+  8 {
+  9     private:
+ 10         std::string id;
+ 11         std::string name;
+ 12         double salary;
+ 13         static int count; //静态成员变量
+ 14     public:
+ 15         Employee(std::string id,std::string name);
+ 16         Employee(std::string id);
+ 17         void showEmployeeID();
+ 18         void showEmployeeSalary(Salary &sal);//成员函数
+ 19         static void showEmployeeCount();//静态成员函数
+ 20         friend void showEmployee(Employee &emp);//友元非成员函数
+ 21 };
+ 22 
+ 23 
+ 24 Employee::Employee(std::string id):id(id)
+ 25 {
+ 26 
+ 27 }
+ 28 
+ 29 Employee::Employee(std::string id,std::string name):id(id),name(name)
+ 30 {
+ 31     ++count;
+ 32 }
+ 33 
+ 34 void Employee::showEmployeeID()
+ 35 {
+ 36     std::cout<<"编号："<<id<<std::endl; 
+ 37 }
+ 38 
+ 39 void showEmployee(Employee &emp)
+ 40 {
+ 41     std::cout<<"编号："<<emp.id<<std::endl; //可访问私有成员变量id
+ 42     std::cout<<"姓名："<<emp.name<<std::endl;//可访问私有成员变量name
+ 43 }
+ 44 
+ 45 void Employee::showEmployeeCount()
+ 46 {
+ 47     std::cout<<"雇员总数："<<count<<std::endl;//把this->count该为count
+ 48     std::cout<<"********************************"<<std::endl;
+ 49 }
+ 50 
+ 51 int Employee::count=0;
+ 52 
+ 53 class Salary
+ 54 {
+ 55     private:
+ 56         double wage;//工资
+ 57         double bonus;//奖金
+ 58         double commission;//提成
+ 59         double allowance;//津贴
+ 60         double subsidy;//补贴
+ 61     public:
+ 62         Salary(double wage,double bonus,double commission,double allowance,double subsidy);
+ 63 
+ 64         //friend void Employee::showEmployee(Salary &sal);//是类Salary的友元函数，也是Employee类的成员函数
+ 65         friend Employee;//Salary的友元类Employee
+ 66 
+ 67 };
+ 68 
+ 69 Salary::Salary(double wage,double bonus,double commission,double allowance,double subsidy):wage(wage),bonus(bonus),commission(commission),allowance(allowance),subsidy(subsidy)
+ 70 {
+ 71 
+ 72 }
+ 73 
+ 74 void Employee::showEmployeeSalary(Salary &sal)
+ 75 {
+ 76     std::cout<<"编号："<<id<<std::endl; //可访问本类中的私有变量id，name
+ 77     std::cout<<"姓名："<<name<<std::endl;
+ 78     std::cout<<"薪水："<<std::endl;
+ 79     std::cout<<"  工资："<<sal.wage<<std::endl;//可访问薪水类里私有成员变量wage,bonus等
+ 80     std::cout<<"  奖金："<<sal.bonus<<std::endl;
+ 81     std::cout<<"  提成："<<sal.commission<<std::endl;
+ 82     std::cout<<"  补贴："<<sal.subsidy<<std::endl;
+ 83     std::cout<<"  津贴："<<sal.allowance<<std::endl;
+ 84     salary=sal.allowance+sal.bonus+sal.commission+sal.subsidy+sal.wage;
+ 85     std::cout<<"薪水总数："<<salary<<std::endl;
+ 86     std::cout<<"--------------------------------"<<std::endl;
+ 87 }
+ 88 
+ 89 int main()
+ 90 {
+ 91     Employee employee1[2]={"001","002"};//如果构造函数的参数只有一个，那么可以采用这种方式来对对象数组初始化
+ 92 
+ 93     for(int i=0;i<2;i++)
+ 94     {
+ 95         employee1[i].showEmployeeID();
+ 96     }
+ 97 
+ 98     std::cout<<"********************************"<<std::endl;
+ 99 
+100 
+101     Employee employee[3]={                //对象数组
+102         Employee("0001","aaa"),
+103         Employee("0002","bbb"),
+104         Employee("0003","ccc")
+105     };
+106 
+107     Salary salary[3]={
+108         Salary(3000,3000,0,200,100),
+109         Salary(3000,4000,0,200,0),
+110         Salary(4000,6000,0,0,0),
+111     };
+112 
+113     Employee *emp=employee;    //给对象指针赋值(值为对象数组首地址)
+114 
+115     for(int i=0;i<3;i++)
+116     {
+117         showEmployee(employee[i]);//友元非成员函数调用
+118         (emp++)->showEmployeeSalary(salary[i]);//emp++对象指针加1，即指向下一个对象数组元素的地址
+119                                                //友元成员函数调用
+120                                                //或employee[i].showEmployeeSalary(salary[i]);
+121         /*employee[i].showEmployeeSalary(salary[i]);*/
+122     }
+123 
+124     emp->showEmployeeCount();//静态成员函数调用，输出雇员个数 
+125                              //或Employee::showEmployeeCount();
+126                              //或employee->showEmployeeCount();
+127                              //或employee[2].showEmployeeCount();
+128     return 0;
+129 }
+
+结果：
+
+

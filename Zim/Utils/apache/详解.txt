@@ -1,0 +1,1731 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-10T21:54:32+08:00
+
+====== 详解 ======
+Created Wednesday 10 August 2011
+
+Linux Apache Web 服务器终极教程作者：佚名 文章来源：internet
+
+  根据著名的WWW服务器调查公司所作的调查，世界上百分之五十以上的WWW服务
+  器都在使用Apache，是世界排名第一的WEB服务器。Apache的诞生极富有戏剧性。
+  当NCSA WWW服务器项目停顿后，那些使用NCSA WWW服务器的人们开始交换他们
+  用于该服务器的补丁程序，他们也很快认识到成立管理这些补丁程序的论坛是
+  必要的。就这样，诞生了Apache Group，后来这个团体在NCSA的基础上创建了
+  Apache。
+
+  　　Apache的主要特征是：
+
+  . 　可以运行上所有计算机平台；
+
+  . 　支持最新的HTTP 1.1协议；
+
+  . 　简单而强有力的基于文件的配置；
+
+  . 　支持通用网关接口CGI；
+
+  . 　支持虚拟主机；
+
+  . 　支持HTTP认证；
+
+  . 　集成Perl脚本编程语言；
+
+  . 　集成的代理服务器；
+
+  . 　具有可定制的服务器日志；
+
+  . 　支持__服务器端包含命令__（SSI）
+
+  . 　支持安全Socket层（SSL）
+
+  . 　用户会话过程的跟踪能力；
+
+  . 　支持FastCGI；
+
+  . 　支持Java Servlets。
+
+
+===== 安装Apache =====
+
+  　　下面我们就开始漫漫征服Apache之旅，通过循序渐进的需求实例，一步步
+  地学习使用Apache，从入门到精通。
+
+==== 系统需求 ====
+
+  　　运行Apache不需要太多的计算资源。它在有6-10MB硬盘空间和8MB RAM的
+  Linux系统上运行得很好。然而，只运行Apache可能不是你想做的事情。更可能
+  的是，你想运行Apache来提供WWW服务、__启动CGI进程__以及充分利用所有WWW能够
+  提供的令人惊奇的功能。在这种情况下，你需要提供反映负载要求的额外的磁
+  盘空间和内存空间。也就是说，如果仅仅是启动WWW服务并不需要太多的系统资
+  源，但是想要能为大量的客户提供服务就需要更多的系统资源。
+
+  获取软件
+
+  　　你可以在http://www.apache.org%E4%B8%AD%E8%8E%B7%E5%BE%97Apache的最新版。而几乎所有的
+  Linux发行版中均包含有Apache软件包，你也可以直接使用它。
+
+  需要注意的是，Apache软件包有两种：一种是源代码，下载后需要自己重新编
+  译；另一种是可执行文件，下载后只需解压就可以使用。
+
+
+
+  安装软件
+
+  　　你可以通过以下三种方法安装Apache服务器。
+
+
+  　　1．如果你安装的Linux版本中带用Apache的话，就在选择所要安装的服务
+  器的时候，将httpd这个服务选上，Linux安装程序将自动完成Apache的安装工
+  作，并做好基本的配置。
+
+  　　2．使用可执行文件软件包，这比较适合那些对编译工作不是太熟悉的初级
+  用户，因为它相对比较简单。
+
+  　　下载软件包apache_1.2.4.e.tar.gz
+
+  　　tar xvzf apache_1.2.4.e.tar.gz
+
+  　　这就完成了安装工作，简单吧！
+
+  　　如果你使用的是RedHat Linux的话，你也可以下载apache_1.2.4.rpm软件
+  安装包，然后使用rpm -ivh 　　apache_1.2.4.rpm命令安装。
+
+  　　3．如果你想把Apache服务器充分利用起来的话，就一定要自己编译
+  Apache定制其功能。
+
+  下载包含Apache源代码的软件包apache_1.2.4.tar.gz； 然后用tar命令将它解
+  开； 将当前目录改变为Apache源代码发行版的src目录； 将配置样本文件
+  （Configuration.tmpl）复制为Configuration文件；
+
+  编辑Configuration文件中的配置选项：
+
+===== Makefile配置选项： =====
+   一些编译选项：
+
+  . "CC="一行指定用什么编译软件编译，一般为"CC=gcc"；
+
+  . 如果需要将额外的标志（参数）指定给C编译软件，可以使用：
+
+  EXTRA_CFLAGS=
+
+  EXTRA_LFLAGS=
+
+  . 如果系统需要特殊的库和包含文件，可以在这里指定它们：
+
+  EXTRA_LIBS=
+
+  EXTRA_INCLUDES=
+
+  . 如果你要改变代码优化设置的话，你须将下面一句去掉注释，然
+
+  后改成你所需要的值：
+
+  #OPTIM=-O2
+
+  Rule配置选项：用来决定需要什么功能，一般情况下无需改变。
+
+===== 模块配置： =====
+  模块是Apache的组成部分，它为Apache内核增加新功能。通过使用
+  模块配置，可以自定义在Apache服务器中需要什么功能，这个部分也是Apache
+  灵活性的表现。模块配置行如下所示：
+
+  AddModule modules/standard/mod_env.o
+
+  如果你需要Apache服务器具备什么功能，就将那个模块用AddModule语句加到配
+  置文件Configuration中去。
+
+  下表列出了Apache的模块功能：
+
+  模块名 功能 缺省
+
+  mod_access 提供__基于主机的访问控制__命令 y
+
+  mod_actions 能够运行基于MIME类型的CGI脚本或HTTP请求方法 y
+
+  mod_alias 能执行URL重定向服务 y
+
+  mod_asis 使文档能在没有HTTP头标的情况下被发送到客户端 y
+
+  mod_auth 支持使用存储在__文本文件__中的用户名、口令实现认证 y
+
+  mod_auth_dbm 支持使用DBM文件存储基本HTTP认证 n
+
+  mod_auth_mysql 支持使用MySQL数据库实现基本HTTP认证 n
+
+  mod_auth_anon 允许以__匿名方式__访问需要认证的区域 y
+
+  mod_auth_external支持使用第三方认证 n
+
+  mod_autoindex 当缺少索引文件时，自动生成动态目录列表 y
+
+  mod_cern_meta 提供对元信息的支持 n
+
+  mod_cgi 支持CGI y
+
+  mod_dir 能够重定向任何对不包括尾部斜杠字符命令的请求 y
+
+  mod_env 使你能够将环境变量传递给CGI或SSI脚本 n
+
+  mod_expires 让你确定Apache在服务器响应请求时如何处理Expires y
+
+  mod_headers 能够操作HTTP应答头标 y
+
+  mod_imap 提供图形映射支持 n
+
+  mod_include __使支持SSI__ n
+
+  mod_info 对服务器配置提供了全面的描述 y
+
+  mod_log_agent 允许在单独的日志文件中存储用户代理的信息 n
+
+  mod_log_config 支持记录日志 y
+
+  mod_log_referer 提供了将请求中的Referer头标写入日志的功能 n
+
+  mod_mime 用来向客户端提供有关文档的元信息 y
+
+  mod_negotiation 提供了对内容协商的支持 y
+
+  mod_setenvif 使你能够创建定制环境变量 y
+
+  mod_speling 使你能够处理含有拼写错误或大小写错误的URL请求 n
+
+  mod_status 允许管理员通过WEB管理Apache y
+
+  mod_unique_id 为每个请求提供在非常特殊的条件下保证是唯一的标识 n
+
+
+  在src目录下执行：". /configure"；
+
+  编译Apache：执行命令"make"；
+
+  根据机器性能的不同，经历一段5-30分钟的编译，就大功告成了。
+
+  将编译好的可执行文件httpd复制到/etc/httpd/bin目录下；
+
+  将Apache发行版的配置文件：access.conf、httpd.conf、mime.types、
+  srm.conf文件复制到/etc/httpd/conf目录下。到此为止，安装完成。
+
+
+==== 一些说明 ====
+
+  在Red Hat Linux 6.0中，Apache将自己的所有配置文件和日志文件放在了
+  "/etc/httpd"目录下，其中"/etc/httpd/conf"下为配置文
+  件，"/etc/httpd/log"下为日志文件。
+
+  同时，它将建立"/home/httpd"目录，并在其下建立三个子目录："html/"：在
+  这个目录下存放HTML（主页）文件；"cgi-bin/"：在这个目录下可以存放一些
+  CGI程序；"icons/"：在这个目录下是服务器自带的一些图标。
+
+===== 配置Apache基础篇，让WWW服务器跑起来 =====
+
+  Apache 服务器软件的配置文件主要有："access.conf"：用于设置系统中的存
+  取方式和环境；"httpd.conf"：用于**设置服务器启动的基本环境**；
+  "srm.conf"：主要用于做文件资源上的设定；"mime.type"：记录Apache服务器
+  所能识别的MIME格式。
+
+  在具体讲解之前，我们必须告诉大家，Apache已经在安装时就采用了一系列的
+  缺省值，已经让WWW服务器跑起来了。你只需要将装上Linux+Apache的主机联入
+  Internet，然后将主页存放到"/home/httpd"目录下即可。
+
+  下面介绍一些最主要的配置选项的含义，以便大家用最小的精力、最小的配置
+  准备好服务器。
+
+
+===== httpd.conf =====
+
+  tpd.conf是主配置文件。它告诉服务器将如何运行。
+
+  一、最重要的配置选项ServerType standalone | inetd
+
+  　　这个配置选项指定如何运行WEB服务器。Apache可以使用两种方法来运行服
+  务器：standalone(独立的)和inetd(由inetd运行的)。standalone参数表示
+  WEB服务进程以一个单独的守候进程的方式在后台侦听是否有客户端的请求，如
+  果有就生成一个子进程来为其服务。 inetd参数表示WEB服务不是以一个单独的
+  守候进程的形式支持。而是由Inetd这个超级服务器守候进程进行代劳，当它收
+  到一个客户端的WEB服务请求的时候，再启动一个WEB服务进程为其服务。从功
+  能的角度看，这两种方法几乎是相同的。但它们之间实际有很大区别，区别在
+  于服务器的性能。一个由 inted运行的服务器进程在它结束对请求服务的同时
+  立刻退出。而在standalone模式下，子WWW服务器进程在退出之前要挂起一段时
+  间，这就给它们提供了机会，可以重新用来服务新的请求。
+
+  在standalone模式下，不存在对每个请求启动新进程的开销，所以它的效率更
+  高；而inetd模式被认为比standalone模式更具安全性。
+
+  standalone模式：
+
+  此种模式下，WWW服务器侦听特定端口的连接请求。当客户机发出到特定端口地
+  址的连接请求时，主服务器进程启动子WWW服务进程来服务该请求。另外还需要
+  告诉主服务器进程侦听的特定端口地址，使用命令：
+
+  Port [number] （缺省值为80）
+
+  inetd模式
+
+  inetd 是侦听有小于1024的端口连接请求的Internet守护进程(一个服务器进
+  程)。与前面的方法不同，当客户系统发出到WWW服务器的连接请求时， inetd
+  启动一个WWW服务器进程，由此进程服务此请求，完成服务后即退出。如果选择
+  通过inetd服务器来运行Apache，需要编辑 /etc/inetd.conf文件为Apache添加
+  一条新的记录：
+
+  httpd stream tcp nowait httpd /etc/httpd/bin/httpd -f
+  /etc/httpd/conf/httpd.conf
+
+  修改了/etc/inetd.conf文件后，就需要修改/etc/services中添加一行
+
+  httpd 80/tcp httpd
+
+  做完以上修改后，需要重新启动inetd进程。首先，使用以下命令取得inetd的
+  进程ID：
+
+  ps auxw |grep inetd
+
+  然后执行命令：kill -HUP <inetd的进程ID>
+
+  在RedHat Linux中，默认是采用inetd服务器来运行Apache，所以只要你在安装
+  时选择了httpd，以上工作在安装时就已经代你完成了。
+
+
+===== 二、其它配置选项 =====
+
+  　　__Server Admin命令__，用来设置WEB管理员的E-Mail地址。这个地址会出现在
+  系统连接出错的时候，以便访问者能够将情况及时地告知WEB管理员。
+
+  命令格式: Server Admin [you E-Mail address]
+
+  例：Server Admin admin@xxx.com
+
+  __ErrorLog命令__，用来指定错误记录文件名称和路径。
+
+  命令格式: ErrorLog [log filename]
+
+  例：ErrorLog /var/httpd/error.log
+
+ __ Timeout命令__，只要客户端超过这里设定的秒数还没有完成一个请求的话，服务
+  端将终止这次请求服务。如果网络速度较慢的话，建议在此设置较大的数值。
+  以给客户端更多机会。
+
+  命令格式: Timeout [second]
+
+  例：Timeout 120
+
+  __ServerRoot命令__，它指定在何处保存服务器的配置、错误及日志文件。
+
+  命令格式: ServerRoot [fully qualified path name]
+
+  例：ServerRoot /etc/httpd
+
+__  ServerName命令__，它配置服务器的Internet主机名
+
+  命令格式: ServerName [host name]
+
+  例：ServerName www.xxx.com
+
+
+==== srm.conf ====
+
+  srm.conf是资源配置文件，用它来告诉服务器你想在WWW站点上提供什么资源以
+  及在哪里和如何提供们。
+
+  __DocumentRoot命令__，用来指定主文档的地址。
+
+  命令格式: DocumentRoot [Path]
+
+  例：DocumentRoot /home/httpd/html
+
+  __UserDir 命令__，用来指定个人主页的位置。如果你有一个用户test，那么它主
+  目录是"/home/test"，当客户端输入"http: //yourdomain/~test";;，系统就
+  会到对应的目录"__/home/test/UserDir/__"中去寻找。其中"UserDir"就是在
+  UserDir命令中设置的指定目录。
+
+  命令格式: UserDir [Path]
+
+  例： UserDir Public_html
+
+ __ DirectoryIndex 命令__，用来声明首页文件名称。一般地，我们使用
+  "index.html"或"index.htm"作为首页的文件名。如果这样设置后，那么客户端
+  发出 WEB服务请求时，将首先调入的主页是在指定目录下文?quot;index.html"或
+  "index.htm"。
+
+  命令格式: DirecotryIndex [filename]
+
+  例：DirecotryIndex index.html index.htm
+
+__  ScriptAlias命令__，为脚本程序目录起个别名，具体可见4.7小节。
+
+  命令格式: ScriptAlias [/alias/] [fullly qualified path for script
+  directory]
+
+  例： ScriptAlias __/cgi-bin/__ /home/httpd/cgi-bin
+
+
+==== access.conf的配置 ====
+
+  access.conf文件用来设置WWW站点上诸如文件、目录和脚本项目的访问权限。
+  该文件的第一段非注释部分如下：
+
+  <Directory /home/httpd/html>
+
+  Option Indexes Includes ExecCGI FollowSymLink
+
+  AllowOverride None
+
+  Order allow , deny
+
+  allow from all
+
+  </Directory>
+
+  大家应该注意到，这一个部分是以<Directory /home/httpd/html>开始，以
+  </Directory>结束的。这表示在其中间的部分都是针对指定目录及其子目录
+  &#0;&#0;"/home/httpd/html"而言的。
+
+  
+
+=== 1．Option命令有很多的参数 ===
+，各个参数的意义如下所示：
+
+  __All __准许以下所有功能（MultiViews除外）；
+
+ __ MultiViews__ 准许内容协商的Multiviews；
+
+ __ Indexes__ 若该目录下无index文件，则准许显示该目录下的文件以供选择；
+
+  IncludesNOEXEC 准许SSI(Server-side Includes)，但不可使用#exec和
+  #include功能；
+
+ __ Includes __准许SSI；
+
+  __FollowSymLinks__ 准许符号链接到其他目录；
+
+  __ExecCGI__ 准许该目录下可以使用CGI。
+
+  2．而__AllowOverride__命令则是用来决定是否准许在"access.conf"文件中设定的
+  权限是否可以被在文件".htaccess"中设定的权限覆盖。它有两个参数：
+
+  All 准许覆盖；
+
+  None 不准许覆盖。
+
+  3．__Order命令__：用来设定谁能从这个服务器取得控制。它也有两个参数：
+
+
+  allow 可以取得控制；
+
+  deny 禁止取得控制。
+
+  现在我们一起来看看关于目录"/home/httpd/html"的设置的含义：它使得这个
+  目录，如果不存在index.htm文件时，列出目录信息以供选择，准许SSI，允许
+  执行CGI程序，开启了动态连接。它不允许再使用在文件".htaccess"中设定来
+  覆盖这里所设置的权限。使所有的人都可以取得控制。
+
+  该文件的第二段非注释部分如下：
+
+  <Directory /home/httpd/cgi-bin>
+
+  Option ExecCGI
+
+  AllowOverride None
+
+  </Directory>
+
+  这个表示目录"/home/httpd/cgi"的设置为，当前目录下可以执行CGI程序。不
+  允许再使用在文件".htaccess"中设定来覆盖这里所设置的权限。
+
+  需要说明的是，不同的LINUX系统中，可以在这个文件中看到的信息不完全相
+  同，但是根据这里给出的信息，大家可以参照命令的解释自行理解文件中的设
+  置，以及根据自己的需要进行相应的修改。
+
+==== 4.4 使新的配置生效 ====
+
+  在上面，我们可能已经根据新的需求更改了相应的配置选项，如果我们要使得
+  这个新的配置立即生效。我们就必须重新启动WEB服务进程。在LINUX中，我们
+  可以十分方便地使用命令行来使得WEB服务进程重启。
+
+  /etc/rc.d/init.d/httpd restart
+
+==== 五、为用户开辟个人主页空间 ====
+
+
+  如果我们利用了LINUX系统架设了一台WEB服务器，我们不仅可以存放公司的主
+  页，而且还可以为公司的每一个员工提供一块个人主页的空间。
+
+  首先，为需要个人主页空间的员工在LINUX上开设一个帐号。这样，它就拥有了
+  一个用户主目录"/home/用户帐号名"。
+
+  addusr 用户帐号名
+
+  passwd 用户帐号名
+
+  在用户主目录下建立一个目录"public_html"，然后为其设置相应的权限。
+
+  cd ~用户帐号名
+
+  mkdir public_html
+
+  chmod 755 public_html
+
+  确认在srm.conf文件中的UserDir命令设置的是__public_html__目录。让员工将自
+  己的个人主页上传到自己用户主目录下的public_html目录中。
+
+  现在就可以使用"http://www.company.com/~用户帐号名"来访问员工的个人主
+  页了。
+
+===== 用Apache实现虚拟主机服务 =====
+
+
+  　　什么是虚拟主机服务
+
+  　　所谓的虚拟主机服务就是指将一台机器虚拟成多台WEB服务器。举个例子来
+  说，一家公司想从事提供主机代管服务，它为其它企业提供WEB服务。那么它肯
+  定不是为每一家企业都各准备一台物理上的服务器，而是用一台功能较强大的
+  大型服务器，然后用虚拟主机的形式，提供多个企业的WEB服务，虽然所有的
+  WEB服务就是这台服务器提供的，但是让访问者看起来却是在不同的服务器上获
+  得WEB服务一样。
+
+
+  　　具体地说，就是，我们可以利用虚拟主机服务将两个不同
+  www.company1.comwww.company2.com的主页内容都存放在同一台主机上。而访
+  问者只需输入公司的域名就可以访问到它想得到的主页内容。 用Apache设置虚
+  拟主机服务通常可以采用两种方案：__基于IP地址的虚拟主机和基于名字的虚拟__
+__  主机__，下面我们分别介绍一下它们的实现方法。以便大家在具体的应用中能够
+  选择最合适的实现方法。
+
+
+  设置实现基于IP地址的虚拟主机服务实现前提
+
+  　　这种方式需要在机器上设置IP别名，也就是在__一台机器的网卡上绑定多个__
+__  IP地址去为多个虚拟主机服务__。而且要使用这项功能还要确定在你的LINUX内核
+  中必须支持IP别名的设置，否则你还必须重新编译内核。
+
+  　　下面举一个拥有两个虚拟主机的服务设置，以供参考。
+
+  2．配置步骤
+
+  假设，我们用来实现虚拟主机服务的机器，首先已经为自己提供了WEB服务，现
+  在将为新的一家www.company1.com提供虚拟主机服务。
+
+  规划IP地址：为虚拟主机申请新的IP地址。（假设本机IP地址为202.101.2.1）
+
+  www.company1.com 202.101.2.2
+
+  2) 让ISP作好相应的域名解析工作。
+
+  3) 为网卡设置IP别名：
+
+  /sbin/ifconfig __eth0:0__ 202.101.2.2 netmask 255.255.255.0
+
+  4) 重新设置"/etc/httpd/conf/httpd.conf",在文件中加入：
+
+  <VirtualHost__ 202.101.2.2__>
+
+  ServerAdmin webmaster@yourdomain.com
+
+  DocumentRoot /home/httpd/www.company1.com
+
+  ServerName www.company1.com
+
+  ErrorLog /var/log/httpd/www.company1.com/error.log
+
+  </VirtualHost>
+
+  5）建立相应的目录。
+
+  mkdir /home/httpd/www.company1.com
+
+  mkdir /var/log/httpd/www.company1.com/error.log
+
+  6)将相应的主页内容存放在相应的目录中即可。
+
+  3．不利因素
+
+  这种虚拟主机的实现方法有一个严重的不足，那就是，每增加一个虚拟主机，
+  就必须增加一个IP地址。而由于IP地址空间已经十分紧张，所以通常情况下是
+  无法取得这么多的IP地址的。而且从某种意义上说，这也是一种IP地址浪费。
+  设置实现基于名字的虚拟主机服务而基于名字的虚拟主机服务，是比较适合使
+  用的一种方案。因为它不需要更多的IP地址，而且配置简单，无须什么特殊的
+  软硬件支持。现代的浏览器大都支持这种虚拟主机的实现方法。当然，这也就
+  是指一些早期的客户端浏览器也许不支持这种虚拟主机的实现方法。
+
+  　　正是以上原因，我们__没有理由不使用基于名字的虚拟主机服务而使用基于__
+__  IP地址的虚拟主机服务__。配置__基于名字的虚拟主机服务__需要修改配置文
+  件?quot;/etc/httpd/conf/httpd.conf"，在这个配置文件中增加以下内容。
+
+ __ NameVirtualHost 202.101.2.1__
+
+  <VirtualHost 202.101.2.1>
+
+  ServerAdmin webmaster@yourdomain.com
+
+  DocumentRoot /home/httpd/www.company1.com
+
+  ServerName www.company1.com
+
+  ErrorLog /var/log/httpd/www.company1.com/error.log
+
+  </VirtualHost>
+
+  <VirtualHost 202.101.2.1>
+
+  ServerAdmin webmaster@yourdomain.com
+
+  DocumentRoot /home/httpd/www.company2.com
+
+  ServerName www.company2.com
+
+  ErrorLog /var/log/httpd/www.company2.com/error.log
+
+  </VirtualHost>
+
+  　　也就是在基于IP地址的配置基础上增加一句：NameVirtualHost
+  202.101.2.1而已。在本例中，为了体现只需要增加一次，所以特别地设置了两
+  个虚拟主机服务。
+
+  最后也是建立相应的目录，将主页内容放到相应的目录中去就可以了。
+
+
+===== 配置CGI =====
+
+  1. 什么是CGI
+
+  CGI是独立于语言的网关接口规范，它实际上可以用任何广泛流行的应用程序开
+  发语言来实现，包括C、C++、Perl、Shell脚本甚至Java。
+
+  WEB服务器从客户端得到某个URL，它告诉WEB服务器，必须__运行一个CGI外部应__
+__  用程序__。那么WEB服务器启动这一应用程序，等待它完成并返回输出结果。最
+  后，它将此应用程序的输出结果传输给另一端的WEB客户。
+
+  2. 为CGI配置Apache
+
+  那么如何使Apache能处理CGI请求呢？我们必须通过相应的配置过程告知
+  Apache在哪里存储CGI程序，指明CGI程序的扩展等，以下我们逐一介绍一下设
+  置的内容与步骤。
+
+  创建存储CGI程序的目录
+
+  创建集中的CGI程序目录只是建立CGI环境的开始。如果要考虑提高安全
+
+  性的话，__应将集中的CGI程序目录保存在DocumnetRoot目录外__，使得访问者不能
+  直接访问CGI程序。 第一步：在DocumentRoot目录外创建一个目录，然后将所
+  有的CGI程序都集中存放在这个目录下。例如，你可创建一个
+  /home/httpd/public/apps的目录作为CGI程序的大本营。
+
+  第二步：__为CGI程序目录创建别名__，也就是编辑配置文件httpd.conf，加入：
+
+  ScriptAlias /cgi-bin__/ __/home/httpd/public/apps
+
+  这样做后，当客户www.xxx.com/cgi-bin/li.cgi时，WEB服务器就会自动执行
+  WEB服务器上的/home/httpd/public/apps/li.cgi文件。
+
+  第三步：为CGI目录设置合适的权限，一般是只允许Apache有读取和执行的权限
+  但没有写的权限。
+
+===== 允许用户访问cgi-bin =====
+
+  我们已经在4.5小节中介绍了如何给用户开辟个人主页空间，但如果你的
+  用户需要使他的主页更具有活力，往往会向你申请cgi-bin访问服务。下面我们
+  就介绍一个Apache服务器为用户提供的两种cgi-bin访问方法。
+
+  1）使用Directory或DirectoryMatch容器
+
+  当在配置文件srm.conf中用UserDir命令被赋值为目录名称时，Apache就
+  把它作为用户WWW站点的顶层目录。例如：
+
+  UserDir Public_html
+
+  当Apachewww.xxx.com/~user的请求，就到__/home/user/Public_html(这作为顶层目录)__取出主页发
+  送给客户。
+
+  如果要为每个用户添加CGI支持就在Apache的配置文件access.conf中添加下列
+  配置：
+
+  <DirectoryMatch __"/home/[a-z]+/public_html/cgi-bin"__>
+
+  Options ExecCGI
+
+  AddHandler cgi-script .cgi .pl
+
+  </DirectoryMatch>
+
+  注：将DirectoryMatch换成Directory亦可
+
+  在这种方法中，Apache服务www.xxx.com/~user/cgi-bin请求翻译成为了
+  /home/user/Public_html/cgi-bin/，并允许执行任何带有正确扩展名(.cgi
+  或.pl)的CGI程序。
+
+===== 使用ScriptAliasMatch命令 =====
+
+  通过使用ScriptAliasMatch命令，__也可以为每个用户添加CGI支持__。例如：
+
+__  ScriptAliasMatch ~([a-z]+)/cgi-bin/(.*)__
+__  /home/$1/public_html/cgi-bin/$2__
+
+  这个命令将用户名与$1相匹配，其中$1与~([a-z]+)相等。将/cgi-bin/后面的
+  任何内容与$2相匹配，其中$2与(.*)相等。
+
+  这个设置也就实现www.xxx.com/~user/cgi-bin/xxx.cgi请求解释为：
+
+  /home/user/Public_html/cgi-bin/xxx.cgi
+
+  那么大家想一想，如果你想将这个请求解释为：
+
+  /home/httpd/public/apps/xxx.cgi
+
+  该如何设置呢？对，应该是：
+
+  ScriptAliasMatch ~([a-z]+)/cgi-bin/(.*) /home/httpd/public /apps/$2
+
+===== 3. Apache为CGI提供的环境变量 =====
+
+  Apache服务器提供了许多环境变量可以用于CGI程序的编写，了解它们也一定有
+  助于写出充分利用Apache的CGI程序，所以在此也对此作一简单介绍。
+
+
+  服务器变量
+
+  服务器变量由Apache设置用来通知CGI程序有关Apache的情况。通过使
+
+  用这些变量，CGI程序能确定有关服务器的不同信息：Apache的版本，管理员的
+  E-Mail地址等。
+
+
+  SERVER_SOFTWARE
+
+  这个变量是WWW服务器Apache的版本号，它的值形如：Apache/Version，如
+  Apache/1.3；
+
+
+  GATEWAY_INTERFACE
+
+  这个变量的值是当前CGI规范的版本号，其值形如：CGI/1.1；
+
+  SERVER_ADMIN
+
+  如果在httpd.conf文件中有设置站点管理员的e-mail地址的话，这个变量就会
+  存放着这个e-mail地址；
+
+
+  DOCUMENT_ROOT
+
+  这个变量存放在是被访问的WWW站点的DocumentRoot命令指定的值。
+
+  客户请求变量
+
+  Apache提供的有关客户请求方的环境变量有许多，以下只是有选择性地介绍一
+  些最常见的。
+
+
+  SERVER_NAME
+
+  此变量可以告诉CGI程序它访问的是哪一个主机。这个值可以是IP地址也可以是
+  完整的主机名；
+
+
+  HTTP_ACCEPT
+
+  此变量被赋值为客户所能接受的MIME类型的列表，如：HTTP_ACCEPT=image/gif；
+
+
+  HTTP_ACCEPT_CHARSET
+
+  此变量被赋值为客户所能接受的字符集，如：
+
+
+  HTTP_ACCEPT_CHARASET=iso-8859-1.,*,utf-8；
+
+
+  HTTP_ACCEPT_LANGUAGE
+
+  此变量被赋值为客户所能接受的语言，如：HTTP_ACCEPT_LANGUAGE=en；
+
+
+  HTTP_ACCEPT_AGENT
+
+  这个变量指定发出请求的系统正在运行的浏览器类型和操作系统；
+
+   HTTP_PORT：服务端口；
+
+  REMOTE_HOST：客户端的IP地址或IP名称信息；
+
+
+  REMOTE_PORT：客户端的端口号；
+
+  4. 一点提示
+
+  若干年来，通过网关接口（CGI）已成为服务器端应用程序开发的事实标准。但
+  随着时间的推移，发现在沉重的CGI负担下许多WWW服务器系统的表现不尽人意。
+  这是因为CGI规范存在瓶颈问题：每当客户系统请求CGI应用程序时，WWW服务器
+  就必须启动新的CGI进程，直到完成任务后结束进程。这在负载不高时，会工作
+  正常。但是，在高负载时，繁多的进程将成为性能的瓶颈问题。
+
+
+  所以现在开始出现新的标准来弥补这一不足，其中FastCGI是很有前途的一种新
+  的开放式标准。
+
+
+  你可以在Apache中通过添加mod_fastcgi.c模块来支持FastCGI。
+
+
+===== 解读Apache日志 =====
+
+
+  　　当你一步步地看到这里的时候，相信你的WWW站点已经建好，并且已经在
+  Internet上展现出来了。这时你可能就会关心谁造访过你的站点，或者想知道
+  你的Apache服务器现在的运行状态与性能如何。下面我们一起通过解读Apache
+  的日志来实现这个伟大的愿望。
+
+  一、盯着Apache服务器
+
+  Apache允许通过WWW监视服务器的配置信息与运行状态。
+
+
+  １．观看配置信息
+
+
+  如果你的Apache象缺省配置一样加入了mod_info模块的话，你就可以通过访问
+  http://localhost/server-info查看服务器信息。
+
+  2.使用状态页
+
+  如果你的Apache象缺省配置一样加入了mod_status模块的话，你就可以
+
+  通过访问http://localhost/apache-status查看服务器的运行状态信息，其中
+  包括：
+
+  ¨ 服务器系统的当前时间；
+
+  ¨ 服务器最近一次重启时间；
+
+  ¨ 服务器启动后的运行时间；
+
+  ¨ 到目前为止服务的访问总数；
+
+  ¨ 到目前为止传输的字节总数；
+
+  ¨ 服务请求的子进程数；
+
+  ¨ 空闲子进程数；
+
+  ¨ 每个进程状态、子进程服务的请求数以及该子进程传输的字节总数；
+
+  ¨ 每秒平均请求数、每秒传输的字节数、每次请求平均传输字节数；
+
+  ¨ 目前每个子进程CPU占用及Apache的总的CPU占用率；
+
+  ¨ 当前主机及处理的请求。
+
+
+  二、什么是日志文件
+
+
+  日志文件是Apache工作的记录，Apache包括了mod_log_config模块，它用来记
+  录日志。在缺省情况下，它用通用日志格式CLF规范来写。CLF日志文件内对每
+  个请求均有一个单独行，形如：host ident anthuser date request status
+  bytes
+
+  其含义如下：
+
+  ¨ host&#0;&#0;客户端主机的全称域名或IP地址；
+
+  ¨ ident&#0;&#0;存放客户端报告的识别信息；
+
+  ¨ authuser&#0;&#0;如果是基于用户名认证的话，值为用户名；
+
+  ¨ date&#0;&#0;请求的日期与时间；
+
+  ¨ request&#0;&#0;客户端的请求行；
+
+  ¨ status&#0;&#0;返回到客户端的三们数字的HTTP状态码；
+
+  ¨ bytes&#0;&#0;除去HTTP头标外，返回给客户端的字节数。
+
+
+  三、分析日志文件
+
+
+  有了日志文件后，我们可以利用UNIX的一些工具和一此专门的日志分析工具对
+  日志文件进行分析。
+
+
+  实例一：列出访问过本网站的主机名或IP：
+
+  对于这个需求，我们可以通过一个Unix的一个脚本语句来完成：
+
+  cat /var/log/httpd/access_log | awk '{print $1}'
+
+  用上面的方法虽然可以得到访问过本网站的主机名或IP，但是由于有些是多次
+  访问的，我们希望在上面得到的结果的基础上做一些优化，使得列出的表中，
+  每个主机只出现一次。我们可以使用：
+
+  cat /var/log/httpd/access_log | awk '{print $1}' | wc -l
+
+  3. 当然，我们可以根据需要选择第三方提供日志分析工具甚至自己开发一些日
+  3. 志分析工具来满足我们的需求。常见的第三方日志分析工具有：WebTrends、
+  3. Wusage、wwwstat、http-analyze、pwebstats、WebStat Explorer、
+  3. AccessWatch。
+
+
+=== 四、一些提示 ===
+
+  日志一方面是我们分析网站的第一手资料，一方面却是吞噬大量磁盘空间的罪
+  魁祸首。所以别忘了定期转储或删除一些老的日志文件。
+
+===== Apache与代理服务器 =====
+
+  　　代理服务器是位于客户和客户要访问的服务器之间的系统。当客户机使用
+  URL请求访问远程资源时，代理服务器接受该请求并取得该资源以满足客户机的
+  请求。在通常情况下，__代理服务器是客户机的服务器，同时也是远程服务器的__
+__  客户__。
+
+  　　代理服务器可以在自己的__缓冲区中存储被请求的内容__，当这些信息再次被
+  请求的时候，代理服务器就无需再从远程服务器上取了，这样代理服务器就减
+  轻了网络的瓶颈问题。
+
+  Apache可以配置成为代理服务器。
+
+
+===== 一、前向代理服务器和逆向代理服务器 =====
+
+  1．前向代理服务器
+
+  前向代理服务器通常位于用户主机和要访问的远程网络之间。它从远程服务器
+  取得所要求的资源，然后返回给用户，同时存在磁盘上，以供下次使用。
+
+  在这种情况下，__客户端的主机知道它们正在使用代理服务器__，因为每个主机都
+  必须配置为使用代理服务器。
+
+  例如，必须告诉WWW浏览器使用代理服务器，它才能使用代理服务器。所有的远
+  程请求都通过代理服务器传输。
+
+  这类代理服务器也称为__缓冲代理服务器__。逆向服务器也可以缓冲数据，但它的
+  作用愉好与前向服务器相反。
+
+  2．逆向代理服务器
+
+  逆向代理服务器位于互联网资源前面，逆向服务器从原始服务器找到被请求的
+  资源，并反它返回给用户主机。
+
+  与前向代理服务器不同的是，逆向代理服务器的用户并不知道它们连接的是代
+  理服务器而不是资源服务器本身。其结构如下图所示：
+
+==== 二、配置代理服务器 ====
+
+
+  　　为了允许Apache作为代理服务器，需要将__ProxyRequests__设为On，然后根据
+  你希望代理服务器做什么而增加什么附加配置。无论你希望做什么，你所选的
+  代理配置都应该放入一个特殊?lt;Directory>容器中。
+
+
+  <Directory proxy:*>
+
+  …
+
+  </Directory>
+
+  实例一：将私有IP网连到互联网
+
+  假设私有网上只有一台计算机被分配了互联网上合法的IP地址，这台计算
+
+  机运行Apache代理服务器，ProxyRequest设置为On，并且不需要附加其他配
+  置，所有请求均可由这台代理服务器代理服务。
+
+  实例二：让Apache允当远程WWW站点的缓冲
+
+  第一步：将ProxyRequest设置为On
+
+  第二步：创建配置如下：
+
+  <Directory proxy:*>
+
+  CacheRoot /www/cache
+
+  CacheSize 1024
+
+  CacheMaxExpire 24
+
+  </Directory>
+
+  这里的意思是设置Cache目录为/www/cache；大小为1024KB，即1MB；缓冲中的
+  内容在24小时后失效。
+
+  实例三：建立镜像站点（其实这也就是所谓的逆向代理服务器）
+
+  第一步：将ProxyRequest设置为On
+
+  第二步：创建配置如下：
+
+  <Directory proxy:*>
+
+  ProxyPass / www.mot.com /
+
+  CacheRoot /www/cache
+
+  CacheDefaultExpire 24
+
+  </Directory>
+
+  10.3 一些提示
+
+  代理服务器，我们将会在后面的章节中详细介绍，这里只是针对Apache的功能
+  介绍的。用Apache作代理服务器的性能并不高，效果并不好。不建议使用。
+
+===== 安裝 Apache+PHP+MySQL+imap+GD+Ldap+opens =====
+
+  注意事项：
+
+  1.如果妳是用 Redhat based 的 Linux 的话，请执行 ntsysv 将 httpd 和
+  1.Mysql 不要执行
+
+  2.将 DOWNLOAD 的档案放到相同的目录，再用 tar zxvf xxxxxxxx.tar.gz 来
+  2.解压缩，请依照要安装的软件进入适当的目录。
+
+  3.可以到 http://linuxnews.idv.tw/download/ 来下载所需的程序。
+
+  MySQL:
+
+  ---------------------------------------------------------------
+
+  ./configure --prefix=/usr/local/mysql --with-charset=big5
+
+  make
+
+  make install
+
+  cd scripts
+
+  ./mysql_install_db
+
+  cd /usr/local/mysql/share/mysql/
+
+  chmod 611 mysql.server
+
+  ./mysql.server start
+
+  #编辑 /etc/rc.d/rc.local 加入底下这行以便开机时自动执行 mysql
+
+  /usr/local/mysql/share/mysql/mysql.server start
+
+  imap:
+
+  ---------------------------------------------------------------
+
+  make slx
+
+  cp ipopd/ipop*.* /usr/sbin
+
+  cp imapd/imapd /usr/sbin
+
+  cp c-client/c-client.a /usr/local/lib
+
+  #请确定你有 /usr/local/include 这个目录
+
+  cp c-client/rfc822.h /usr/local/include
+
+  cp c-client/mail.h /usr/local/include
+
+  cp c-client/linkage.h /usr/local/include
+
+  GD:
+
+  ---------------------------------------------------------------
+
+  make
+
+  make install
+
+  Ldap:
+
+  ---------------------------------------------------------------
+
+  ./configure --prefix=/usr/local/ldap
+
+  make
+
+  make depend
+
+  cd tests
+
+  make
+
+  cd ..
+
+  make install
+
+  Apache:
+
+  ---------------------------------------------------------------
+
+  ./configure --prefix=/usr/local/apache
+
+  openssl:
+
+  ---------------------------------------------------------------
+
+  ./config
+
+  make
+
+  make test
+
+  make install
+
+  mod_ssl:
+
+  ---------------------------------------------------------------
+
+  ./configure --with-apache=../apache_1.3.19
+  --with-ssl=../openssl-0.9.6 --prefix=../apache_1.3.19
+
+  php:
+
+  ---------------------------------------------------------------
+
+  ./configure --with-mysql=/usr/local/mysql
+  --with-apache=../apache_1.3.19 --enable-track-vars
+  --with-gd=../gd-1.8.4 --with-imap=../imap-4.7c --enable-ftp
+  --with-ldap=/usr/local/ldap
+
+  make
+
+  make install
+
+  Apache:
+
+  ---------------------------------------------------------------
+
+  ./configure --prefix=/usr/local/apache
+  --activate-module=src/modules/php4/libphp4.a --enable-module=ssl
+
+  make
+
+  make certificate
+
+  #这时会问你一些问题，就是有关于加密的问题，最后要要求输入启动的密码，
+  如果输入密码的话以后启动 httpd 的时候会询问密码，若不输
+
+  #入密码的话启动就不会问了
+
+  #PS.启动http
+
+  #要加密：apachectl startssl
+
+  #不加密：apachectl start
+
+  make install
+
+  修改 /etc/rc.d/rc.local 加入 /usr/local/apache/bin/apachectl start 来
+  开机时自动启动 Apache
+
+  再来就是修改 /usr/local/apache/conf/httpd.conf 的设定档，将 php 的支
+  持加入
+
+  建立Apache站点的基本安全机制
+
+  对于WWW服务来说，在WWW服务器和WWW浏览器之间并不始终维持对话过程。办要
+  WWW服务器完成对一个URL请求的服务，连接就断开了。
+
+  在这种情况下，在WWW上保证可以使用的唯一认证机制是由HTTP本身提供 的。
+  在标准的Apache服务器实现了这样的认证，它能控制哪些主机可能访问特定的
+  站点或特点的站点的一部分。
+
+  这种认证可以分为两种，一种是基于主机的的认证，另一种是基于用户名/口令
+  的认证。由于互联网上的决大多数用户的IP地址是动态获得的，所以基于主机
+  的认证方式并不总适用。所以在大多数情况下，传统的基于用户名/口令的认证
+  方式更为现实。下面我们就对这两种认证的实现做一简要的介绍。
+
+  1. 基于主机的认证方式
+
+  在种认证模式顾名思义，访问是用主机名或主机IP地址来控制的。支持这种认
+  证方式的是Apache的mod_access模块，这个模块缺省状态下是被安装了的。该
+  模块用以下几种Apache命令来提供访问控制功能。
+
+  allow命令
+
+  语法：allow from host1 host2 host3 ...
+
+  这个命令定义了允许访问站点或目录的主机清单。主机清单可以用以下几
+
+  种形式表示：
+
+  ALL：代表所有主机；
+
+  主机的全域名，www.mot.com；
+
+  主机的部分域名，如：.mot.com；
+
+  完整的IP地址，如：202.98.2.32；
+
+  部分IP地址，如：202.98
+
+  网络地址/网络掩码对，如：202.98.0.0/255.255.0.0
+
+  网络地址/nn(CIDR定义)，如：202.98.0.1/16
+
+  deny命令
+
+  语法：deny from host1 host2 host3 ...
+
+  这个命令定义了禁止访问站点或目录的主机清单，其他与allow命令相似。
+
+  order命令
+
+  语法：order deny,allow | allow,deny
+
+  这个命令定义评价allow和deny命令的先后顺序。
+
+  例如：
+
+  <Directory /home/httpd/html>
+
+  order deny,allow
+
+  deny from www.mot.com
+
+  allow all
+
+  </Directory>
+
+  这组命令设置了www.mot.com访问/home/httpd/html目录下的文件。
+
+  请大家注意，顺序是先deny后allow，如果是：order allow,deny 那么，先允
+  许所有的主机访问，然后再禁止，这样是无效的，所有主机仍然能够访问。
+
+  2. 基于用户名/口令的认证方式
+
+  这种认证方式其实相当简单，当WWW浏览器请求经此认证模式保护的URL
+
+  时，将会出现一个对话框，要求用户键入用户名和口令。用户输入后，传给
+  WWW服务器，WWW服务器验证它的正确性，如果正确，返回页面，否则返回401错
+  误。要说明的一点是，这种认证模式是基本的，并不能用于安全性要求极高的
+  场合。
+
+  Apache 中有许多模块可以支持这种认证方式，下面我们就介绍一下最基本、最
+  标准的mod_auth模块。正如前面提到的一样，mod_auth模块使用存储在文本文
+  件中的用户名、组名和口令来实现认证。这种方法非常适合处理少量用户，它
+  能工作得很好。如果你需要对大量的用户，如数以千计的用户做认证时，这种
+  方法的性能将急剧下降到不可忍受，所以当这种情况下，就需要考虑使用
+  mod_dbm模块或mod_mysql模块来获得更好的性能。
+
+  实例一：需要用户名和口令的访问控制
+
+  下面我们就一起来看一下如何建立需要用户名/口令才能进行访问的目录。
+
+  基本情况： www.xxx.com
+
+  的站点有设置为：
+
+  DocumentRoot /home/httpd/html
+
+  AccessFileName .htaccess
+
+  AllowOverride All
+
+  需求：限制/home/httpd/html/backup/目录的访问，只允许用户"super"以口令
+  "fill-06"访问此目录。
+
+  实现步骤：
+
+  使用htpasswd建立用户文件
+
+  htpasswd -c /home/httpd/secr/.htpasswd super
+
+  此程序会询问用户"super"的口令，你输入"fill-06"，两次生效。
+
+  建立.htaccess文件
+
+  用vi在/home/httpd/html/backup/目录下建立一个文件.htaccess，写入
+
+  以下几行：
+
+  AuthName My Friend Only (注：这个名字是任取的)
+
+  AuthType Basic
+
+  AuthUserFile /home/httpd/secr/.htpasswd
+
+  require user super
+
+  设置文件权限，确保Apache用户有读的权限
+
+  这样就完成了设置工作，你可以试一试效果了。
+
+  实例二：允许一组用户访问一个目录
+
+  假设，www.xxx.com想让myfriend组中的mf1与mf2两个用户分别能
+
+  使用口令"mf001-1""mf002-2"访问/home/httpd/html/backup/目录。
+
+  实现步骤：
+
+  使用htpasswd建立用户文件
+
+  htpasswd -c /home/httpd/secr/.htpasswd mf1
+
+  htpasswd -c /home/httpd/secr/.htpasswd mf2
+
+  建立组文件
+
+  用vi/home/httpd/secr/目录下建立一个文件.htgroup，写入：
+
+  myfriend:mf1 mf2
+
+  建立.htaccess文件
+
+  用vi在/home/httpd/html/backup/目录下建立一个文件.htaccess，写入
+
+  以下几行：
+
+  AuthName My Friend Only
+
+  AuthType Basic
+
+  AuthUserFile /home/httpd/secr/.htpasswd
+
+  AuthGroupFile /home/httpd/secr/.htgroup
+
+  require group myfriend
+
+  配置工作到此结束，试一试吧！
+
+  实例三：混合使用基于主机与基于用户名/口令的认证方式
+
+  如果你除了只允许让mf1与mf2两个用户访问外，还想禁www.mot.com
+
+  外的主机访问这个目录的话，就将/home/httpd/html/backup/.htaccess修改成
+  为：
+
+  AuthName My Friend Only
+
+  AuthType Basic
+
+  AuthUserFile /home/httpd/secr/.htpasswd
+
+  AuthGroupFile /home/httpd/secr/.htgroup
+
+  require group myfriend
+
+  order deny,allow
+
+  deny from all
+
+  allow from www.mot.com
+
+
+  不行，这不是我想要找的，我要再搜一搜声明：本站部分文章收集于网络，仅
+  供个人学习之用，绝无任何商业目的；
+
+本节将针对Apache中有关安全方面的设置做出详细的叙述，涉及到Apache的配置文件、Apache的目录访问控制、在Apache上运行CGI等安全方面的设置。
+4.5.1  Apache的配置文件
+
+对于RedHat Linux系统，Apache的配置文件放在/etc/httpd/conf/目录下。如果是自行编译安装的Apache，则视编译时指定的目录路径而定，默认是/usr/local/apache/conf。
+
+在conf目录下有3个Apache的配置文件：
+
+          httpd.conf
+
+          access.conf
+
+          srm.conf
+
+Apache启动时先调用httpd.conf，然后调用srm.conf，最后调用access.conf。但现代版本的Apache为避免管理和维护的混乱，已经改为将所有Apache的相关配置命令放在httpd.conf文件中，不再使用srm.conf和access.conf文件。虽然这两个文件仍然存在，但内容中没有任何配置命令，形同虚设。
+
+httpd.conf文件分为以下3部分：
+
+          Global Environment
+
+          'Main' server configuration
+
+          Virtual Hosts 
+
+下面将讲述这3部分的用法和与安全相关的注意点。
+4.5.1.1  Global Environment
+
+          ServerType standalone
+
+用来指定Apache的启动方式：standalone和inetd。standalone模式是Apache独立运行，也是默认的启动方式。inetd模式是守护进程监听http的连接请求才启动httpd进程，请求完毕后就结束httpd进程，这样服务器负担很重。
+
+          ServerRoot "/etc/httpd"
+
+Apache的目录，此处是存放配置、出错记录、日志文件的根目录。目录后面不要加“/”字符。
+
+          LockFile /var/lock/httpd.lock
+
+保留默认值，不要更改。
+
+          PidFile /var/run/httpd.pid
+
+指定记录Apache的父进程id的文件名及路径。
+
+          ScoreBoard /var/run/httpd.scoreboard
+
+指定用于储存服务器进程处理信息的文件名和路径。
+
+          #ResourceConfig conf/srm.conf
+
+          #AccessConfig conf/access.conf
+
+在标准的配置中，服务器启动时会处理这两个文件。因为现在的Apache只使用httpd.conf文件，摒弃了srm.conf和access.conf文件，所以这两行用“#”注释掉。
+
+           Timeout 300
+
+设置超时时间。如果远程客户端超过300秒还没连上Apache Server，或者Apache Server超过300秒没有传送字节给客户端，就立即断开连接。
+
+           KeepAlive On
+
+KeepAlive允许客户端的每个连接有多个请求，设为Off时此项无效。
+
+           MaxKeepAliveRequests 100
+
+设置每次连接期间所允许的最大请求数目。设为0时表示允许无限制数目。设置数字越大，则服务器性能越高。
+
+           KeepAliveTimeout 15
+
+设置等待同一个客户端的同一个连接发出下一个连接请求超过一定的时间就断线。
+
+           MinSpareServers 5
+
+          MaxSpareServers 20
+
+设置最小的闲置服务处理程序的数目和最大的闲置服务处理程序的数目。如果实际数目少于MinSpareServers，则将增加处理程序；反之，如果实际数目超过MaxSpareServers，一些多余的处理程序将被杀掉。
+
+           StartServers 8
+
+设置启动并初始化后启动服务进程的数目。
+
+           MaxClient 150
+
+设置服务运行的总数量。一旦达到此数目，新来的客户端就被拒绝，所以该限制数目不能设得太小。
+
+           MaxRequestsPerChild 100
+
+设置每个子程序处理结果前的要求数目，设为0表示不限制。
+
+           #Listen 3000
+
+#Listen 12.34.56.78:80
+
+Listen 80
+
+设置Apache监听的连接端口或IP地址及端口，默认是80。
+
+           #BindAddress *
+
+该选项用来支持虚拟主机，并告知服务器监听哪个IP地址。可以使用“*”，或具体的IP地址和完整的域名。
+
+           #LoadModule foo_module libexec/mod_foo.so
+
+DSO（Dynamic Shared Object）支持。DSO模块的概念和作用与Windows的DLL文件极其相似。
+
+           #ExtendedStatus On
+
+当“server-status”管理程序被执行时，检查Apache的运行状态信息。默认是Off。
+4.5.1.2  'Main' Server Configuration
+
+如果在第一部分“Global Environment”中的ServerType命令设为inetd的话，那么这部分就没有任何效果，直接跳到ServerAdmin命令。
+
+           Port 80
+
+设置Standalone服务器监听的连接端口，也可以设为其他端口，必须小于1 023。必须以root身份才能更改端口。
+
+           User apache
+
+           Group apache
+
+指定运行httpd的用户和用户组。必须首先以root身份指派。
+
+           ServerAdmin root@localhost
+
+设置管理员的电子邮件地址，当Apache有问题时会自动发E-mail通知管理员。
+
+           #ServerName localhost
+
+设置主机名称，可以用域名和IP地址。
+
+           DocumentRoot "/var/www/html"
+
+设置Apache放置网页的目录路径。
+
+           <Directory/>
+
+Options FollowSymLinks
+
+AllowOverride None
+
+<Directory/>
+
+设置Apache能够访问的每一个目录被访问时所执行的动作。本章后面将详细叙述Apache的目录存取方法。
+
+           <Directory "/car/www/html">
+
+Options Indexes Include FollowSymLinks
+
+AllowOverride None
+
+Order allow, deny
+
+Allow from all
+
+</Directory>
+
+此处设置Apache的网页目录的执行动作。本章节后面将详细叙述目录的存取方法。
+
+           <Directory/>
+
+AllowOverride None
+
+Options None
+
+Allow from all
+
+</Directory>
+
+此处可以防止用户创建自己的.htaccess文件。在这个文件中可以改变全局参数，以致会影响到整个系统的安全。可以在httpd.conf文件中加入的命令中都加上上面的代码。
+
+           UserDir public_html
+
+设置用户在自己的目录下建立public_html放置网页，即/home/*/public_html/。这样在浏览器地址栏输入“http://Apache%E6%9C%8D%E5%8A%A1%E5%99%A8/%E7%94%A8%E6%88%B7%E5%90%8D/”就能显示网页。设置的目录必须告知用户，否则他们不知道网页放在什么地方。
+
+           DirectoryIndex index.html index.htm index.shtml index.php index.php4 index.php3 index.cgi
+
+设置Apache的默认首页文档。
+
+           AccessFileName .htacess
+
+指定控制存取的文件名称。Apache默认的是.htaccess。本章将在后面详细叙述该文件的用法。
+
+           <Files ~ "^\.ht>
+
+Order allow,deny
+
+Deny from all
+
+</Files>
+
+防止用户端看到ht开头的文件内容。因为.htaccess记载了相关信息，.htpasswd记载了密码信息，不允许其他人访问这些文件。
+
+           #CacheNegotiatedDocs
+
+指定Proxy服务器是否将交互产生的文件存在Cache中。将该命令注释掉则是不指定。
+
+           UseCanonicalName On
+
+设置是否使用标准的名称，默认是On。
+
+           TypeConfig /etc/mime.types
+
+指定存放MIME文件类型的文件。
+
+           Default Type text/plain
+
+如果Apache不能识别此文件类型时，则按照预设的格式显示，一般以文本文件显示。
+
+           <IfModule mod_mine_magic.c>
+
+MIMEMagicFile conf/magic
+
+</ifModule>
+
+mod_mime_magic模块可以让Apache由文件内容决定其MIME类型。如果存在该模块，才会处理MIMEMagicFile这一段。上面3行是当没有该模块时就处理这一段。
+
+           HostnameLookups off
+
+设置Apache是否向名称服务器解析该IP地址，记录此链接的名称（如Hacker.com.cn）。因为DNS解析要花一定时间，所以默认设为off，仅记录IP。
+
+           ErrorLog /var/log/httpd/error_log
+
+指定Apache发生错误时记录文件的位置。如果在<VirtualHost>中没有指定记录文件，则用/var/log/httpd/error_log，否则使用<VirtualHost>指定的文件。
+
+           LogLevel warn
+
+指定记录的详细等级，有8个等级：debug、info、notice、warn、error、crit、alert和emerg。按从详细到简略排列。
+
+           LogFormat "%h %l %u %t\"%r"\"%>s%b\"{Referer}I"\"%{UserAgent}I\""combind
+
+Logformat"%h%l%u%t\"%r"\"%>s%b"common
+
+Logformat "%{Referer}I->%U"referer
+
+LogFormat"%{User-agent}I"agint
+
+定义4种格式的别名：combind、commen、referer和agint。
+
+           #CustomLog /var/log/httpd/access_log common
+
+CustomLog /var/log.httpd/access_log combind
+
+指定记录文件使用哪种自定义的格式。其他不使用的自定义格式将被注释掉。
+
+以上是关于日志文件的，将在后面的Apache日志文件中详细叙述。
+
+           ServerSignature On
+
+设为On，当Apache产生错误时，就在网页上显示Apache的版本信息、主机名称、端口等一行信息。设为Off，就不显示相关的信息。设为E-mail时，就有“mailto:”给管理员的超链接。
+
+           Alias/icons /"var/www/icons/"
+
+使用较短的别名，其格式为：Alias 别名 原名。可以无限制地建立别名。注意别名的后面如果有“/”，那么在使用URL时也得有“/”。
+
+           ScriptAlias /cgi-bin/ "/var/www/cgi-bin/"
+
+和Alias类似，设置服务器脚本目录。
+
+应该强制性地使用ScriptAlias命令来限定CGI程序位于某个或者某几个特定的位置。一般可以设置多个ScriptAlias。必须保证cgi-bin目录不在html目录下，这一点非常重要，这样可以防止黑客通过浏览它们而查看CGI程序。
+
+           IndexOptions FancyIndexing
+
+以特定的图形显示文件清单。
+
+           AddIconByEncoding (CMP, /icons/compressed.gif) x-compress x-gzip
+
+……
+
+DefaultIcon /icons/unknown.gif
+
+指定显示文件清单时各种文件类型的对应图形。
+4.5.1.3  Virtual Hosts
+
+这部分是设置虚拟主机的。所谓虚拟主机，就是指一台服务器作为多域名的Web服务器。ISP经常通过一台服务器为其客户提供Web服务。而客户通常希望主页以自己的名字出现，而不是在该ISP的名字后面，因为使用单独的域名和根网址可以看起来更正式一些。传统上，用户必须自己设立一台服务器才能达到拥有单独域名的目的，然而这需要维护一个单独的服务器。很多小单位缺乏足够的维护能力，更为合适的方式是租用别人维护的服务器。ISP也没有必要为一个机构提供一个单独的服务器，完全可以使用虚拟主机的能力，使服务器为多个域名提供Web服务，而且不同的服务互不干扰，对外就表现为多个不同的服务器。虚拟主机就是解决这种问题的方案，使客户的域名实际指向ISP的同一台服务器。
+1．Apache支持虚拟主机的方式
+
+Apache有两种支持虚拟主机的方式。一是为每一个虚拟主机设置单独的httpd进程，二是为所有的主机设置一个单独的httpd进程。
+
+           为每一个虚拟机设置单独的httpd进程
+
+在httpd.conf文件的第一部分Global Environment中的BindAddress命令或Listen命令就是用来指定虚拟主机的地址和端口的。
+
+BindAddress命令用来指定单一的地址，可以使用域名或IP地址。该命令在httpd.conf文件中只能出现一次。
+
+Listen命令可以让httpd进程监听多个地址或端口。反复使用Listen命令就能实现这个要求。
+
+           为所有的主机设置一个单独的httpd进程
+
+这是一个常用的方法。用户只要维护一个httpd.conf文件。在此文件的第三部分Virtual Host中，用<VirtualHost></VirtualHost>命令来为所有的虚拟主机进行配置。有多个虚拟主机就有多个<VirtualHost>段。在不同的虚拟主机的<VirtualHost>段中可以指定不同的ServerAdmin、ServerName、DocumentRoot、ErrorLog和TransferLog。
+2．虚拟主机的实现方式
+
+虚拟主机有三种实现方式：以主机名称的方式虚拟、以IP的方式虚拟、以端口的方式虚拟。下面就举一个在httpd.conf的第三部分Virtual Host中实现上面提及的方式的例子。
+
+           以主机名称的方式虚拟
+
+如果用户的一台服务器有多个域名，Virtual Host文件举例如下：
+
+NameVirtualHost 210.12.195.6
+
+<VirtualHost hacker.con.cn>
+
+ServerAdmin bright@hacker.com.cn
+
+DocumentRoot /var/www/html/hacker
+
+ServerName hacker.com.cn
+
+</VirtualHost>
+
+<VirtualHost pcfrient.com.cn>
+
+ServerAdmin admin@pcfrient.com.cn
+
+DocumentRoot /var/www/html/pcfrient
+
+Servername pcfrient.com.cn
+
+</VirtualHost>
+
+           以IP的方式虚拟
+
+注册域名是要花一笔费用的。解决方案是可以用IP的方式来虚拟。在Linux中可以为一个网卡捆绑两个IP地址。如服务器的地址是210.12.195.6，现在有一个IP地址210.12.195.9没有使用。将210.12.195.9捆绑到服务器的网卡中，执行下列命令：
+
+#ifconfig eth0:0 210.12.195.9
+
+这样，服务器就有两个IP地址了。以IP的方式虚拟和以主机名称的方式虚拟类似，请看下面的例子：
+
+NameVirtualHost 210.12.195.6
+
+<VirtualHost 210.12.192.6>
+
+ServerAdmin bright@hacker.com.cn
+
+DocumentRoot /var/www/html/hacker
+
+</VirtualHost>
+
+<VirtualHost 210.12.192.9>
+
+ServerAdmin bright@hacker.com.cn
+
+DocumentRoot /var/www/html/pcfrient
+
+</VirtualHost>
+
+以IP的方式虚拟不用NameVirtualHost命令。
+
+           以主机名称和IP的方式虚拟
+
+就是上面的两个方式的结合。看下面的例子：
+
+NameVirtualHost 210.12.195.6
+
+<VirtualHost hacker.con.cn>
+
+ServerAdmin bright@hacker.com.cn
+
+DocumentRoot /var/www/html/hacker
+
+ServerName hacker.com.cn
+
+</VirtualHost>
+
+<VirtualHost 210.12.195.6>
+
+ServerAdmin bright@hacker.com.cn
+
+DocumentRoot /var/www/html/pcfrient
+
+</VirtualHost>
+
+           以端口的方式虚拟
+
+http默认的端口是80，如果用户要开设另一个端口443作为另一个虚拟主机，举例如下：
+
+Listen 80
+
+Listen 443
+
+<VirtualHost 210.12.192.6:80>
+
+ServerAdmin bright@hacker.com.cn
+
+DocumentRoot /var/www/html/hacker
+
+</VirtualHost>
+
+<VirtualHost 210.12.195.6:443>
+
+ServerAdmin suying@hacker.com.cn
+
+DocumentRoot /var/www/html/pcfrient
+
+</VirtualHost>
+
+           以不同的IP和端口的方式虚拟
+
+该方式是以IP的方式虚拟和以端口的方式虚拟的结合。假设服务器捆绑了两个IP地址，210.12.192.6和210.12.195.9，后面的IP地址用端口443。举例如下：
+
+Listen 210.12.192.6：80
+
+Listen 210.12.195.9：443
+
+<VirtualHost 210.12.192.6:80>
+
+ServerAdmin bright@hacker.com.cn
+
+DocumentRoot /var/www/html/hacker
+
+</VirtualHost>
+
+<VirtualHost 210.12.195.9:443>
+
+ServerAdmin suying@hacker.com.cn
+
+DocumentRoot /var/www/html/pcfrient
+
+</VirtualHost>

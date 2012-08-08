@@ -1,0 +1,417 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-05T14:50:31+08:00
+
+====== Python Essential Reference 4th – 第3章 – 读书笔记 ======
+Created 星期二 05 七月 2011
+
+1、Python中，一切都是对象。
+
+2、类型：type/class，对象/实例：instance。
+
+3、对象按照是否可以修改，分为可变的 mutable 和不可变的 immutable 。
+
+4、对象中可以引用其他对象，成为容器 container or collection。
+
+5、对象有属性（值）和方法（函数）。
+
+6、Python中的对象无法直接映射到内存空间，但是可以用内置函数id( )函数来查看：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> a = []
+>>> B = []
+>>> id(a)
+3077871564L
+>>> id(B)
+3077198956L
+
+7、操作符is和==的区别：
+is是比较是否是指向同一个对象（指向的地址是否相同）
+==是比较指向的值是否相等
+下面的例子：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+# 初始化
+>>> a = ["123",456]
+>>> b = a
+>>> c = ["123",456]
+ 
+# = 比较的是指向的值是否等
+>>> a == b
+True
+>>> a == c
+True
+>>> b == c
+True
+ 
+# is比较的是指向地址是否相等
+>>> a is b
+True
+>>> a is c
+False
+>>> b is c
+False
+
+8、每个对象都有一个类型，用内置函数type查看，可用此比较两个对象是否为同一类型。
+但是is用于type上，不包含继承类型。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> type([])
+<type 'list'>
+>>> a = set()
+>>> type(a)
+<type 'set'>
+#比较
+type(a) is type(b)
+
+9、如果需要判断对象类型并考虑继承情况，可以用isinstance。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+# 第一个参数必须是实例，第二个参数必须是类型
+isinstance(a,list)
+
+
+10、每个对象都有一个ref-count
+ref-count加一的情况：赋值给别的对象，加入list等container中。
+ref-count减一的情况：del删除对象，或者引用的对象出了作用域。
+使用sys.getrefcount(xx)可以获得xx对象的引用数。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+a = 37
+print sys.getrefcount(a)
+b = a
+c = []
+c.append(a)
+print sys.getrefcount(a)
+del b
+del c[0]
+print sys.getrefcount(a)
+ 
+#输出结果
+9
+11
+9
+
+11、加入list、tuple等collection中的是引用！
+因此如果一个对象被加入两个collection，修改其中一个，另外一个也会被改变。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+a = [1,2]
+b = [0,a,3]
+c = [a,55]
+ 
+print c
+b[1][1] = 3
+print c
+ 
+#输出
+[[1, 2], 55]
+[[1, 3], 55]
+
+
+12、如果希望复制给别的引用或者添加到list中的是独立的对象（新的），可以用deepcopy：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+import copy
+a = [1,2]
+b = copy.deepcopy(a)
+b[0] = -2
+ 
+print a
+print b
+ 
+#输出，经过deepcopy后，就是独立的了。
+[1, 2]
+[-2, 2]
+
+
+13、一个转化数据的例子，我们要把GOOG, 100, 490.10转化为对应的类型：
+非常精简吧！
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+line = "GOOG, 100 , 490.10"
+field_types = [str,int,float]
+fields = [ty(val) for ty,val in zip(field_types,line.split(","))]
+#结果
+['GOOG', 100, 490.10000000000002]
+
+
+14、内置类型：None int long float complex bool str unicode(只有python2有) list tuple xrange dict set frozenset(不可变的set)
+int值域 -2147483648 ~ 2147483647
+long值域 无限（取决与内存）
+float：64bit的浮点标示法。
+
+15、sequence类型 str unicode list tuple xrange 的共用操作
+S[i] index
+S[i:j] slice
+S[i:j:stride] slice stride是间隔
+要说明的是，i和j都可以是负数，比如-1表示倒数最后一个。
+len(S) S中元素的数量
+min(S) S中最小的
+max(S) S中最大的
+sum(S,[初始值]) 累加S
+all(S) 当S中都为True时返回True，否则False
+any(S) 当S中有任何一个为True时返回True，否则False
+
+16、list独有的操作
+list(s) 转化为list
+s.append(x) 追加元素到s末尾(如果x是list，则把x整体做为一个元素，追加到s后面)
+s.extend(t) 追加list到s末尾(如果x是list，则把x打散后，做为N个元素，追加到s后面)
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#list.append 整体追加
+>>> x = [1,2,3]
+>>> m = [0]
+>>> m.append(x)
+>>> print m
+[0, [1, 2, 3]]
+ 
+#list.extend 打散追加
+>>> x = [1,2,3]
+>>> m = [0]
+>>> m.extend(x)
+>>> print m
+[0, 1, 2, 3]
+ 
+#list.sort 原地排序
+>>> x = [5,2,5,3,5,4,2]
+>>> x.sort()
+>>> x
+[2, 2, 3, 4, 5, 5, 5]
+
+
+17、Python 2 中默认是用Byte String而不是Unicode，非常恶心。对字符串的操作不会改变原值！要么返回新的，要么是返回状态。
+
+str.encode()：将unicode的字符串str转化为其他编码，并返回。
+str.decode()：将非unicode编码的字符串str转化为unicode编码的，并返回。
+encode和decode的参数有时候是可以省略的。
+
+str.strip()： 移除字符串头和尾部的空白字符，所有空白！包括空格、换行、制表符等等。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#str.capitalize()  返回首字母大写的字符串
+>>> a = "china"
+>>> a.capitalize()
+'China'
+ 
+#str.encode()  将unicode的字符串str转化为其他编码，并返回
+>>> a = u"计算所"
+>>> b = a.encode("gbk")
+>>> print b
+计算所
+ 
+#str.decode()  将非unicode编码的字符串str转化为unicode编码的，并返回
+>>> c = b.decode("gbk")
+>>> print c
+计算所
+ 
+#str.isupper()  检查str所有字符是否都是大写
+>>> s = "ABC"
+>>> s.isupper()
+True
+>>> s = "aBC"
+>>> s.isupper()
+False
+ 
+#str.strip(chrs)  移除字符串头或者尾部的空白（chrs指定）
+>>> s = " \tchina \r\n"
+>>> s.strip()
+'china'
+
+
+18、xrange，构造i到j的数组，用于循环时候比较多。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#输出
+>>> for i in xrange(10,20):
+...     print i
+...
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+
+
+19、map在Python中又叫做Dictionary（词典）。和数组类似，k和v可以使任意数值（k必须是不可变类型）。
+【常用操作】
+k in m：检查key是否在map m中。
+m[k]=v： 对m的key赋值v
+print m[k]： 访问m的key值k
+m.has_key(k)： m中是否有key k
+m.setdefault(k,v)： 如果m中已经有k，忽略，否则，新建k并设置数值为v
+
+len(m)：map含k-v对儿的个数
+m.items()：遍历所有k和v
+m.keys()：遍历所有k
+m.values()：遍历所有v
+
+m.copy()：影子拷贝，非深度拷贝！
+
+20、set类型。set是集合，内含元素非重复，可以看作是退化的无value的map。
+frozenset是不可变的set。
+
+set和fronzenset的常用操作：
+set_a.copy()
+set_a.intersection(another_set)：与set取交集。
+set_a.union(another_set)：与set取并集。
+
+set独有的常用操作（修改的）：
+set_b.add(item)
+set_b.clear()：清空
+set_b.discard(item)：如果item再set_b中，移除，不在的话，无效，不报异常。
+set_b.remove(item)：和discard类似，不过item不在要抛出异常！
+
+21、lamada函数，其实就是类似Java的匿名类。
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+bar = lamada x,y: x + y
+
+
+Cop Six 's Blog
+
+22、函数有三种：直接函数、类函数和静态函数：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#直接函数
+def fun1(x,y):
+    return x+y
+ 
+#类函数和静态函数
+class Foo(object):
+    #类函数，第一个参数必须是self
+    @classmethod
+    def method1(self,arg):
+        pass
+ 
+    #静态函数，其实就是class的static函数，第一个参数不用是self
+    @staticmethod
+    def method2(arg):
+        pass
+
+
+23、几个内置对象：
+Trackback：调用Trackback，一般异常的时候用
+Generator：构造器
+Slice：这个不用说了吧，lst[1:2]，这种slice的时候就是用的这个对象
+Ellipsis：下标相应的对象。
+
+24、特殊函数一般是双下划线开头，如：__add__()是重载的+操作符。再如__getitem__()是重载的[]操作符。
+
+25、与构造对象相关的特殊函数：
+__new__()：新建对象时。
+__init__()：初始化时。
+__de__()：del xx，操作符。
+
+new和init一般是同时使用，等价关系是：新建对象=new + init
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#x = A()翻译为：
+x = A.__new__(A,args)
+is isinstance(x,A): x.__init__(args)
+
+
+26、字符串相关的特殊函数：
+__str__()：重载的str(xx)函数。
+__repr()：重载的repr(xx)函数。
+
+27、特殊函数：
+__bool__()：返回True或者False，用于分支判断时。
+__len__()：重载len()函数。
+__hash__()：返回一个int类型的hash值。
+
+__lt__(self,other)：重载self
+__ge__(self,other)：重载self>=other
+
+28、属性访问相关的特殊函数
+__getattr__(self, name)：访问属性，x.name
+__setattr__(self,name)：设置属性，x.name=yy
+__delattr__(self, name)：删除属性，del x.name
+
+29、有时候，我们希望在访问x.name时，加一层逻辑（如log日志），此时可以用Descriptors。
+
+30、
+__len__(self)：len(item)重载
+__geitem__(self,key)：item[key]重载
+__contains__(self,obj)：返回self中是否含obj，重载了 x in item。
+
+31、数学操作符特殊函数
+
+__add__(self,other)： self + other
+__sub__(self,other)： self - other
+__mul__(self,other)： self * other
+__div__(self,other)： self / other (Python 2 only)
+__truediv__(self,other) ： self / other (Python 3)
+__floordiv__(self,other)： self // other
+__mod__(self,other)： self % other
+__divmod__(self,other)： divmod(self,other)
+__pow__(self,other [,modulo]) ： self ** other, pow(self, other,modulo)
+__lshift__(self,other)： self << other
+__rshift__(self,other) ： self >> other
+__and__(self,other) ： self & other
+__or__(self,other)： self | other
+__xor__(self,other)： self ^ other
+__radd__(self,other) ： other + self
+__rsub__(self,other) ： other - self
+__rmul__(self,other)： other * self
+__rdiv__(self,other) ： other / self (Python 2 only)
+__rtruediv__(self,other) ： other / self (Python 3)
+__rfloordiv__(self,other) ： other // self
+__rmod__(self,other)： other % self
+__rdivmod__(self,other) ： divmod(other,self)
+__rpow__(self,other) ： other ** self
+__rlshift__(self,other) ： other << self
+__rrshift__(self,other)： other >> self
+__rand__(self,other) ： other & self
+__ror__(self,other)： other | self
+__rxor__(self,other)： other ^ self
+__iadd__(self,other) ： self += other
+__isub__(self,other) ： self -= other
+__imul__(self,other) ： self *= other
+__idiv__(self,other) ： self /= other (Python 2 only)
+__itruediv__(self,other) ： self /= other (Python 3)
+__ifloordiv__(self,other)： self //= other
+__imod__(self,other) ： self %= other
+__ipow__(self,other)： self **= other
+__iand__(self,other) ： self &= other
+__ior__(self,other) ： self |= other
+__ixor__(self,other) ： self ^= other
+__ilshift__(self,other)： self <<= other
+__irshift__(self,other)： self >>= other
+__neg__(self)： –self
+__pos__(self)： +self
+__abs__(self) ： abs(self)
+__invert__(self)： ~self
+__int__(self)： int(self)
+__long__(self)： long(self) (Python 2 only)
+__float__(self) ： float(self)
+__complex__(self) ： complex(self)
+
+32、with操作符。
+with context [ as var]:
+statements
+重载函数为__enter__(self)和__exit__(self, type, value, tb)
+
+33、dir函数，辅助函数，类似help
+__dir__(self)：重载了dir函数。
+
+第三章完毕。

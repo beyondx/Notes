@@ -1,0 +1,17 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-21T16:12:49+08:00
+
+====== 编译新内核(3.1.8)是出现没找到mpc8315erdb-default.dts错误 ======
+Created Tuesday 21 February 2012
+
+原因是新内核目录arch/powerpc/boot/dts/目录下的没有mpc8315erdb*系列文件，可以将ISO中的老内核(位于/opt/freescale/pkgs/linux-2.29.6.tar.bz2)同一目录下的mpc8315**系列文件拷贝到新内核目录。
+[[./mpc8315erdb-1588.dts]]
+
+[[./mpc8315erdb-default.dts]]
+
+[[./mpc8315erdb-otg.dts]]
+
+[[./mpc8315erdb-ulpi.dts]]
+
+[[./mpc8315erdb.dts]]

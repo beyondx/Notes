@@ -1,0 +1,67 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-14T16:52:09+08:00
+
+====== 结果目录 ======
+Created Saturday 14 January 2012
+这里制作的交叉编译工具链(包括binutils，gcc, glibc)是在当前主机上运行(glibc除外，它只能在目标平台上运行)，它们形成了一个完整的__交叉编译环境__。交叉编译gcc调用binutils中的相关程序对源代码进行编译，然后与glibc链接，生成适合于目标平台的可执行代码。
+这里的交叉工具链只能在当前主机上运行，不能直接拷贝到目标主机上运行，(glibc除外)。若目标机需要“原生编译工具链”，则可用这里的**交叉编译工具链编译出一套然后拷贝到目标机中**。
+
+最终编译后生成的顶级目录结构：
+  /home/geekard/ppc/tool:
+  total used in directory 32 available 66169092
+  drwxr-xr-x  8 geekard geekard 4096 Jan 14 14:52 .
+  drwxr-xr-x  6 geekard geekard 4096 Jan 14 14:25 ..
+  drwxr-xr-x  2 geekard geekard 4096 Jan 14 16:15 bin    #__交叉编译环境__所需的所有可执行程序(只在当前主机中运行)
+  drwxr-xr-x  2 geekard geekard 4096 Jan 14 14:52 include  #空文件夹，因为gcc和binutils均不在其中放置自己的头文件。
+  drwxr-xr-x  3 geekard geekard 4096 Jan 14 16:15 lib   #包含gcc__自身运行__所需的库例程和binutils提供给别的程序使用的静态库。
+  drwxr-xr-x  3 geekard geekard 4096 Jan 14 14:52 libexec  #包含__gcc调用的辅助程序__(如cc1)，用户一般不直接执行它们。
+  drwxr-xr-x 11 geekard geekard 4096 Jan 14 16:15 powerpc-linux  #
+  drwxr-xr-x  6 geekard geekard 4096 Jan 14 16:15 share  #gcc和binutils的__静态文件__。
+
+注意，在用交叉编译gcc编译目标平台的glibc时指定的两个参数：
+1. ../glibc.**/configure   --prefix=__/usr __ #指定glibc的“安装目录”
+     __--includedir=/usr/include__      #指定glibc头文件的安装目录(不指定也可以)
+2. make__ install_root=$TOOL/$TARGET __install
+
+这样做的原因是：
+1.若不指定install_root参数，则编译的glibc会被直接安装到当前系统上（因为--prefix=/usr），这会与已经存在的glibc__冲突__(即使不冲突，编译生成的glibc也不能供当前系统中使用)。
+2.通过将--prefix设置为默认参数/usr,  安装到$TOOL/$TARGET目录的glibc可以__直接拷贝到目标板的根目录使用__。但是由于配置时指定的是/usr目录，因此glibc中所有相关文件中使用的路径都是硬编码与/usr关联的。make的install_root参数__并不会__消除这种关联，其作用只不过是最后的安装阶段将$TOOL/$TARGET作为/usr的/。
+3.任何需要在本地利用交叉编译环境惊醒编译，然后将__结果拷贝到目标板上的软件都要使用类似的配置方式__。
+ps: 也可以将install_root替换为__DESDIR__, 两者等价。**制作软件的二进制包发布包**时通常使用的就是这种配置方式。install_root 和 DESDIR指定的目录__相当于一个jail__。
+
+但是需要注意的是：
+1. 配置时虽然指定的安装目录是/usr，但是实际上__只会把头文件__放到该目录的include目录下。glibc的库文件和程序文件会被放到
+/bin、/sbin 和 /lib目录下。即__--prefix指定目录的上一级目录__。这种硬编码的、特殊的安装位置是由于__系统引导时必须要使用__glibc提供的相关程序如ldconfig, ldd, 相关库函数如libc.so.6, libm.so等决定的。
+2. 若--prefix的参数不是/usr，例如是/home/geekard/ppc/cross，按照上面的说明，glibc的头文件会被安装到/home/geekard/ppc/cross/include目录中，库文件和相关程序会被安装到/home/geekard/__ppc/{bin, sbin, lib}__三个目录中。这种配置方式生成的glibc不能直接复制到目标板上使用，因为相关文件中的路径都是硬编码与/home/geekard/ppc/cross相关联的。当把它们复制到目标主机的根目录上后会产生错误。
+3.生成的glibc中硬编码的路径只与--prefix参数有关，__通过指定install_root参数安装glibc(改变--prefix路径中的根目录位置)__到相应的目录中后，这种关联不会改变。因此，在安装glibc后最后一次编译gcc前，__需要更改相关glibc文件中硬编码的路径__。这样在编译gcc时，才不会出现链接错误， 如：
+/home/geekard/ppc/tool/powerpc-linux/bin/ld: __skipping incompatible /lib/libc.so.6__ when searching for [[/lib/libc.so.6]]
+/home/geekard/ppc/tool/powerpc-linux/bin/ld: cannot find /lib/libc.so.6
+/home/geekard/ppc/tool/powerpc-linux/bin/ld: cannot find /lib/libc_nonshared.a
+/home/geekard/ppc/tool/powerpc-linux/bin/ld: cannot find /lib/ld.so.1
+collect2: ld returned 1 exit status
+make[2]: *** [libgcc_s.so] Error 1
+出现上面错误的原因是: ld使用的虽然是编译生成的glibc，但是由于__相关文件中的路径被硬编码指向/lib目录__，因此ld会错误地和本系统中的glibc进行链接。解决的方法是修改$TOOL/$TARGET/lib/libc.so文件，将硬编码的/lib/去掉，只留下相关库文件的文件名，这样ld就会在__当前目录（$TOOL/$TARGET/lib）__中查找并链接它们。
+[geekard@geekard ppc]$ ls  powerpc-linux/lib/ld
+ld-2.14.so  ldscripts/  __ld.so.1__  
+[geekard@geekard ppc]$ cat powerpc-linux/lib/__libc.so__
+/* GNU ld script
+   Use the shared library, but some functions are only in
+   the static library, so try that secondarily.  */
+OUTPUT_FORMAT(elf32-powerpc)
+/* GROUP ( __/lib/__libc.so.6 /lib/libc_nonshared.a  AS_NEEDED ( /lib/ld.so.1 ) ) */  #这是安装glibc后的__原始配置__
+GROUP ( libc.so.6 libc_nonshared.a  AS_NEEDED ( ld.so.1 ) )    #这是__修改后的配置__
+
+  /home/geekard/ppc/tool/__powerpc-linux__:   #glibc头文件、库例程、工具程序的安装位置(相当于/usr中的根目录)。
+  total used in directory 44 available 66168856
+  drwxr-xr-x 11 geekard geekard 4096 Jan 14 16:15 .
+  drwxr-xr-x  8 geekard geekard 4096 Jan 14 14:52 ..
+  drwxr-xr-x  2 geekard geekard 4096 Jan 14 16:15 bin     #包含glibc提供的一些工具程序如ldd, recgen, xtrace, getent等。
+  drwxr-xr-x  2 geekard geekard 4096 Jan 14 15:40 etc   #glibc程序的配置文件目录
+  drwxr-xr-x  3 geekard geekard 4096 Jan 14 16:15 include  #c++头文件(由gcc提供)
+  drwxr-xr-x  5 geekard geekard 4096 Jan 14 16:15 lib   __#glibc库文件__
+  drwxr-xr-x  3 geekard geekard 4096 Jan 14 15:40 libexec  #glibc中相关程序使用的__辅助程序__存放目录
+  drwxr-xr-x  2 geekard geekard 4096 Jan 14 15:40 sbin  #glibc提供的系统管理程序
+  drwxr-xr-x  6 geekard geekard 4096 Jan 14 15:39 share  #glibc提供的静态文件
+  drwxr-xr-x 30 geekard geekard 4096 Jan 14 15:40 sys-include  #交叉编译器gcc默认使用的头文件目录，其实是usr/include的拷贝(最后一次编译gcc时，用--withheaders=$TOOL/$TARGET/usr/include参数指定)。
+  drwxr-xr-x  3 geekard geekard 4096 Jan 14 14:21 usr  #usr/include存放glibc和内核的头文件。

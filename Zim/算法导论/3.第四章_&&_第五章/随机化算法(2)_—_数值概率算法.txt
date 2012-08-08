@@ -1,0 +1,122 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-30T13:23:18+08:00
+
+====== 随机化算法(2) — 数值概率算法 ======
+Created Saturday 30 July 2011
+
+在这章开篇推荐下chinazhangjie总结的随机算法，因为咱两看的是同一本书，所以大家也可以去参考下他的，总结的很不错。
+
+http://www.cnblogs.com/chinazhangjie/archive/2010/11/11/1874924.html
+
+(顺便再PS一下，小杰也是我论坛的C/C++问题求助板块的版主,C/C++小牛)
+
+这一章我就把书中的一个例子举出来了，感觉虽然很简单，但是很有意思。
+
+用随机投点法计算Pi值
+
+设有一半径为r的圆及其外切四边形。向该正方形随机地投掷n个点。设落入圆内的点数为k。由于所投入的点在正方形上均匀分布，因而所投入的点落入圆内的概率为(Pi*r*r)/(4*r*r)= Pi/4 。所以当n足够大时，k与n之比就逼近这一概率。从而，PI 约等于 (4*k)/n.
+
+如下图：
+{{./suijitoudian.gif}}
+因为代码里用到了上一章《概率算法(1) — 随机数》里的RandomNumber类，所以大家可以先把前一章看看。
+
+我把这个伪随机类再贴一遍：
+
+const unsigned long maxshort = 65535L;
+const unsigned long multiplier = 1194211693L;
+const unsigned long adder = 12345L;
+ 
+class RandomNumber{
+private:
+	// 当前种子
+	unsigned long randSeed;
+public:
+	// 构造函数,默认值0表示由系统自动产生种子
+	RandomNumber(unsigned long s = 0);
+	// 产生0 ~ n-1之间的随机整数
+	unsigned short Random(unsigned long n);
+	// 产生[0, 1) 之间的随机实数
+	double fRandom();
+};
+ 
+// 产生种子
+RandomNumber::RandomNumber(unsigned long s)
+{
+	if(s == 0)
+		randSeed = time(0);    //用系统时间产生种子
+	else
+		randSeed = s;
+}
+ 
+// 产生0 ~ n-1 之间的随机整数
+unsigned short RandomNumber::Random(unsigned long n)
+{
+	randSeed = multiplier * randSeed + adder;
+	return (unsigned short)((randSeed >> 16) % n);
+}
+ 
+// 产生[0, 1)之间的随机实数
+double RandomNumber::fRandom()
+{
+	return Random(maxshort) / double(maxshort);
+}
+
+主文件Main:
+
+
+/*
+* Author: Tanky woo
+* Blog:   www.WuTianQi.com
+* Date:   2010.12.8
+* 用随机投点法计算Pi值
+* 代码来至王晓东《计算机算法设计与分析》
+*/
+ 
+#include "RandomNumber.h"
+#include <iostream>
+#include <iomanip>
+#include <time.h>
+using namespace std;
+ 
+double Darts(long n)
+{
+	// 用随机投点法计算Pi值
+	static RandomNumber dart;
+	long k = 0;
+	for(long i=1; i<=n; ++i)
+	{
+		double x = dart.fRandom();
+		double y = dart.fRandom();
+		// 在圆内
+		if((x*x+y*y) <= 1)
+			++k;
+	}
+	return 4 * k / double(n);
+}
+ 
+int main()
+{
+	// 当进行1,000次投点时
+	cout << Darts(1000) << endl;
+	// 当进行10,000次投点时
+	cout << Darts(10000) << endl;
+	// 当进行100,000次投点时
+	cout << Darts(100000) << endl;
+	// 当进行1,000,000次投点时
+	cout << Darts(1000000) << endl;
+	// 当进行10,000,000次投点时
+	cout << Darts(10000000) << endl;
+	// 当进行100,000,000次投点时
+	cout << Darts(100000000) << endl;
+	return 0;
+ 
+}
+
+通过代码可以看出，随机投点越多，则越接近与3.1415926…
+
+这个和抛硬币时求硬币正反面概率类似，实验次数越多，则越接近于理论值。
+
+下一章是《随机化算法(3) — 舍伍德(Sherwood)算法》
+
+www.WuTianQi.com Tanky Woo原创，欢迎转载，转载请附上链接，请不要私自删除文章内任何关于本博客的链接。

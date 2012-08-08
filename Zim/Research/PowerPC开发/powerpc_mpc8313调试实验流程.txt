@@ -1,0 +1,136 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-28T21:00:38+08:00
+
+====== powerpc mpc8313调试实验流程 ======
+Created Monday 28 November 2011
+http://blog.chinaunix.net/space.php?uid=12077574&do=blog&id=145091
+
+mpc8313调试实验流程
+硬件：1. MPC8313ERDB development board
+        2. usbtap JTAG
+软件：1. codewarrior for powerpc
+        2. powerpc-linux-gcc
+        3. u-boot
+        4. linux kernel
+一、 CPU片选分配和地址映射
+address range         target interface        chip-select line        device name             port size(bits)
+0x00000000~0x07ffffff    DDR2                  MCS0#        DDR SDRAM(128 Mbyte)          32
+0x80000000~0x9fffffff     PCI                    Nil               PCI memory space(512Mbyte)  32
+0xe0000000~0xe00fffff    internal bus         Nil              IMMR(1 Mbyte)                      
+0xe2000000~0xe20fffff    PCI                    Nil              PCI I/O space(1 Mbyte)            32
+0xe2800000~0xe2807fff   NAND controller   LCS1#         NAND flash(32kbyte)                8
+0xf0000000~0xf001ffff     local bus             LCS2#        vsc7385(128kbyte)                   8
+0xfa000000~0xfa07ffff     local bus             LCS3#        read/write buffer(32kbyte)        8
+0xfe000000~0xfe7fffff      local bus             LCS0#        boot flash(8Mbyte)                  16
+二、flash起始地址和内容分配
+start ~ end                        definition
+0xfe000000~0xfe0fffff         u-boot
+0xfe100000~0xfe2fffff         linux kernel
+0xfe300000~0xfe6fffff         ramdisk/jffs file system
+0xfe700000~0xfe70ffff        of tree
+0xfe710000~0xfe72ffff        vitesse 7385 image_loader program
+0xfe730000~0xfe7fdffff       reserved 
+0xfe7fe000 ~0xfe7ffffff       vitesse 7385 firmware image
+三、编译u-boot并使用 codewarrior下载
+u-boot$>make MPC8313ERDB_33_config
+u-boot$>make all CROSS_COMPILE=powerpc-linux-
+在进行u-boot烧写时先将拨码开关设置如下：
+Switch    1    2    3    4
+SW3       1    0    1    1
+SW4       1    1    1    1
+烧写完成后关闭电源将其设置为默认如下：
+Switch    1    2    3    4
+SW3       0    0    0    0
+SW4       1    1    1    1
+连接好串口和网络接口，打开超级终端，启动 u-boot至命令提示符。
+使用setenv设置环境变量（正确的环境变量设置是启动linux保证）设置内容如下：
+（需要根据自身硬件 环境修改）
+
+CPU:   e300c3, MPC8313, Rev: 1.0 at 333.333 MHz, CSB: 166.667 MHz
+Board: Freescale MPC8313ERDB
+I2C:   ready
+DRAM:  128 MB
+FLASH:  8 MB
+NAND:  32 MiB
+In:    serial
+Out:   serial
+Err:   serial
+Net:   TSEC0: No support for PHY id ffffffff; assuming generic
+TSEC0, TSEC1 [PRIME]
+Hit any key to stop autoboot:  0
+=> printenv
+ramboot=setenv rootdev /dev/ram;run setbootargs;tftp $ramdiskaddr $ramdiskfile;tftp $loadaddr $bootfile;tftp $fdtaddr $fdtfile;bootm $loadaddr $ramdiskaddr $fdtaddr
+
+nfsboot=setenv rootdev /dev/nfs;run setbootargs;run setipargs;tftp $loadaddr $bootfile;tftp $fdtaddr $fdtfile;bootm $loadaddr - $fdtaddr
+
+baudrate=115200
+loads_echo=1
+ethaddr=00:E0:0C:00:95:01
+eth1addr=00:E0:0C:00:95:02
+rootpath=/nfs/root/path
+hostname=mpc8313erdb
+bootfile=uImage
+netdev=eth1
+ethprime=TSEC1
+uboot=u-boot.bin
+
+tftpflash=tftpboot $loadaddr $uboot; protect off 0xFE000000 +$filesize; erase 0xFE000000 +$filesize; cp.b $loadaddr 0xFE000000 $filesize; protect on 0xFE000000 +$filesize; cmp.b $loadaddr 0xFE000000 $file
+
+fdtfile=mpc8313erdb.dtb
+console=ttyS0
+setbootargs=setenv bootargs root=$rootdev rw console=$console,$baudrate $othbootargs
+setipargs=setenv bootargs nfsroot=$serverip:$rootpath ip=$ipaddr:$serverip:$gatewayip:$netmask:$hostname:$netdev:off root=$rootdev rw console=$console,$baudrate $othbootargs
+ethact=TSEC1
+loadaddr=200000
+fdtaddr=400000
+bootcmd=bootm fe100000 fe300000 fe700000
+bootdelay=3
+ramdiskaddr=fe300000
+filesize=460000
+fileaddr=1000000
+famdiskfile=rootfs.ext2.gz.uboot
+ramdiskfile=rootfs.ext2.gz.uboot
+
+netmask=255.255.255.0
+bootargs=nfsroot=192.168.3.100:/nfs/root/path ip=192.168.3.200:192.168.3.100:192.168.3.1:255.255.255.0:mpc8313erdb:eth1:off root= rw console=ttyS0,115200
+rootdev=/dev/nfs run setbootargs run setipargs bootm fe100000 - fe700000
+imboot=setenv rootdev /dev/nfs run setbootargs run setipargs bootm fe100000 - fe700000
+ipaddr=192.168.2.201
+serverip=192.168.2.200
+gatewayip=192.168.2.1
+stdin=serial
+stdout=serial
+stderr=serial
+
+Environment size: 1672/8188 bytes
+
+=>setenv shiboot rootdev "/dev/nfs; run setbootargs; run setipargs; bootm fe100000 - fe700000"
+四、编译linux内核和结点文件dts驱动树
+1. 编译内核（略）
+2. 编译驱动树文件dts
+linux-2.6.x/arch/powerpc/boot/dts$ dtc -b 0 -V 17 -R 4 -S 0x3000 -I dts -O dtb -f mpc8313erdb.dts > mpc8313.dtb
+生成 mpc8313.dtb后搭建tftp服务
+将编译好的内核、文件系统、驱动树文件的bin放在搭建好的tftp目录下。
+五、使用tftp进 行内核、文件系统、驱动树文件的下载。
+1. 烧写内核
+=>tftp 200000 uImage
+=>erase fe100000 fe2fffff
+=>cp.b 200000 fe100000 $size(uImage文件大小)
+2. 烧写文件系统
+=>tftp 1000000 rootfs.ext2.gz.uboot
+=>erase fe300000 fe6fffff
+=>cp.b 1000000 fe300000 $size(rootfs.ext2.gz.uboot文件大小)
+3. 烧写驱动树文件
+=>tftp 400000 mpc8313.dtb
+=>erase fe700000 fe70ffff
+=>cp.b 400000 fe700000 $size(mpc8313.dtb)
+至此boot kernel filesystem dtb全部烧写完成，重启开发板启动至linux。
+
+六、驱动程序加载
+1. ping通网络使用NFS进行驱动加载。
+/$> mount -t nfs -o nolock 192.168.x.x:/pctree/nfs/ /mnt
+2. 加载/卸载驱动
+/mnt>insmod **.ko
+/mnt>rmmod **.ko
+

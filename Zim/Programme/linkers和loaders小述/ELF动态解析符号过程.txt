@@ -1,0 +1,508 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-20T15:59:39+08:00
+
+====== ELF动态解析符号过程 ======
+Created 星期一 20 六月 2011
+http://www.cublog.cn/u3/94690/showart_1943536.html
+
+by alert7 
+2002-01-27
+
+
+★★ 前言
+
+本篇文章以linux为平台为例，演示ELF动态解析符号的过程。不正之处，还请斧正。
+
+通常，ELF解析符号方式称为lazy MODE装载的。这种装载技术是ELF平台上默认的方式。在不同的体系平台在实现这种机制也是不同的。但是i386和SPARC
+在大部分上是相同的。
+
+动态连接器（rtld）提供符号的动态连接，装载共享objects和解析标号的引用。通常是ld.so,它可以是一个共享object也可以是个可执行的文件。
+
+★★ 符号表(symbol table)
+
+每个object要想**使它对其他的ELF文件可用**，就要用到符号表(symbol table)中symbol entry.事实上，一个symbol entry 是个**symbol结构**，它描述了这个
+symbol的名字和该symbol的value.   symbol name被编码作为**dynamic string table**的索引(index). The value of a symbol是在ELF OBJECT文件内该
+symbol的地址。该地址通常需要被重新定位（加上该object装载到内存的基地址(base load address)）. 从而构成该symbol在内存中的绝对地址。
+一个符号表入口有如下的格式：
+ typedef struct
+{
+  Elf32_Word    st_name;   /* Symbol name (string tbl index) */
+  Elf32_Addr    st_value;  /* Symbol value */
+  Elf32_Word    st_size;   /* Symbol size */
+  unsigned char st_info;   /* Symbol type and binding */
+  unsigned char st_other;  /* No defined meaning, 0 */
+  Elf32_Section st_shndx;  /* Section index */
+} Elf32_Sym;
+
+可执行文件他们知道运行时刻他们的地址，所以他们**内部的引用符号(指的是引用本地定义的函数、初始化的全局变量不包括非初始化全局变量。)**在编译时候就已经被重定位(已经是绝对地址引用)了。
+
+★★ GOT（global offset table）
+
+GOT是一个数组，存在ELF image的**数据段**中，他们是一些指向objects的指针(通常是数据objects).动态连接器将重新修改那些__编译时还没有确定下来地址的符号__的
+GOT入口。所以说GOT在i386动态连接中扮演着重要的角色。
+
+__PS：__编译时能够确定下来的符号包括本地定义的函数、已初始化全局\静态变量。
+
+★★ PLT（procedure linkage table）
+
+PLT是一个这样的结构，它的entries包含了一些代码片段用来传输控制到外部的过程。在i386体系下，PLT和他的代码片段entries有如下格式：
+
+PLT0: 
+	push GOT[1] ; word of identifying information //这个其实是本进程已经加载的动态链接库的链表入口地址。
+	jmp GOT[2] ; pointer to __rtld function__ 
+        nop 
+	... 
+PLTn: 
+	jmp GOT[x + n] ; GOT offset of symbol address 
+	push n ; __relocation offset__ of symbol 
+	jmp PLT0 ; call the rtld
+PLTn + 1 
+	jmp GOT[x +n +1]; GOT offset of symbol address 
+	push n +1 ; relocation offset of symbol 
+	jmp PLT0 ; call the rtld
+
+当传输控制到一个__外部__的函数时，它传输执行到PLT 中跟该symbol相关的那个entry(是在编译时候连接器安装的)。在PLT entry中第一条指令将jump到一个存储在GOT中的一个指针地址；假如符号还没有被解析，该GOT中存放着的是该PLT entry中的下一条指令地址。该指令push一个在重定位表中的偏移量到stack，然后下一条指令传输控制到PLT[0]入口。该PLT[0]包含了调用RTLD解析符号的函数代码。该解析符号函数地址由程序装载器已经插入到GOT[2]中了。
+
+动态连接器将展开stack并且获取需要解析符号在重定位表地址信息。**重定位入口、符号表和字符串表**共同决定着PLT entry引用的那个符号和在进程内存中符号应该存放的地址。假如可能的话，该符号将被解析出来，它的地址将被存放在被该PLT entry使用的GOT entry中。下一次该符号被请求时，与之对应的GOT已经包
+含了该符号的地址了。所以，所有后来的调用将直接通过GOT传输控制。动态连接器只解析**第一次**被二进制文件所引用的符号；这种引用方式就是我们上面所说的
+lazy MODE。
+
+
+★★ 哈希表和链(hash table and chain)
+
+除了符号表（symbol table），GOT（global offset table），PLT（procedure linkage table），字符串表(string table), 对GOT中条目重定位表(.rel.dyn/.rel.plt)   ELF objects还可以包含一个hash table和chain（用来使动态连接器解析符号更加容易）。hash table和chain 通常被用来迅速判定在符号表中哪个entry可能符合所请求的符号名。hash table(总是伴随着chain的)被作为整型数组存放。在hash表中，一半位置是留给那些buckets的，另一半是留给在chain中的元素(element)的. **hash table直接反映了symbol table的元素数目和他们的次序**。
+
+动态连接器结构提供了所有动态连接的执行是以透明方式访问动态连接器.然而，**明确访问**也是可用的。动态连接（装载共享objects和解析符号），可以通过直接访问RTLD的那些函数来完成：dlopen() , dlsym() and  dlclose() .这些函数被包含在动态连接器本身中。为了访问那些函数，连接时需要把动态连接函数库__(libdl)__连接进去。该库包含了一些stub函数允许编译时候连接器解析那些函数的引用；然而那些stub函数只简单的返回0。因为事实上函数驻留在动态连接器中，假如从静态连接的ELF文件中调用那些函数，共享object的装载将会失败。
+
+对于执行动态连接器所必须的是：hash table,hash table元素的数目，chain,dynamic string table和dynamic symbol table。满足了这些条件，下面算法适用任何symbol的地址计算：
+
+1. hn = elf_hash(sym_name) % nbuckets;
+2. for (ndx = hash[ hn ]; ndx; ndx = chain[ ndx ]) { 
+3. symbol = sym_tab + ndx;
+4. if (strcmp(sym_name, str_tab + symbol->st_name) == 0) 
+5. return (load_addr + symbol->st_value); }
+
+hash号是elf_hash()的返回值，在ELF规范的第4部分有定义，以hash table中元素个数取模。该号被用来做hash table的下表索引，求得hash值，找出与之匹配的符号名的chain的索引(line 3)。使用该索引，符号从符号表中获得（line 3).比较获得的符号名和请求的符号名是否相同(line 5).使用这个算法，就可以简单解析任何符号了。
+
+
+★★ 演示
+
+#include <stdio.h>
+int main(int argc, char *argv[])
+{
+	printf("Hello, world\n");
+	return 0;
+}
+
+
+Relocation section '.rel.plt' at offset 0x278 contains 4 entries:
+  Offset    Info  Type            Symbol's Value  Symbol's Name
+  0804947c  00107 R_386_JUMP_SLOT       080482d8  __register_frame_info
+  08049480  00207 R_386_JUMP_SLOT       080482e8  __deregister_frame_info
+  08049484  00307 R_386_JUMP_SLOT       080482f8  __libc_start_main
+  08049488  00407 R_386_JUMP_SLOT       08048308  printf
+只有**R_386_JUMP_SLOT**的才会出现在GOT中
+
+Symbol table '.dynsym' contains 7 entries:
+  Num:    Value  Size Type    Bind   Ot  Ndx Name
+    0:        0     0 NOTYPE  LOCAL   0  UND
+    1:  80482d8   116 FUNC    WEAK    0  UND __register_frame_info@GLIBC_2.0 (2)
+    2:  80482e8   162 FUNC    WEAK    0  UND __deregister_frame_info@GLIBC_2.0 (
+2)
+    3:  80482f8   261 FUNC    GLOBAL  0  UND __libc_start_main@GLIBC_2.0 (2)
+    4:  8048308    41 FUNC    GLOBAL  0  UND printf@GLIBC_2.0 (2)
+    5:  804843c     4 OBJECT  GLOBAL  0   14 _IO_stdin_used
+    6:        0     0 NOTYPE  WEAK          0  UND __gmon_start__
+
+
+[alert7@redhat]$ gcc -o test test.c
+[alert7@redhat]$ ./test
+Hello, world
+[alert7@redhat]$ objdump -x test
+...
+Dynamic Section:
+ ** NEEDED      libc.so.6**
+  INIT        0x8048298
+  FINI        0x804841c
+ ** HASH        0x8048128**
+  **STRTAB      0x80481c8**
+**  SYMTAB      0x8048158**
+  STRSZ       0x70
+  SYMENT      0x10
+  DEBUG       0x0
+**  PLTGOT      0x8049470  **
+**  PLTRELSZ    0x20**
+**  PLTREL      0x11**
+**  JMPREL      0x8048278**
+  REL         0x8048270
+  RELSZ       0x8
+  RELENT      0x8
+  VERNEED     0x8048250
+  VERNEEDNUM  0x1
+  VERSYM      0x8048242
+...
+  7 .rel.got      00000008  08048270  08048270  00000270  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  8 .rel.plt      00000020  08048278  08048278  00000278  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  9 .init         0000002f  08048298  08048298  00000298  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+ 10 .plt          00000050  080482c8  080482c8  000002c8  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+ 11 .text         000000fc  08048320  08048320  00000320  2**4
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+ 12 .fini         0000001a  0804841c  0804841c  0000041c  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+ 13 .rodata       00000016  08048438  08048438  00000438  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+ 14 .data         0000000c  08049450  08049450  00000450  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+ 15 .eh_frame     00000004  0804945c  0804945c  0000045c  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+ 16 .ctors        00000008  08049460  08049460  00000460  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+ 17 .dtors        00000008  08049468  08049468  00000468  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+ 18 .got          00000020  08049470  08049470  00000470  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+ 19** .dynamic **     000000a0  08049490  08049490  00000490  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+...
+[alert7@redhat]$ gdb -q test
+(gdb) disass main
+Dump of assembler code for function main:
+0x80483d0 <main>:       push   %ebp
+0x80483d1 <main+1>:     mov    %esp,%ebp
+0x80483d3 <main+3>:     push   $0x8048440
+0x80483d8 <main+8>:     call  __ 0x8048308__ <printf>  **//指令对PLT的引用是绝对地址**
+0x80483dd <main+13>:    add    $0x4,%esp
+0x80483e0 <main+16>:    xor    %eax,%eax
+0x80483e2 <main+18>:    jmp    0x80483e4 <main+20>
+0x80483e4 <main+20>:    leave
+0x80483e5 <main+21>:    ret
+...
+0x80483ef <main+31>:    nop
+End of assembler dump.
+(gdb) **b *0x80483d8**
+Breakpoint 1 at 0x80483d8
+(gdb) r
+Starting program: /home/alert7/test
+
+Breakpoint 1, 0x80483d8 in main ()
+(gdb) **disass 0x8048308		**		①	⑴
+Dump of assembler code for function printf:
+//PLT4
+/****************************************/	：
+0x8048308 <printf>:     jmp    __*0x8049488 __      //jmp GOT[6]  ** //PLT对GOT的引用也是绝对地址**
+						//此时，GOT[6]中存在的是0x804830e
+0x804830e <printf+6>:   push   $0x18		//$0x18为printf重定位入口在JMPREL section中的偏移量
+0x8048313 <printf+11>:  jmp    0x80482c8 <_init+48> //jmp PLT0
+						//PLT0处存放着调用RTLD函数的指令，函数返回时候，把GOT[6]修改为真正的
+						//printf函数地址，然后直接跳到printf函数执行。
+/****************************************/
+End of assembler dump.
+
+// GOT[6]的内容
+(gdb) x 0x8049488				
+__0x8049488 __<_GLOBAL_OFFSET_TABLE_+24>:   0x0804830e
+
+下面为完整的PLT：
+080482c8 <.plt>:				②		
+//PLT0：
+ 80482c8:       ff 35 74 94 04 08       pushl  0x8049474	//pushl GOT[1]地址
+								//GOT[1]是一个鉴别信息，是link_map类型的一个指针
+ 80482ce:       ff 25 78 94 04 08       jmp    *0x8049478	//JMP GOT[2]
+								//跳到动态连接器解析函数执行
+ 80482d4:       00 00                   add    %al,(%eax)
+ 80482d6:       00 00                   add    %al,(%eax)
+//PLT1：
+ 80482d8:       ff 25 7c 94 04 08       jmp    *0x804947c	
+ 80482de:       68 00 00 00 00          push   $0x0
+ 80482e3:       e9 e0 ff ff ff          jmp    80482c8 <_init+0x30>
+//PLT2：
+ 80482e8:       ff 25 80 94 04 08       jmp    *0x8049480
+ 80482ee:       68 08 00 00 00          push   $0x8
+ 80482f3:       e9 d0 ff ff ff          jmp    80482c8 <_init+0x30>
+//PLT3：
+ 80482f8:       ff 25 84 94 04 08       jmp    *0x8049484	
+ 80482fe:       68 10 00 00 00          push   $0x10
+ 8048303:       e9 c0 ff ff ff          jmp    80482c8 <_init+0x30>
+**//PLT4：**
+__ 8048308: __      ff 25 88 94 04 08       jmp    *0x8049488	
+ 804830e:       68 18 00 00 00          push   $0x18
+ 8048313:       e9 b0 ff ff ff          jmp    80482c8 <_init+0x30>
+
+(gdb) **b * 0x80482c8**
+Breakpoint 2 at 0x80482c8
+(gdb) c
+Continuing.
+
+Breakpoint 2, 0x80482c8 in__ _init ()__
+
+(gdb) x/8x 0x8049470  //每个GOT entry占4字节
+0x8049470 <_GLOBAL_OFFSET_TABLE_>:      0x08049490     __ 0x40013ed0__    __  0x4000a960__      0x400fa550
+0x8049480 <_GLOBAL_OFFSET_TABLE_+16>:   0x080482ee      0x400328cc      0x0804830e      0x00000000
+
+(gdb)** x/50x 0x40013ed0 ( * link_map类型)**
+0x40013ed0:     0x00000000      0x40010c27      0x08049490      0x400143e0
+0x40013ee0:     0x00000000      0x40014100      0x00000000      0x08049490
+0x40013ef0:     0x080494e0      0x080494d8      0x080494a8      0x080494b0
+0x40013f00:     0x080494b8      0x00000000      0x00000000      0x00000000
+0x40013f10:     0x080494c0      0x080494c8      0x08049498      0x080494a0
+0x40013f20:     0x00000000      0x00000000      0x00000000      0x080494f8
+0x40013f30:     0x08049500      0x08049508      0x080494e8      0x080494d0
+0x40013f40:     0x00000000      0x080494f0      0x00000000      0x00000000
+0x40013f50:     0x00000000      0x00000000      0x00000000      0x00000000
+0x40013f60:     0x00000000      0x00000000      0x00000000      0x00000000
+(gdb)** disass 0x4000a960	**			③
+Dump of assembler code for __function _dl_runtime_resolve__:
+0x4000a960 <_dl_runtime_resolve>:       push   %eax
+0x4000a961 <_dl_runtime_resolve+1>:     push   %ecx
+0x4000a962 <_dl_runtime_resolve+2>:     push   %edx
+0x4000a963 <_dl_runtime_resolve+3>:     mov    0x10(%esp,1),%edx
+0x4000a967 <_dl_runtime_resolve+7>:     mov    0xc(%esp,1),%eax
+0x4000a96b <_dl_runtime_resolve+11>:    call   0x4000a740 <fixup>
+					//调用**真正的解析函数fixup()**，修正GOT[6]，使它指向真正的printf函数地址
+0x4000a970 <_dl_runtime_resolve+16>:    pop    %edx
+0x4000a971 <_dl_runtime_resolve+17>:    pop    %ecx
+__0x4000a972 __<_dl_runtime_resolve+18>:    xchg   %eax,(%esp,1)
+__0x4000a975 __<_dl_runtime_resolve+21>:    ret    $0x8	//跳到printf函数地址执行
+0x4000a978 <_dl_runtime_resolve+24>:    nop
+0x4000a979 <_dl_runtime_resolve+25>:    lea    0x0(%esi,1),%esi
+End of assembler dump.
+
+**(gdb) b * 0x4000a972**
+Breakpoint 4 at 0x4000a972: file dl-runtime.c, line 182.
+(gdb) c
+Continuing.
+
+Breakpoint 4, 0x4000a972 in _dl_runtime_resolve () at dl-runtime.c:182
+182     in dl-runtime.c
+(gdb) i reg $eax $esp
+eax            __0x4006804c  __     1074167884
+esp            0xbffffb64       -1073743004
+
+(gdb) b *0x4000a975
+Breakpoint 5 at 0x4000a975: file dl-runtime.c, line 182.
+(gdb) c
+Continuing.
+
+Breakpoint 5, 0x4000a975 in _dl_runtime_resolve () at dl-runtime.c:182
+182     in dl-runtime.c
+(gdb) si
+__printf__ (format=0x1 <Address 0x1 out of bounds>) at printf.c:26
+26      printf.c: No such file or directory.
+**(gdb) disass		**			④	⑵
+Dump of assembler code for function **printf:**
+__0x4006804c __<printf>:    push   %ebp
+0x4006804d <printf+1>:  mov    %esp,%ebp
+0x4006804f <printf+3>:  push   %ebx
+0x40068050 <printf+4>:  call   0x40068055 <printf+9>
+0x40068055 <printf+9>:  pop    %ebx
+0x40068056 <printf+10>: add    $0xa2197,%ebx
+0x4006805c <printf+16>: lea    0xc(%ebp),%eax
+0x4006805f <printf+19>: push   %eax
+0x40068060 <printf+20>: pushl  0x8(%ebp)
+0x40068063 <printf+23>: mov    0x81c(%ebx),%eax
+0x40068069 <printf+29>: pushl  (%eax)
+0x4006806b <printf+31>: call   0x400325b4
+0x40068070 <printf+36>: mov    0xfffffffc(%ebp),%ebx
+0x40068073 <printf+39>: leave
+0x40068074 <printf+40>: ret
+End of assembler dump.
+
+(gdb) x/8x 0x8049470
+0x8049470 <_GLOBAL_OFFSET_TABLE_>:      0x08049490      0x40013ed0      0x4000a960      0x400fa550
+0x8049480 <_GLOBAL_OFFSET_TABLE_+16>:   0x080482ee      0x400328cc     __ 0x4006804c __     0x00000000
+
+GOT[6]已经被修正为0x4006804c了
+
+第一次调用printf()的时候需要经过①->②->③->④  以后调用printf()的时候就不需要这么复杂了，只要经过⑴->⑵就可以了
+
+===== 我们来看看到底是如何修正GOT[6]的，也是就说如何找到要修正的地址的 =====
+(以前我在这点理解上发生了一些比较大的误解，误导各位的地方还请包涵:) )
+
+1：
+进入PLT4的时候 push   $0x18 ，该$0x18为printf重定位入口在**JMPREL section**中的偏移量
+2：
+printf重定位地址为__JMPREL__+$0x18  /* Elf32_Rel * reloc = JMPREL + reloc_offset; */
+
+**(gdb) x/8x 0x8048278+0x18**
+0x8048290:		__0x08049488      0x00000407 __     0x53e58955      0x000000e8
+0x80482a0 <_init+8>:    0xc3815b00      0x000011cf      0x001cbb83      0x74000000
+typedef struct {
+      Elf32_Addr	r_offset;
+      Elf32_Word	r_info;
+  } Elf32_Rel;
+也就是说printf重定位printf_retloc.r_offset=0x08049488;   printf_retloc.r_info=0x00000407;
+
+再看看0x08049488是什么地方
+(gdb) x 0x08049488
+0x8049488 <_GLOBAL_OFFSET_TABLE_+24>:   0x4006804c
+**也就是GOT[6]**
+3: 
+void *const rel_addr = (void *)(l->l_addr + reloc->r_offset);对一个可执行文件 或一个共享目标而言,rel_addr就等于reloc->r_offset 
+所以rel_addr=0x08049488=GOT[6]；
+4：
+***reloc_addr = value;**
+修正了rel_addr也就是GOT[6]。至于value是如何计算的，请参考下面的源代码
+ 
+同时r_info又关联着一个符号
+Elf32_Sym * sym = &SYMTAB[ ELF32_R_SYM (reloc->r_info) ];
+sym=0x8048158+0x00000407;
+  typedef struct {
+      Elf32_Word	st_name;
+      Elf32_Addr	st_value;
+      Elf32_Word	st_size;
+      unsigned char	st_info;
+      unsigned char	st_other;
+      Elf32_Half	st_shndx;
+  } Elf32_Sym;
+(gdb) x/10x 0x8048158+0x00000407
+0x804855f:      0x00003a00      0x00008000      0x00000000      0x00006900
+0x804856f:      0x00008000      0x00000000      0x00008300      0x00008000
+0x804857f:      0x00000000      0x0000b700
+
+link_map结构说明如下：
+/* Structure describing a loaded shared object.  The `l_next' and `l_prev'
+   members form a chain of all the shared objects loaded at startup.
+
+   These data structures exist in space used by the run-time dynamic linker;
+   modifying them may have disastrous results.
+
+   This data structure might change in future, if necessary.  User-level
+   programs must avoid defining objects of this type.  */
+
+
+★★ glibc中动态解析符号的源代码（glibc 2.1.3的实现）
+
+	.text
+	.globl _dl_runtime_resolve
+	.type _dl_runtime_resolve, @function
+	.align 16
+_dl_runtime_resolve:
+	pushl %eax		# Preserve registers otherwise clobbered.
+	pushl %ecx
+	pushl %edx
+	movl 16(%esp), %edx	# Copy args pushed by PLT in register.  Note
+	movl 12(%esp), %eax	# that `fixup' takes its parameters in regs.
+	__call fixup	__	# Call resolver.
+	popl %edx		# Get register content back.
+	popl %ecx
+	xchgl %eax, (%esp)	**# Get %eax contents end store function address.**
+	**ret $8			# Jump to function address.**
+
+//-----------------以下为link_map的类型定义
+The foramt of link_map is (from /usr/include/link.h)
+
+    struct link_map
+      {
+        ElfW(Addr) l_addr;      /* Base address shared object is loaded at.  */
+        char *l_name;           /* Absolute file name object was found in.  */
+        ElfW(Dyn) *l_ld;        /* Dynamic section of the shared object.  */
+        struct link_map *l_next, *l_prev; /* Chain of loaded objects.  */
+      };
+
+A small explanation for the fields.
+
+    l_addr: Base address where shared object is loaded. This value can also be found from /proc/<pid>/maps
+    l_name: pointer to library name in string table
+    l_ld : pointer to dynamic (DT_*) sections of shared lib
+    l_next: pointer to next link_map node
+    l_prev: pointer to previous link_map node
+//---------------------------
+
+
+
+static ElfW(Addr) __attribute__ ((unused))
+fixup (
+# ifdef ELF_MACHINE_RUNTIME_FIXUP_ARGS
+        ELF_MACHINE_RUNTIME_FIXUP_ARGS,
+# endif
+      ** struct link_map *l, ElfW(Word) reloc_offset**)  //使用的是PLT压入的两个参数类型
+{
+  const ElfW(Sym) *const symtab
+    = (const void *) l->l_info[DT_SYMTAB]->d_un.d_ptr;
+  const char *strtab = (const void *) l->l_info[DT_STRTAB]->d_un.d_ptr;
+
+  const** PLTREL** *const reloc  /*计算函数重定位人口*/
+    = (const void *) (l->l_info[DT_JMPREL]->d_un.d_ptr + reloc_offset);
+                      /*l->l_info[DT_JMPREL]->d_un.d_ptr 为JMPREL section的地址*/
+
+  const ElfW(Sym) *sym = &symtab[ELFW(R_SYM) (reloc->r_info)];/*计算函数symtab入口*/
+  void *const rel_addr = (void *)(l->l_addr + reloc->r_offset);/*重定向符号的绝对地址*/
+				
+  ElfW(Addr) value;
+
+  /* The use of `alloca' here looks ridiculous but it helps.  The goal is   to prevent the function from being inlined and thus optimized out.
+     There is no official way to do this so we use this trick.  gcc never    inlines functions which use `alloca'.  */
+  alloca (sizeof (int));
+
+  /* Sanity check that we're really looking at a PLT relocation.  */
+  assert (ELFW(R_TYPE)(reloc->r_info) == ELF_MACHINE_JMP_SLOT);/*健壮性检查*/
+
+__   /* Look up the target symbol.  */__
+  switch (l->l_info[VERSYMIDX (DT_VERSYM)] != NULL)
+    {
+    default:
+      {
+	const ElfW(Half) *vernum =
+	  (const void *) l->l_info[VERSYMIDX (DT_VERSYM)]->d_un.d_ptr;
+	ElfW(Half) ndx = vernum[ELFW(R_SYM) (reloc->r_info)];
+	const struct r_found_version *version = &l->l_versions[ndx];
+
+	if (version->hash != 0)
+	  {
+	    value =__ _dl_lookup_versioned_symbol__(strtab + sym->st_name,
+						&sym, l->l_scope, l->l_name,
+						version, ELF_MACHINE_JMP_SLOT);
+	    break;
+	  }
+      }
+    case 0:
+      value = _dl_lookup_symbol (strtab + sym->st_name, &sym, l->l_scope,
+				 l->l_name, ELF_MACHINE_JMP_SLOT);
+    }
+
+   /*此时value为object装载的基地址*/
+  /* Currently value contains the base load address of the object  that defines sym.  Now add in the symbol offset.  */
+
+  value = (sym ? value + sym->st_value : 0);/*函数的绝对地址*/
+
+  /* And now perhaps the relocation addend.  */
+  value = elf_machine_plt_value (l, reloc, value);/*可能还需要一下重定位*/
+
+  /* Finally, fix up the plt itself.  */
+  elf_machine_fixup_plt (l, reloc, rel_addr, value);/*修正rel_addr，一般来说是GOT[N]*/
+
+  return value;
+}
+
+
+static inline Elf32_Addr
+elf_machine_plt_value (struct link_map *map, const Elf32_Rela *reloc,
+		       Elf32_Addr value)
+{
+  return value + reloc->r_addend;
+}
+
+
+/* Fixup a PLT entry to bounce directly to the function at VALUE.  */
+static inline void
+elf_machine_fixup_plt (struct link_map *map, const Elf32_Rel *reloc,
+		       Elf32_Addr *reloc_addr, Elf32_Addr value)
+{
+  *reloc_addr = value;
+}
+
+
+参考资料：
+
+1.glibc 2.1.3 src
+2.<<ELF文件格式>>
+3.<<Cheating the ELF Subversive Dynamic Linking to Libraries>> write by the grugq
+4.Linux动态链接技术 
+  http://www.linuxforum.net/forum/showflat.php?Cat=&Board=Kstudy&Number=102793&page=1&view=collapsed&sb=5&o=31&part=
+5.p58-0x04  by Nergal <nergal@owl.openwall.com>
+  << The advanced return-into-lib(c) exploits >>

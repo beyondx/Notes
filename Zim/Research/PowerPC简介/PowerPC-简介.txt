@@ -1,0 +1,76 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-26T12:13:53+08:00
+
+====== PowerPC-简介 ======
+Created Saturday 26 November 2011
+
+http://blog.sina.com.cn/s/blog_6e09b50f0100o2fk.html
+
+PowerPC 是一种精简指令集（RISC）架构的中央处理器（CPU），其基本的设计源自IBM（国际商用机器公司）的 PowerPC
+
+===== IBM PowerPC 601 微处理器 =====
+
+POWER（Performance Optimized With Enhanced RISC；《IBM Connect 电子报》2007年8月号译为“增强RISC性能优化”）架构。二十世纪九十年代，IBM(国际商用机器公司)、Apple（苹果公司）和Motorola（摩托罗拉）公司开发PowerPC芯片成功，并制造出基于PowerPC的多处理器计算机。PowerPC架构的特点是可伸缩性好、方便灵活。
+
+===== 定义 =====
+　　PowerPC 体系结构规范（PowerPC Architecture Specification）发布于 1993 年，它是一个 64 位规范 ( 也包含 32 位子集 )。几乎所有常规可用的 PowerPC（除了新型号 IBM RS/6000 和所有 IBM pSeries 高端服务器）都是 32 位的。
+
+===== 家族谱系 =====
+　　目前，主流的PowerPC处理器制造商有IBM、Freescale™ Semiconductor（原摩托罗拉半导体部）、AMCC、LSI等[1]。其中以IBM和Freescale的PowerPC处理器最为流行。
+
+=== IBM的PowerPC家族 ===
+　　IBM目前共有3个主要的PowerPC处理系列：Power、Power PC和CELL。POWER，POWER PC中间，还有一个Star系列。
+　　POWER系列CPU从1990开始生产、装备到RS/6000（即RISC System/6000）UNIX工作站和服务器上，现在被称为eServer™ pSeries®服务器（最新的名称是POWER System p系列），主要的型号有POWER 1，POWER 2™，POWER 3™，POWER 4™，POWER 4+，以及目前的POWER 5，POWER 5+,power6和power7。
+　　Star系列处理器，是**Power PC架构的另一种技术实现**，与POWER系列非常类似。由于此系列的各种CPU代号都有Star或者用某一颗星的名字来命名，因此被称为Star系列。
+　　Power PC系列，是从POWER架构**发展出来的一个分支**，最早在1993年发布，用于从单板机、电池电源管理到超级计算机和Mainframe主机。Power PC最早登上主角的地位是从作为Power Macintosh 6100的CPU开始的。
+　　今天，Power PC家族有三条产品线，分别是嵌入式的Power PC 400系列，Power PC 700和Power PC 900系列。Power PC 400系列被IBM转让给**AMCC**，发展成为PowerPC 405 Family、**PowerPC 440 Family**、PowerPC 460 Family 3大系列。
+
+=== Freescale PowerPC系列 ===
+　　Freescale公司提供了数量众多的含**集成化外设**的PowerPC处理器，目前在**网络设备市场**取得了非常可观的成功。目前Freescale公司已经调整其PowerPC产品策略，将其划分成3个主要市场：网络设备、汽车电子(MPC5xx系列)和工业控制。
+　　Freescale PowerPC在通讯领域的成功，很可能要归功于**PowerQUICC**，这也是IBM的PowerPC和Freescale 的PowerPC的最重要的区别。1993年，摩托罗拉半导体事业部(飞思卡尔半导体前身)在充分理解通信系统应用的基础上，生产了第一颗包含QUICC(Quad Integrated Communications Controller)的芯片--MC68360。此时，QUICC实际上是一颗独立的处理器。1994年，摩托罗拉半导体事业部的工程师开始把MC68360的QUICC和PowerPC内核结合，将**集成了QUICC的PowerPC处理器称为PowerQUICC**，并将其中的QUICC处理模块称为**CPM**。
+　　1995年，MPC860芯片面市，标志着一个通信处理器时代的开始。这颗芯片实现了作为控制中心的PowerPC处理器和作为数据处理中心的CPM的分离，采用了数据通路和控制通路分开的思想。
+　　PowerQUICC系列芯片也一路升级，从PowerQUICC I到PowerQUICC II，再到PowerQUICC III和PowerQUICC II pro。目前，Freescale 将CPM升级为**QE**(QUICC Engine)。
+
+　　伴随PowerQUICC的升级，Freescale PowerPC内核也在升级。
+　　603内核系列：MPC850、MPC860、MPC875、MPC885等，目前是最低端的Freescale PowerPC处理器。这类PowerPC处理器没有包含SDRAM接口，用户必须使用MPC860提供的UPM（USER Programmable Machines）配置成SDRAM接口。603内核配合PowerQUICC I。
+　　603E内核系列：MPC8250、MPC8260、MPC8272等。从PowerPC内核的角度看，603到603E的升级不大，主要是MMU上，此外包含了SDRAM控制器。603E内核配合PowerQUICC II。
+　　E300内核系列：MPC8349、MPC8347、MPC8360等。E300系列与603E系列结构**基本一致**，在处理器内核上的修改不多。QE最先在MPC8360上实现，此外支持DDR SDRAM接口。E300内核配合PowerQUICC II pro。
+　　E500内核系列：包括MPC8540、MPC8560、MPC8548等。E500内核共有V1 、V2两个版本。V1版本和V2版本的最大区别在于MMU。**基于E500内核的PowerPC处理器是Freescale高端处理器的发展方向**。E500 内核和603E有很大的不同，只有指令系统是兼容的，其他内核组件都不相同。E500内核支持DDR SDRAM，RapidIO和千兆以太网接口。E500内核配合PowerQUICC III。
+　　E600内核系列：也称为G4，包括MPC7410，MPC7447，MPC7448，MPC8641等。与IBM的Power 700系列的最大不同在于G4系列支持AltiVec结构。这类处理器也是Apple用于MAC机的芯片。
+　　E700系列：支持64位的PowerPC结构，开发中(最新消息不明，怀疑被放弃).
+
+=== QorIQ系列 ===
+
+　　飞思卡尔__ QorIQ__通信平台是飞思卡尔的 PowerQUICC通信处理器的下一代演进产品，包含一个或者更多个核，一共有5个不同的产品平台。按照功能和性能，分为 P1, P2, P3, P4 和P5,同老的PowerPC产品保持软件兼容，例如PowerQUICC平台。
+　　QorIQ 商标和P1、P2、P4产品家族在2008年6月被公布。__所有的QorIQ处理器基于 e500 or e5500 核心__。P10xx 和 P20xx 系列基于e500v2 核心，P340xx 和P40xx 系列基于 e500mc 核心，P50xx 则基于e5500 核心。
+　　P1系列
+　　P1系列被设计用于网关、以太网交换机、无线局域网接入点和通用控制目的。P1系列属于入门级，运行在400到800MHz，用于替代PowerQUICC II Pro 和PowerQUICC III平台。P1系列封装成689个引脚，同P2系列兼容。
+　　P1011 -包含一个800MHze500核心，256 kB L2 cache,4个SerDes lanes，3个吉比特以太网控制器，以及一个用于老实电话的时分复用引擎(TDM engine) 。
+　　P2系列
+　　P2系列设计用于网络、电信、军工的广泛应用。能运行在-40 到 125 °C，特别适合苛刻条件下的应用。P2系列属于中端产品，运行在800Mhz到1.2GHz，用于替代PowerQUICC II Pro 和PowerQUICC III平台。
+　　P3系列
+　　P3 系列设计属于中端产品，用于交换机和路由器。P3系列提供了一个多核平台，支持4个e500mc核心，每个核心频率能达到1.5 GHz。P3系列拥有1.3 GHz 64-bit DDR3内存控制器，18个SerDes lanes，以及用于数据包操作和调度、正则表达式、RAID、安全、加密和RapidIO的硬件加速器。
+　　P3系列的多个核心能够运行在对称模式和非对称模式，意味着多个核心可以一起或者个别引导运行操作系统。
+　　P4系列
+　　P4系列属于高端产品，用于核心网或者企业级交换机、路由器。提供极限多核平台，支持8个e500mc核心，每一个核达到1.5 GHz。
+　　P5系列
+　　P5系列基于高性能64-bit e5500 核心，频率提高到2.5 GHz 。2010年6月介绍，可能2010年底可有样片，2011年可批量生产。
+
+
+=== 功能与优势 ===
+　　PowerPC 处理器有广泛的实现范围，包括从诸如RoadRunner 那样的世界上最快的超级计算机， 到次世代3大游戏主机（WII、PS3、X360）都基于PowerPC。PowerPC 处理器有非常强的嵌入式表现，因为它具有优异的性能、巨大的数据吞吐量、较低的能量损耗以及较低的散热量。
+　　用于嵌入式的PowerPC， 同ARM相比，具有以下优势：
+　　
+* 　　优势1 超高的性能
+* 　　最新的QorIQ P4含有8个1.5 GHz的e500mc核，计算性能远非最高端的ARM可比。
+* 　　同等条件下的每兆赫兹的MIPS 比ARM高。ARM 大概是1.1 MIPS/MHz，Power Architecture 是大于2.3MIPS/MHz
+* 　　优势2 强大的数据吞吐量
+* 　　支持DDR2甚至DDR3内存控制器，ARM一般只有SDRAM控制器
+* 　　QUICC Engine技术使得每一个三速以太网控制器达到1.2Gb/s的全双工通信速率
+* 　　8颗UCC(通用通信控制器)能使千兆以太网、HDLC、UTOPIA/Packet over SONET(POS)的数据速率高达OC-12
+* 　　优势3：稳定性，可靠性
+* 　　设备能可靠稳定运行在： -40℃-105℃
+* 　　Powerpc架构具有很强稳定性能，高可靠性
+* 　　更长的产品寿命周期（通常10到15年以上）
+* 　　苛刻条件下，芯片具有很强健壮性，适合工业级应用 

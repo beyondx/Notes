@@ -1,0 +1,83 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-24T20:24:00+08:00
+
+====== Serving Static Media In Django Development Server ======
+Created Monday 24 October 2011
+http://www.muhuk.com/2009/05/serving-static-media-in-django-development-server/
+
+There is a misconception about how static files (a.k.a media files) are handled in Django. Actually it is quite clearly documented here and here. Nevertheless a question about this comes up in the mailing-list or IRC channel frequently:
+ 
+* Where do I put my media files?
+* Django can’t find my foo.gif!
+* How can I link my CSS?
+
+First of all, just to make it clear; just because **a server returns a response body with an internal URL doesn’t necessarily mean it will be available on that server.** It is one thing that your templates produce the correct URL to a media file and another thing that your server actually serves that resource on that URL. **Django development server doesn’t automagically serve media files1.**
+
+===== Settings =====
+
+There are three settings to get right: **MEDIA_ROOT, MEDIA_URL and ADMIN_MEDIA_PREFIX**. MEDIA_ROOT is the **absolute** filesystem path where your media files are. I usually set it like:
+
+== MEDIA_ROOT ==
+ = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'media')
+This will set MEDIA_ROOT to point to the media directory in** your project directory**2. MEDIA_URL and ADMIN_MEDIA_PREFIX are **URL’s**:
+
+== MEDIA_URL ==
+ = '/media/'   #定义media file的URL命名空间，若为其它主机的URL，则Django将__不能__为这些文件服务(因为客户浏览器会项指定的主机请求media file。)
+
+== ADMIN_MEDIA_PREFIX ==
+ = '/media/admin/'
+
+With this setup, to serve admin media in production, all I need to do is to **symlink **media folder of admin app into my media directory. Of course you can set MEDIA_URL to point to **another domain/subdomain**. Such as http://media.mydomain.com/. But this way you can’t serve your media from development server.
+
+===== URL Configuration =====
+
+Add the following code snipplet at the end of your__ root __urls.py:
+
+   1 if settings.DEBUG:
+   2     from django.views.static import serve
+   3     _media_url = settings.MEDIA_URL
+   4     if _media_url.startswith('/'):
+   5         _media_url = _media_url[1:]
+   6         urlpatterns += patterns('',
+   7                                 (r'^%s(?P<path>.*)$' % _media_url,
+   8                                 serve,
+   9                                 {'document_root': settings.**MEDIA_ROOT**}))
+  10     del(_media_url, serve)
+
+settings.DEBUG == True doesn’t necessarily mean development server is running. But it is a good indicator since deploying with development server is not a good idea for many reasons. Notice here we don’t serve media unless MEDIA_URL is an **absolute URL** on our server.
+
+===== Templates =====
+
+Finally we need to specify media URL’s correctly. To avoid hard-coding media path we will be using__ { { MEDIA_URL } } __context variable in our templates. To have { { MEDIA_URL } } included automatically in each template we need to do two things:
+
+* Make sure you have **django.core.context_processors.media **in your TEMPLATE_CONTEXT_PROCESSORS.
+* Make sure each view is using a **RequestContext**.
+
+Afterwards all we need to do is to specify our media URL’s like this:
+
+<img src="{ { MEDIA_URL } }img/header.jpeg" />
+
+This will be translated to:
+
+<img src="**/media/**img/header.jpeg" />
+
+===== Bonus =====
+
+While we are at it, why not serve our 500 and 404 pages statically. When DEBUG == True, 500 (server error) and 404 (not found) situations are handled with special debugging views. So there’s no chance to test your error pages. Add the following code, just like static serving code:
+
+   1 if settings.DEBUG:
+   2     urlpatterns += patterns('',
+   3                             (r'^404/',
+   4                                 'django.views.generic.simple.' \
+   5                                 'direct_to_template',
+   6                                 {'template': '404.html'}),
+   7                             (r'^500/',
+   8                                 'django.views.generic.simple.' \
+   9                                 'direct_to_template',
+  10                                 {'template': '500.html'}))
+
+Now when you visit /500/ and /404/ on your development server you will be served a fake error page.
+
+1: There is an exception here. If you configured your settings correctly, development server will **serve admin media**.
+2: Assuming your settings.py is directly inside your project directory, hence the __file__.

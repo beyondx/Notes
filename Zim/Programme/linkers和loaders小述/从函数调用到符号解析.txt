@@ -1,0 +1,88 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-20T17:31:22+08:00
+
+====== 从函数调用到符号解析 ======
+Created 星期一 20 六月 2011
+http://oceancloud.ycool.com/post.839802.html
+目的：
+ 看看动态连接的可执行程序里的函数的symbol resolving的过程是怎样的。
+一个简单的小程序：hello.c
+
+#include<stdio.h>
+int main(){
+       puts("hello");
+}
+
+编译：gcc hello.c -o hello -mpreferred-stack-boundary=2
+反汇编plt段：objdump -d -j .plt hello
+hello:     file format elf32-i386
+
+Disassembly of section .plt:
+
+08048288 <puts@plt-0x10>:
+8048288:       ff 35 a4 95 04 08       pushl  0x80495a4
+804828e:       ff 25 a8 95 04 08       jmp    *0x80495a8
+8048294:       00 00                   add    %al,(%eax)
+       ...
+
+08048298 <puts@plt>:
+8048298:       ff 25 ac 95 04 08       jmp    *0x80495ac
+804829e:       68 00 00 00 00          push   {post.content}x0
+80482a3:       e9 e0 ff ff ff          jmp    8048288 <_init+0x18>
+...
+
+gdb调试hello: gdb -q hello
+Using host libthread_db library "/lib/libthread_db.so.1".
+(gdb) disass main
+Dump of assembler code for function main:
+
+0x08048384 <main+0>:    push   %ebp
+0x08048385 <main+1>:    mov    %esp,%ebp
+0x08048387 <main+3>:    sub    {post.content}x4,%esp
+0x0804838a <main+6>:    movl   {post.content}x80484a4,(%esp)
+0x08048391 <main+13>:   call   0x8048298 <_init+40>
+0x08048396 <main+18>:   leave
+0x08048397 <main+19>:   ret
+
+注意看一下， call 0x08048298，这个地址就是puts@plt
+然后下面就是jmp    *0x804959c，间接跳转，跳到0x0804959c上放置的地址去执行，0x0804959c就是GOT(global offset table)的第4项,而在puts没有被solve之前那个位置上放置的地址就是jmp *0x804959c的下一句的地址，就是0x0804829e 所以接着运行，pushl {post.content}x0，将{post.content}x0推入堆栈。这个是fixup()要用的一个参数。这个0是相对于JMPREL的一个offset。
+跳到plt的开始，jmp 8048288
+然后把GOT的第二项推入堆栈，pushl  0x80495a4，这个是一个struct link_map的指针，靠着它，进程地址空间里所有的so将被连成一个链表。这个也是fixup()要用的参数。
+struct link_map {
+   ElfW(Addr) l_addr;   
+   char *l_name;  
+   ElfW(Dyn) *l_ld;  
+   struct link_map *l_next, *l_prev;
+};
+然后跳到GOT第三项保存的地址上去执行，这个地址就是符号解析函数的入口。在glibc源代码的这个文件sysdeps/i386/dl- machine.h有定义，形式是一个macro，名字叫ELF_MACHINE_RUNTIME_TRAMPOLINE。在这个函数里，会调用 fixup()，这个才是真正做事情的函数。fixup会通过那个struct link_map指针遍历所有的so来找puts。是通过so里的hash table来找的，所以速度会比较快。找到以后通过JMPREL+0这个地址来保存。JMPREL里放置的是和PLT相关的relocation entry
+typedef struct
+{
+ Elf32_Addr    r_offset;    
+ Elf32_Word   r_info;   
+} Elf32_Rel;
+JMPREL+0就是里面第一个entry
+r_offset的值就是GOT里面我们要改写的项，对于本例的puts来说就是第四项，就是 0x0804959c。来看一下
+得到JMPREL的地址：readelf -d hello
+Dynamic section at offset 0x4c4 contains 20 entries:
+
+ Tag        Type                         Name/Value
+0x00000001 (NEEDED)                     Shared library: [libc.so.6]
+0x0000000c (INIT)                       0x8048270
+0x0000000d (FINI)                       0x8048480
+0x00000004 (HASH)                       0x8048168
+0x00000005 (STRTAB)                     0x80481e0
+0x00000006 (SYMTAB)                     0x8048190
+0x0000000a (STRSZ)                      74 (bytes)
+0x0000000b (SYMENT)                     16 (bytes)
+0x00000015 (DEBUG)                      0x0
+0x00000003 (PLTGOT)                     0x8049590
+0x00000002 (PLTRELSZ)                   16 (bytes)
+0x00000014 (PLTREL)                     REL
+0x00000017 (JMPREL)                     0x804825c
+
+(gdb) x/2x 0x0804825c
+0x804825c:      0x0804959c      0x00000107
+0x0804959c，是不是和前面反汇编puts@plt的第一句间接跳转的地址一样？
+fixup在解析完之后就会把puts的真实地址放到0x0804959c上去
+以后就不必在解析了 

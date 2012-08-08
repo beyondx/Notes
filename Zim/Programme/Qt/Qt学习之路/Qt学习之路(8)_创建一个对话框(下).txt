@@ -1,0 +1,120 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-31T14:35:02+08:00
+
+====== Qt学习之路(8) 创建一个对话框(下) ======
+Created Monday 31 October 2011
+
+原创作品，允许转载，转载时请务必以超链接形式标明文章 原始出处 、作者信息和本声明。否则将追究法律责任。http://devbean.blog.51cto.com/448512/198988
+
+接着前一篇，下面是源代码部分：
+ 
+#include <QtGui>
+#include "finddialog.h"
+
+FindDialog::FindDialog(QWidget *parent)
+        : QDialog(parent)
+{
+        label = new QLabel(tr("Find &what:"));
+        lineEdit = new QLineEdit;
+        label->__setBuddy__(lineEdit);
+
+        caseCheckBox = new QCheckBox(tr("Match &case"));
+        backwardCheckBox = new QCheckBox(tr("Search &backford"));
+
+        findButton = new QPushButton(tr("&Find"));
+        findButton->__setDefault__(true);
+        findButton->__setEnabled__(false);
+
+        closeButton = new QPushButton(tr("Close"));
+
+        connect(lineEdit, SIGNAL(textChanged(const QString&)), this, SLOT(enableFindButton(const QString&)));
+        connect(findButton, SIGNAL(clicked()), __this__, SLOT(__findClicked()__));
+        connect(closeButton, SIGNAL(clicked()), this, SLOT(close()));
+
+        QHBoxLayout *__top__//LeftLayout// = new QHBoxLayout;
+        topLeftLayout->addWidget(label);
+        topLeftLayout->addWidget(lineEdit);
+
+        QVBoxLayout *leftLayout = new QVBoxLayout;
+        leftLayout->__addLayout__(topLeftLayout);
+        leftLayout->addWidget(caseCheckBox);
+        leftLayout->addWidget(backwardCheckBox);
+
+        QVBoxLayout *rightLayout = new QVBoxLayout;
+        rightLayout->addWidget(findButton);
+        rightLayout->addWidget(closeButton);
+        rightLayout->__addStretch__();
+
+        QHBoxLayout *mainLayout = new QHBoxLayout;
+        mainLayout->addLayout(leftLayout);
+        mainLayout->addLayout(rightLayout);
+        setLayout(mainLayout);
+
+        setWindowTitle(tr("Find"));
+        setFixedHeight(sizeHint().height());
+}
+
+FindDialog::~FindDialog()
+{
+
+}
+
+void FindDialog::findClicked()
+{
+        QString text = lineEdit->__text()__;
+        Qt::CaseSensitivity cs = caseCheckBox->__isChecked() __? Qt::CaseInsensitive : Qt::CaseSensitive;
+        if(backwardCheckBox->isChecked()) {
+                __emit__ findPrevious(text, cs);
+        } else {
+                emit findNext(text, cs);
+        }
+}
+
+void FindDialog::enableFindButton(const QString &text)
+{
+        findButton->__setEnabled__(!text.isEmpty());
+}
+ 
+CPP文件要长一些哦——不过，它们的价钱也会更高，嘿嘿——嗯，来看代码，第一行include的是QtGui。Qt是分模块的，记得我们建工程的时候就会问你，使用哪些模块？QtCore？QtGui？QtXml？等等。这里，我们引入QtGui，它包括了QtCore和QtGui模块。不过，这并不是最好的做法，因为QtGui文件很大，包括了GUI的__所有组件__，但是很多组件我们根本是用不到的——就像Swing的import，你可以import到类，也可以使用*，不过都不会建议使用*，这里也是一样的。我们最好只引入需要的组件。不过，那样会把文件变长，现在就先用QtGui啦，只要记得正式开发时不能这么用就好啦！
+ 
+构造函数有参数初始化列表，用来调用父类的构造函数，相当于Java里面的super()函数。这是C++的相关知识，不是Qt发明的，这里不再赘述。
+ 
+然后新建一个QLabel。还记得前面的Hello, world!里面也使用过QLabel吗？那时候只是简单的传入一个字符串啊！这里怎么是一个函数tr()？函数tr()全名是__QObject::tr()__，被它处理的字符串可以使用工具提取出来翻译成其他语言，也就是做国际化使用。这以后还会仔细讲解，只要记住，Qt的最佳实践：如果你想让你的程序国际化的话，那么，所有用户可见的字符串都要使用QObject::tr()！但是，为什么我们没有写QObject::tr()，而仅仅是tr()呢？原来，tr()函数是定义在Object里面的，所有使用了Q_OBJECT宏的类都自动具有tr()函数。
+ 
+字符串中的&代表快捷键。注意看下面的findButton的&Find，它会生成Find字符串，当你按下Alt+F的时候，这个按钮就相当于被点击——这么说很难受，相信大家都明白什么意思。同样，前面label里面也有一个&，因此它的快捷键就是Alt+W。不过，这个label使用了setBuddy函数，它的意思是，当label获得焦点时，比如按下Alt+W，它的__焦点会自动传给__它的buddy，也就是lineEdit。看，这就是伙伴的含义(buddy英文就是伙伴的意思)。
+ 
+后面几行就比较简单了：创建了两个QCheckBox，把默认的按钮设为findButton，把findButton设为不可用——也就是变成灰色的了。
+ 
+再下面是三个connect语句，用来连接信号槽。可以看到，当lineEdit发出textChanged(const QString&)信号时，FindDialog的enableFindButton(const QString&)函数会被调用——这就是回调，是有__系统自动调用__，而不是你去调用——当findButton发出clicked()信号时，FindDialog的findClicked()函数会被调用；当closeButton发出clicked()信号时，FindDialog的close()函数会被调用。注意，connect()函数也是QObject的，因为我们继承了QObject，所以能够直接使用。
+ 
+后面的很多行语句都是layout的使用，虽然很复杂，但是很清晰——编写layout布局最重要一点就是__思路清楚__，想清楚哪个套哪个，就会很好编写。这里我们的对话框实际上是这个样子的：
+ 
+ {{~/sync/notes/zim/Programme/Qt学习之路/Qt学习之路(8)_创建一个对话框(下)/1.png}}
+注意那个spacer是由rightLayout的addStretch()添加的，就像弹簧一样，把上面的组件“顶起来”。
+ 
+最后的setWindowTitle()就是设置对话框的标题，而setFixedHeight()是设置成固定的高度，其参数值sizeHint()返回“最理想”的大小，这里我们使用的是height()函数去到“最理想”的高度。
+ 
+好了，下面该编写槽了——虽然说是slot，但实际上它就是__普通的函数__，既可以和其他函数一样使用，又可以被系统回调。
+ 
+先看findClicked()函数。首先取出lineEdit的输入值；然后判断caseCheckBox是不是选中，如果选中就返回Qt::CaseInsensitive，否则返回Qt::CaseSensitive，用于判断是不是大小写敏感的查找；最后，如果backwardCheckBox被选中，就emit(发出)信号findPrevious()，否则emit信号findNext。
+ 
+enableFindButton()则根据lineEdit的内容是不是变化——这是我们的connect连接的——来设置findButton是不是可以使用，这个很简单，不再说了。
+ 
+这样，FindDialog.cpp也就完成了。下面编写main.cpp——其实QtCreator已经替我们完成了——
+ 
+#include <QApplication>
+
+#include "finddialog.h"
+
+int main(int argc, char *argv[])
+{
+        QApplication app(argc, argv);
+        FindDialog *dialog = new FindDialog;
+        dialog->show();
+        return app.exec();
+}
+ 
+运行一下看看我们的成果吧！
+ 
+虽然很简单，也没有什么实质性的功能，但是我们已经能够制作对话框了——Qt的组件成百上千，不可能全部介绍完，只能用到什么学什么，更重要的是，我们已经了解了其编写思路，否则的话，即便是你拿着全世界所有的砖瓦，没有设计图纸，你也不知道怎么把它们组合成高楼大厦啊！

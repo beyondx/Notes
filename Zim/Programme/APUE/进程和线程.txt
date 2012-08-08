@@ -1,0 +1,268 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-04-20T17:07:31+08:00
+
+====== 进程和线程 ======
+Created Wednesday 20 April 2011
+http://bbs.chinaunix.net/thread-2289758-1-3.html
+进程在OS中是一个非常关键的抽象概念。
+在OS中虚拟CPU称为执行线程，简称为线程。
+用于创建和管理多执行线程的实用工具通常包含在一个pthread库。因为该库中接口是按照POSIX标准定义的，所以以p开头。
+
+在UNIX Os中，单线程进程和多线程进程模型如下：
+见帖子最下面  图1
+{{./1.jpg}}
+在linux中，单线程任务和多线程任务组模型如下：
+见帖子最下面  图2
+{{./2.jpg}}
+在linux Os中，用“任务”替代“进程”，而没有“进程”这个对象。
+用数据结构task_struct来描述任务，任务就相当于UNIX OS中的进程。 每一个任务都有任务地址空间（相当于UNIX OS中的进程地址空间），但一个任务中只有一个线程。通过“任务组”这个概念来实现多线程任务（相当于UNIX中的多线程进程）。
+
+可以这样简单地说：“Linux的任务是UNIX单线程进程的对等体”。
+
+用于描述任务的数据结构task_struct,是一个信息量非常大的数据结构。但是并不是每一个线程都会有完整的task_struct成员，而只是保留了需要的成员变量值。在多线程的任务组中，每个线程都有一个task_struct数据结构来描述线程所在的任务。但是所有的线程都共享所在任务组的资源和相关信息，所以这些副本是一种浪费。实际上，并不是这么糟糕，大多数任务的成员变量是一些单独的对象，共享这些对象的线程，仅仅保存了对它的引用。
+
+在linux操作系统中，定义了一个指向当前任务的指针current
+在单处理器中，任何时刻只有一个任务在执行，current指针指向的任务在执行，current是一个全局变量。
+在多处理器中，在同一时刻可以有多个任务在执行，那么在OS中可以看到的每个CPU上（也就是“执行线程”）有一个current指针，并且都是局部变量。
+由于current使用地过于频繁，OS都把current申明为寄存器变量。在IA64平台下，通用寄存器r13用来保存current指针。
+/*
+* In kernel mode, thread pointer (r13) is used to point to the current task
+* structure.
+*/
+#define _IA64_REG_TP     1037   /* R13 */
+#define current   ((struct task_struct *) ia64_getreg(_IA64_REG_TP))
+
+创建任务
+在linux Os中创建任务（也就是创建进程和线程，只不过在Linux中没有进程的概念了，用任务替换了进程的概念，并且任务都是单线程的，多线程的任务称为任务组）根据不同的体系结构不同。我们在此之讨论在IA64结构下的实现办法。
+在linux Os中没有提供用于创建原始线程的函数，因为除了系统启动的初始线程外（即PID为0的线程），任何一个线程都是从原有的线程上复制过来的而产生的。
+通过copy_thread函数创建新的线程。
+int copy_thread (int nr, unsigned long clone_flags,
+         unsigned long user_stack_base, unsigned long user_stack_size,
+         struct task_struct *p, struct pt_regs *regs)
+这个函数在linux中封装成copy_process函数（用于创建任务），再一次被封装成函数do_fork（创建一个任务）和函数fork_idle（创建空闲任务或者说是空闲进程、空闲线程）
+，函数do_fork再一次被封装成系统调用sys_fork。
+
+内核创建新的任务步骤：
+1、为新任务分配内存：在内核内存空间分配一块连续的内存用于保存task_struct、thread_struct（和平台相关，一般几个字节到大于1KB不等）、内核堆栈。
+2、初始化任务结构（task_struct），但还没有初始化thread_struct。
+3、初始化thread_struct
+4、完成初始化task_struct中剩余的与平台无关的部分
+5、将新创建的任务添加到运行队列中，这就可以运行了
+
+task_struct分成两个部分：平台无关的部分和平台特定部分（线程结构）。
+在创建任务过程中涉及到几个非常重要的数据结构：pt_regs、switch_stack、thread_struct等
+
+pt_regs结构：
+这个结构封装了需要在内核入口中保存的最少的状态信息。比如说每一次的系统调用、中断、陷阱、故障时，pt_regs结构中保存了最少的状态信息。该结构中主要保存了必要的scratch类型的寄存器。（在现代IA64架构中还有3类寄存器：scratch寄存器、保持寄存器、专用寄存器）。在每一次的系统调用、中断、陷阱、故障发生时，依次会发生下列事件：
+1、在内核堆栈上为pt_regs结构分配内存
+2、在pt_regs结构中保存scratch寄存器
+3、调用了适当的内核处理器（执行系统调用内部处理、中断处理程序等）
+4、从pt_regs中恢复scratch寄存器
+5、从内核堆栈中释放pt_regs占用的内存
+应该保持pt_regs尽可能的小，可以提高性能。
+在IA64平台的Linux中pt_regs定义如下：
+struct pt_regs {
+     /* The following registers are saved by SAVE_MIN: */
+     unsigned long b6;     /* scratch */
+     unsigned long b7;     /* scratch */
+
+     unsigned long ar_csd;           /* used by cmp8xchg16 (scratch) */
+     unsigned long ar_ssd;           /* reserved for future use (scratch) */
+
+     unsigned long r8;     /* scratch (return value register 0) */
+     unsigned long r9;     /* scratch (return value register 1) */
+     unsigned long r10;       /* scratch (return value register 2) */
+     unsigned long r11;       /* scratch (return value register 3) */
+
+     unsigned long cr_ipsr;       /* interrupted task's psr */
+     unsigned long cr_iip;       /* interrupted task's instruction pointer */
+     /*
+	* interrupted task's function state; if bit 63 is cleared, it
+	* contains syscall's ar.pfs.pfm:
+     */
+     unsigned long cr_ifs;
+
+     unsigned long ar_unat;       /* interrupted task's NaT register (preserved) */
+     unsigned long ar_pfs;       /* prev function state   */
+     unsigned long ar_rsc;       /* RSE configuration */
+     /* The following two are valid only if cr_ipsr.cpl > 0 || ti->flags & _TIF_MCA_INIT */
+     unsigned long ar_rnat;       /* RSE NaT */
+     unsigned long ar_bspstore;   /* RSE bspstore */
+
+     unsigned long pr;     /* 64 predicate registers (1 bit each) */
+     unsigned long b0;     /* return pointer (bp) */
+     unsigned long loadrs;       /* size of dirty partition << 16 */
+
+     unsigned long r1;     /* the gp pointer */
+     unsigned long r12;       /* interrupted task's memory stack pointer */
+     unsigned long r13;       /* thread pointer */
+
+     unsigned long ar_fpsr;       /* floating point status (preserved) */
+     unsigned long r15;       /* scratch */
+
+     /* The remaining registers are NOT saved for system calls.   */
+
+     unsigned long r14;       /* scratch */
+     unsigned long r2;     /* scratch */
+     unsigned long r3;     /* scratch */
+
+     /* The following registers are saved by SAVE_REST: */
+     unsigned long r16;       /* scratch */
+     unsigned long r17;       /* scratch */
+     unsigned long r18;       /* scratch */
+     unsigned long r19;       /* scratch */
+     unsigned long r20;       /* scratch */
+     unsigned long r21;       /* scratch */
+     unsigned long r22;       /* scratch */
+     unsigned long r23;       /* scratch */
+     unsigned long r24;       /* scratch */
+     unsigned long r25;       /* scratch */
+     unsigned long r26;       /* scratch */
+     unsigned long r27;       /* scratch */
+     unsigned long r28;       /* scratch */
+     unsigned long r29;       /* scratch */
+     unsigned long r30;       /* scratch */
+     unsigned long r31;       /* scratch */
+
+     unsigned long ar_ccv;       /* compare/exchange value (scratch) */
+
+     /*
+	* Floating point registers that the kernel considers scratch:
+     */
+     struct ia64_fpreg f6;       /* scratch */
+     struct ia64_fpreg f7;       /* scratch */
+     struct ia64_fpreg f8;       /* scratch */
+     struct ia64_fpreg f9;       /* scratch */
+     struct ia64_fpreg f10;       /* scratch */
+     struct ia64_fpreg f11;       /* scratch */
+};
+switch_stack结构：
+该结构用在内核将执行一个线程切换到另一个线程之时，该结构主要保存了保持寄存器。pt_regs和switch_stack结合起来，一起封装了每个线程正确运行所需的最低限度的机器状态。这种机器状态称为高度管理状态（eagerly managed state）,与松散管理状态（lazily managed state）相对。
+简单地说switch_stack保存了任务切换的上下文，主要保存了保持寄存器。
+在IA64架构的linux中，switch_stack定义如下：
+struct switch_stack {
+unsigned long caller_unat;   /* user NaT collection register (preserved) */
+     unsigned long ar_fpsr;       /* floating-point status register */
+
+     struct ia64_fpreg f2;       /* preserved */
+     struct ia64_fpreg f3;       /* preserved */
+     struct ia64_fpreg f4;       /* preserved */
+     struct ia64_fpreg f5;       /* preserved */
+
+     struct ia64_fpreg f12;       /* scratch, but untouched by kernel */
+     struct ia64_fpreg f13;       /* scratch, but untouched by kernel */
+     struct ia64_fpreg f14;       /* scratch, but untouched by kernel */
+     struct ia64_fpreg f15;       /* scratch, but untouched by kernel */
+     struct ia64_fpreg f16;       /* preserved */
+     struct ia64_fpreg f17;       /* preserved */
+     struct ia64_fpreg f18;       /* preserved */
+     struct ia64_fpreg f19;       /* preserved */
+     struct ia64_fpreg f20;       /* preserved */
+     struct ia64_fpreg f21;       /* preserved */
+     struct ia64_fpreg f22;       /* preserved */
+     struct ia64_fpreg f23;       /* preserved */
+     struct ia64_fpreg f24;       /* preserved */
+     struct ia64_fpreg f25;       /* preserved */
+     struct ia64_fpreg f26;       /* preserved */
+     struct ia64_fpreg f27;       /* preserved */
+     struct ia64_fpreg f28;       /* preserved */
+     struct ia64_fpreg f29;       /* preserved */
+     struct ia64_fpreg f30;       /* preserved */
+     struct ia64_fpreg f31;       /* preserved */
+
+     unsigned long r4;     /* preserved */
+     unsigned long r5;     /* preserved */
+     unsigned long r6;     /* preserved */
+     unsigned long r7;     /* preserved */
+
+     unsigned long b0;     /* so we can force a direct return in copy_thread */
+     unsigned long b1;
+     unsigned long b2;
+     unsigned long b3;
+     unsigned long b4;
+     unsigned long b5;
+
+     unsigned long ar_pfs;       /* previous function state */
+     unsigned long ar_lc;     /* loop counter (preserved) */
+     unsigned long ar_unat;       /* NaT bits for r4-r7 */
+     unsigned long ar_rnat;       /* RSE NaT collection register */
+     unsigned long ar_bspstore;   /* RSE dirty base (preserved) */
+     unsigned long pr;     /* 64 predicate registers (1 bit each) */
+};
+thread_struct结构：
+该结构封装了松散管理状态，主要封装了内核堆栈指针ksp，ksp指向swicth_stack。松散管理状态，并不是每次上下文切换时都要切换松散管理状态，往往只在确实需要新的状态时才切换松散管理状态。切换松散管理状态比切换高度管理状态慢很多，所以尽量不切换松散管理状态，以提高性能。
+struct thread_struct {
+     __u32 flags;         /* various thread flags (see IA64_THREAD_*) */
+     /* writing on_ustack is performance-critical, so it's worth spending 8 bits on it... */
+     __u8 on_ustack;           /* executing on user-stacks? */
+     __u8 pad[3];
+     __u64 ksp;         /* kernel stack pointer */
+     __u64 map_base;           /* base address for get_unmapped_area() */
+     __u64 task_size;     /* limit for task size */
+     __u64 rbs_bot;           /* the base address for the RBS */
+     int last_fph_cpu;     /* CPU that may hold the contents of f32-f127 */
+
+#ifdef CONFIG_IA32_SUPPORT
+     __u64 eflag;         /* IA32 EFLAGS reg */
+     __u64 fsr;         /* IA32 floating pt status reg */
+     __u64 fcr;         /* IA32 floating pt control reg */
+     __u64 fir;         /* IA32 fp except. instr. reg */
+     __u64 fdr;         /* IA32 fp except. data reg */
+     __u64 old_k1;         /* old value of ar.k1 */
+     __u64 old_iob;           /* old IOBase value */
+     struct ia64_partial_page_list *ppl; /* partial page list for 4K page size issue */
+         /* cached TLS descriptors. */
+     struct desc_struct tls_array[GDT_ENTRY_TLS_ENTRIES];
+
+# define INIT_THREAD_IA32   .eflag =   0,         \
+               .fsr =     0,         \
+               .fcr =     0x17800000037fULL,   \
+               .fir =     0,         \
+               .fdr =     0,         \
+               .old_k1 =   0,         \
+               .old_iob = 0,         \
+               .ppl =     NULL,
+#else
+# define INIT_THREAD_IA32
+#endif /* CONFIG_IA32_SUPPORT */
+#ifdef CONFIG_PERFMON
+     void *pfm_context;             /* pointer to detailed PMU context */
+     unsigned long pfm_needs_checking;     /* when >0, pending perfmon work on kernel exit */
+# define INIT_THREAD_PM     .pfm_context =       NULL,     \
+               .pfm_needs_checking =     0UL,
+#else
+# define INIT_THREAD_PM
+#endif
+     __u64 dbr[IA64_NUM_DBG_REGS];
+     __u64 ibr[IA64_NUM_DBG_REGS];
+     struct ia64_fpreg fph[96];   /* saved/loaded on demand */
+};
+
+
+在任务创建后，会分配一大块内存给task_struct结构来维护。这块内存具体使用如下图：
+见帖子最下面  图3
+{{./3.jpg}} 	 	
+在IA64架构下，Linux 中定义每次分配给任务的地址空间是IA64_STK_OFFSET，如下：
+#define IA64_STK_OFFSET         ((1 << KERNEL_STACK_SIZE_ORDER)*PAGE_SIZE)
+             #if defined(CONFIG_IA64_PAGE_SIZE_4KB)
+             # define KERNEL_STACK_SIZE_ORDER     3
+             #elif defined(CONFIG_IA64_PAGE_SIZE_8KB)
+             # define KERNEL_STACK_SIZE_ORDER     2
+             #elif defined(CONFIG_IA64_PAGE_SIZE_16KB)
+             # define KERNEL_STACK_SIZE_ORDER     1
+             #else
+             # define KERNEL_STACK_SIZE_ORDER     0
+             #endif
+通过以上语句定义IA64_STK_OFFSET，决定分配内存的大小。就是说，如果系统配置每个页面的大小为4KB的情况下，那么IA64_STK_OFFSET就是8＊4KB＝32KB；
+如果PAGE_SIZE=8KB，那么IA64_STK_OFFSET就是4＊8KB＝32KB；
+如果PAGE_SIZE=16KB，那么IA64_STK_OFFSET就是2＊16KB＝32KB；
+如果PAGE_SIZE=64KB，那么IA64_STK_OFFSET就是1＊64KB＝64KB；
+
+在上图中还有一个变量IA64_RBS_BASE，该变量用来描述什么？看linux是如何实现的就知道了，用中文描述，我还真不知道。
+#define IA64_RBS_OFFSET         ((IA64_TASK_SIZE + IA64_THREAD_INFO_SIZE + 31) & ~31)
+
+       DEFINE(IA64_TASK_SIZE, sizeof (struct task_struct));
+       DEFINE(IA64_THREAD_INFO_SIZE, sizeof (struct thread_info));
+
+

@@ -1,0 +1,95 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-27T19:09:58+08:00
+
+====== Gnome ======
+Created Sunday 27 March 2011
+
+ 这里记录了关于Gnome的一些小技巧。
+
+Emacs Keybindings in Gnome
+
+Once upon a time, Gnome provided a way to enable Emacs-style keyboard
+shortcuts for editing text fields through the Keyboard Shortcuts preferences
+dialog. These shortcuts are incredibly useful when editing text in web
+forms, such as when editing a Wiki. Unfortunately, in trying to simplify the
+Gnome interface (for better or worse), this option has been removed. Luckily
+(as of Gnome 2.16.1) it can still be enabled through gconf by running
+gconf-editor, and changing the /desktop/gnome/interface/gtk_key_theme key
+to Emacs.
+
+
+**查看菜单对应的程序**：
+在打开一个菜单程序的前后执行
+ps -aux 
+观察最后输出的变化，即
+可判断点击该菜单后所执行的程序
+或者打开Main Menu  ，点击对应程序，然后点击右侧的Proprity属性按钮，在command中即可看到其对应的程序
+可以看到，Main Menu所有的都是launch，扩展名为.desktop
+
+**程序快捷方式**位于:/usr/share/applications
+**系统图标主题**位于/usr/share/icons  内，其下的子目录为各个系统主题，主题文件夹下为各按大小分类的图标，一般安装程序时都会往相应目录放些程序对应的图标如apps子目录存放的是系统的程序对应的图标
+**启动程序配置**：gnome-session-properties - Configure what applications to start on login
+
+**GNOME配置数据库**：
+用命令gconf-editor打开，凡是后缀为.desktop 的程序都从这里读取其配置数据
+如：/apps/metacity  可用于设置metacity窗口管理器的所有方面，如：窗口样式、快捷方式、工作区数目,桌面desktop等
+可以用/desktop/session 用于设置gnome-session ，default_session字段用于List of applications that are part of the default session.即该session所需启动的程序，默认为gnome-session-daemon  
+__开机时的gnome-session的设置就是从这读取的__
+
+required_component_list 字段 List of components that are required as part of the session. (Each element names a key under "/desktop/gnome/session/required_components"). The Startup Applications preferences tool will not normally allow users to remove a required component from the session, and the session manager will automatically add the required components back to the session at login time if they do get removed.默认的有winidowmanager，panel，filemanager
+
+**winidowmanager**   The window manager is the program that draws the title bar and borders around windows, and allows you to move and resize windows.
+**filemanager**   The file manager provides the desktop icons and allows you to interact with your saved files.
+**panel**  The panel provides the bar at the top or bottom of the screen containing menus, the window list, status icons, the clock, etc.
+
+metacity-window-demo 演示各种窗口
+metacity-theme-viewer themename 演示各种主题的性能
+
+用户自己的gconf设置位于~/.config目录，上述的/desktop/session读取的就是该目录的相关文件，但用户的gconf配置错误或混乱时可以将该目录删除，系统会用缺省的配置重新建立该目录。
+
+gnome的**用户菜单设置**文件位于~/.config/menus/applications.menu，**系统缺省配置**位于/etc/xdg/menu/applications.menu
+
+上述文件中的<Directory> 标签 用于指定菜单项对应的注释和图标，  Specifies the name of the directory entry file that specifies the __name, comment, and__
+__icon for the menu.__ If this element is not specified, then the<Name> element is to be used to display the menu name.
+By default, .directory files are searched for in the  location __$XDG_DATA_DIRS/desktop-directories/__  as set forth in the XDG menu  specification.
+
+geekard@geekard-laptop:~$ echo  $XDG_DATA_DIRS
+/usr/share/gnome:/usr/local/share/:/usr/share/
+geekard@geekard-laptop:~$ 
+
+实际位于/usr/share/__desktop-directories目录中，__里面有很多对应与菜单项名的文件，用于设置该菜单的图标
+用户的位于~/.local/share/__desktop-directories目录中__
+
+/usr/share/applications 中有许多desktop entry
+~/.local/share/applications 中有许多desktop entry
+
+注意：对于desktop entry类型的文件，其实际显示的名字是其内容中name指定的，
+
+Each theme has an index file which defines the characteristics of the theme. The name of the index file is
+__ /usr/share/themes/theme-name/index.theme. __
+
+大多数程序的图标位于/usr/share/icons/hicolor/scalable/apps目录下
+
+用户自定义的所有启动程序位于：~/.config/autostart 中，里面保存的都是一些.desktop文件
+注意：文件内容中的X-GNOME-Autostart-enabled为false的开机时不启动，为true的启动。
+
+[[~/.local/share/trash中存放的是回收站中的内容]]
+开机时的声音是在开机自动启动程序里配置的
+
+__更改gnome默认的windowmanager__从metacity设成xmonad：
+
+   1: $ gconftool-2 -t string -s /desktop/gnome/applications/window_manager/current xmonad
+
+   2: $ gconftool-2 -t string -s /desktop/gnome/session/required_components/windowmanager xmonad
+ 
+上面的xmonad为一个可执行程序，可以替换为自己的任何一个窗口管理器。
+
+
+对于GNOME的__触摸板失效__问题可以在控制面板的“鼠标和触摸板设置”中配置：
+触摸板在Gnome下工作不正常（没有触击区域，没有滚动功能等）
+Gnome不会理会/etc/hal/fdi/policy/11-x11-synaptics.fdi中的设置而是采用了内置于gnome-settings-daemon的鼠标控制插件。
+如果您只是需要启用触击，边缘滚动或多点触摸，您可以利用系统->首选项->鼠标->触摸板中的设置工具，但是这样做仍然不能允许您定义触摸板大小，触击区域和触击灵敏度等。
+如果您想要调整更多的设定，那么您必须禁用Gnome自带的控制插件，因为它们不能提供进一步的调整选项。禁用后，系统将会读取/etc/hal/fdi/policy/11-x11-synaptics.fdi的选项。
+要禁用这个插件，请运行gconf-editor，找到apps/gnome_settings_daemon/plugins/mouse/并且取消“激活”框重启gdm后更改就能生效了。 
+改变所遇编辑器的键绑定方式：gconftool-2 -s /desktop/gnome/interface/gtk_key_theme --type string "Vi"

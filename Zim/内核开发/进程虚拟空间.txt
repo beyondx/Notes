@@ -1,0 +1,123 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-30T17:20:02+08:00
+
+====== 进程虚拟空间 ======
+Created Tuesday 30 August 2011
+2010/11/08 by edsionte Leave a reply »
+http://edsionte.com/techblog/archives/1922
+
+我们知道，在x86体系结构中分段机制是必选的，而分页机制则可由具体的操作系统而选择，Linux通过让__段的基地址为0而巧妙的绕过了基地址__。因此，对于Linux来说，__虚地址和线性地址是一致的__。在32位的平台上，线性地址的大小为固定的4GB。
+
+并且，由于采用了保护机制，Linux内核将这4GB分为两部分，虚地址较高的1GB（0xC0000000到0xFFFFFFFF）为__共享的内核空间__；而较低的3GB（0×00000000到0xBFFFFFFF）为__每个进程的用户空间__。由于每个进程都不能直接访问内核空间，而是通过系统调用间接进入内核，因此，所有的进程都共享内核空间。而每个进程都拥有各自的用户空间，各个进程之间不能互相访问彼此的用户空间。因此，对于每一个具体的进程而言，都拥有4GB的虚拟地址空间。
+
+===== 地址映射 =====
+
+一个程序在经过编译、连接之后形成的地址空间是一个__虚拟的地址空间__，只有当程序运行的时候才会分配具体的物理空间。由此我们可以得知，程序的**虚拟地址相对来说是固定的，而物理地址则随着每一次程序的运行而有所不同**。
+
+对于内核空间而言，它与物理内存之间存在一个简单的线性关系，即存在3GB的偏移量。在Linux内核中，这个偏移量叫做__PAGE_OFFSET__。如果内核的某个物理地址为x，那么对应的内核虚地址就为x+PAGE_OFFSET。
+
+对于用户空间而言，它与物理内存之间的映射远不止这么简单。与内核空间和物理空间的线性映射不同的是，__分页机制将虚拟用户空间和物理地址空间分成大小相同的页，然后再通过页表将虚拟页和物理页块映射起来__。
+
+===== 虚拟地址空间举例 =====
+
+==== 1.内核空间 ====
+
+一般可以通过__get_free_page()、kmalloc()和vmalloc()来申请__内核空间__。只不过__get_free_page函数每次申请的都是完整的页；而后两者则依据具体参数申请以字节为单位的内存空间。此外，前两个函数申请的__虚拟地址空间和物理地址空间__都是连续的；vmalloc函数申请的__物理地址空间并不连续__。
+
+vmalloc函数通过重新建立虚拟地址空间和物理地址空间之间的映射，即__新建页表项__，将离散的物理地址空间映射到连续的虚拟地址空间。因此，使用该函数的开销比较大。
+
+下面的程序简单的演示了这三个函数的使用方法。从结果中可以看出，这些函数申请的地址都在3GB（0xBFFFFFFF）以上。完整代码在这里。
+01	static int __init mmshow_init(void)
+02	{
+03	    printk("mmshow module is working\n");
+04	 
+05	    pagemem = __get_free_page(GFP_KERNEL);
+06	    if(!pagemem)
+07	        goto gfp_fail;
+08	    printk(KERN_INFO "pagemem = 0x%lx\n",pagemem);
+09	 
+10	    kmallocmem = kmalloc(100 * sizeof(char),GFP_KERNEL);
+11	    if(!kmallocmem)
+12	        goto kmalloc_fail;
+13	    printk(KERN_INFO "kmallocmem = 0x%p\n",kmallocmem);
+14	 
+15	    vmallocmem = vmalloc(1000000 * sizeof(char));
+16	    if(!vmallocmem)
+17	        goto vmalloc_fail;
+18	    printk(KERN_INFO "vmallocmem = 0x%p\n",vmallocmem);
+19	 
+20	    return 0;
+21	 
+22	gfp_fail:
+23	    free_page(pagemem);
+24	kmalloc_fail:
+25	    kfree(kmallocmem);
+26	vmalloc_fail:
+27	    vfree(vmallocmem);
+28	 
+29	    return -1;
+30	}
+31	//运行结果：
+32	[ 5542.073900] mmshow module is working
+33	[ 5542.073904] pagemem = 0xf3211000
+34	[ 5542.073907] kmallocmem = 0xd581e700
+35	[ 5542.073983] vmallocmem = 0xf9251000
+
+===== 2.用户空间 =====
+
+如前所述，每个进程够拥有属于自己的3GB的虚拟空间，那么这个3GB的空间是如何划分的？通常，除了我们熟悉的代码段和数据段，用户空间还包括堆栈段和堆。我们可以通过下面的演示程序来了解这些__内存区域__到底负责存储程序的那些内容。
+01	int bss_var;
+02	int data_var0 = 1;
+03	 
+04	int main(int argc,char **argv)
+05	{
+06	    printf("The user space's address division of a process as follow:\n");
+07	    printf("Data segment:\n");
+08	    printf("address of \"main\" function:%p\n\n",main);
+09	 
+10	        printf("Data segment:\n");
+11	    printf("address of data_var:%p\n",&data_var0);
+12	    static int data_var1 = 4;
+13	    printf("new end of data_var:%p\n\n",&data_var1);
+14	 
+15	        printf("BSS:\n");
+16	    printf("address of bss_var:%p\n\n",&bss_var);
+17	 
+18	    char *str = (char *)malloc(sizeof(char)*10);
+19	    printf("initial heap end:%p\n",str);
+20	    char *buf = (char *)malloc(sizeof(char)*10);
+21	    printf("new heap end:%p\n\n",buf);
+22	 
+23	        int stack_var0 = 2;
+24	    printf("Stack segment:\n");
+25	    printf("initial end of stack:%p\n",&stack_var0);
+26	    int stack_var1 = 3;
+27	    printf("new end of stack:%p\n",&stack_var1);
+28	 
+29	    return 0;
+30	}
+31	//运行结果：
+32	The user space's address division of a process as follow:
+33	Data segment:
+34	address of "main" function:0x8048454
+35	Data segment:
+36	address of data_var:0x804a01c
+37	new end of data_var:0x804a020
+38	BSS:
+39	address of bss_var:0x804a02c
+40	initial heap end:0x8f77008
+41	new heap end:0x8f77018
+42	Stack segment:
+43	initial end of stack:0xbfe0a3b4
+44	new end of stack:0xbfe0a3b0
+
+可以看到，代码段存放程序的代码；数据段存放全局变量和static类型的局部变量。此外，未初始化的全局变量虽然也存在于数据段，但是这些未初始化的变量都集中在靠近数据段上边界的区域，这个区域称为BSS段。以上这些空间是进程所必须拥有的，它们在__进程运行之前就分配好了__。
+
+程序中的局部变量一般被分配在堆栈段，其位于用户空间最顶部。与固定的代码段和数据段不同的是，堆栈段存储数据是从高低值往低地址延伸的。因此，在数据段到堆栈段之间，形成了一片空洞，这片空洞用于存储malloc函数所动态分配的空间，这片空洞区域被称为堆。
+
+通过下面这个图可以更进一步的了解到进程用户空间的划分情况。
+{{./Screenshot-1-282x300.png}}
+以上是关于进程用户空间划分的大致分析，上述理论在内核代码中如何体现？它将涉及到mm_struct结构和vm_area_struct结构。下文中，将会对这两个结构有详细分析。
+
+

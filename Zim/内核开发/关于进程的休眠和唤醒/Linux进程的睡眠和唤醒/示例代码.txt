@@ -1,0 +1,119 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-24T14:09:52+08:00
+
+====== 示例代码 ======
+Created Wednesday 24 August 2011
+
+==== 休眠部分： ====
+DECLARE_WAITQUEUE(wait,current);
+add_wait_queue(&dev->capture_wq,&wait);
+current->state = TASK_INTERRUPTIBLE;
+schedule();
+remove_wait_queue(&dev->capture_wq,&wait);
+current->state = TASK_RUNNING;
+if(signal_pending(current)){
+。。。。。。
+return -EINTR;
+}
+
+===== 唤醒部分 =====
+：
+wake_up_interruptible(&dev->capture_wq);
+
+
+我主要是想在自己写的驱动程序中使用睡眠和唤醒进程的功能：当进程从驱动程序读数据，而驱动程序中又没有新数据时，进程阻塞在read队列上；当硬件发生中断，暗示驱动程序有新数据到来时，所有的读进程被唤醒...
+
+Re: 请教关于睡眠和唤醒进程的两个函数... 新 [re: 永川兄]	 
+
+恰好 ，正在看 rtc ,看到过你要的功能类似的代码。具体的原理就是， __read() 阻塞 ， 加在某个等待队列中，在某个中断处理函数中唤醒这个等待队列就ok 了。
+具体你看一下：arch/arm/common/rtctime.c 这个文件 ， 里面有你要的功能，你照抄就是了。
+
+
+//read() 系统调用会阻塞住,直到RTC 芯片产生了一个TICINT 中断
+
+static ssize_t
+
+rtc_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
+
+{
+
+	DECLARE_WAITQUEUE(wait, current);//声明并初始化一个等待队列里面的task
+	
+	unsigned long data;
+	ssize_t ret;
+
+	if (count < sizeof(unsigned long))   //read传递的大小出错
+		return -EINVAL;
+
+	add_wait_queue(&rtc_wait, &wait);//add wait into rtc_wait queue  //把自己加入到__rtc_wait的等待队列中__
+
+	do {
+
+		__set_current_state(TASK_INTERRUPTIBLE);  //__判断条件是否满足前需要把自己设为不可运行状态__
+		
+		spin_lock_irq(&rtc_lock);
+		data = rtc_irq_data;/* 由中断函数更更新*/
+		rtc_irq_data = 0;
+		spin_unlock_irq(&rtc_lock);
+
+		if (data != 0) {  //关键是这个value , 一旦!= 0 , 就立即跳出loop
+			ret = 0;
+			break;
+		}
+
+		if (file->f_flags & O_NONBLOCK) {  
+			ret = -__EAGAIN__;
+			break;
+		}
+		
+		if (signal_pending(current)) { //判断当前进程是否有未决信号，因为进程有可能是信号唤醒的。
+
+			ret = -ERESTARTSYS;    //中断的系统调用
+
+			break;
+
+		}
+
+		schedule();
+
+		//一旦调用schedule()以后, cpu切换进程,直到发生了 tickirq或者alarm_irq 的时候, cpu调用调用处理函数(调用rtc_update() ,唤醒等待队列里面的进程)。用户才可以得到data的value
+
+	} while (1);
+	
+	set_current_state(TASK_RUNNING);
+	remove_wait_queue(&rtc_wait, &wait);
+
+	if (ret == 0) {
+
+		ret = put_user(data, (unsigned long __user *)buf);   //---> put_user和get_user()的参数 ,都是kernel在前, user在后
+
+		if (ret == 0)
+			ret = sizeof(unsigned long);
+	}
+	return ret;
+}
+
+===== 下面是那个中断处理函数： =====
+
+//这个地方很重要, 因为它要更新rtc_irq_data的值,并唤醒等待队列
+
+void rtc_update(unsigned long num, unsigned long events)
+
+{
+	spin_lock(&rtc_lock);
+	rtc_irq_data = (rtc_irq_data + (num << 8)) | events;//不知道什么意思?不知道datasheet上面哪里介绍了
+
+	spin_unlock(&rtc_lock);
+
+	wake_up_interruptible(&rtc_wait);   //唤醒该设备对应的等待队列上的所有进程。
+	kill_fasync(&rtc_async_queue, SIGIO, POLL_IN);
+}
+
+这里的rtc_irq_data 就是read () 要返回用户空间的值 ，  
+
+和你要求的功能已经差不多可， 你自己根据自己的要求改一下， 即可。如果非要弄懂具体的实现， 那就费时了， 先用了再说， 完成任务要紧，有空再研究这里的实现函数， 其实主要就是等待队列， 也不难的。
+
+祝你好运吧 。
+--------------------
+KernelChina.cublog.cn 

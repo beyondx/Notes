@@ -1,0 +1,44 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-01T10:46:39+08:00
+
+====== 4想到达明天,现在就要启程 ======
+Created Sunday 01 July 2012
+
+既然知道了怎么编写一个模块,那么编写设备驱动程序自然也就不难了.我相信,每一个会写模块的人都不会觉得写设备驱动有困难.对自己行不行不确定的话,可以去问一下葛优,他准说:"(神州行),我看行."  真的,我没说假话.写驱动不是什么难事,你完全可以很自信的说,你已经可以写Device Driver了.对,没错,飘柔,就这么自信.
+
+前面说了每一个模块都是以module_init开始,以module_exit结束,那么我们就来看一下U盘的驱动的这个模块.在茫茫人海中,我们很容易找到这个文件:drivers/usb/storage/usb.c,在这个文件中又不难发现下面这段:
+
+/***********************************************************************
+   1056  * Initialization and registration
+   1057  ***********************************************************************/
+   1058
+   1059 static int __init __usb_stor_init__(void)
+   1060 {
+   1061         int retval;
+   1062         printk(KERN_INFO "Initializing USB Mass Storage driver.../n");
+   1063
+   1064         /* register the driver, return usb_register return code if error */
+   1065         retval = __usb_register__(&**usb_storage_driver**);
+   1066         if (retval == 0)
+   1067                 printk(KERN_INFO "USB Mass Storage support registered./n");
+   1068
+   1069         return retval;
+   1070 }
+   1071
+   1072 static void __exit __usb_stor_exit__(void)
+   1073 {
+   1074         US_DEBUGP("usb_stor_exit() called/n");
+   1075
+   1076         /* Deregister the driver
+   1077          * This will cause disconnect() to be called for each
+   1078          * attached unit
+   1079          */
+   1080         US_DEBUGP("-- calling usb_deregister()/n");
+   1081         __usb_deregister__(&usb_storage_driver) ;
+   1082 }
+   1083
+   1084 module_init(usb_stor_init);
+   1085 module_exit(usb_stor_exit);
+
+其实,module_init/module_exit只是一个宏,通常写模块的人为了彰显自己的个性,会给自己的初始化函数和注销函数另外起个名字,比如这里module_init(usb_stor_init)以及module_exit(usb_stor_exit)实际上就是告诉这个世界,真正的函数是usb_stor_init和usb_stor_exit.这种伎俩在Linux内核代码中屡见不鲜.见多了也就不必大惊小怪了,天要下雨娘要嫁人,随她去吧.我们下面当然就从usb_stor_init正式开始我们的探索之旅.

@@ -1,0 +1,128 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-07-05T14:52:10+08:00
+
+====== Python Essential Reference 4th – 第14章 – 读书笔记 ======
+Created 星期二 05 七月 2011
+本章主要介绍一些和数学计算相关的模块。
+
+1、decimal模块
+主要提供浮点运算。Python默认的浮点存储是IEEE 754标准的，对于0.1可能被存储为0.000000000000000001。这类问题在Java等也存在。在一般情况下是可容忍的，但有些时候（比如用于金融行业软件），3 * 0.1 == 0.3会返回False，这是不合适的。
+dicimal模块采用IBM General Decimal Arthmetic标准。定义了两种个主要类：Decimal和Context类。其中Context是用于控制精度、向上/下取整、出错处理等。
+
+构造和基本运算：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#构造
+import decimal
+x = decimal.Decimal("3.4")
+y = decimal.Decimal("4.5")
+ 
+#基本运算符号都支持
+>>> x * y
+Decimal('15.30')
+ 
+>>> x / y
+Decimal('0.7555555555555555555555555556')
+
+更改精度方法1：
+每个线程都有一个context对象，直接修改其精确值：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#更改线程的context对象，精度改为3
+decimal.getcontext().prec = 3
+c = x * y
+d = x / y
+ 
+#输出
+>>> x * y
+Decimal('15.3')
+>>> x / y
+Decimal('0.756')
+
+更改精度方法2：
+用with块语句，局部改变精度：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#使用with语句块，局部更改精度
+with decimal.localcontext(decimal.Context(prec=10)):
+    print x * y
+    print x / y
+ 
+#输出结果
+15.30
+0.7555555556
+
+2、Decimal对象构造方法：
+(1)数字
+d = Decimal(102)
+(2)字符串
+d = Decimal(102.3)
+特殊值：Infinity, -Infinity, Nan（Not a Number）
+运算函数除了常用的之外：
+x.exp([context])：自然指数，e ** x
+x.sqrt([context])：x开根号
+
+3、Context能控制很多属性，比较重要的是取整和精度。
+Context(prec=None, rouding=None, traps=None, flags=None, Emin=None, Emax=None, capitals=1)
+prec：精度
+rouding：取整
+traps：信号处理机制，当dicimal的对象抛出异常的时候，可以在traps注册函数，以拦截并进行处理。
+flags：运算状态变量，如是否溢出、被零除等等。
+capitals：布尔值，幂值是E或者e。
+
+getcontext()和localcontext()：返回当前线程的Context。
+也可用前面提到的with方法获得：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+with localcontext() as c:
+    c.prec = 5
+    #xxxx statements
+
+对于0来说，可认为是正号，也可认为是符号。
+
+4、fractions，小数模块，它存在的意义是：对于无限小数，很多无法精确表示。比如1/3
+构造方法：
+(1)从浮点数
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+>>> fractions.Fraction("1.75")
+Fraction(7, 4)
+
+(2)从分数，例如1/3：
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#会自动约分的！
+>>> fractions.Fraction(20,100)
+Fraction(1, 5)
+
+5、小数的运算和其他运算类似，不再赘述。
+
+6、math模块，除了我们常用的abs、ceil等，还有一些值得注意的：
+fsum(seq)：全精确的计算求和，因为有时候浮点数之间运算会导致数被省略等。
+hypot(x,y)：计算点的平方的和：sqrt(x*x + y * y)
+
+7、numbers模块：定义了一系列抽象函数，分别对应基础类型，如Number、Complex、Real、Rational、Integeral。
+
+8、随机random模块。
+random.seed([x])：随机化种子，如果省略，则用系统时钟做种子。
+random.randint(a,b)，返回[a,b]之间的随机整数
+random.choice(seq)：从seq的序列中随机选取一个元素。
+random.sample(seq,len)：和楼上类似，不过是指定长度的。这个用于验证码很完美吧！
+
+?
+#相关代码, [四号程序员] http://www.coder4.com
+#生成4位数字的验证码
+>>> "".join(random.sample("1234567890",4))
+'7401'
+
+random.uniform(a,b)：返回随机浮点数，在[a,b)之间。
+random.random()：然会随机浮点数，在[0.0,1.0)之间。
+
+最后注意一点：随机模块不是线程安全的！！

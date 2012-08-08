@@ -1,0 +1,47 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-22T17:23:12+08:00
+
+====== shedule()何时被调用 ======
+Created 星期三 22 六月 2011
+http://blog.csdn.net/bdc995/archive/2009/08/04/4405291.aspx
+
+schedule()函数何时被调用，如何被调用也是一个非常重要的问题。在Kernel 2.4里面，schedule()函数可以通过两种方式调用：
+
+* 一种是主动调度，直接调用函数schedule()，如进程退出，或者进入睡眠状态等。
+* 一种是强制性调度，置位当前进程task_struct里面的need_resched。当[[../Linux内核抢占实现机制分析.txt|调度时机]]到来时调度。
+
+有以下三种情况可能会置位need_resched：
+
+a. 时钟中断服务程序中，发现进程已经用完自己的时间片，需要被切出CPU；
+b. 当唤醒一个睡眠进程时，发现该进程比当前占有CPU的进程更有运行资格；
+c. 一个进程通过系统调用改变调度策略、nice值等。
+
+和主动调度相比，强制性调度有一定的**调度延时**。Kernel2.6的调度时机包含了Kernel 2.4的调度时机（不同的就是need_resched变成了一个bit）同时加入了一个重要的特性--内核可抢占。Kernel 2.6的一大亮点就是内核可抢占，是Kernel 2.6进程调度优于2.4的一个重要表现。
+(1) 如何安全地抢占内核
+在前面我们已经讲了内核何时可以抢占：当内核进程没有访问内核的关键数据，也就是**内核没有被加锁**，此时内核代码是可重入的，可以抢占内核。对内核抢占加锁是通过preempt_disable()来实现的，这个宏只是简单的将preempt_count增1就实现了内核的加锁，表明此时已经进入内核的关键数据区域，内核不可被抢占。
+(2) 何时抢占内核
+* 中断返回内核时
+	在前面介绍"preempt_count"的时候已经提到，内核能否抢占是通过操作preempt_count来实现的。注意arch/i386/kernel/entry.S里面以下程序：
+	ENTRY(resume_kernel)
+	        cmpl $0,TI_PRE_COUNT(%ebp)      # non-zero preempt_count ?
+	        jnz restore_all
+	need_resched:
+	        movl TI_FLAGS(%ebp), %ecx       # need_resched set ?
+	        testb $_TIF_NEED_RESCHED, %cl
+	        jz restore_all
+	        testl $IF_MASK,EFLAGS(%esp)     # interrupts off (exception path) ?
+	        jz restore_all
+	        movl $PREEMPT_ACTIVE,TI_PRE_COUNT(%ebp)
+	        sti
+	        call schedule
+	        movl $0,TI_PRE_COUNT(%ebp)
+	        cli
+	jmp need_resched
+	程序中可以看出，在中断或者异常返回内核空间以后，首先检查preempt_count是否为0，如果不为0，说明已经内核已经禁止被抢占；如果为0，则检查TIF_NEED_RESCHED位，如果已经被置位则检查此次是否是通过中断（通过检查堆栈中EFLAGS的IF位来检查发生此次"中断"前IF是否被置位，如果被置位说明是中断；否则说明是由异常返回内核）返回内核空间的，如果是，则调用schedule()函数进行调度。可见，抢占内核是发生在由中断返回内核空间的时候。
+* 解锁时：解锁通过宏preempt_enable()来完成，此函数完成以下功能：
+	a. 将当前进程的preempt_count减1
+	b. 检查TIF_NEED_RESCHED位，如果是0，则返回；否则调用函数preempt_schedule()，此函数将preempt_count置为PREEMPT_ACTIVE（表明正在执行内核抢占），然后直接调用schedule()进行调度。内核代码中直接调用函数schedule()这种情况下是没有任何保护措施的，也就是说调用的代码必须清楚此时进行内核抢占是否安全。
+* 内核中任务显式的调用schedule().
+* 内核中任务阻塞(这时阻塞函数也会显式调用schedule())
+进程调度的分析：http://www.cnblogs.com/quan/articles/1264646.html

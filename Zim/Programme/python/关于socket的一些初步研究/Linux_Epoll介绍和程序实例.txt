@@ -1,0 +1,408 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-21T14:48:54+08:00
+
+====== Linux Epoll介绍和程序实例 ======
+Created Friday 21 October 2011
+http://blog.csdn.net/sparkliang/article/details/4770655
+
+===== 1. Epoll 是何方神圣？ =====
+
+Epoll 可是当前在 Linux 下开发大规模并发网络程序的热门人选， Epoll 在 Linux2.6 内核中正式引入，和 select 相似，其实都__ I/O 多路复用技术__而已 ，并没有什么神秘的。
+
+其实在 Linux 下设计并发网络程序，向来不缺少方法，比如典型的 Apache 模型（ Process Per Connection ，简称 PPC ）， TPC （ Thread Per Connection ）模型，以及 select 模型和 poll 模型，那为何还要再引入 Epoll 这个东东呢？那还是有得说说的 …
+
+===== 2. 常用模型的缺点 =====
+
+如果不摆出来其他模型的缺点，怎么能对比出 Epoll 的优点呢。
+
+=== 2.1 PPC/TPC 模型 ===
+
+这两种模型思想类似，就是让每一个到来的连接一边自己做事去，别再来烦我 。只是 PPC 是为它开了一个进程，而 TPC 开了一个线程。可是别烦我是有代价的，它要__时间和空间__啊，连接多了之后，那么多的__进程 / 线程切换__，这开销就上来了；因此这类模型能接受的__最大连接数__都不会高，一般在几百个左右。
+
+=== 2.2 select 模型 ===
+
+1. 最大并发数限制，因为一个进程所打开的 FD （文件描述符）是有限制的，由 FD_SETSIZE 设置，默认值是 1024/2048 ，因此 Select 模型的最大并发数就被相应限制了。自己改改这个 FD_SETSIZE ？想法虽好，可是先看看下面吧 …
+2. 效率问题， select 每次调用都会**线性扫描全部的 FD 集合**，这样效率就会呈现线性下降，把 FD_SETSIZE 改大的后果就是，大家都慢慢来，什么？都超时了？？！！
+3. 内核 / 用户空间**内存拷贝**问题，如何让内核把 FD 消息通知给用户空间呢？在这个问题上 select 采取了内存拷贝方法。
+
+=== 2.3 poll 模型 ===
+
+基本上效率和 select 是相同的， select 缺点的 2 和 3 它都没有改掉。
+
+=== 3. Epoll 的提升 ===
+
+把其他模型逐个批判了一下，再来看看 Epoll 的改进之处吧，其实把 select 的缺点反过来那就是 Epoll 的优点了。
+
+3.1. Epoll **没有最大并发连接的限制**，上限是最大可以打开文件的数目，这个数字一般远大于 2048, 一般来说这个数目和系统内存关系很大 ，具体数目可以 cat /proc/sys/fs/file-max 察看。
+
+3.2. 效率提升， Epoll 最大的优点就在于它**只管你“活跃”的连接 ，而跟连接总数无关**，因此在实际的网络环境中， Epoll 的效率就会远远高于 select 和 poll 。
+
+3.3. 内存拷贝， Epoll 在这点上使用了“**共享内存** ”，这个内存拷贝也省略了。
+
+ 
+
+===== 4. Epoll 为什么高效 =====
+
+Epoll 的高效和其数据结构的设计是密不可分的，这个下面就会提到。
+
+首先回忆一下 select 模型，当有 I/O 事件到来时， select 通知应用程序有事件到了快去处理，而应用程序**必须轮询所有的 FD 集合**，测试每个 FD 是否有事件发生，并处理事件；代码像下面这样：
+
+
+int res = select(maxfd+1, &readfds, NULL, NULL, 120);
+
+if (res > 0)
+
+{
+
+    for (int i = 0; i < MAX_CONNECTION; i++)
+
+    {
+
+        if (FD_ISSET(allConnection[i], &readfds))
+
+        {
+
+            handleEvent(allConnection[i]);
+
+        }
+
+    }
+
+}
+
+// if(res == 0) handle timeout, res < 0 handle error
+ 
+
+Epoll 不仅会告诉应用程序有I/0 事件到来，还会告诉应用程序相关的信息，这些信息是应用程序填充的，因此根据这些信息应用程序就能**直接定位到事件**，而不必遍历整个FD 集合。
+
+int res = epoll_wait(epfd, events, 20, 120);
+
+for (int i = 0; i < res;i++)
+
+{
+
+    handleEvent(events[n]);
+
+}
+
+===== 5. Epoll 关键数据结构 =====
+
+前面提到 Epoll 速度快和其数据结构密不可分，其关键数据结构就是：
+
+struct epoll_event {
+
+    __uint32_t events;      // Epoll events
+    epoll_data_t data;      // User data variable
+
+};
+
+typedef union epoll_data {
+
+    void *ptr;
+    int fd;
+    __uint32_t u32;
+    __uint64_t u64;
+
+} epoll_data_t;
+
+可见 epoll_data 是一个 union 结构体 , 借助于它应用程序可以保存很多类型的信息 :fd 、指针等等。有了它，应用程序就可以**直接定位目标**了。
+
+===== 6. 使用 Epoll =====
+
+既然 Epoll 相比 select 这么好，那么用起来如何呢？会不会很繁琐啊 … 先看看下面的三个函数吧，就知道 Epoll 的易用了。
+
+int epoll_create(int size);
+
+生成一个 Epoll 专用的文件描述符，其实是**申请一个内核空间**，用来存放你想关注的 socket fd 上是否发生以及发生了什么事件。 size 就是你在这个 Epoll fd 上能关注的最大 socket fd 数，大小自定，只要内存足够。
+
+int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event );
+
+控制某个 Epoll 文件描述符上的事件：注册、修改、删除。其中参数 epfd 是 epoll_create() 创建 Epoll 专用的文件描述符。相对于 select 模型中的 FD_SET 和 FD_CLR 宏。
+
+int epoll_wait(int epfd,struct epoll_event * events,int maxevents,int timeout);
+
+等待 I/O 事件的发生；参数说明：
+
+epfd: 由 epoll_create() 生成的 Epoll 专用的文件描述符；
+
+epoll_event: 用于回传代处理事件的数组；
+
+maxevents: 每次能处理的事件数；
+
+timeout: 等待 I/O 事件发生的超时值；
+
+返回发生事件数。
+
+相对于 select 模型中的 select 函数。
+
+===== 7. 例子程序 =====
+
+下面是一个简单 Echo Server 的例子程序，麻雀虽小，五脏俱全，还包含了一个简单的超时检查机制，简洁起见没有做错误处理。
+
+    //   
+    // a simple echo server using epoll in linux  
+    //   
+    // 2009-11-05  
+    // by sparkling  
+    //   
+    #include <sys/socket.h>  
+    #include <sys/epoll.h>  
+    #include <netinet/in.h>  
+    #include <arpa/inet.h>  
+    #include <fcntl.h>  
+    #include <unistd.h>  
+    #include <stdio.h>  
+    #include <errno.h>  
+    #include <iostream>  
+    using namespace std;  
+    #define MAX_EVENTS 500  
+    struct myevent_s  
+    {  
+        int fd;  
+        void (*call_back)(int fd, int events, void *arg);  
+        int events;  
+        void *arg;  
+        int status; // 1: in epoll wait list, 0 not in  
+        char buff[128]; // recv data buffer  
+        int len;  
+        long last_active; // last active time  
+    };  
+    // set event  
+    void EventSet(myevent_s *ev, int fd, void (*call_back)(int, int, void*), void *arg)  
+    {  
+        ev->fd = fd;  
+        ev->call_back = call_back;  
+        ev->events = 0;  
+        ev->arg = arg;  
+        ev->status = 0;  
+        ev->last_active = time(NULL);  
+    }  
+    // add/mod an event to epoll  
+    void EventAdd(int epollFd, int events, myevent_s *ev)  
+    {  
+        struct epoll_event epv = {0, {0}};  
+        int op;  
+        epv.data.ptr = ev;  
+        epv.events = ev->events = events;  
+        if(ev->status == 1){  
+            op = EPOLL_CTL_MOD;  
+        }  
+        else{  
+            op = EPOLL_CTL_ADD;  
+            ev->status = 1;  
+        }  
+        if(epoll_ctl(epollFd, op, ev->fd, &epv) < 0)  
+            printf("Event Add failed[fd=%d]/n", ev->fd);  
+        else  
+            printf("Event Add OK[fd=%d]/n", ev->fd);  
+    }  
+    // delete an event from epoll  
+    void EventDel(int epollFd, myevent_s *ev)  
+    {  
+        struct epoll_event epv = {0, {0}};  
+        if(ev->status != 1) return;  
+        epv.data.ptr = ev;  
+        ev->status = 0;  
+        epoll_ctl(epollFd, EPOLL_CTL_DEL, ev->fd, &epv);  
+    }  
+    int g_epollFd;  
+    myevent_s g_Events[MAX_EVENTS+1]; // g_Events[MAX_EVENTS] is used by listen fd  
+    void RecvData(int fd, int events, void *arg);  
+    void SendData(int fd, int events, void *arg);  
+    // accept new connections from clients  
+    void AcceptConn(int fd, int events, void *arg)  
+    {  
+        struct sockaddr_in sin;  
+        socklen_t len = sizeof(struct sockaddr_in);  
+        int nfd, i;  
+        // accept  
+        if((nfd = accept(fd, (struct sockaddr*)&sin, &len)) == -1)  
+        {  
+            if(errno != EAGAIN && errno != EINTR)  
+            {  
+                printf("%s: bad accept", __func__);  
+            }  
+            return;  
+        }  
+        do  
+        {  
+            for(i = 0; i < MAX_EVENTS; i++)  
+            {  
+                if(g_Events[i].status == 0)  
+                {  
+                    break;  
+                }  
+            }  
+            if(i == MAX_EVENTS)  
+            {  
+                printf("%s:max connection limit[%d].", __func__, MAX_EVENTS);  
+                break;  
+            }  
+            // set nonblocking  
+            if(fcntl(nfd, F_SETFL, O_NONBLOCK) < 0) break;  
+            // add a read event for receive data  
+            EventSet(&g_Events[i], nfd, RecvData, &g_Events[i]);  
+            EventAdd(g_epollFd, EPOLLIN|EPOLLET, &g_Events[i]);  
+            printf("new conn[%s:%d][time:%d]/n", inet_ntoa(sin.sin_addr), ntohs(sin.sin_port), g_Events[i].last_active);  
+        }while(0);  
+    }  
+    // receive data  
+    void RecvData(int fd, int events, void *arg)  
+    {  
+        struct myevent_s *ev = (struct myevent_s*)arg;  
+        int len;  
+        // receive data  
+        len = recv(fd, ev->buff, sizeof(ev->buff)-1, 0);    
+        EventDel(g_epollFd, ev);  
+        if(len > 0)  
+        {  
+            ev->len = len;  
+            ev->buff[len] = '/0';  
+            printf("C[%d]:%s/n", fd, ev->buff);  
+            // change to send event  
+            EventSet(ev, fd, SendData, ev);  
+            EventAdd(g_epollFd, EPOLLOUT|EPOLLET, ev);  
+        }  
+        else if(len == 0)  
+        {  
+            close(ev->fd);  
+            printf("[fd=%d] closed gracefully./n", fd);  
+        }  
+        else  
+        {  
+            close(ev->fd);  
+            printf("recv[fd=%d] error[%d]:%s/n", fd, errno, strerror(errno));  
+        }  
+    }  
+    // send data  
+    void SendData(int fd, int events, void *arg)  
+    {  
+        struct myevent_s *ev = (struct myevent_s*)arg;  
+        int len;  
+        // send data  
+        len = send(fd, ev->buff, ev->len, 0);  
+        ev->len = 0;  
+        EventDel(g_epollFd, ev);  
+        if(len > 0)  
+        {  
+            // change to receive event  
+            EventSet(ev, fd, RecvData, ev);  
+            EventAdd(g_epollFd, EPOLLIN|EPOLLET, ev);  
+        }  
+        else  
+        {  
+            close(ev->fd);  
+            printf("recv[fd=%d] error[%d]/n", fd, errno);  
+        }  
+    }  
+    void InitListenSocket(int epollFd, short port)  
+    {  
+        int listenFd = socket(AF_INET, SOCK_STREAM, 0);  
+        fcntl(listenFd, F_SETFL, O_NONBLOCK); // set non-blocking  
+        printf("server listen fd=%d/n", listenFd);  
+        EventSet(&g_Events[MAX_EVENTS], listenFd, AcceptConn, &g_Events[MAX_EVENTS]);  
+        // add listen socket  
+        EventAdd(epollFd, EPOLLIN|EPOLLET, &g_Events[MAX_EVENTS]);  
+        // bind & listen  
+        sockaddr_in sin;  
+        bzero(&sin, sizeof(sin));  
+        sin.sin_family = AF_INET;  
+        sin.sin_addr.s_addr = INADDR_ANY;  
+        sin.sin_port = htons(port);  
+        bind(listenFd, (const sockaddr*)&sin, sizeof(sin));  
+        listen(listenFd, 5);  
+    }  
+    int main(int argc, char **argv)  
+    {  
+        short port = 12345; // default port  
+        if(argc == 2){  
+            port = atoi(argv[1]);  
+        }  
+        // create epoll  
+        g_epollFd = epoll_create(MAX_EVENTS);  
+        if(g_epollFd <= 0) printf("create epoll failed.%d/n", g_epollFd);  
+        // create & bind listen socket, and add to epoll, set non-blocking  
+        InitListenSocket(g_epollFd, port);  
+        // event loop  
+        struct epoll_event events[MAX_EVENTS];  
+        printf("server running:port[%d]/n", port);  
+        int checkPos = 0;  
+        while(1){  
+           __ // a simple timeout check here, every time 100, better to use a mini-heap, and add timer event  __
+            long now = time(NULL);  
+            for(int i = 0; i < 100; i++, checkPos++) // doesn't check listen fd  
+            {  
+                if(checkPos == MAX_EVENTS) checkPos = 0; // recycle  
+                if(g_Events[checkPos].status != 1) continue;  
+                long duration = now - g_Events[checkPos].__last_active__;  
+                if(duration >= 60) // 60s timeout  
+                {  
+                    close(g_Events[checkPos].fd);  
+                    printf("[fd=%d] timeout[%d--%d]./n", g_Events[checkPos].fd, g_Events[checkPos].last_active, now);  
+                    EventDel(g_epollFd, &g_Events[checkPos]);  
+                }  
+            }  
+            // wait for events to happen  
+            int fds = epoll_wait(g_epollFd, events, MAX_EVENTS, 1000);  
+            if(fds < 0){  
+                printf("epoll_wait error, exit/n");  
+                break;  
+            }  
+            for(int i = 0; i < fds; i++){  
+                myevent_s *ev = (struct myevent_s*)events[i].data.ptr;  
+                if((events[i].events&EPOLLIN)&&(ev->events&EPOLLIN)) // read event  
+                {  
+                    ev->call_back(ev->fd, events[i].events, ev->arg);  
+                }  
+                if((events[i].events&EPOLLOUT)&&(ev->events&EPOLLOUT)) // write event  
+                {  
+                    ev->call_back(ev->fd, events[i].events, ev->arg);  
+                }  
+            }  
+        }  
+        // free resource  
+        return 0;  
+    }   
+==================================================
+
+    1、收到connect请求，触发EPOLLIN事件，然后回调函数进行accept,并且监听刚才accept的socket
+    2、客户端send了之后，触发EPOLLIN事件，然后回调函数进行recv，然后改为监听epollout事件。
+
+    不明白什么时候会触发epollout事件，然后send给客户端。一定要回答呀。谢谢。
+
+Re: sparkliang 2011-08-30 15:12发表 [回复]
+    回复program2050：注册epollout事件后，只要socket可写（发送缓冲区大于设置的水位），就会触发epollout事件。
+    这就是所谓的__控制流逆转__，操作系统会通知。
+-------------------------------------------------------------------------------------------------------
+Re: program2050 2011-08-30 18:39发表 [回复]
+    回复sparkliang：也就是发送缓冲区不满，即触发EPOLLOUT事件？。大概明白啦。THK!
+
+    另外我想问一下ET/LT模式的问题。比如触发了EPOLLIN事件，本来应该去RECV的，但是这时候故意不去读取消息。请问ET模式下还会继续收到EPOLLIN事件吗，我怎么好像ET/LT下都会收到EPOLLIN事件呢？不是说ET只发送一次吗？谢谢
+
+Re: sparkliang 2011-09-19 12:07发表 [回复]
+    回复program2050：__ET模式下，除非socket的状态发生了改变，否则不会再次通知；并且ET只支持Non-blocking模式。__
+-------------------------------------------------------------------------------------------------------
+6楼 vincent2600 2011-01-09 13:17发表 [回复]
+    请教一个问题：InitListenSocket中EventSet传入g_Events为什么是一个数组啊
+
+Re: sparkliang 2011-01-10 09:19发表 [回复]
+    回复 vincent2600：看line 67:
+    68.myevent_s g_Events[MAX_EVENTS+1]; // g_Events[MAX_EVENTS] is used by listen fd
+------------------------------------------------------------------------------------------------------
+3楼 tanjiazhang 2010-09-15 13:57发表 [回复]
+    前面讲解挺好的，但是代码例子很烂。
+    我认为，展示一套接口的时候，应该尽量减少干扰信息，你__将epoll封装进N个函数里然后从外面调用，弱化epoll接口，没有突出epoll的使用流程__，让人看半天都是干扰信息。个人的一点小小看法。
+
+Re: sparkliang 2010-09-15 16:37发表 [回复]
+    回复 tanjiazhang：事实上我正在展示epoll的正确用法，__如果之给你几个就简单接口组合成的程序，你只是知道epoll可以做事情，却不能知道如何把它变成一个正确的框架；    调用接口是简单的，做成一个易用和规范的框架却不容易__，上面的例子简单，但是却能带你入门了。
+
+-------------------------------------------------------------------------------------------------------
+    这里有个问题不太懂，望指教，呵呵：
+    就是在 recv 或者 send后，为什么要调用删除函数呢？
+    EventDel(g_epollFd, ev);
+
+    感觉很奇怪？~~~
+
+Re: sparkliang 2010-04-13 09:33发表 [回复]
+    回复 匿名用户： 这只是个简单例子，实际不需要删除的，直接mod事件类型就可以；

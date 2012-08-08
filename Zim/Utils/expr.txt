@@ -1,0 +1,37 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-28T10:07:29+08:00
+
+====== expr ======
+Created Monday 28 November 2011
+
+对表达式求值：
+
+[geekard@geekard ~]$ expr 2 \+ 3   #算术运算符只对整数有效
+5
+[geekard@geekard ~]$ expr 2 \* 3.2
+expr: non-integer argument
+[geekard@geekard ~]$ expr 2 \* 3
+6
+[geekard@geekard ~]$ expr 2 \- 3
+-1
+[geekard@geekard ~]$ expr 2 \/ 3
+0
+[geekard@geekard ~]$ expr 2 \% 3
+2
+[geekard@geekard ~]$ expr 2 \& 3
+2
+[geekard@geekard ~]$ expr 2 \<= 3   #关系运算符对数字字符和字符串都是有效的
+1
+[geekard@geekard ~]$ expr 2 \<= 1
+0
+[geekard@geekard ~]$ expr 2 \= 2   
+1
+[geekard@geekard ~]$ expr 2 \= 3
+0
+[geekard@geekard ~]$ expr aff \= fdf 
+0
+[geekard@geekard ~]$ expr aff \= aff
+1
+[geekard@geekard ~]$ expr aff \>= aee
+1

@@ -1,0 +1,377 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-17T18:31:04+08:00
+
+====== C++中前置声明的应用与陷阱 ======
+Created Friday 17 February 2012
+
+http://blog.csdn.net/yunyun1886358/article/details/5672574
+
+===== 前置声明的使用 =====
+
+有一定C++开发经验的朋友可能会遇到这样的场景：两个类A与B是__强耦合关系__，类A要引用B的对象，类B也要引用类A的对象。好的，不难，我的第一直觉让我写出这样的代码：
+    // A.h  
+    #include "B.h"  
+    class A  
+    {  
+        __B b;    //编译器在编译A时，必须要知道B类的定义。否则无法为A分配内存空间。__
+    public:  
+        A(void);  
+        virtual ~A(void);  
+    };  
+      
+    //A.cpp  
+**    #include "A.h"  **
+    A::A(void)  
+    {  
+    }  
+      
+      
+    A::~A(void)  
+    {  
+    }  
+      
+    // B.h  
+    #include "A.h"  
+    class B  
+    {  
+        A a;  
+    public:  
+        B(void);  
+        ~B(void);  
+    };  
+      
+    // B.cpp  
+    #include "B.h"  
+    B::B(void)  
+    {  
+    }  
+      
+      
+    B::~B(void)  
+    {  
+    }  
+
+好的，完成，编译一下A.cpp，不通过。再编译B.cpp，还是不通过。编译器都被搞晕了，编译器去编译A.h，发现包含了B.h，就去编译B.h。编译B.h的时候发现包含了A.h，但是A.h已经编译过了（其实没有编译完成，可能编译器做了记录，A.h已经被编译了，这样可以避免陷入死循环。编译出错总比死循环强点），就没有再次编译A.h就继续编译。后面发现用到了A的定义，这下好了，A的定义并没有编译完成，所以找不到A的定义，就编译出错了。提示信息如下：
+
+1>d:/vs2010/test/test/a.h(5): error C2146: syntax error : missing ';' before identifier 'b'
+1>d:/vs2010/test/test/a.h(5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int
+1>d:/vs2010/test/test/a.h(5): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int
+
+那怎么办？有办法，C++为我们提供了前置声明。前置声明是什么？前置声明就是我在声明一个类（CHouse）的时候，用到了__另外一个类的定义__（CBed），但是CBed还没有定义呢，而且我还__先不需要CBed的定义__，**只要知道CBed是一个类就够了**。那好，我就先声明类CBed，告诉编译器CBed是一个类（不用包含CBed的头文件）：
+
+
+    class CBed;  
+
+然后在CHouse中用到CBed的，都用__CBed的指针类型代替__（因为指针类型固定大小的，但是CBed的大小只用知道了CBed定义才能确定）。等到__要实现CHouse定义的时候__，就必须要知道CBed的定义了，那是再包含CBed的头文件就行了。
+
+前置声明有时候很有用，比如说两个类相互依赖的时候要。还有前置声明可以__减少头文件的包含层次__，减少出错可能。上面说的例子。
+
+ 
+    // House.h  
+   __ class CBed; __// 盖房子时：现在先不买，肯定要买床的  
+    class CHouse  
+    {  
+        __CBed*__ bed; // 我先给床留个位置  
+    public:  
+        CHouse(void);  
+        virtual ~CHouse(void);  
+        void GoToBed();  
+    };  
+      
+    // House.cpp  
+    
+    #include "House.h" 
+    #include "Bed.h"  // 等房子开始装修了，要买床了 
+    CHouse::CHouse(void)  
+    {  
+        bed = new CBed(); // 把床放进房子  
+    }  
+      
+    CHouse::~CHouse(void)  
+    {  
+    }  
+      
+    void CHouse::GoToBed()  
+    {  
+        bed->Sleep();  
+    }  
+      
+    // Bed.h  
+    class CBed  
+    {  
+      
+    public:  
+        CBed(void);  
+        ~CBed(void);  
+        void Sleep();  
+    };  
+      
+    // Bed.cpp  
+    #include "Bed.h"  
+      
+    CBed::CBed(void)  
+    {  
+    }  
+            
+    CBed::~CBed(void)  
+    {  
+    }  
+      
+    void CBed::Sleep()  
+    {  
+          }  
+
+ 
+前置声明中的陷阱，注意这里有陷阱：
+
+1、CBed* bed;__必须用指针或引用__
+
+
+
+    // House.h  
+    class CBed; // 盖房子时：现在先不买，肯定要买床的  
+    class CHouse  
+    {  
+        CBed& bed; // 我先给床留个位置  
+        // __CBed bed; // 编译出错  __
+    public:  
+        CHouse(void);  
+        CHouse(CBed& bedTmp);  
+        virtual ~CHouse(void);  
+        void GoToBed();  
+    };  
+      
+    // House.cpp  
+    #include "Bed.h"  // 等房子开始装修了，要买床了  
+    #include "House.h" 
+      
+    CHouse::CHouse(void)  
+        : bed(*new CBed())  
+    {  
+        CBed* bedTmp = new CBed(); // 把床放进房子  
+        bed = *bedTmp;  
+    }  
+      
+    CHouse::CHouse(CBed& bedTmp)  
+        : bed(bedTmp)  
+    {  
+    }  
+      
+    CHouse::~CHouse(void)  
+    {  
+        delete &bed;  
+    }  
+      
+    void CHouse::GoToBed()  
+    {  
+        bed.Sleep();  
+    }  
+
+2、__不能在CHouse的声明中使用CBed的方法__
+
+bed->Sleep的左边必须指向类/结构/联合/泛型类型
+
+    class CBed; // 盖房子时：现在先不买，肯定要买床的  
+    class CHouse  
+    {  
+        CBed* bed; // 我先给床留个位置  
+        // CBed bed; // 编译出错  
+    public:  
+        CHouse(void);  
+        virtual ~CHouse(void);  
+        void GoToBed()  
+        {  
+            bed->Sleep();  // __编译出错，床都没买，怎么能睡  __
+        }  
+    };  
+
+__3、在CBed定义之前调用CBed的析构函数__
+
+[c-sharp] view plaincopy
+
+    // House.h  
+    class CBed; // 盖房子时：现在先不买，肯定要买床的  
+    class CHouse  
+    {  
+        CBed* bed; // 我先给床留个位置  
+        // CBed bed; // 编译出错  
+    public:  
+        CHouse(void);  
+        virtual ~CHouse(void);  
+        void GoToBed();  
+        void RemoveBed()  
+        {  
+            **delete bed**; // 我不需要床了，我要把床拆掉。还没买怎么拆？  
+        }  
+    };  
+      
+    // House.cpp  
+    #include "Bed.h"  
+    #include "House.h" // 等房子开始装修了，要买床了  
+      
+    CHouse::CHouse(void)  
+    {  
+        bed = new CBed(); // 把床放进房子  
+    }  
+      
+    CHouse::~CHouse(void)  
+    {  
+        int i = 1;  
+    }  
+      
+    void CHouse::GoToBed()  
+    {  
+        bed->Sleep();  
+    }  
+      
+    // Bed.h  
+    class CBed  
+    {  
+        int* num;  
+    public:  
+        CBed(void);  
+        ~CBed(void);  
+        void Sleep();  
+    };  
+      
+    // Bed.cpp  
+    #include "Bed.h"  
+      
+    CBed::CBed(void)  
+    {  
+        num = new int(1);  
+    }  
+      
+    CBed::~CBed(void)  
+    {  
+        delete num; // 调用不到  
+    }  
+      
+    void CBed::Sleep()  
+    {  
+      
+    }  
+      
+    //main.cpp  
+    #include "House.h"  
+      
+    int main()  
+    {  
+        CHouse house;  
+        house.RemoveBed();  
+    }  
+
+===== 前置声明解决两个类的互相依赖 =====
+
+接下来，给出开篇第一个问题的答案：
+
+    // A.h  
+    class B;  
+    class A  
+    {  
+        B* b;  
+    public:  
+        A(void);  
+        virtual ~A(void);  
+    };  
+      
+    //A.cpp  
+    __#include "B.h"  __
+    #include "A.h"  
+    A::A(void)  
+    {  
+        b = new B;  
+    }  
+      
+      
+    A::~A(void)  
+    {  
+    }  
+      
+    // B.h  
+ **   class A;  **
+    class B  
+    {  
+        A* a;  
+    public:  
+        B(void);  
+        ~B(void);  
+    };  
+      
+    // B.cpp  
+    #include "A.h"  
+    #include "B.h"  
+    B::B(void)  
+    {  
+        a = New A;  
+    }  
+      
+      
+    B::~B(void)  
+    {  
+    }  
+
+ 
+
+===== 前置声明在友元类方法中的应用 =====
+
+《C++ Primer 4Edition》在类的友元一章节中说到，如果在一个类A的声明中将另一个类B的**成员函数**声明为友元函数F，那么__类A必须事先知道类B的定义__；类B的成员函数F声明如果使用类A作为形参，那么也必须知道类A的定义，那么两个类就互相依赖了。要解决这个问题必须使用类的前置声明。例如：
+
+    // House.h  
+    #include "Bed.h"  
+    class CHouse  
+    {  
+        friend void CBed::Sleep(CHouse&);  
+    public:  
+        CHouse(void);  
+        virtual ~CHouse(void);  
+        void GoToBed();  
+        void RemoveBed()  
+        {  
+        }  
+    };  
+      
+    // House.cpp  
+    #include "House.h"  
+      
+    CHouse::CHouse(void)  
+    {  
+    }  
+      
+    CHouse::~CHouse(void)  
+    {  
+        int i = 1;  
+    }  
+      
+    void CHouse::GoToBed()  
+    {  
+    }  
+      
+    // Bed.h  
+    class CHouse;  
+    class CBed  
+    {  
+        int* num;  
+    public:  
+        CBed(void);  
+        ~CBed(void);  
+        void Sleep(CHouse&);  
+    };  
+      
+    // Bed.cpp  
+    #include "House.h"  
+    CBed::CBed(void)  
+    {  
+        num = new int(1);  
+    }  
+      
+    CBed::~CBed(void)  
+    {  
+        delete num;  
+    }  
+      
+    void CBed::Sleep(CHouse& h)  
+    {  
+      
+    }

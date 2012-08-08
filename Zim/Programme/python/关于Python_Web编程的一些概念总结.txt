@@ -1,0 +1,68 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-26T21:28:38+08:00
+
+====== 关于Python Web编程的一些概念总结 ======
+Created Wednesday 26 October 2011
+http://www.iteye.com/topic/1114128
+
+
+最近看了一些Python的Web Framework，Python的web编程是百家争鸣，各种概念和相关“责任人”也没有java里面那么清晰，我简单的根据自己的理解做一个总结。我想这些概念应该是通用的，或者对其他语言的web编程有借鉴意义的。
+
+
+1. 传统的Web Server应该具备的功能
+
+    监听一个本地端口，接受客户端的HTTP请求
+    自己处理HTTP请求或者调用其他**网关**来处理请求
+    将处理结果基于HTTP协议响应给客户端
+    关于HTTP/HTTPS的其他方面支持
+
+2. Web Gateway 应该具备的功能
+
+    Gateway 不需要处理HTTP协议的细节
+    Gateway 接受环境变量和调用参数作为自己的变量
+    Gateway 根据调用规则，返回调用结果
+
+
+3. Web Framework 通常具备的功能
+
+很少有一个框架完成所有的这些任务，一般的框架往往提供基本功能或者专攻一项功能，其余的功能由我们自己实现或者我们自己组合多个框架。Django据说很能干，大包大揽，但是需求是千变万化的，所以往往应该由程序员组合其他专攻一项的框架来完成特定的任务。java 里面的SSH就是这个道理。
+
+     1. Session（Cookie） 
+    2. Authentication/Authorization : AA是一个非常通用的功能，应该抽象到框架里面去实现，不要重复啃这个硬轮子
+    3. Template ：模板会大大增加可读性和可维护性，一个简单易用强大的模板非常重要
+    4. MVC ：MVC 已经是一种习惯
+    5. Menu ：菜单导航也是一个通用的模块，最好由框架实现
+    6. Pagination：分页也是一个非常普遍的功能，在开发具体项目时，应该要提前实现
+    7. i18n：框架应该提供国际化的解决方案
+    8. DB/ORM：现在的项目，访问数据库几乎是家常便饭，所以好的框架应该提供简单的DB访问接口，能提供ORM更佳
+    9. Workflow ？
+    10. Web Service ？
+    11. Batch Job
+    12. 验证码？
+    其他
+
+
+4. Web Application 常见功能
+
+    1. login/logout/Account maintenance ：基于Web服务器或者Web框架提供的Session，AA等功能，实现基于用户的创建登录注销等
+    2. Query / View / Create / Delete / Undelete / Import / ：基于DB/ORM，Pagination等，实现数据的增删改查导入等等
+    3. Front verification/Front control (JavaScript) ：前端验证几乎都是用JavaScript了，可以考虑使用一个流行的JavaScript框架
+    4. Back End verification ：后端验证
+    5. theme / UI(CSS) ：谁都喜欢漂亮的页面，统一的主题和界面是每个项目必须的
+    6. Parameter <system properties> ：项目都有一些系统参数，应该提供页面让管理员去维护这些参数
+    7. Code <Mapping)> ： Code Mapping就是男M女F的mapping，应该提供页面让管理员去维护这些code
+    8. Upload / Download ：上传下载文件，这个应该写成本项目的common模块
+    9. Report (Excel, PDF)：报表，可以由代码生成也报表也可以使用第三方报表框架
+    10. Audit trail ：任何人做任何操作都应该有audit，这个功能每个项目都不一样，还是各做各的吧
+    11. Backup/Recovery ：故障恢复？
+
+
+5. 什么是Web Middleware
+什么是Web Middleware ？就是这家伙对Web Server来说，装的像个Web Application；同时对Web Application来说，这家伙又装的像个Web Server。也就是说对Web Server来说，Web Middleware 扮演Web Application的角色；同时对Web Application来说，Web Middleware 扮演Web Server的角色。
+
+我个人觉得很多Python的Web框架，都是Middleware，对传统的Web Server来说，扮演基于WSGI的Application的角色，对于我们开发项目的人来说，他们又扮演Web Server/Web Framework的角色。
+
+ 
+但是WSGI只定义了一个非常基础的Web server和Web Framework(Application)之间交互的方法，留给开发人员很多“想象空间”。你可以基于WSGI直接开发Application或者封装WSGI成一个抽象层次更高的Framework，然后基于这个Framework来开发Application，你甚至不需要了解WSGI，只要基于Framework开发就行，更底层的细节或者公用的模块交给Framework去处理。
+WSGI留给我们无限的“想象空间”，我觉得学习每一个框架都仿佛呼吸看一部电影。 

@@ -1,0 +1,100 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-13T21:50:17+08:00
+
+====== 捉摸Python的WSGI ======
+Created Thursday 13 October 2011
+http://www.iteye.com/topic/734050
+
+过去的这个月，接触的最多的就是Python的WSGI了，WSGI不是框架不是模块，仅仅是一个**规范协议**，定义了一些**接口**，却影响着Python网络开发的方方面面。对于WSGI有这么一段定义：WSGI is the Web Server Gateway Interface. It is a specification for **web servers and application servers to communicate with web applications** (though it can also be used for more than that).我想我这篇文章不是详细介绍WSGI内容的，只是想扯扯我对WSGI相关的学习。
+
+ 诚如那个WSGI的定义所说的，协议定义了一套接口来实现**服务器端与应用端通信的规范化**（或者说是统一化）。这是怎样的一套接口呢？很简单，尤其是对于应用端。
+ 
+应用端只需要实现一个**接受**两个参数的，含有__call__方法的，返回一个可遍历的含有零个或多个string结果的Python对象（我强调说Python对象，只是想和Java的对象区别开，在Python里一个方法、一个类型……都是对象，Python是真“一切皆对象”，详见《Python源码分析》）即可。码农都知道，传入参数的名字可以任意取，这里也不例外，但习惯把第一个参数命名为“environ”，第二个为“start_response”。至于这个对象的内容怎样，**应用自由发挥**去吧……
+
+ 服务器端要做的也不复杂，就是对于每一个来访的**请求**，调用一次应用端“**注册**”的那个协议规定应用端必须要实现的对象，然后返回相应的**响应消息**。这样一次服务器端与应用端的通信也就完成了，一次对用户请求的处理也随之完成了！当然了，既然**协议规定了服务器端在调用的时候要传递两个参数**，自然也规定了这两个参数的一些细节。比如第一个参数其实就是一个字典对象，里面是所有从用户请求和服务器环境变量中获取的信息内容，协议当然会定义一些必须有的值，及这些值对应的变量名；第二个参数其实就是一个**回调函数**，它向应用端传递一个用来生成**响应内容体**的write对象，这个对象也是有__call__方法的。
+ 
+协议也提到了，还可以设计**中间件**来连接服务器端与应用端，来实现一些通用的功能，比如**session、routing**等。
+
+具体怎么应用这个协议呢？Python自带的**wsgiref（一个支持WSGI协议的服务器实现）**模块有个简单的例子：
+
+    from wsgiref.simple_server import make_server  
+      
+    def hello_world_app(**environ, start_response**):  
+        status = '200 OK' # HTTP Status  
+        headers = [('Content-type', 'text/plain')] # HTTP Headers  
+      **  start_response(status, headers)  **
+      
+        # The returned object is going to be printed  
+      **  return** ["Hello World"]  
+      
+    httpd = make_server('', 8000, **hello_world_app**)   #启动服务器，并将app注册到服务器中那个
+    print "Serving on port 8000..."  
+      
+    # Serve until process is killed  
+    httpd.serve_forever()  
+
+这个例子更多体现的是应用端的开发方法，很简单的按照协议**实现一个了满足规范的方法**，这样当浏览器向本机8000端口发起一个请求时，就会得到一个“Hello World”的字符串文本响应。这个例子虽然简单，但非常清楚的说明了应用端与服务器端的接口应用方式。
+
+你可能会想到：现在对该端口的不同地址的请求都是由这个“hello_world_app”函数处理的，你可以实现一个功能，解析一下请求的PATH信息，针对**不同的地址**转发给不同的函数或是类来处理；你可能会觉得使用environ和start_response这两个参数不直观，你可以像Java的servlet那样自己封装成两个request和response对象来用；你觉得有些**常用功能**可以提取出来，在**具体应用逻辑之外**来做……哈哈，那你就已经在思考怎么做中间件或是Web框架了！其实这些也都有人做过了，比如Routes、WebOb、Beaker……当然你大可以自己造自己独有的轮子，有时候自己做过一遍了才会对现有的成熟的东西有更好的理解，最重要的是在Python的世界里这些都不难做到！
+
+ 不知你是不是和我一样，在写应用的时候或多或少的会想一下服务器端是怎么运作的呢？可能最模糊的流程大家都能想得到：服务器开一个socket等待客户端连接；请求来了，服务器会读出传来的数据，然后根据HTTP协议做一些初步的封装，接着就可以调用事先注册的应用程序了，并将请求的数据塞进去；等响应处理完毕了再把数据通过socket发出去，over。好在Python的代码简洁，而自带的wsgiref中的simple server也很简单，就让我们探究一下更具体的实现吧！
+
+首先看一下类的继承关系，这个simple server真正的类是WSGIServer，继承自HTTPServer，HTTPServer类又继承自TCPServer，TCPServer又继承自BaseServer；与server类直接打交道的还有RequestHandler类，从最上层的
+WSGIRequestHandler —> BaseHTTPRequestHandler —> StreamRequestHandler —> BaseRequestHandler。
+相对Java而言不是很复杂吧，它们是怎么工作的呢？容我稍微解释一下。
+
+
+让我们从Server的最基类BaseServer看起。它有一段注释非常清楚的介绍了它定义的方法的用处：
+
+    Methods for the caller:  
+      
+    - __init__(server_address, RequestHandlerClass)  
+    - serve_forever()  
+    - handle_request()  # if you do not use serve_forever()  
+    - fileno() -> int   # for select()  
+      
+    Methods that may be overridden:  
+      
+    - server_bind()  
+    - server_activate()  
+    - get_request() -> request, client_address  
+    - verify_request(request, client_address)  
+    - server_close()  
+    - process_request(request, client_address)  
+    - close_request(request)  
+    - handle_error()  
+      
+    Methods for derived classes:  
+      
+    - finish_request(request, client_address)  
+
+可见，一个server类其实就这么几个方法。
+
+在可以被外部调用的四个方法中，构造方法显然就是用来创建实例的；第四个可能是和构建异步服务器有关的，这里就略过了；从具体的代码可以看到，剩下两个方法的用处是相同的，就是处理收到的请求，只是serve_forever()方法会在server进程存在期间循环处理，而handle_request()处理一次就退出了（其实server_forever()就是循环调用了handle_request()）。在handle_request()中说明了具体的从接受到返回一个请求的全部流程，代码也很简单：
+
+
+    def handle_request(self):  
+            """Handle one request, possibly blocking."""  
+            try:  
+                request, client_address = self.get_request()  
+            except socket.error:  
+                return  
+            if self.verify_request(request, client_address):  
+                try:  
+                    self.process_request(request, client_address)  
+                except:  
+                    self.handle_error(request, client_address)  
+                    self.close_request(request)  
+
+BaseServer虽然定义了这些内部调用的方法，但内容基本都是空的，留给了**具体的Server类去实现**。从BaseServer的代码中就可以看到RequestHandler类的用处了，它是具体的解析了request的内容，它由finish_request()调用，而这个finsh_request()方法显然应该是在process_request()方法中被调用的。
+
+TCPServer继承BaseServer类，它真正具体化了我们猜测的socket连接的初始化过程。
+
+在与上面两个类相同的源文件中，还有两个主要的类：ThreadingMixIn和ForkingMixIn，这两个类分别重载了process_request()方法，并且相应使用了新建一个线程或是进程的方式来调用finish_request()方法。这也从应用的角度解释了为什么要在finish_request()外套一层process_request()，而不是直接在handle_request()的第二个try块中调用。
+
+ HTTPServer其实做的工作很简单，就是记录了socket server的名字。
+
+ 接下来就该看看WSGIServer了。它做了两件新的工作：设置了一些基本的__环境变量值__，并且接受__应用程序的注册__。从这个Server的代码可以看出，应用端实现的那个接口就是从这里注册到服务器端的，而且只能注册一个哦！所以要有多个应用只能通过routing的方式来转发调用了。而且这个WSGIServer不是多线程或是多进程的~
+
+至于具体封装请求内容的RequestHandler类就不打算分析了，感兴趣的话，看官们自个看一下源码吧，也很简单哦！下一篇博客打算分享一下我对pylons框架的运行过程的学习。

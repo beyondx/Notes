@@ -1,0 +1,81 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-17T15:05:06+08:00
+
+====== 四种类型转换运算符 ======
+Created Friday 17 February 2012
+
+http://tianshan.blog.51cto.com/1019606/228984
+
+C++的四个类型转换运算符用法和区别归纳如下
+
+===== reinterpret_cast =====
+该函数**将一个类型的指针转换为另一个类型的指针**. 转换过程中不做任何类型检查和转换,不改变指针变量以及指向区域的内容，__只是转换对二进制的解释__！  
+只需在编译时**重新解释指针的类型**就可做到.  reinterpret_cast 只能对指针变量进行重新解释，不能对非指针类型变量重新解释（也就是说操作的只能是指针类型）
+例:
+//基本类型指针的类型转换
+double d=9.2;
+double *pd = &d;
+int *pi = reinterpret_cast<int *>(pd);   //相当于int *pi = (int *)pd;
+
+//不相关的类的指针的类型转换
+class A{};
+class B{};
+A* pa = new A;
+B* pb = reinterpret_cast<B*>(pa);    //相当于B* pb = (B*)pa;
+
+//指针转换为整数
+long l = reinterpret_cast<long>(pi);    //相当于long l = (long)pi;
+
+===== const_cast =====
+该函数用于__改变指针变量的常量属性__，将它转换为一个对应指针类型的普通变量。反过来，也可以将一个非常量的指针变量转换为一个常指针变量。
+这种转换是在编译期间做出的类型更改。
+例：
+
+const int* pci = 0;
+int* pk = const_cast<int *>(pci);   //相当于int* pk = (int*) pci;
+
+const A * pca = new A;
+A* pa = const_cast<A *>(pca);      //相当于A* pa = (A*)pca;
+
+出于安全性考虑，const_cast无法将非指针的常量转换为**普通变量（也就是说操作和返回的类型都是指针）**。
+
+===== static_cast =====
+该函数主要用于**基本类型之间和具有继承关系的类型之间**的转换(__操作和返回的都是对象__)。__类似于C风格的类型转换__，用于非多态转换。这种转换返回的值一般会__更改变量的内部表示方式__，因此，static_cast应用于**指针类型(所有的指针都是同意中类型)**转换没有太大意义。
+例：
+//基本类型转换
+int i=0;
+double d = static_cast<double>(i);   //相当于 double d = (double)i;
+
+//转换继承类的对象为基类对象
+class Base{};
+class Derived : public Base{};
+Derived d;
+Base b = static_cast<Base>(d);      //相当于 Base b = (Base)d;
+
+
+===== dynamic_cast =====
+
+它与static_cast相对，是动态转换。这种转换是在__运行时__进行转换分析的，并非在编译时进行，明显区别于上面三个类型转换操作。在多态下用于父子类之间的__向下安全转换__，该函数只能__在继承类对象的指针之间或引用之间进行类型转换__。进行转换时，会根据当前运行时类型信息，判断类型对象之间的转换是否合法。dynamic_cast的指针转换失败，可通过是否为null检测，**引用转换**失败则抛出一个bad_cast异常。
+例：
+class Base{};
+class Derived : public Base{};
+
+//派生类指针转换为基类指针（合法）
+Derived *pd = new Derived;
+Base *pb = dynamic_cast<Base*>(pd); 
+
+if (!pb)
+     cout << "类型转换失败" << endl;
+
+//基类指针转换为派生类指针（__非法__）
+Base *pb = new Base ;
+Derived * pd = dynamic_cast<Derived * > (pb);
+
+//没有继承关系，但被转换类有虚函数
+class A { virtual ~A(); }  //有虚函数
+class B{}:
+A* pa = new A;
+B* pb   = dynamic_cast<B *>(**pa**);
+
+如果对无继承关系或者没有虚函数的对象指针进行转换、基本类型指针转换以及**基类指针转换为派生类指针**，都不能通过编译。 

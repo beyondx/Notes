@@ -1,0 +1,84 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-07-01T10:39:43+08:00
+
+====== 3变态的模块机制 ======
+Created Sunday 01 July 2012
+
+有一种感动,叫泪流满面,有一种机制,叫模块机制,十月革命一声炮响,给Linux送来了模块机制.显然,这种模块机制给那些Linux的发烧友们带来了方便,因为模块机制意味着人们可以把庞大的Linux内核划分为许许多多个小的模块,对于编写设备驱动程序的那帮家伙来说,从此以后他们可以编写设备驱动程序却不需要把她编译进内核,不用reboot机器, 她只是一个模块,当你需要她的时候,你可以把她抱入怀中(insmod),当你不再需要她的时候,你可以把她一脚踢开,甚至,你可以对她咆哮:"滚吧,贱人!"(rmmod).她不能成为你的手足,只能算你的衣服.
+
+也许在现实世界里不会这样,但是在Linux的虚拟世界里,确实可以是如此,time and time again,我问自己,模块是否就像现实生活中的妓女一样呢?Linux内核是嫖客,当他需要这个模块的时候,他就把人家揽入怀中,当他不需要人家的时候,就把别人踢开,而且,模块总是能够逆来顺受,尽管Linux内核会一次次抛弃她,但是每当Linux内核再次需要她的时候,当内核再次执行insmod的时候,模块依然会尽自己的能力去取悦内核,这是否太可悲了些!记得孔子曾经说过,__读懂Linux内核代码不难,难得是读懂Linux内核代码背后的哲学__!难道这就是传说中的藏在Linux代码背后的哲学!天哪!
+
+抛开这见鬼的哲学吧.让我们从一个伟大的例子去认识模块.这就是传说中的"Hello World!",这个梦幻般的名字我们看过无数次了,每一次她出现在眼前,就意味着我们开始接触一种新的计算机语言了,或者,如此刻,开始描述一个新的故事.
+
+请看下面这段代码,她就是Linux下的一个最简单的模块.当你安装这个模块的时候,她会用她特有的语言向你表白,"Hello,world!",千真万确,她没有说"Honey,I love you!",虽然,她可以这么说,如果你要求她这么说.而后来你卸载了这个模块,你无情抛弃了她,她很伤心,她很绝望,但她没有抱怨,她只是淡淡地说,"Goodbye,cruel world!"(再见,残酷的世界!)
+
+++++++++++++++++++hello.c++++++++++++++++++++
+      1 #include <linux/init.h>  /* Needed for the macros */
+      2 #include <linux/module.h> /* Needed for all modules */
+      3 MODULE_LICENSE("Dual BSD/GPL");
+      4 MODULE_AUTHOR("fudan_abc");
+      5
+      6 static int __init hello_init(void)
+      7 {
+      8         printk(KERN_ALERT "Hello, world!/n");
+      9         return 0;
+     10 }
+     11
+     12 static void __exit hello_exit(void)
+     13 {
+     14         printk(KERN_ALERT "Goodbye, cruel world/n");
+     15 }
+     16
+     17 module_init(hello_init);
+     18 module_exit(hello_exit);
+++++++++++++++++++++++++++++++++++++++++++++++++
+
+你需要使用module_init()和module_exit(),你可以称她们为函数,不过__实际上她们是一些宏(macro)__,现在你可以不用去知道她们背后的故事,只需要知道,在Linux Kernel 2.6的世界里,你写的任何一个模块都需要使用她们来初始化或退出,或者说**注册以及后来的注销**.当你用module_init()为一个模块注册了之后,在你使用insmod这个命令去安装的时候,module_init()注册的函数将会被执行,而当你用rmmod这个命令去卸载一个模块的时候,module_exit()注册的函数将会被执行.module_init()被称为驱动程序的初始化入口(driver initialization entry point).
+
+怎么样演示以上代码的运行呢?没错,你需要一个Makefile.
+
++++++++++++++++++++++Makefile+++++++++++++++++++++++++++
+      1 # To build modules outside of the kernel tree, we run "make"
+      2 # in the kernel source tree; the Makefile these then includes this
+      3 # Makefile once again.
+      4 # This conditional selects whether we are being included from the
+      5 # kernel Makefile or not.
+      6 ifeq ($(KERNELRELEASE),)
+      7
+      8     # Assume the source tree is where the running kernel was built
+      9     # You should set KERNELDIR in the environment if it's elsewhere
+     10     KERNELDIR ?= /lib/modules/$(shell uname -r)/build
+     11     # The current directory is passed to sub-makes as argument
+     12     PWD := $(shell pwd)
+     13
+     14 modules:
+     15         $(MAKE) __-C__ $(KERNELDIR) M=$(PWD) modules
+     16
+     17 modules_install:
+     18         $(MAKE) -C $(KERNELDIR) M=$(PWD) modules_install
+     19
+     20 clean:
+     21         rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c .tmp_versions
+     22
+     23 .PHONY: modules modules_install clean
+     24
+     25 else
+     26     # called from kernel build system: just declare what our modules are
+     27     obj-m := hello.o
+     28 endif
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 
+在lwn上可以找到这个例子,你可以把以上两个文件放在你的某个目录下,然后执行make,也许你不一定能成功,因为LK 2.6要求你编译模块之前,必须先在内核源代码目录下执行make,换言之,你必须先配置过内核,执行过make,然后才能make你自己的模块.原因我就不细说了,你按着她要求的这么去做就行了.在内核顶层目录make过之后,你就可以在你当前放置Makefile的目录下执行make了.Ok,make之后你就应该看到一个叫做hello.ko的文件生成了,恭喜你,这就是你将要测试的模块.
+
+执行命令,
+  #insmod hello.ko
+同时在另一个窗口,用命令tail -f /var/log/messages察看日志文件,你会看到  Hello world被打印了出来.
+
+再执行命令,
+  #rmmod hello.ko
+此时,在另一窗口你会看到Goodbye,cruel world!被打印了出来.
+
+到这里,我该恭喜你,因为你已经能够编写Linux内核模块了.这种感觉很美妙,不是吗?你可以嘲笑秦皇汉武略输文采唐宗宋祖稍逊风骚,还可以嘲笑一代天骄成吉思汗只识弯弓射大雕了. 是的,Twins姐姐(s)告诉我们,只要我喜欢,还有什么不可以.
+
+日后我们会看到,2.6内核中,每个模块都是以module_init开始,以module_exit结束.大多数来说没有必要知道这是为什么,记住就可以了.

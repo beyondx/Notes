@@ -1,0 +1,73 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-15T11:03:10+08:00
+
+====== CSS float 属性(CSS 参考手册) ======
+
+首先我们了解到，CSS网页布局的原理，就是按照HTML代码中**对象声明的顺序**，以**流布局**的方式来显示它，而流布局就不得不说到float浮动技术，在HTML中的所有对象，默认分为两种：块元素(block element)、内联元素(inline element)，虽然也存在着可变元素，但只是随上下文关系确定该元素是块元素或者内联元素。
+　
+
+===== 定义和用法 =====
+
+float 属性定义元素向水平方向左或右浮动。以往这个属性总应用于图像，使文本围绕在图像周围，不过在 CSS 中，任何元素都可以浮动。浮动元素会生成一个块级框，而不论它本身是何种元素，浮动后该元素脱离文档流。
+
+其实CSS的float属性，作用就是改变块元素(block element)对象的默认显示方式。block对象设置了float属性之后，它将不再独自占据一行，可以浮动到左侧或右侧。
+
+A floated element will move as far to the left or right as it can. Usually this means all the way to the left or right of the containing element.
+The elements __after__ the floating element will flow around it.The elements __before__ the floating element will not be affected.
+If an image is floated to the right, a following text flows around it, to the left.
+
+===== Floating Elements Next to Each Other =====
+If you place several floating elements after each other, they will** float next to each other** __if there is room(同一行可以容纳这几个元素)__.
+Here we have made an image gallery using the float property:
+
+.thumbnail
+{
+float:left;
+width:110px;
+height:90px;
+margin:5px;
+}
+
+===== Turning off Float - Using Clear =====
+
+Elements after the floating element will flow around it.** To avoid this**, use the clear property.
+The clear property specifies which sides of an element other floating elements are not allowed.
+Add a text line into the image gallery, using the clear property:
+
+.text_line
+{
+clear:both;
+}
+
+
+如果浮动非替换元素，则要指定一个明确的宽度；否则，它们会尽可能地窄。
+
+注释：假如在一行之上只有极少的空间可供浮动元素，那么这个浮动元素会跳至下一行，这个过程会持续到某一行拥有足够的空间为止。
+
+
+默认值： 	none
+继承性： 	no
+版本： 	CSS1
+JavaScript 语法： 	object.style.cssFloat="left"
+
+===== 实例 =====
+把图像向右浮动：
+
+img
+  {
+  float:right;
+  }
+
+
+浏览器支持
+
+所有主流浏览器都支持 float 属性。
+
+注释：任何的版本的 Internet Explorer （包括 IE8）都不支持属性值 "inherit"。
+可能的值
+值 	描述
+left 	元素向左浮动。
+right 	元素向右浮动。
+none 	默认值。元素不浮动，并会显示在其在文本中出现的位置。
+inherit 	规定应该从父元素继承 float 属性的值。

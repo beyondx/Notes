@@ -1,0 +1,441 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-28T13:12:45+08:00
+
+====== Mutt ======
+Created Wednesday 28 December 2011
+https://wiki.archlinux.org/index.php/Mutt
+
+Mutt is a **text-based** mail client renowned for its powerful features. Though over a decade old, Mutt remains the mail client of choice for a great number of power-users. Unfortunately, a default Mutt install is plagued by complex keybindings along with a daunting amount of documentation. This guide will help the average user get Mutt up and running, and begin customizing it to their particular needs.
+Contents
+    1 Overview
+    2 Installing
+        2.1 Notes
+    3 Configuring
+        3.1 IMAP
+            3.1.1 Using native IMAP support
+                3.1.1.1 imap_user
+                3.1.1.2 imap_pass
+                3.1.1.3 folder
+                3.1.1.4 spoolfile
+                3.1.1.5 mailboxes
+                3.1.1.6 Summary
+            3.1.2 External IMAP support
+        3.2 POP3
+            3.2.1 Retrieving mail
+                3.2.1.1 More than one Email account with getmail
+            3.2.2 Sorting mail
+        3.3 Maildir
+        3.4 SMTP
+            3.4.1 Using native SMTP support
+            3.4.2 External SMTP support
+    4 Customizing
+        4.1 Printing
+        4.2 Signature block
+            4.2.1 Random signature
+        4.3 Viewing URLs & opening Firefox
+        4.4 Mutt and Vim
+        4.5 Viewing HTML within a Vim/Mutt setup
+        4.6 Mutt and GNU nano
+        4.7 Colors
+    5 Tips & Tricks
+        5.1 Use Mutt to send mail from command line
+        5.2 How to display another email while composing
+    6 Additional resources
+
+===== Overview =====
+
+Mutt focuses primarily on being a** Mail User Agent** (MUA), and was originally written to view mail. Later implementations added for retrieval, sending, and filtering mail are simplistic compared to other mail applications and, as such, users may wish to use __external applications__ to extend Mutt's capabilities.
+
+Nevertheless, the Arch Linux mutt package is compiled with **IMAP, POP3 and SMTP** support, removing the necessity for external applications.
+
+This article covers using both **native** IMAP sending and retrieval, and a setup depending on **OfflineIMAP** or **getmail (POP3)** to retrieve mail, **procmail **to filter it in the case of POP3, and **msmtp** to send it.
+
+===== Installing =====
+
+Install Mutt:
+
+# pacman -S mutt
+
+Optionally install **external helper applications** for an IMAP setup:
+
+# pacman -S offlineimap msmtp
+
+Or if using POP3:
+
+# pacman -S getmail procmail
+
+Notes
+
+* If you just need the authentication methods LOGIN and PLAIN, these are satisfied with the dependency **libsasl**.
+* If you want to (or have to) use CRAM-MD5, GSSAPI or DIGEST-MD5, install also the package **cyrus-sasl-plugins**.
+* if you are using Gmail as your smtp server, you may need to install the package **cyrus-sasl**. 
+
+===== Configuring =====
+
+This section covers IMAP, #POP3, #Maildir and #SMTP configuration.
+
+Note that Mutt will recognize two locations for its configuration file; **~/.muttrc** and** ~/.mutt/muttrc**. Either location will work.
+
+==== IMAP ====
+
+//Native and external setups//
+
+=== Using native IMAP support ===
+
+The pacman version of Mutt is compiled with IMAP support. At the very least you need to have 4 lines in your muttrc file to be able to access your mail.
+* **imap_user**
+set imap_user=USERNAME
+Continuing with the previous example, remember that Gmail requires your **full **email address (this is not standard):
+set imap_user=your.username@gmail.com
+* **imap_pass**
+If unset, the password will be prompted for.
+set imap_pass=SECRET
+* **folder**
+Instead of a local directory which contains all your mail (and directories), **use your server** (and the highest folder in the hierarchy, if needed).
+set folder=imap[s]://imap.server.domain[:port]/[folder/]
+You do not have to use a folder, but it might be convenient if you have all your other folders inside your__ INBOX__, for example. Whatever you set here as your folder can be accessed later in Mutt with just an equal sign (=).   Example:
+set folder=imaps://imap.gmail.com/
+* **spoolfile  #服务器上存有所有邮件的文件夹**
+You can now use '=' or '+' as a **substitution** for the__ full folder path__ that was configured above. For example:
+set spoolfile=+INBOX   #+INBOX是imaps://imap.gmail.com/INBOX的简写，+的内容由上面的folder变量替换
+* **mailboxes  #服务器上存有邮件的各个文件夹**
+**Any imap folders** that should be checked regularly for new mail __should be__ listed here:
+mailboxes **=**INBOX **=**family   #检查服务器上的两个文件夹内容是否有邮件，与下一条设置等效。
+mailboxes imaps://imap.gmail.com/INBOX imaps://imap.gmail.com/family
+Alternatively, check for **all **subscribed IMAP folders (as if all were added with a mailboxes line):
+set imap_check_subscribed
+These two versions are equivalent, but the first is much more convenient. Also, newer Mutt versions are configured by default to include a macro bound to the__ 'y' key__ which will allow you to change to any of the folders listed under mailboxes.
+
+=== Summary ===
+Using these options, you will be able to start mutt, enter your IMAP password, and start reading your mail. Here is a muttrc snippet (for Gmail) with some other lines you might consider adding for better IMAP support.
+
+set folder      = imaps://imap.gmail.com/  #服务器地址，该值在以后可以用+代替
+set imap_user   = your.username@gmail.com
+set imap_pass   = your-imap-password
+set spoolfile   = +INBOX
+mailboxes       = +INBOX     #只检索服务器上该目录下的邮件
+
+# store **message headers** locally to speed things up
+set header_cache = ~/.mutt/hcache
+
+# specify where to save and/or look for postponed messages
+set postponed = +[Gmail]/Drafts
+
+# allow mutt to open new imap connection automatically
+unset imap_passive
+
+# keep imap connection alive by polling intermittently (time in seconds)
+set imap_keepalive = 300
+
+# how often to check for new mail (time in seconds)
+set mail_check = 120
+
+===== External IMAP support =====
+
+While IMAP-functionality is built into Mutt, it** does not download mail for offline-use**. The OfflineIMAP article describes how to download your emails to a__ local folder__ which can then be processed by Mutt.
+
+Consider using applications such as spamassassin or imapfilter to __sort__ mail.
+
+==== POP3 ====
+
+//Retrieving and sorting mail with external applications//
+
+=== Retrieving mail ===
+
+Create the directory ~/.getmail/. Open the file **~/.getmail/getmailrc** in your favorite text editor.
+Here is an example getmailrc used with a gmail account.
+
+[retriever]
+type = SimplePOP3SSLRetriever
+server = pop.gmail.com
+username = username@gmail.com
+port = 995
+password = password
+
+[destination]
+type = Maildir
+path = ~/mail/
+
+You can tweak this to your POP3 service's specification.
+
+As you can see ~/.getmail/getmailrc contains **sensitive information **(namely, email account passwords in plain text). You will want to change access permissions to the directory so only the owner can see it:
+
+$ chmod 700 ~/.getmail
+
+For this guide we will be storing our mail in the maildir format. The two main mailbox formats are mbox and maildir. The main difference between the two is that mbox is one file, with all of your mails and their headers stored in it, whereas a maildir is a directory tree. Each mail is its own file, which will often speed things up.
+
+A maildir is just a folder with the folders cur, new and tmp in it.
+
+   mkdir -p [[~/mail/{cur,new,tmp}]]   #如果使用procmail，则这些目录不用创建
+
+Now, run getmail. If it works fine, you can create a cronjob for getmail to run every n hours/minutes. Type crontab -e to edit cronjobs, and enter the following:
+
+ */30 * * * * /usr/bin/getmail
+
+That will run getmail every 30 minutes.
+More than one Email account with getmail
+
+By default, when you run getmail the program searches for the file getmailrc created as seen above. If you have more than one mail account you would like to get mail from, then you can create such a file for each email address, and then tell getmail to run using both of them. Obviously if you have two accounts and two files you cannot have both of them called getmailrc. What you do is give them two different names, using myself as an example: I call one personal, and one university. These two files contain content relevant to my personal mail, and my university work mail respectively. Then to get getmail to work on these two files, instead of searching for getmailrc(default), I use the --rcfile switch like so: __getmail --rcfile__ university --rcfile personal This can work with more files if you have more email accounts, just make sure each file is in the .getmail directory and make sure to alter the cronjob to run the command with the --rcfile switches. E.g.
+
+ */30 * * * * /usr/bin/getmail --rcfile university --rcfile personal
+
+Obviously you can call your files whatever you want, providing you include them in the cronjob or shell command, and they are in the .getmail/ directory, getmail will fetch mail from those two accounts.
+
+===== Sorting mail =====
+
+**Procmail **is an extremely powerful sorting tool. For the purposes of this wiki, we will do some primitive sorting to get started.
+
+You must edit your **getmailrc** to pass retrieved mail to procmail:
+
+[destination]
+type = MDA_external
+path = /usr/bin/procmail
+
+Now, open up __.procmailrc__ in your favorite editor. The following will sort all mail from the happy-kangaroos mailing list, and all mail from your lovey-dovey friend in their own maildirs.
+
+MAILDIR=$HOME/mail
+DEFAULT=$MAILDIR/inbox/
+LOGFILE=$MAILDIR/log
+
+:0:
+* ^To: happy-kangaroos@nicehost.com
+happy-kangaroos/
+
+:0:
+* ^From: loveydovey@iheartyou.net
+lovey-dovey/
+
+:0:
+inbox/
+
+After you have saved your .procmailrc, run getmail and see if procmail succeeds in sorting your mail into the appropriate directories.
+Note: One easy to make mistake with .procmailrc is the permission. procmail require it to have permission__ 644__ and will not give meaningless error message if you do not.
+
+===== Maildir =====
+
+Maildir is a generic and standardized format. Almost every MUA is able to handle Maildirs and Mutt's support is excellent. There are just a few simple things that you need to do to get Mutt to use them. Open your muttrc with and add the following lines:
+
+set mbox_type=Maildir
+set folder=$HOME/mail
+set spoolfile=+/inbox
+set header_cache=~/.hcache
+
+This is a minimal Configuration that enables you to access your Maildir and checks for new local Mails in INBOX. This configuration also caches the headers of the eMails to speed up directory-listings. It might not be enabled in your build (but it sure is in the Arch-Package). Note that this does not affect OfflineIMAP in any way. It always syncs the all directories on a Server. spoolfile tells Mutt which local directories to poll for new Mail. You might want to add more Spoolfiles (for example the Directories of Mailing-Lists) and maybe other things. But this is subject to the Mutt manual and beyond the scope of this document.
+
+===== SMTP =====
+
+Whether you use POP or IMAP to receive mail you will probably still send mail using SMTP.
+
+=== Using native SMTP support ===
+
+The pacman version of Mutt is also compiled with SMTP support. Just check the online manual muttrc, or man muttrc for more information.
+For example:
+
+set my_pass='mysecretpass'
+set my_user=myname@gmail.com
+
+set smtp_url=smtps://$my_user:$my_pass@smtp.gmail.com
+set ssl_force_tls = yes
+
+==== External SMTP support ====
+
+An external SMTP agenta such as __msmtp__ or SSMTP can also be used. This section exclusively covers configuring Mutt for msmtp.
+
+Edit Mutt's configuration file or create it if unpresent:
+**muttrc**
+
+set realname='Disgruntled Kangaroo'
+
+set sendmail="/usr/bin/msmtp"
+
+set edit_headers=yes
+set folder=~/mail
+set mbox=+mbox
+set spoolfile=+inbox
+set record=+sent
+set postponed=+drafts
+set mbox_type=Maildir
+
+**mailboxes **+inbox +lovey-dovey +happy-kangaroos
+
+Now, startup mutt:
+
+$ mutt
+
+You should see all the mail in __~/mail/inbox__. Press m to compose mail; it will use the editor defined by your EDITOR environment variable. If this variable is not set, type:
+
+$ export EDITOR=editorbin
+
+For testing purposes, address the letter to yourself. After you have written the letter, save and exit the editor. You will return to Mutt, which will now show information about your e-mail. Press y to send it.
+
+===== Customizing =====
+
+Guides to get you started with using & customizing Mutt :
+
+* My first mutt (maintained by Bruno Postle)
+* The Woodnotes Guide to the Mutt Email Client (maintained by Randall Wood) 
+
+If you have any Mutt specific questions, feel free to ask in the irc channel.
+
+===== Printing =====
+
+You can install __muttprint__ from the AUR for a fancier printing quality. In your muttrc file, insert:
+
+set print_command="/usr/bin/muttprint %s -p {PrinterName}"
+
+===== Signature block =====
+
+Create a __.signature__ in your home directory. Your signature will be **appended** at the end of your email.
+
+====    Random signature ====
+
+You can use__ fortune__ to add a random signature to mutt.
+
+$ pacman -S fortune-mod
+
+Create a fortune file and then add the following line to your .muttrc:
+
+**set signature="fortune pathtofortunefile"**
+
+===== Viewing URLs & opening Firefox =====
+
+Your should start by creating a **.mutt directory** in $HOME if not done yet. There, create a file named** macros**. Insert the following:
+
+ macro pager \cb <pipe-entry>'urlview'<enter> 'Follow links with urlview'
+
+Then install __urlview__ with:
+
+pacman -S urlview
+
+Create a **.urlview** in $HOME and insert the following:
+
+REGEXP (((http|https|ftp|gopher)|mailto)[.:][^ >"\t]*|www\.[-a-z0-9.]+)[^ .,;\t>">\):]
+COMMAND firefox %s 
+
+When you read an email on the pager, hitting__ ctrl+b__ will list all the urls from the email. Navigate up or down with arrow keys and hit enter on the desired url.** Firefox **will start and go to the selected site.
+
+* Note - urlview has been moved to unsupported and is available in AUR here[1] 
+* Note - If you have some problems with urlview due to Mutt's url encoding you can try extract_url.pl 
+* Note - If you would like to see a short contextual preview of the content around each URL, try urlscan. The macro in your muttrc is the same as for urlview (except for the '**urlscan**' command). There is no additional configuration required other than ensuring $BROWSER is set. 
+
+===== Mutt and Vim =====
+
+    To limit the __width of text to 72 characters__, edit your .vimrc file and add: 
+
+au BufRead /tmp/mutt-* set tw=72
+
+    Another choice is to use Vim's mail filetype plugin to enable other mail-centric options besides 72 character width. Edit ~/.vim/filetype.vim, creating it if unpresent, and add: 
+
+ 
+augroup filetypedetect
+  " Mail
+  autocmd BufRead,BufNewFile *mutt-*              setfiletype mail
+augroup END
+
+    To set a different tmp directory, e.g. ~/.tmp, add a line to your muttrc as follows: 
+
+set tmpdir="~/.tmp"
+
+    To reformat a modified text see the Vim context help 
+
+:h 10.7
+
+===== Viewing HTML within a Vim/Mutt setup =====
+
+It is possible to pass the __html body __**to an external HTML program** and then__ dump__ it, keeping email viewing uniform and unobtrusive. Two programs are described here: **lynx and w3m**.
+
+Install lynx or w3m:
+
+pacman -S lynx
+or
+pacman -S w3m
+
+If ~/.mutt/mailcap does not exist you will need to create it and save the following to it.
+
+text/html; lynx -dump %s; nametemplate=%s.html; copiousoutput
+
+or, in case of w3m,
+
+text/html; w3m -I %{charset} -T text/html; copiousoutput;
+
+Edit muttrc and add the following,
+
+set mailcap_path 	= ~/.mutt/mailcap
+
+To automatically open HTML messages in lynx, add this additional line to the muttrc:
+
+auto_view text/html
+
+The beauty of this is, instead of seeing an html body as source or being opened by a separate program, in this case lynx, it gets parsed to Vim as html, any url links within the email can be displayed with Ctrl+b.
+Mutt and GNU nano
+
+nano is another nice console editor to use with Mutt.
+
+To limit the width of text to 72 characters, edit your .nanorc file and add:
+
+ set fill 72
+
+Also, in muttrc file, you can specify the line to start editing so that you will skip the mail header:
+
+ set editor="nano +7"
+
+Colors
+
+Append sample color definitions to your .muttrc file:
+
+$ cat /usr/share/doc/mutt/samples/colors.linux >> ~/.muttrc
+
+Then adjust to your liking. The actual color each of these settings will produce depends on the colors set in your ~/.Xresources file.
+Tips & Tricks
+Use Mutt to send mail from command line
+
+Man pages will show all available commands and how to use them, but here are a couple of examples. You could use Mutt to send alerts, logs or some other system information, triggered by login through .bash_profile, or as a regular cron job.
+
+Send a message:
+
+mutt -s "Subject" somejoeorjane@someserver.com < /var/log/somelog
+
+Send a message with attachment:
+
+mutt -s "Subject" somejoeorjane@someserver.com -a somefile < /tmp/sometext.txt
+
+How to display another email while composing
+
+A common complaint with Mutt is that when composing a new mail (or reply), you cannot open another mail (i.e. for checking with another correspondent) without closing the current mail (postponing). The following describes a solution:
+
+First, fire up Mutt as usual. Then, launch another terminal window. Now start a new Mutt with
+
+mutt -R
+
+This starts Mutt in read-only mode, and you can browse other emails at your convenience. It is strongly recommended to always launch a second Mutt in read-only mode, as conflicts will easily arise otherwise.
+
+Now, this solution calls for a bit of typing, so we would like to automate this. The following works with Awesome, in other WM's or DE's similar solutions are probably available: just google how to add a key binding, and make the desired key execute
+
+$TERM -e mutt -R 
+
+where $TERM is your terminal.
+
+As for Awesome: edit your rc.lua, and add the following on one of the first lines, after terminal = "yourTerminal" etc.
+
+mailview = terminal .. " -e mutt -R"
+
+This automatically uses your preferred terminal, ".." is concatenation in Lua. Note the space before -e.
+
+Then add the following inside --{{{ Key bindings
+
+awful.key({ modkey,           }, "m", function() awful.util.spawn(mailview) end),
+
+Omit the final comma if this is the last line. You can, of course use another key than "m". Now, save&quit, and check your syntax with
+
+awesome -k
+
+If this is good, restart awesome and give it a try!
+
+Now, a usage example: Launch mutt as usual. Start a new mail, and then press "Mod4"+"m". This opens your mailbox in a new terminal, and you can browse around and read other emails. Now, a neat bonus: exit this read-only-Mutt with "q", and the terminal window it created disappears!
+Additional resources
+
+    The official Mutt website
+    The Mutt wiki
+    Brisbin's great guide on how to setup different IMAP accounts with mutt + offlineimap + msmtp
+    Documentation on Configuring Getmail with rcfiles 

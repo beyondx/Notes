@@ -1,0 +1,64 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-31T12:47:52+08:00
+
+====== Qt学习之路(2)：Hello, world! ======
+Created Monday 31 October 2011
+
+http://devbean.blog.51cto.com/448512/194031
+
+任何编程技术的学习第一课基本上都会是Hello, world!，我也不想故意打破这个惯例——照理说，应该首先回顾一下Qt的历史，不过即使不说这些也并无大碍。
+
+或许有人总想知道，Qt这个单词是什么意思。其实，这并不是一个缩写词，仅仅是因为它的发明者，TrollTech公司的CEO，Haarard Nord和Trolltech公司的总裁Eirik Chambe-Eng在联合发明Qt的时候并没有一个很好的名字。在这里，字母Q是Qt库中所有类的前缀——这仅仅是因为在Haarard的emacs的字体中，这个字母看起来特别的漂亮；而字母t则代表“toolkit”，这是在Xt( X toolkit )中得到的灵感。
+
+顺便说句，Qt原始的公司就是上面提到的Trolltech，貌似有一个中文名字是奇趣科技——不过现在已经被Nokia收购了。因此，一些比较旧的文章里面会提到Trolltech这个名字。
+
+好了，闲话少说，先看看Qt的开发吧！事先说明一下，我是一个比较懒的人，不喜欢配置很多的东西，而Qt已经提供了一个轻量级的IDE，并且它的网站上也有for Eclipse 和 VS 的开发插件，不过在这里我并不想用这些大块头 :)
+
+Qt有两套协议——商业版本和开源的LGPL版本。不同的是前者要收费，而后者免费，当然，后者还要遵循LGPL协议的规定，这是题外话。
+
+Qt的网址是https://qt.nokia.com/downloads，不过我打开这个站点总是很慢，不知道为什么。你可以找到大大的 LGPL/Free 和 Commercial，好了，我选的是LGPL版本的，下载包蛮大，但是下载并不会很慢。下载完成后安装就可以了，其它不用管了。这样，整个Qt的开发环境就装好了——如果你需要的话，也可以把qmake所在的目录添加进环境变量，不过我就不做了。
+
+安装完成后会有个Qt Creator的东西，这就是官方提供的一个轻量级IDE，不过它的功能还是蛮强大的。运行这个就会发现，其实Qt不仅仅是Linux KDE桌面的底层实现库。而且是这个IDE的实现 :) 这个IDE就是用Qt完成的。
+
+Qt Creator左面从上到下依次是Welcome(欢迎页面，就是一开始出现的那个)；Edit(我们的代码编辑窗口)；Debug(调试窗口)；Projects(工程窗口)；Help(帮助，这个帮助完全整合的Qt的官方文档，相当有用)；Output(输出窗口)。
+
+下面我们来试试我们的 Hello, world! 吧！
+
+在Edit窗口空白处点右键，有 New project... 这里我们选第三项，Qt Gui Application。
+{{~/sync/notes/zim/Programme/Qt学习之路/Qt学习之路(2)：Hello,_world!/1.png}}
+ 
+然后点击OK，来到下一步，输入工程名字和保存的位置。
+ {{~/sync/notes/zim/Programme/Qt学习之路/Qt学习之路(2)：Hello,_world!/2.png}}
+ 
+点击Next，来到选择库的界面。这里我们系统默认为我们选择了Qt core 和 GUI，还记得我们建的是Gui Application吗？嗯，就是这里啦，它会自动为我们加上gui这个库。现在应该就能看出，Qt是多么庞大的一个库，它不仅仅有Gui，而且有Network，OpenGL，XML之类。不过，现在在这里我们不作修改，直接Next。
+ {{~/sync/notes/zim/Programme/Qt学习之路/Qt学习之路(2)：Hello,_world!/3.png}}
+ 
+下一个界面需要我们定义文件名，我们不修改默认的名字，只是为了清除起见，把generate form的那个勾去掉即可。
+ {{~/sync/notes/zim/Programme/Qt学习之路/Qt学习之路(2)：Hello,_world!/7.png}}
+ 
+Next之后终于到了Finish了——漫长的一系列啊！检查无误后Finish就好啦！
+{{~/sync/notes/zim/Programme/Qt学习之路/Qt学习之路(2)：Hello,_world!/4.png}} 
+ 
+之后可以看到，IDE自动生成了四个文件，一个.pro文件，两个.cpp和一个.h。这里说明一下，.pro就是工程文件(project)，它是qmake自动生成的用于生产makefile的配置文件。这里我们先不去管它。main.cpp里面就是一个main函数，其他两个文件就是先前我们曾经指定的文件名的文件。
+ {{~/sync/notes/zim/Programme/Qt学习之路/Qt学习之路(2)：Hello,_world!/5.png}}
+ 
+现在，我们把main.cpp中的代码修改一下：
+ 
+#include <QtGui/QApplication>
+#include <QLabel>
+
+int main(int argc, char *argv[])
+{
+        QApplication a(argc, argv);
+        QLabel *label = new QLabel("Hello, world!");
+        label->show();
+        return a.exec();
+}
+ 
+修改完成后保存。点击左下角的绿色三角键，Run。一个小小的窗口出现了——
+ {{~/sync/notes/zim/Programme/Qt学习之路/Qt学习之路(2)：Hello,_world!/6.png}}
+ 
+好了！我们的第一个Qt程序已经完成了。
+ 
+PS：截了很多图，说得详细些，以后可就没这么详细的步骤啦，嘿嘿…相信很多朋友应该一下子就能看明白这个IDE应该怎么使用了的，无需我多费口舌。呵呵。

@@ -1,0 +1,146 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-05-18T21:35:26+08:00
+
+====== passwd ======
+Created Wednesday 18 May 2011
+
+===== /etc/passwd文件的内容及格式如下： =====
+root:x:0:0:root:/root:/bin/bash
+bin:x:1:1:bin:/bin:/bin/false
+daemon:x:2:2:daemon:/sbin:/bin/false
+mail:x:8:12:mail:/var/spool/mail:/bin/false
+ftp:x:14:11:ftp:/srv/ftp:/bin/false
+http:x:33:33:http:/srv/http:/bin/false
+nobody:x:99:99:nobody:/:/bin/false
+dbus:x:81:81:System message bus:/:/bin/false
+geekard::1000:1000::/home/geekard:/bin/bash
+avahi:x:84:84:avahi:/:/bin/false
+rtkit:x:133:133:RealtimeKit:/proc:/sbin/nologin
+gdm:x:120:120:Gnome Display Manager:/var/lib/gdm:/sbin/nologin
+mysql:x:89:89::/var/lib/mysql:/bin/false
+news:x:5000:5000::/var/spool/news:/bin/false
+stunnel:x:16:16::/var/run/stunnel:/bin/false
+
+通过修改各个字段就可以修改用户的信息，如：
+第二个字段为空时，表示在登陆时不需密码.为其它字符而非x时不能登录。
+第六个字段设置用户登录后的主目录。
+第七个字段设置用户登录后运行的第一个程序，注意：该程序的生存周期必须是长久的，一直到用户会话结束。
+通过将第七个字段设为一些特殊程序，可以阻止用户登录。这些特殊程序可以是：
+[[/bin/false]]			进程返回非0值(表示不成功)后退出
+[[/bin/true]]			进程返回0后退出
+[[/bin/null]]			同上
+[[/sbin/nologin]]		打印出自定义信息后，以非0值退出
+
+===== /etc/shadow的文件内容及格式如下： =====
+[root@geekard geekard]# cat /etc/shadow
+root:$1$b0hwbCLm$x0fitSQ53Di9uSF.NIp6l0:15096::::::
+bin:x:14871::::::
+daemon:x:14871::::::
+mail:x:14871::::::
+ftp:x:14871::::::
+http:x:14871::::::
+nobody:x:14871::::::
+dbus:!:15096:0:99999:7:::
+geekard:__!__$1$jGz6VTI7$1qFEQ/I8q7ufBCLUAsu10.:15112:0:99999:7:::
+avahi:!:15096::::::
+rtkit:!:15096:0:99999:7:::
+gdm:!:15096:0:99999:7:::
+mysql:!:15096:0:99999:7:::
+news:!:15101:0:99999:7:::
+stunnel:!:15101:0:99999:7:::
+用户名:加密密码(以叹号开头表示锁定):自上次更改口令以来经过的时间(秒):至少经过多少天才能更改口令:自多时间:警告天数:口令过期天数:账户失效天数
+
+===== 设置用户帐号密码的命令： =====
+**passwd** -u username
+Options:
+  -a, --all                     report password status on all accounts
+  **-d**, --delete                  delete the password for the named account
+  __-e, --expire__                  force expire the password for the named account
+  __-i, --inactive__ INACTIVE       set password inactive after expiration       to INACTIVE
+  -l, --lock                    lock the password of the named account
+  -n, --mindays MIN_DAYS        set minimum number of days before password  change to MIN_DAYS
+  -u, --unlock                  unlock the password of the named account
+  -w, --warndays WARN_DAYS      set expiration warning days to WARN_DAYS
+  -x, --maxdays MAX_DAYS        set maximum number of days before password change to MAX_DAYS
+
+
+**vipw  **允许管理员编辑各种口令文件
+	Options:
+	  -g, --group                   edit group database
+	  -h, --help                    display this help message and exit
+	  -p, --passwd                  edit passwd database
+	  -q, --quiet                   quiet mode
+	  -s, --shadow                  edit shadow or gshadow database
+
+**useradd**
+	Options:
+	  -c, --comment COMMENT         GECOS field of the new account
+	  -d, --home-dir HOME_DIR       home directory of the new account
+	  -e, --expiredate EXPIRE_DATE  expiration date of the new account
+	  -f, --inactive INACTIVE       password inactivity period of the new account
+	  -g, --gid GROUP               name or ID of the primary group of the new
+	                                account
+	  -G, --groups GROUPS           list of supplementary groups of the new  account
+	  -k, --skel SKEL_DIR           use this alternative skeleton directory
+	  -K, --key KEY=VALUE           override /etc/login.defs defaults
+	  -m, --create-home             create the user's home directory
+	  -p, --password PASSWORD       encrypted password of the new account
+	  -s, --shell SHELL             login shell of the new account
+	  -u, --uid UID                 user ID of the new account
+**usermod**
+	Options:
+	  -c, --comment COMMENT         new value of the GECOS field
+	  -d, --home HOME_DIR           new home directory for the user account
+	  __-e__, --expiredate EXPIRE_DATE  set account expiration date to EXPIRE_DATE		//账户失效时间
+	  __-f__, --inactive INACTIVE       set password inactive after expiration     to INACTIVE      //口令过期时间
+	  -g, --gid GROUP               force use GROUP as new primary group
+	  -G, --groups GROUPS    new list of supplementary GROUPS
+	  __-a, --append__                  append the user to the supplemental GROUPS   mentioned by the -G option without removing                                					him/her from other groups
+	  -l, --login NEW_LOGIN         new value of the login name
+	  **-L,** --lock                    lock the user account
+	   -p, --password PASSWORD       use encrypted password for the new password
+	  -s, --shell SHELL             new login shell for the user account
+	  -u, --uid UID                 new UID for the user account
+	**  -U**, --unlock                  unlock the user account
+**userdel**
+		Options:
+		  -f, --force                   force removal of files,
+		                                even if not owned by user
+		  -h, --help                    display this help message and exit
+		  **-r, **--remove                  remove home directory and mail spool
+**gpasswd   // **gpasswd - administer /etc/group and /etc/gshadow
+	Options:
+	  -a, --add USER                add USER to GROUP
+	  -d, --delete USER             remove USER from GROUP
+	  -r, --remove-password         remove the GROUP's password
+	  -R, --restrict                restrict access to GROUP to its members
+	  -M, --members USER,...        set the list of members of GROUP
+	  -A, --administrators ADMIN,...  set the list of administrators for GROUP
+	Except for the -A and -M options, the options cannot be combined.
+**groupadd **
+	Options:
+	  -f, --force                   exit successfully if the group already exists,        and cancel -g if the GID is already used
+	  -g, --gid GID                 use GID for the new group
+          -p, --password PASSWORD       use this encrypted password for the new group
+** groupdel**
+** groupmod**
+	Options:
+	  -g, --gid GID                 change the group ID to GID
+	  -n, --new-name NEW_GROUP      change the name to NEW_GROUP
+	  -p, --password PASSWORD       change the password to this (encrypted)     PASSWORD
+ 
+
+
+===== 显示用户帐号信息的命令： =====
+**finger**
+**id**
+**groups**
+
+
+
+ 
+ 
+
+
+

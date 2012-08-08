@@ -1,0 +1,150 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-02-26T14:37:25+08:00
+
+====== 实验 ======
+Created Sunday 26 February 2012
+
+===== 准备： =====
+#cd [[/tmp]]
+#mkfifo ls
+
+==== 实验一： ====
+A terminal:
+[geekard@geekard tmp]$ for (( i = 0; i < 4; i++ )); do echo "hello, $i" >ls; done
+#被阻塞，直到B终端中的read读打开该FIFO。
+
+B termianl:
+[geekard@geekard tmp]$ while__ read line <ls__ ;do echo $line; done
+hello, 0  #A终端中进程立即返回。
+#被阻塞。
+^Cbash: ls: Interrupted system call #按C-c，提示read系统调用被中断。
+
+read line <ls位于while内部，这样__每次loop，ls文件就会被读打开一次__。同理，A中的 echo "hello, $i"也是__每次loop都写打开一次__。
+
+B只显示一行的原因是：A，B中的进程存在__竞争条件__。理想情况下，是A，B__轮流执行__，这样才会正常输出。但是，实验一中A终端的进程在B终端进程**第一次读打开ls后**，就__立即输出四次(因为B将ls保持读打开，所以A每次loop都可以写打开ls)后退出__，这样B终端进程一旦读到一行，__下次__再读打开ls时，就会被阻塞。
+
+===== 实验二： =====
+A terminal:
+[geekard@geekard tmp]$ for (( i = 0; i < 4; i++ )); do echo "hello, $i" >ls; done
+#被阻塞，直到B终端中的cat读打开该FIFO。
+[geekard@geekard tmp]$ 
+
+B terminal:
+[geekard@geekard tmp]$ cat ls
+hello, 0
+hello, 1
+hello, 2
+hello, 3
+[geekard@geekard tmp]$
+
+B中的进程__读打开文件ls一次__，这样A进程每次loop的__写打开__都可以成功。
+
+===== 实验三： =====
+A terminal:
+[geekard@geekard tmp]$ for (( i = 0; i < 4; i++ )); do echo "hello, $i" >ls; done
+#被阻塞，直到B终端中的cat读打开该FIFO。
+[geekard@geekard tmp]$ 
+
+B terminal:
+[geekard@geekard tmp]$ while read line  
+>do
+>    echo $line
+>    done  __<ls   #重定向位于while语句块外面。__
+hello, 0
+hello, 1
+hello, 2
+hello, 3
+[geekard@geekard tmp]$ 
+
+B中的重定向位于while语句快外面，因此__只读打开ls文件一次__。
+
+===== 实验三： =====
+A terminal:
+[geekard@geekard tmp]$ for (( i = 0; i < 4; i++ ))
+> do 
+>     echo "hello, $i" 
+ >done  __>ls   #ls位于while语句块外面__
+#被阻塞，直到B终端中的cat读打开该FIFO。
+[geekard@geekard tmp]$ 
+
+B terminal:
+[geekard@geekard tmp]$  while read line __<ls__ ;do echo $line; done
+hello, 0  #A终端中进程立即返回。
+#被阻塞。
+^Cbash: ls: Interrupted system call #按C-c，提示read系统调用被中断。
+
+A中的ls被写打开一次，当B进程读打开ls后，立即向ls管道中__写入四次内容然后退出__。由于B中的 <ls 位于while loop内部，因此__下一次再读打开__ls时就会被阻塞(A中的进程已退出，写打开的ls已经关闭。)。
+
+===== 实验四： =====
+A terminal:
+[geekard@geekard tmp]$ for (( i = 0; i < 4; i++ )); do echo "hello, $i" ; done >ls
+#被阻塞，直到B终端中的cat读打开该FIFO。
+[geekard@geekard tmp]$ 
+
+B terminal:
+[geekard@geekard tmp]$  while read line ;do echo $line; done__ <ls__
+hello, 0
+hello, 1
+hello, 2
+hello, 3
+[geekard@geekard tmp]$
+
+===== 实验五： =====
+
+A terminal:
+[geekard@geekard tmp]$ for (( i = 0; i < 4; i++ )); do echo "hello, $i"; sleep 1; done >ls
+[geekard@geekard tmp]$ 
+
+B terminal:of doing the "read", but still get the same results. If I send data slowly (sleep 1 second between each line of data) it works. 
+[geekard@geekard tmp]$  while read line ;do echo $line; done <ls
+hello, 0   #__每隔1秒__显示一行
+hello, 1
+hello, 2
+hello, 3
+[geekard@geekard tmp]$
+
+
+===== 实验六： =====
+A terminal:
+[geekard@geekard tmp]$ for (( i = 0; i < 4; i++ )); do echo __-n __"hello, $i"; sleep 1; done >ls
+#被阻塞，直到B终端中进程执行，4S后退出。
+[geekard@geekard tmp]$ 
+
+B terminal:
+[geekard@geekard tmp]$ while **read line** ;do echo $line; done <ls   #4s后退出。
+[geekard@geekard tmp]$ 
+
+
+
+===== 实验七： =====
+A terminal:
+[geekard@geekard tmp]$ for (( i = 0; i < 4; i++ )); do echo -n "hello, $i"; if__(( __i == 3 )) ;then echo -n__ -e __"\n"; fi;  sleep 1; done >ls
+#被阻塞，直到B终端中进程执行，4S后退出。
+[geekard@geekard tmp]$ 
+
+B terminal:
+[geekard@geekard tmp]$ while read line ;do echo $line; done <ls
+hello, 0hello, 1hello, 2hello, 3  #__4s后显示__输出内容。
+[geekard@geekard tmp]$ 
+
+这三个对比实验说明__bash对管道文件的缓冲方式是行缓冲__。
+
+注意实验7中的(( i == 3 )) 不能用 [[ i == 3 ]]，因为[[ ... ]] 不进行数字间的算术、关系、逻辑运算(但是字符串间的关系运算符支持，因此可以位 [[ i == "3" ]])。
+
+
+===== 实验七： =====
+A terminal:
+[geekard@geekard tmp]$ for (( i = 0; i < 4; i++ )); do echo "hello,$i"; done >ls
+#被阻塞，直到B终端中进程执行后退出。
+[geekard@geekard tmp]$ 
+
+B terminal:
+[geekard@geekard tmp]$ for (( i = 0; i < 4; i++ )); do cat __<ls__; done
+hello,0
+hello,1
+hello,2
+hello,3
+#被阻塞，即使A中进程退出。
+
+B被阻塞是因为cat默认__全缓冲__地读入一个文件，因此 cat <ls会一直读读打开ls文件，直到A中的进程向ls文件中写入结束。但是B中的第二次循环时，因为没有进程写打开ls，所以cat的都打开ls被阻塞。

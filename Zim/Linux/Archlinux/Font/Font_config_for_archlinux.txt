@@ -1,0 +1,119 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-10-15T19:51:41+08:00
+
+====== Font config for archlinux ======
+Created Saturday 15 October 2011
+
+write fellow content in [[/etc/fonts/local.conf]]
+
+<?xml version='1.0'?>
+<!DOCTYPE fontconfig SYSTEM 'fonts.dtd'>
+<fontconfig>
+
+<alias>
+<family>serif</family>
+<prefer>
+  <family>Bitstream Vera Serif</family>
+  <family>Times New Roman</family>
+  <family>Nimbus Roman No9 L</family>
+  <family>Luxi Serif</family>
+  <family>Times</family>
+  <family>WenQuanYi Bitmap Song</family> 
+  <family>AR PL ShanHeiSun Uni</family>
+  <family>AR PL New Sung</family>
+  <family>AR PL ZenKai Uni</family>
+  <family>Ming(ISO10646)</family>
+  <family>Kochi Mincho</family>
+  <family>Baekmuk Batung</family>
+</prefer>
+</alias>
+
+<alias>
+<family>sans-serif</family>
+<prefer>
+  <family>Bitstream Vera Sans</family>
+  <family>Verdana</family>
+  <family>Arial</family>
+  <family>Tahoma</family>
+  <family>WenQuanYi Bitmap Song</family> 
+  <family>AR PL ShanHeiSun Uni</family>
+  <family>AR PL New Sung</family>
+  <family>AR PL ZenKai Uni</family>
+  <family>Helvetica</family>
+  <family>Ming(ISO10646)</family>
+  <family>Kochi Gothic</family>
+  <family>Baekmuk Dotum</family>
+</prefer>
+</alias>
+
+<alias>
+<family>monospace</family>
+<prefer>
+  <family>Bitstream Vera Sans Mono</family>
+  <family>Courier</family>
+  <family>Courier New</family>
+  <family>Andale Mono</family>
+  <family>Luxi Mono</family>
+  <family>Nimbus Mono L</family>
+  <family>WenQuanYi Bitmap Song</family>
+  <family>AR PL ShanHeiSun Uni</family>
+  <family>AR PL New Sung</family>
+  <family>AR PL ZenKai Uni</family>
+  <family>Ming(ISO10646)</family>
+  <family>Kochi Mincho</family>
+  <family>Baekmuk Batung</family>
+</prefer>
+</alias>
+
+
+<match target="font" >
+<test compare="eq" name="family" qual="any" >
+     <string>AR PL New Sung</string>
+     <string>AR PL ShanHeiSun Uni</string>
+     <string>AR PL ZenKai Uni</string>
+     <string>AR PL Mingti2L Big5</string>
+     <string>AR PL SungtiL Big5</string>
+     <string>MingLiu</string>
+     <string>PMingLiu</string>
+  </test>
+  <test compare="more_eq" name="pixelsize" >
+     <double>8</double>
+  </test>
+  <test compare="less_eq" name="pixelsize" >
+     <double>15</double>
+  </test>
+  <edit name="antialias" >
+     <bool>false</bool>
+  </edit>
+  <edit name="hinting" >
+     <bool>true</bool>
+  </edit>
+</match>
+
+
+<match target="font" >
+<edit mode="assign" name="autohint">    <bool>true</bool></edit>
+<edit mode="assign" name="hinting">    <bool>false</bool></edit>
+<edit mode="assign" name="lcdfilter">    <const>lcddefault</const></edit>
+<edit mode="assign" name="hintstyle">    <const>hintslight</const></edit>
+<edit mode="assign" name="antialias">    <bool>true</bool></edit>
+<edit mode="assign" name="rgba">    <const>rgb</const></edit>
+</match>
+
+<match target="font">
+<test name="pixelsize" qual="any" compare="more"><double>15</double></test>
+<edit mode="assign" name="lcdfilter"><const>lcdlight</const></edit>
+<edit mode="assign" name="hintstyle"><const>hintnone</const></edit></match>
+
+<match target="font">
+<test name="weight" compare="more"><const>medium</const></test>
+<edit mode="assign" name="hintstyle"><const>hintnone</const></edit>
+<edit mode="assign" name="lcdfilter"><const>lcdlight</const></edit></match>
+
+<match target="font">
+<test name="slant" compare="not_eq"><double>0</double></test>
+<edit mode="assign" name="hintstyle"><const>hintnone</const></edit>
+<edit mode="assign" name="lcdfilter"><const>lcdlight</const></edit></match>
+
+</fontconfig>

@@ -1,0 +1,280 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-01T22:23:48+08:00
+
+====== USB gadget设备驱动解析（3） ======
+Created Thursday 01 December 2011
+
+Linux USB 设备端驱动有两部分组成。一部分是USB 设备控制器(USB Device Controller, UDC)驱动、另一部分是硬件无关的功能驱动（如：鼠标、u盘、usb串口、usb网络等）；也可以分为3层的，分别是：Controller Drivers、Gadget Drivers、Upper Layers，大概意思都差不多。
+
+一、控制器(USB Device Controller, UDC)驱动
+
+Gadget 框架提出了一套标准 API, 在底层， USB 设备控制器驱动则实现这一套 API, 不同的 UDC需要不同的驱动， 甚至基于同样的 UDC 的不同板子也需要进行代码修改。这一层是硬件相关层。
+
+Linux 标准内核里支持各种主流 SOC 的 udc 驱动，如：S3C2410、PXA270等。你可以通过内核直接配置支持。你也可以通过修改它们获取更高的效率。如：s3c2410_uda.c 中并没有利用到控制器的dma功能，你可以根据需要修改它。
+要理解UDC驱动代码就必须对相应的硬件控制器熟悉。当然，如果你对此不感兴趣，或没时间熟悉，也可以暂时跳过对硬件相关部分。本文也侧重于对软件结构的描述，不关心硬件细节。
+
+下面给出在UDC驱动中涉及到的一些关键数据结构及API，参考s3c2410_uda.c
+
+1.关键的数据结构及API
+
+gadget api 提供了usb device controller 驱动和上层gadget驱动交互的接口。下面列出一些关键的数据结构。
+
+struct usb_gadget {//代表一个UDC设备
+        /* readonly to gadget driver */
+               const struct usb_gadget_ops *ops; //设备的操作集
+               struct usb_ep *ep0; //ep0（USB协议中的端点0）, 处理setup()请求
+               struct list_head ep_list; /* of usb_ep */本设备支持的端点链表
+               enum usb_device_speed speed; //如：USB_SPEED_LOW、USB_SPEED_FULL等
+               unsigned is_dualspeed:1; //支持full/high speed
+               unsigned is_otg:1; //OTG的特性
+               unsigned is_a_peripheral:1; //当前是A-peripheral，而不是A-host
+               unsigned b_hnp_enable:1;
+               unsigned a_hnp_support:1;
+               unsigned a_alt_hnp_support:1;
+               const char *name;
+               struct device dev;
+        };
+
+struct usb_gadget_driver {//代表一个gadget设备driver，如：file_storage.c中的fsg_driver
+//又如：如zero.c中的zero_driver
+               char *function; //一个字符串，如"Gadget Zero"
+               enum usb_device_speed speed;
+               int (*bind)(struct usb_gadget *);
+               void (*unbind)(struct usb_gadget *);
+               int (*setup)(struct usb_gadget *,
+               const struct usb_ctrlrequest *);
+               void (*disconnect)(struct usb_gadget *);
+               void (*suspend)(struct usb_gadget *);
+               void (*resume)(struct usb_gadget *)
+
+       /* FIXME support safe rmmod */
+               struct device_driver driver;
+        };
+
+struct usb_gadget_ops {//代表设备的操作集
+                       int (*get_frame)(struct usb_gadget *);
+                       int (*wakeup)(struct usb_gadget *);
+                       int (*set_selfpowered) (struct usb_gadget *, int is_selfpowered);
+                       nt (*vbus_session) (struct usb_gadget *, int is_active);
+                       int (*vbus_draw) (struct usb_gadget *, unsigned mA);
+                       int (*pullup) (struct usb_gadget *, int is_on);
+                       int (*ioctl)(struct usb_gadget *,
+                       unsigned code, unsigned long param);
+        };
+
+struct usb_ep {//代表一个端点
+                       void *driver_data //
+                       ...
+                       const struct usb_ep_ops *ops; //端点的操作集，如上
+                       struct list_head ep_list; //gadget的所有ep的list
+                       ...
+        };
+        struct usb_ep_ops {//表示端点的操作集
+                       ...
+                       int (*queue) (struct usb_ep *ep, struct usb_request *req,
+                       gfp_t gfp_flags); //将一个usb_request提交给endpoint
+                       //是数据传输的关键函数
+                       ...
+        };
+
+struct usb_request {//表示一个传输的请求，这与usb host端的urb类似
+                       void *buf;
+                       unsigned length;
+                       dma_addr_t dma;
+                       unsigned no_interrupt:1;
+                       unsigned zero:1;
+                       unsigned short_not_ok:1;
+                       void (*complete)(struct usb_ep *ep,
+                       struct usb_request *req);
+                       void *context;
+                       struct list_head list;
+                       int status;
+                       unsigned actual;
+        };
+
+上述结构中具体每项的含义可以参考http://tali.admingilde.org/linux-docbook/gadget/
+如：struct usb_request
+
+在http://tali.admingilde.org/linux-docbook/gadget/re02.html中
+
+Name
+
+struct usb_request — describes one i/o request
+
+Synopsis
+
+struct usb_request {
+               void * buf;
+               unsigned length;
+               dma_addr_t dma;
+               unsigned no_interrupt:1;
+               unsigned zero:1;
+               unsigned short_not_ok:1;
+               void (* complete) (struct usb_ep *ep,struct usb_request *req);
+               void * context;
+               struct list_head list;
+               int status;
+               unsigned actual;
+        };
+
+Members
+
+buf
+
+      Buffer used for data. Always provide this; some controllers only use PIO, or don't use DMA for some endpoints.
+
+length
+
+      Length of that data
+
+dma
+
+      DMA address corresponding to 'buf'. If you don't set this field, and the usb controller needs one, it is responsible for mapping and unmapping the         buffer.
+
+no_interrupt
+
+      If true, hints that no completion irq is needed. Helpful sometimes with deep request queues that are handled directly by DMA controllers.
+
+zero
+
+      If true, when writing data, makes the last packet be “short” by adding a zero length packet as needed;
+
+short_not_ok
+
+      When reading data, makes short packets be treated as errors (queue stops advancing till cleanup).
+
+complete
+
+      Function called when request completes, so this request and its buffer may be re-used. Reads terminate with a short packet, or when the buffer         fills, whichever comes first. When writes terminate, some data bytes will usually still be in flight (often in a hardware fifo). Errors (for reads or writes)         stop the queue from advancing until the completion function returns, so that any transfers invalidated by the error may first be dequeued.
+
+context
+
+       For use by the completion callback
+
+list
+
+       For use by the gadget driver.
+
+status
+
+       Reports completion code, zero or a negative errno. Normally, faults block the transfer queue from advancing until the completion callback returns.        Code “-ESHUTDOWN” indicates completion caused by device disconnect, or when the driver disabled the endpoint.
+
+actual
+
+       Reports bytes transferred to/from the buffer. For reads (OUT transfers) this may be less than the requested length. If the short_not_ok flag is set,        short reads are treated as errors even when status otherwise indicates successful completion. Note that for writes (IN transfers) some data bytes may        still reside in a device-side FIFO when the request is reported as complete.
+
+Description
+
+These are allocated/freed through the endpoint they're used with. The hardware's driver can add extra per-request data to the memory it returns,whichoften avoids separate memory allocations (potential failures), later when the request is queued.
+
+Request flags affect request handling, such as whether a zero length packet is written (the “zero” flag), whether a short read should be treated as anerror (blocking request queue advance, the “short_not_ok” flag), or hinting that an interrupt is not required (the “no_interrupt” flag, for use with deeprequest queues).
+
+Bulk endpoints can use any size buffers, and can also be used for interrupt transfers. interrupt-only endpoints can be much less functional.
+
+2、为USB gadget功能驱动提供的注册、注销函数
+
+EXPORT_SYMBOL(usb_gadget_unregister_driver); //注销一个USB gadget功能驱动
+
+EXPORT_SYMBOL(usb_gadget_register_driver);//注册一个USB gadget功能驱动
+
+二、USB gadget功能驱动
+
+       如果内核已经支持了SOC的UDC驱动，很多时候，我们可以只关心这部分代码的编写。那么我们如何编写出一个类似usb 功能驱动呢？
+
+       usb 功能驱动应该至少要实现如下功能：
+
+       .       实现USB协议中端点0部分和具体功能相关的部分（UDC驱动无法帮我们完成的部分）。如：USB_REQ_GET_DESCRIPTOR、USB_REQ_GET_CONFIGURATION等；
+                       完成了这个功能以后，USB主机端系统就会设别出我们是一个什么样的设备。
+               .       实现数据交互功能
+                       即如何实现向硬件控制器的端点发出读、写请求来完成数据交互；
+               .       具体功能的实现如：如何实现一个usb net驱动，或是一个usb storage驱动。
+                       接下来以zero.c为例，说明这3个方面是如何实现的。
+
+1、zero设备介绍
+
+作为一个简单的 gadget 驱动，zero 的功能基于两个 BULK 端点实现了简单的输入输出功能， 它可以用作写新的 gadget 驱动的一个实例。
+两个 BULK 端点为一个 IN 端点, 一个 OUT端点。基于这两个（由底层提供的）端点，g_zero 驱动实现了两个 configuration。 第一个 configuration 提供了 sink/source功能：两个端点一个负责输入，一个负责输出，其中输出的内容根据设置可以是全0，也可以是按照某种算法生成的数据。另一个 configuration 提供了 loopback 接口， IN 端点负责把从 OUT 端点收到的数据反馈给 Host.
+
+2、zero设备注册、注销
+
+        static int __init init(void)
+        {
+                       return usb_gadget_register_driver(&zero_driver);
+        }
+        module_init(init);
+
+static struct usb_gadget_driver zero_driver = {
+        #ifdef CONFIG_USB_GADGET_DUALSPEE
+                       .speed = USB_SPEED_HIGH,
+        #else
+                       .speed = USB_SPEED_FULL,
+        #endif
+                       .function = (char *) longname,
+                       .bind = zero_bind,
+                       .unbind = __exit_p(zero_unbind),
+                       .setup = zero_setup,
+                       .disconnect = zero_disconnect,
+                       .suspend = zero_suspend,
+                       .resume = zero_resume,
+                       .driver = {
+                                  .name = (char *) shortname,
+                                  .owner = THIS_MODULE,
+                       },
+        };
+
+构建一个usb_gadget_driver，调用usb_gadget_register_driver注册函数即可注册一个usb gadget驱动。需要注意的是，目前S3C2410主机控制器只能注册一个gadget功能驱动。这主要是由协议决定的。参考s3c2410_udc.c中的这段代码
+
+int usb_gadget_register_driver(struct usb_gadget_driver *driver)
+        {……
+                           if (udc->driver)//如果已经注册过了
+                           return -EBUSY;
+        ……
+        }
+
+3、usb_gadget_driver结构
+
+事实上我们的工作就是构建这个usb_gadget_driver结构。那么这个结构这样和我们上面要实现的3个目标联系起来呢。
+
+       .       Setup （zero_setup）
+
+       处理host端发来的request，如：处理host端发来的get_descriptor请求。 在这实现了前面提到的必须要实现的第一个功能。
+
+       .       bind （zero_bind）
+
+      绑定dev与driver,在gadget driver，注册驱动时被usb_gadget_register_driver调用，绑定之后driver才能处理setup请求
+              另外，通过usb_ep_autoconfig函数，可以分配到名为EP_IN_NAME、EP_OUT_NAME两个端点。后面可以对两个端点发起数据传输请求，和USB 主机端的urb请求非常相似，大家可以和urb对照一些。
+              发起数据请求大致有以下几步：
+
+      struct usb_request *req;
+              req = alloc_ep_req(ep, buflen);//分配请求，数据传输的方向由ep本身决定
+              req->complete = source_sink_complete; //请求完成后的处理函数
+              status = usb_ep_queue(ep, req, GFP_ATOMIC);//递交请求
+              free_ep_req(ep, req);//释放请求，通常在请求处理函数complete中调用
+
+       .       通常在bind和unbind函数中注册具体的功能驱动
+
+       如果为了实现某个特定功能需要在设备端注册字符、块、网络设备驱动的话，选择的场
+合通常是bind中注册，unbind中卸载。如ether.c文件中：
+              static int __init
+              eth_bind (struct usb_gadget *gadget)
+              {
+                            ……
+                            status = register_netdev (dev->net); //注册网卡驱动
+                            ……
+              }
+
+
+              static void /* __init_or_exit */
+              eth_unbind (struct usb_gadget *gadget)
+              {
+              ……
+              unregister_netdev (dev->net); //注销网卡驱动
+              ……
+              }
+
+     这也让我们对在设备端实现一个字符、块、网络驱动的结构有了一些了解。
+
+总结
+
+     本文对gadget的驱动结构做了简要的介绍。下一篇将介绍如何编写一个简单的gadget驱动及应用测试程序。

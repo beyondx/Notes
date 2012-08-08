@@ -1,0 +1,86 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-06-11T19:09:40+08:00
+
+====== 使用GIT来离线编辑DokuWiki ======
+Created 星期六 11 六月 2011
+http://banjuan.net/blog/tag/dokuwiki
+
+因为网速慢，使用在线编辑很是折磨人。因此有时喜欢把文件下载到本地进行编辑。 而dokuwiki恰好是txt进行后端存储的，可以自由编辑，所以能供我实现git管理wiki。
+
+工作列表
+
+安装dokuwiki和Git
+配置HTTP服务器，确保dokuwiki的安全
+配置服务器的Git repo
+配置本地的Git repo
+配置本地编辑器（VIM的语法高亮）
+安装dokuwiki
+
+这个就不用多说了。在本文中，假设dokuwiki的安装路径是
+/var/www/wiki/
+
+服务器访问的URL是：
+
+http://banjuan.net/wiki/
+
+安装Git
+
+这个更不用多说了。以我的Debian 6为例：
+apt-get install git-core
+配置HTTP服务器
+
+这一步的主要工作是确保dokuwiki的安全性。根据官方安全指南 上的介绍，需要确保以下目录无法通过URL进行访问：
+/wiki/(data|conf|bin|inc)
+
+本文接着所创建的Git repo，是在目录/var/www/wiki/data/下的，故而需要保证安全性。
+配置Git repo
+
+大概的命令如下，主要是设置一下git，允许作为服务器repo接受代码提交
+cd /var/www/wiki/data/
+git init –shared
+git config receive.denyCurrentBranch ignore
+git add pages/ media/
+git commit -a -m ‘initial’
+
+为了让服务器上的Git能够在版本提交时自动更新文件，需要设置hooks。下载 文件post-receive，放到.git/hooks/目录下，或使用以下代码：
+cd /var/www/wiki/data/
+cd .git/hooks/
+cat > post-receive <<_EOF
+#!/bin/sh
+
+cd ..
+env -i git reset –hard
+chown www-data:www-data * -R
+_EOF
+
+然后给服务器添加定时命令，合并网页编辑wiki所产生的变更：
+crontab -e
+
+然后在最后添加一行：
+0 */1 * * * cd /path/to/htdocs/wiki/data/ && git add pages/ media/ && git commit pages/ media/ -m ‘update’ &>/dev/null || true
+配置本地Git repo
+
+在本机上取出服务器上的wiki（使用ssh作为传输方式。git web服务器什么的不再此讨论范围）
+git clone ssh://banjuan.net/var/www/wiki/data wiki
+
+进去后即可看到所有的wiki页面都在pages/目录下，媒体文件则在media/目录下。
+
+如果需要添加commit自动上传到服务器上的功能，那么给本地git repo添加hooks:
+cd wiki/.git/hooks/
+cat > post-commit <<_EOF
+#!/bin/sh
+#
+
+echo “Auto push to server ….”
+exec env -i git push
+_EOF
+配置vim语法高亮
+
+因为dokuwiki的页面文件的后缀是.txt，而且它的语法与标准的wiki有些不同，因此需要额外的语法高亮支持。
+
+此处我使用的编辑器是vim，因此可以在vim网站上下载安装dokuwiki语法高亮文件。
+
+如果不熟悉dokuwiki的语法也没关系，版本库中自带了一个语法说明的wiki页面，路径是pages/wiki/syntax.txt，大概直接参考即可。
+参考
+如何自动更新服务器上的Git工作目录树: http://debuggable.com/posts/git-tip-auto-update-working-tree-via-post-receive-hook:49551efe-6414-4e86-aec6-544f4834cda3

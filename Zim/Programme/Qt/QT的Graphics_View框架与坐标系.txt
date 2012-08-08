@@ -1,0 +1,126 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-11-15T10:54:31+08:00
+
+====== QT的Graphics View框架与坐标系 ======
+Created Tuesday 15 November 2011
+http://www.linuxsong.org/2010/09/qt-graphics-view/
+
+Graphics View提供了一个界面，它既可以管理大数量的定制2D graphical items，又可与它们交互，有一个view widget可以把这些项绘制出来，并支持旋转与缩放。这个框架也包含一个事件传播结构，对于在scene中的这些items,它具有双精度的交互能力。 Items能处理键盘事件，鼠标的按，移动、释放、双击事件，也可以跟踪鼠标移动。Graphics View使用BSP树来提供对item的快速查找，使用这种技术，它可以实时地绘制大规模场景，甚至以百万items计。Graphics View在Qt 4.2中被引用，它替代了它的前辈QCanvas。
+
+===== Graphics View的体系结构 =====
+
+Graphics View提供的是一种类似于Qt model-view的编程。多个views可以监视同一个场景，而场景包含多个具有多种几何外形的items。
+
+===== 场景 =====
+QGraphicsScene 表示Graphics View中的场景，它有以下职责：
+
+* 为管理大量的items提供一个快速的接口。
+* 传播事件到每个item。
+* 管理item的状态，例如选择，焦点处理。
+* 提供未经变换的渲染功能，主要用于打印。
+
+场景作为QGraphicsItem对象的容器。通过调用QgraphicsScene::addItem()把这些Items加入到场景中。可以使用众多的查找函数来获取特定的items。QGraphicsScene:items()与它的许多重载函数可获取那些与点、矩形，多边形，向量路径等相交或是有包含有关系的items。QGraphicsScene::itemAt()返回特定上最顶端的item。所有的item查找函数都以**出栈序列**返回（也就是说，第一个返回的是最顶端的，最后一个返回的是最底端的）。
+
+QGraphicsScene scene;
+QGraphicsRectItem *rect=scene.addRect(QRectF(0,0,100,100));
+QGraphicsItem *item=scene.itemAt(50,50);
+//item==rect;
+
+QGraphicsScene的事件传播结构会把场景事件投递到items，也管理多个items之间的传递。假如场景收到了鼠标在某个位置press事件，场景会把这个事件投递给处在那个位置的item。QGraphicsScene也管理某种item状态，像选择与焦点。你可以通过调用QGraphicsScene::setSelectionArea()来选择items，它需要提供一个**任意的形状**为参数。这个函数也作为在QGraphicsView实现**橡皮筋选择**功能的一个基础。为得到这些已经被选择的items,调用QGraphicsScene::selectedItem()。另一个状态处理是是否一个item拥有键盘输入焦点。你可以调用QGraphicsScene::setFocusItem()或QGraphics::setFocus()来设定焦点，也可用QGraphicsScene::focusItem()来得到当前拥有焦点的那个item。最后，QGraphicsScene允许你通过调用QGraphicsScene::render()函数把部分场景送到绘图设备进行渲染。
+
+===== 视图 =====
+{{~/sync/notes/zim/Programme/QT的Graphics_View框架与坐标系/graphicsview-view.png}}
+QGraphicsView提供了视图部件，它可视化场景中的内容。你可以联结多个视图到同一个场景，对这个相同的数据集提供几个视口。**视口部件**是一个滚动区域，它提供了滚动条以对大场景进行浏览。为了使用OpenGL,你应该调用QGraphicsView::setViewport()来把一个QGLWidget设为视口。视图从键盘，鼠标接收输入事件，在发送这些事件到场景之前，会对这些事件进行适当的翻译（把事件坐标转换成对应的场景坐标）。
+
+利用转换矩阵，QGraphicsView::matrix(),视图可变换场景的坐标系统。这允许高级的导航特性，如缩放，旋转。为了方便，QGraphicsView也提供了在视图与场景之间进行坐标转换的函数：QGraphicsView::mapToScene(),QGraphicsView::mapForScene()。
+
+=== Item ===
+QGraphicsItem 是场景中图形items的基类。Graphics View 提供了一些标准的、用于典型形状的items。像矩形(QGraphicsRectItem),椭圆（QGraphicsEllipseItem),文本 (QGraphicsTextItem),当你写定制的item时，那些最有用的一些QGraphicsItem特性也是有效的。除此这 外，QGraphicsItem支持以下特性：
+
+*鼠标按、移动、释放、双击事件，鼠标悬停事件，滚轮事件，弹出菜单事件。
+*键盘输入焦点，键盘事件。
+*拖拽
+*组，包括父子关系，使用QGraphicsItemGroup
+*碰撞检测
+
+Items如同QGraphicsView一样，位于本地坐标系，它也为item与场景之间，item与item之间的坐标转换提供许多工具函数。而且，也像QGraphicsView一样，它使用矩阵来变换它的坐标系统：QGraphicsItem::matrix()。它对旋转与缩放单个的Item比较有用。
+
+Items可以包含别的items(孩子）。父items的转换被它的子孙所**继承**。然而，它的所有函数（也就是，QGraphicsItem::contains(),QGraphicsItem::boundingRect(),QGraphicsItem::collidesWith()),**不会积累**这些转换，依然在本地坐标下工作。
+
+QGraphicsItem通过QGraphicsItem::shape()，QGraphicsItem::collideWith())来支持**碰撞检测**。这两个都是虚函数。从shape()返回你的item的形状（以本地坐标QPainterPath表示），QGraphicsItem会为你处理所有的碰撞检测。假如你想提供自己的碰撞检测，你应该重新实现QGraphicsItem::collideWith()。
+
+===== Graphics View 坐标系统 =====
+Graphics View基于**笛卡尔坐标系**。item在场景中的位置与几何形状通过x,y坐标表示。当使用未经变形的视图来观察场景时，场景中的一个单位等于屏幕上的一个 像素。在Graphics View中有三个有效的坐标系统：**Item坐标系，场景坐标系，视图坐标系**。为了简化你的实现，Graphics View提供了方便的函数，允许三个坐标系之间相互映射。当渲染时，Graphics View的场景坐标对应于QPainter的**逻辑坐标**，视图坐标与**设备坐标**相同。
+
+=== Item坐标 ===
+{{~/sync/notes/zim/Programme/QT的Graphics_View框架与坐标系/graphicsview-parentchild.png}}
+Items位于它们**自己的坐标系中**。它的坐标都以__点(0,0)为中心点__，这也是所有变换的中心点。在item坐标系中的几何**图元**，经常被称为item点，item线，item矩形。当创建一个定制的item,item坐标是所需要考虑的。QGraphicsScene与QGraphicsView可以为你执行所有转换，这使得实现定制的item变得容易。举例来说，假如你收到鼠标按或是拖进入事件，事件的位置以**item坐标**的形式给出。QGraphicsItem::contain()虚函数，当某个点的位置在你的item范围内时，返回true,否则返回false。这个点参数使用item坐标，相似地，item的**包围矩形与形状**也使用item坐标。
+
+===== Item位置 =====
+Item位置指的是item的**中心点**在它**父亲**(可能是item也可能是场景)的坐标系（**中心点为坐标原点**）中的坐标。以这种思想来看，场景指的就是那些祖先最少的item的“父亲”。最上级的Item位置就是在场景中的位置。
+
+子坐标与父坐标之间是相关的，假如孩子未经变换，子坐标与父坐标之间的差值等于在父坐标系下，父item与子item之间的距离。例如，假如一个未经变换的 子item位置与其父item的中心重合，那么这两个item的坐标系统完全相同。如果孩子的位置是（10，0），那么孩子坐标系中的(0,10)点，对 应于父坐标系中的（10，10）点。
+
+因为**子item的位置与变换是相对于父item的，子item的坐标不会被父亲的变换影响**，尽管父item的变换隐含地对子item做了变换。在上面的例子中，即使父item旋转，缩放，子item的(0,10)点依然对应于父item的(10,10)点。然而， 相对于场景来讲，子item会遵循父item的变换。假如父item被缩放(2X,2X),子item的位置在场景中的坐标是（20，0），它的 （10，0）点则与场景中的（40，0）对应 。除了QGraphicsItem::pos()，QGraphicsItem的函数以Item坐标工作，如一个item's包围矩形总是以item坐标 的形式给出。
+
+=== 场景坐标 ===
+场景坐标系统描述了每个**最顶级**item的位置，也是从视图向场景投递场景事件的基础。场景中的每个item有**场景位置与包围矩形**（QGraphicsItem::scenePos(),QGraphicsItem::sceneBoundingRect()), 另外，它有自己**本地item位置与包围矩形**。场景位置描述了item在场景坐标下的位置，它的场景包围矩形则用于QGraphicsScene决定场景中哪块区域发生了变化。场景中的变化通过**QGraphicsScene::changed()**信号来通知，它的参数是场景矩形列表。
+
+=== 视图坐标 ===
+视图坐标是widget的坐 标，视图坐标中每个单位对应一个像素。这种坐标的特殊之处在于它是相对于**widget或是视口**的，不会被所观察的场景所影响。QGraphicsView 的视口的左上角总是（0，0），右下角总是(视口宽，视口高）。所有的鼠标事件与拖拽事件，最初以视图坐标表示，就应该把这些坐标映射到场景坐标以便与 item交互。
+
+=== 坐标映射 ===
+经常，处理场景中item时，在场景与item之间，item与item之间，视图与场景之间进行坐标映射，形状映射是非常有用的。举例来讲，当你在QGraphicsView的视口中点击鼠标时，你应该通过调用QGraphicsView::mapToScence()与QGraphicsScene::itemAt()来获知光标下是场景中的哪个item。假如你想获知一个item位于视口中的什么位置，你应该先在item上调用QGraphicsItem::mapToScene(),然后调用QGraphicsView::mapFromScene()。最后，假如你想在一个视图椭圆中有哪些items,你应该把**QPainterPath**传递到mapToScene(),然后再把映射后的路径传递到QGraphicsScene::items()。
+
+你可以调用QGraphicsItem::mapToScene()与QGraphicsItem::mapFromScene()在item与场景之间进行坐标与形状的映射。也可以在item与其父item之间通过QGraphicsItem::**mapToParent()**与QGraphicsItem::mapFromItem()进行映射。所有映射函数可以包括点，矩形，多边形，路径。视图与场景之间的映射也与此类似。对于从视图与item之间的映射，你应该首先映射到场景，然后再从场景向item进行映射。
+
+===== 关键特性 =====
+
+=== 缩放与旋转 ===
+QGraphicsView通过QGraphicsView::setMatrix()支持同QPainter一样的仿射变换，通过对一个视图应用变换，你可以很容易地支持普通的导航特性如缩放与旋转。下面是一个例子：
+class View::public QGraphicsView
+{
+Q_OBJECT
+//.....
+public slots:
+void zoomIn() {scale(1.2,1.2);}
+void zoomOut() {scale(1/1.2,1/1.2);}
+void rotateLeft() {rotate(-10);}
+void rotateRight() {rotate(10);}
+};
+这些槽应与QToolButtons联接，并使autoRepeat有效。当对视图变换时，QGraphicsView会对视图中心进行校正。
+
+=== 拖拽 ===
+因为**QGraphicsView继承自 QWidget**,它也提供了像QWidget那样的拖拽功能，另处，为了方便，Graphics View柜架也为场景，每个item提供拖拽支持。当视图接收到拖拽事件，它可翻译为QGraphicsSceneDragDropEvent,再发送到场景。场景接管这个事件，把它发送到光标下接受拖拽的第一个item。
+
+从一个item开始拖拽时，创建一个**QDrag对象**，传递开始拖拽的那个 widget的指针。Items可以同时被多个视图观察，但只有一个视图可以开始拖拽。拖拽在多数情况下是从按下鼠标或是移动鼠标开始的，因此，在 mousePressEvent()或mouseMoveEvent()中，你可以从事件中得到那个原始的widget指针，例如：
+void CustomItem::mousePressEvent(QGraphicsSceneMouseEvent *event)
+{
+QMimeData *data=new QMimeData;
+data->setColor(Qt::green);
+QDrag *drag=new QDrag(event->widget());
+drag->setMimeData(data);
+drag->start();
+}
+为 了在场景中载取拖拽事件，你应重新实现QGraphicsScene::dragEnterEvent()和在QGraphicsItem的子类里任何与 你特定场景需要的事件处理器。items也可以通过调用QGraphicsItem::setAcceptDrops()获得**拖拽支持**，为了处理将要进行 的拖拽，你需要重新实现 QGraphicsItem::dragEnterEvent(),QGraphicsItem::dragMoveEvent(),QGraphicsItem::dragLeaveEvent() 和QGraphicsItem::dropEvent()。
+
+=== 光标与工具提示 ===
+像QWidget一样，QGraphicsItem也 支持光标（QgraphicsItem::setCursor)与工具提示(QGraphicsItem::setToolTip())。当光标进入到 item的区域，光标与工具提示被QGraphicsView激活（通过调用QGraphicsItem::contains()检测）。你也可以直接在 视图上设置一个缺省光标(QGraphicsView::setCursor)。
+
+=== 动画 ===
+Graphics View支持几种级别的动画。你可以很容易地通过把QGraphicsItemAnimatoin与你的item联结来装配出**动画路径**,这允许以时间线来控制动画，在所有平台上以稳定的速率运作。QGraphicsItemAnimation允许你为item的位置，旋转，缩放，剪切，变换等产生一条路径，动画可以用QSlider来控制，或更为普遍使用的QTimeLine。
+另一种是从QObject和QGraphicsItem继承，item可以设置自己的定时器，以在QObject::timeEvent()中增加步进的方式来控制动画。
+第三种，是通过调用QGraphicsScene::advance()来推进场景，它又依次调用QGraphicsItem::advance().
+
+=== OpenGL渲染 ===
+为了使用OpenGL渲染，你要设置一个新的QGLWidget作为QGraphicsView的视口：QGraphicsView::setViewPort()。假如你让OpenGL提供反锯齿功能，你需要OpenGL采样缓冲支持。
+QGraphicsView view(&scene);
+view.setViewport(new QGLWidget(QGLFormat(QGL::SampleBuffers)));
+
+=== Item组 ===
+通过把一个item做为另一个item的孩子，你可以得到item组的大多数本质特性：这些items会一起移动，所有变换
+会从父到子传递。QGraphicsItem也可以为它的孩子处理所有的事件，这样就允许以父亲代表它所有的孩子，可以有效地把所有的items看作一个整体。
+另外，QGraphicsItemGroup是一个特殊的item,它既对孩子事件进行处理又有一个接口把items从一个组中增加和删除。把一个item加到
+QGraphicsItemGroup仍会保留item的原始位置与变换，而给一个item重新指定父item则会让item根据其新的父亲重新定位。可以用QGraphicsScene::createItemGroup()建组。
+

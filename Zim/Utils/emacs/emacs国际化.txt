@@ -1,0 +1,423 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-19T17:08:58+08:00
+
+====== emacs国际化 ======
+Created Friday 19 August 2011
+http://www.linuxsir.org/bbs/showthread.php?t=237956
+
+** 国际化(International): 使用非 ASCII 字符集(MULE 特性)
+....
+
+
+
+国际字符集支持
+
+Emacs 支持的__国际字符集__范围很广，从拉丁字母表的欧洲变体，到中文、西里尔字母(Cyrillic)、梵文(北印度语(Hindi)和马拉地语(Marathi))、埃塞俄比亚文、希腊文、希伯来文、国际音标(IPA)、日本语、朝鲜文字、老挝，泰和越南语文，还有藏文。这些支持都集中在 Emacs 的被称为 __MULE__(MULti-lingual Enhancement to GNU Emacs, GNU Emacs 的多语言无敌版) 的修改版本中。
+
+Emacs 也支持这些字符的__各种编码__，它们用在其它国际化软件，类似字处理程序以及邮件程序中。
+
+Emacs 支持下列相关操作，从而实现了包含国际字符的文本编辑：
+
+- 您可以查看包含非 ASCII 字符的文件，保存非 ASCII 文本，在 Emacs 和它启动的程序(例如编译器、拼写检查程序和邮件程序等等)之间传递非 ASCII 文本。设置__语言环境__(参见语言环境)的时候，编码系统以及与特定语言或文化相关的变量都将自动得到设置。或者，您也可以指定 Emacs 在编码和解码每个程序的文本时的方式(参见指定编码)。
+
+- 您可以显示每种文字 (script) 包含的非 ASCII 字符。实现方式是通过在 X 和类似的图形环境中，使用合适的字体(参见定义字体集)，以及在文本终端下，发送特殊的代码(参见指定编码)。如果某些字符显示不正常，参见无法显示的字符，那里记载了可能的问题以及解决的办法。
+
+- 您可以插入非 ASCII 字符，或者搜索它们。为此，您可以指定一种适于您的语言的输入法(参见选择输入法)，或者使用您的语言环境加载时设定的默认输入法。(Emacs 输入法是 Leim 软件包的一部分，它必须安装才能使用。)如果您的键盘可以产生非 ASCII 字符，您可以设置合适的键盘编码系统(参见指定编码)，然后 Emacs 就可以接受那些字符了。Latin-1 字符也可以使用 C-x 8 前缀输入，参见单字节字符集支持。在 X 窗口系统中，您的语言环境变量(__locale__)必须设置为合适的值，Emacs 才能正确解释键盘输入，参见语言环境。
+
+本章的其余部分将详细描述下列主题。
+
+* 国际字符: 多字节字符的基本概念
+* 使用多字节字符: 控制是否使用多字节字符
+* 语言环境: 为您使用的语言进行设置
+* 输入法: 输入未标示在键盘上的文字字符
+* 选择输入法: 指定您选用的输入法
+* 多字节转换: 单字节字符如何转换为多字节
+* 编码系统: 当您读写文件时的字符集转换，以及其他
+* 识别编码: Emacs 如何推断必需的转换
+* 指定编码: 各种设定转换的方法
+* 字体集: 字体集是覆盖所有字符的字体集合
+* 定义字体集: 定义新的字体集
+* 无法显示的字符: 当字符无法显示的时候
+* 单字节字符集支持: 无需多字节字符，您也可以选用一种西欧字符集
+
+国际字符
+
+国际字符集和文字的用户建立了很多或多或少称得上标准的编码系统来保存文件。Emacs 内部使用单一的多字节字符编码，因此可以在一个缓冲区或字符串中混合所有文字的字符。这个编码将每个非 ASCII 字符表示为 0200 到 0377 的字节序列。在读写文件的时候，与子进程交换数据的时候，以及有时在 C-q 命令中，Emacs 在多字节字符编码和各种其他编码系统间转换(参见多字节转换)。
+
+命令 C-h h(view-hello-file) 显示文件 etc/HELLO，它显示了如何在各种语言中表达"你好"。它展示了多种文字。如果终端上无法显示一些字符，它们将显示为 '?' 或中空的方块(参见无法显示的字符)。
+
+键盘通常不会为一个字符集的所有字符提供按键，即使在使用这个字符集的国家也是如此。因此 Emacs 支持多种 输入法，通常每种文字或语言都有一种，来方便地输入它们。
+
+按键前缀 C-x <RET> 用于附属于多字节字符支持，编码系统以及输入法的命令。
+
+使用多字节字符
+
+您可以启用或禁用整个 Emacs 的多字节字符支持，也可以只设置单个缓冲区。如果缓冲区禁用多字节字符，那么每个字节就代表一个字符，即使 0200 到 0377 之间的码点也不例外。这样做来支持欧洲字符集，ISO Latin-1 和 ISO Latin-2 的做法与 Emacs 19 中类似，其他 ISO 8859 字符集也是如此。
+
+但是，不必关闭多字节字符支持也可以使用 ISO Latin 字符集；Emacs 多字节字符集包含了这些字符集中所有字符，并且 Emacs 可以自由地与 ISO 编码转换。
+
+默认情况下，Emacs 启动是多字节模式，因为这样您可以没有限制地使用所有支持的语言和文字。
+
+要在单字节方式下编辑某个文件，用 find-file-literally 打开文件，参见察看。要将多字节的缓冲区转换为相同字符的单字节表示，最简单的办法是将缓冲区保存为文件，关闭缓冲区，然后再次用 find-file-literally 打开文件。您也可以用 C-x <RET> c(universal-coding-system-argument) 命令，并且指定 'raw-text' 作为打开和保存文件时的编码系统。以 'raw-text' 打开文件不会禁止格式转换、解压缩和自动模式切换，而 find-file-literally 会禁止它们。
+
+要关闭多字节字符集支持，启动 Emacs 时候加上 '--unibyte' 参数(参见初始化参数)，或者设置环境变量 EMACS_UNIBYTE。您也可以在初始化文件中定制 enable-multibyte-characters 或等价地，直接设置变量 default-enable-multibyte-characters 为 nil，来得到与 '--unibyte' 同样的效果。
+
+要将单字节的会话转换为多字节，设置 default-multibyte-characters 为 t。在转换前创建的单字节缓冲区仍然会保持单字节。您可以在缓冲区中执行 toggle-enable-multibyte-characters 来打开这个缓冲区的多字节支持。
+
+如果有 '--unibyte' 选项，根据包含非 ASCII 8-bit 字符的环境变量和 /etc/passwd 条目初始化的时候就不会创建多字节字符串。
+
+Emacs 通常以多字节方式加载 Lisp 文件，无论是否使用了 '--unibyte'。这也包括初始化文件 .emacs，以及 Emacs 包类似 Gnus 的初始化文件。您可以在文件的第一行中的注释里写 '-*-unibyte: t;-*-'，指定以单字节方式加载(参见文件变量)。这样文件总是以单字节文本加载，即使没有使用 '--unibyte' 启动 Emacs 也是如此。这样约定的初衷是以同样方式加载所有 Lisp 文件比较可靠。但是，您可以在任何时候，用 C-x <RET> c raw-text <RET> 以单字节方式加载一个 Lisp 文件。
+
+状态行指示了当前缓冲区是否启用了多字节支持。如果是的话，在最前的冒号前面会有两个或多个字符(通常是两个连接线)。如果没有启用多字节字符，冒号前只会有一个连接线。
+
+语言环境
+
+启用了多字节字符支持的 Emacs 缓冲区可以支持所有 Emacs 支持的字符集；不必设置特定语言也可以在 Emacs 缓冲区中显示它的文字。但是，选择 语言环境 的重要性在于，这样设置了很多默认值。语言环境实际是对文字的选择，而不是语言的选择。
+
+语言环境控制了读取文本时使用的编码系统(参见指定编码)。它对文件、接收邮件、新闻和其他读入 Emacs 的文本都有效。它可能还设定了新建文件时的默认编码系统。每种语言环境还设定了默认的输入法。
+
+要选择一种语言环境，可以设置变量 current-language-environment 或使用命令 M-x set-language-environment。运行命令时所在的缓冲区并不重要，因为设置是在整个 Emacs 会话中全局有效的。所支持的语言环境包括ï¼
+Belarusian, Brazilian Portuguese, Bulgarian, Chinese-BIG5, Chinese-CNS, Chinese-EUC-TW, Chinese-GB, Croatian, Cyrillic-ALT, Cyrillic-ISO, Cyrillic-KOI8, Czech, Devanagari, Dutch, English, Ethiopic, French, Georgian, German, Greek, Hebrew, IPA, Italian, Japanese, Kannada, Korean, Lao, Latin-1, Latin-2, Latin-3, Latin-4, Latin-5, Latin-6, Latin-7, Latin-8 (Celtic), Latin-9 (updated Latin-1 with the Euro sign), Latvian, Lithuanian, Malayalam, Polish, Romanian, Russian, Slovak, Slovenian, Spanish, Swedish, Tajik, Tamil, Thai, Tibetan, Turkish, UTF-8 (for a setup which prefers Unicode characters and files encoded in UTF-8), Ukrainian, Vietnamese, Welsh, and Windows-1255 (for a setup which prefers Cyrillic characters and files encoded in Windows-1255).
+要在图形显示器上显示您的语言环境使用的文字，需要有合适的字体。如果一些字符显示为中空的方块，您应当安装 GNU Intlfonts 软件包，它包含了大多数文字的字体6。参见字体集中有关设置字体的细节。
+
+一些操作系统允许你设置字符集，通过设置环境变量 LC_ALL, LC_CTYPE 或 LANG7。在启动 Emacs 的时候，Emacs 在系统语言环境别名表中查找您的字符集名称，与变量 locale-charset-language-names 和 locale-language-names 的值中的条目对比，如果找到匹配就选择相应的语言环境。(前者优先级比后者高。)它随即调整显示和终端编码系统，语言环境编码系统，语言环境的首选编码系统，以及 Emacs 解码键盘输入的非 ASCII 字符的方式。
+
+如果您在运行 Emacs 时修改了 LC_ALL, LC_CTYPE 或 LANG 环境变量，您可以运行 set-locale-environment 命令来根据新的语言环境重新调整。
+
+命令 set-locale-environment 通常使用语言环境首选的编码系统来解码系统消息。但是如果您的 locale 匹配变量 locale-prefered-coding-systems 中的条目，Emacs 将使用相应的编码系统代替。例如，如果 locale 'ja_JP.PCK' 匹配 locale-prefered-coding-systems 中的 japanese-shift-jis，Emacs 会使用这个编码，即使通常会首选 japanese-iso-8bit。
+
+您可以覆盖启动时选择的语言环境，只要显式调用 set-language-environment，或在初始化文件中定制 current-language-environment。
+
+要显示特定语言环境 lang-env 的效果，运行命令 C-h L lang-env <RET>(describe-language-environment)。它会告诉您语言环境适用的语言，字符集，编码系统，以及可以用的输入法。它还会显示示例文本来描述语言环境使用的文字。默认情况下，它显示当前语言环境的信息。
+
+您可以定制任意语言环境，使用 HOOK set-language-environment-hook。命令 set-language-environment 在设置语言环境后运行这个 HOOK。HOOK 函数通过检测变量 current-language-environment 来发现特定的语言环境。可以在 HOOK 中为某个语言环境设置非默认的内容，例如键盘输入和终端输出的编码系统，默认的输入法等等。
+
+在设置语言环境之前，set-language-environment 首先运行 HOOK exit-language-environment-hook。这个 HOOK 对于撤销在 set-language-environment-hook 中做出的定制很有用。例如，如果您在 set-hook 中对某个语言环境的按键关联做了设置，应当设置 exit-language-environment-hook 恢复按键的默认设置。
+
+输入法
+
+输入法 是一种字符转换，为交互输入而特别设计。在 Emacs 中，通常每种语言都有自己的输入法；有时使用相同字符的多种语言可以共用一种输入法。一些语言支持多种输入法。
+
+最简单的输入法，是将 ASCII 字母映射到另一个字母表；这样就可以使用另一种字母表了。希腊文和俄文输入法是这样做的。
+
+更强大的办法是组合：将字符序列转换为一个字母。很多欧洲文字输入法使用组合来产生单个非 ASCII 字母，通过输入由字母和音调标记组成的序列(或反过来)。例如，一些输入法将序列 a' 转换为单个注音字符。这些输入法没有自己特殊的命令；它们只是组合可打印字符的序列。
+
+拼音文字的输入法通常在组合之后进行映射。泰文和朝鲜文是这样的。首先，字母被映射到特殊音节或音调的符号；然后，符号的序列构成了整个音节，被映射为一个拼音文字。
+
+中文和日文需要更复杂的输入法。在中文输入法中，首先输入的是汉字的拼音(在 chinese-py 输入法中)，或者字符的部件代码序列(在 chinese-4corner 和 chinese-sw 输入法中)。一种输入序列通常对应多种可能的中文字符。这时，可以用按键 C-f, C-b, C-n, C-p 以及数字来选择它们，这些按键有着特殊的意义。
+
+可能的字符被排成几行，每行包含不超过 10 个候选字。通常，Emacs 一次只在回显区显示一行；以 (i/j) 开始来指示是总计 j 行中的第 i 行。输入 C-n 或 </code>C-p</code> 来显示下一行或上一行。
+
+输入 C-f 和 C-b 来在当前行的候选字中前后移动。这样做的时候，Emacs 会用特殊颜色标示当前选择；输入 C-<SPC> 来接受当前选择作为输入。一行中的待选字都有编号，显示在每个字前面。输入数字 n 就可以选择当前行的第 n 个待选字，作为输入。
+
+在中文输入法中按下 <TAB> 会显示一个包含所有可能字符的缓冲区；然后在字符上单击 Mouse-2 就可以选择候选字。按键 C-f, C-b, C-n, C-p 和数字同样可用，只是它们会在缓冲区中高亮标示当前的字符，而不是在回显区。
+
+在日文输入法中，首先使用拼音输入整个词；然后，当词输入缓冲区后，Emacs 将它转换为一个或多个字符，根据一个大辞典。每个拼音对应多个不同的日文词；使用 C-n 和 C-p 来在待选字中循环选择。
+
+有时需要禁止输入法处理，使您输入的字符不会与后续字符结合。例如，在输入法 latin-1-postfix 中，序列 e' 结合构成带音调的 'e'。但是怎么把它们输入成单独的字符呢？
+
+一种方法是输入两次音调；这是输入单独的字符和音调的特殊方法。例如，e'' 将得到两个字符 ‘e'’。另一种办法是在 e 后面输入一个不会与它结合的字母，然后立即删掉它。例如，输入 ee<DEL>' 来得到单独的 e 和 ‘'’。
+
+还有一种办法，更加通用但是不太容易输入，是在两个字符间按下 C-\ C-\，禁止它们结合。也就是使用命令 C-\(toggle-input-method) 两次。
+
+在增量搜索中，C-\ C-\ 尤其有用，因为它停止等待结合多个字符，开始搜索您已输入的内容。
+
+要查询如何在当前输入法中输入光标下的字符，用 C-u C-x =。参见位置信息</a>。
+
+变量 input-method-highlight-flag 和 input-method-verbose-flag 控制了输入法如何判断当前状态。如果 input-method-highlight-flag 不是 nil，部分输入的序列将在缓冲区中高亮显示(大部分输入法如此，一些输入法禁止了这个特性)。如果 input-method-verbose-flag 不是 nil，联想的字符列表将显示在回显区(不过在辅助缓冲区中输入时不会如此)。
+
+选择输入法
+
+C-\
+打开或关闭所选的输入法
+C-x <RET> C-\ method <RET>
+为当前缓冲区选择新输入法
+C-h I method <RET>
+C-h C-\ method <RET>
+描述输入法 method(describe-input-method)。默认情况下，它描述当前的输入法，如果有的话。描述中包含了如何使用输入法的详细信息
+M-x list-input-methods
+列出支持的输入法
+
+要为当前缓冲区选择输入法，输入 C-x <RET> C-\(set-input-method)。命令从辅助缓冲区读取输入法名称，名称通常以输入法所属的语言环境开始。变量 current-input-method 记录了所选的输入法。
+
+输入法使用 ASCII 字符序列来表示非 ASCII 字符。有时，需要临时关闭输入法，可以输入 C-\(toggle-input-method)。要重新打开输入法，再输入一次 C-\。
+
+如果您输入了 C-\ 却尚未选择一种输入法，它将提示您指定一个。这与 C-x <RET> C-\ 指定输入法的效果是一样的。
+
+当带有数字参数执行时，例如 C-u C-\，toggle-input-method 总是提示您指定输入法，并且会把最近使用的输入法作为建议的默认值。
+
+选择语言环境会为各种缓冲区设定默认的输入法。当设定了默认的输入法之后，要在当前缓冲区中使用它，请输入 C-\。变量 default-input-method 保存了默认的输入法，如果没有就是 nil。
+
+在一些语言环境中支持多种输入法，set-language-environment 中设定的默认输入法可能并不合您的心意。您可以让 Emacs 在特定语言环境中，设定另一种输入法为默认值，只要用命令 set-language-environment-hook (参见语言环境)。例如，
+
+(defun my-chinese-setup ()
+"Set up my private Chinese environment."
+(if (equal current-language-environment "Chinese-GB")
+(setq default-input-method "chinese-tonepy")))
+(add-hook 'set-language-environment-hook 'my-chinese-setup)
+这样会设置默认输入法为 chinese-tonepy，在您选择 Chinese-GB 语言环境的时候。
+
+一些字母文字的输入法本质上是将键盘重新映射，以模拟这些文字中常用的键盘布局。正确地重映射依赖于您的实际键盘布局。要指定您的键盘布局，使用命令 M-x quail-set-keyboard-layout。
+
+您可以用命令 M-x quail-show-key 来显示在当前所选键盘布局中，为输入光标下的字符，应当按什么键(或按键序列)。命令 C-u C-x = 也在显示字符其他信息的同时，显示这一信息。
+
+要显示所有支持的输入法，输入 M-x list-input-methods。列表中会给出各种输入法的信息，包括状态行中代表它的字符。
+
+多字节转换
+
+当启用多字节字符时，从八进制 0240 到 0377 的字符是不能出现在缓冲区中的。有效的非 ASCII 可打印字符的编码从 0400 开始。
+
+如果您输入了一个 0240 到 0377 之间的字符，或者用 C-q 输入了它，Emacs 假设您要使用的是 ISO Latin-n 字符集之一，然后将它转换为代表这个 Latin-n 字符的 Emacs 代码。您应通过语言环境设置要使用的 ISO Latin 字符集，如果不指定，默认就是 Latin-1。
+
+如果您输入了一个 0200 到 0237 之间的字符，也就是在 eight-bit-control 集合中的字符，它将被不变地插入。您不应这样做，因为这样缓冲区必须保存为 emacs-mule 或 raw-text 编码系统，这大概不是您想得到的。
+
+编码系统
+
+不同语言的用户建立了很多"标准"的编码系统来表示语言。Emacs 内部不使用这些编码系统；它在读取数据时从各种编码系统转换到自己的系统，在写数据时又将内部编码系统转换成其他编码系统。转换发生在读写文件，读写终端，以及与子进程交换数据的时候。
+
+Emacs 为每个编码系统取一个名字。大多数编码系统只针对一种语言，编码系统的命名以语言名称开始。一些编码系统用于多种语言；它们的名字通常以 'iso' 开始。还有一些特殊的编码系统，包括 no-conversion，raw-text 和 emacs-mule，不对可打印字符做任何转换。
+
+编码系统中，有特殊的一类，统称为代码页(codepage)，用在 MS-Windows 和 MS-DOS 中编码文本。这些代码系统的命名是 cpnnnn，这里 nnnn 是 3 位或 4 位的代码页编号。您可以像其他代码页一样使用它；例如，要打开以代码页 850 编码的文件，输入 C-x <RET> c cp850 <RET> C-x C-f filename <RET>。
+
+除了转换非 ASCII 字符的不同表示之外，编码系统还进行换行符的转换。Emacs 处理三种文件中换行的方式：新行符，回车换行，或者仅仅回车。
+
+C-h C coding <RET>
+描述编码系统 coding
+C-h C <RET>
+描述当前使用的编码系统
+M-x list-coding-systems
+显示所有支持的编码系统的列表
+
+命令 C-h C(describe-coding-system) 显示特定编码系统的信息。您可以指定编码系统名称作为参数；或者，不指定参数，它将描述当前使用的各种编码系统，包括当前缓冲区、默认值，以及识别编码系统的优先级列表(参见识别编码)。
+
+要显示所有支持的编码系统，输入 list-coding-systems。列表中包含了各种编码系统的信息，包括用在状态行中的代表字母(参见状态行)。
+
+列表中出现的编码系统，除了不作任何转换的 no-conversion 外，都指定了如何转换可打印字符的办法，而换行符转换取决于每个文件的内容。例如，如果文件内容用了回车换行序列区分各行，那么将进行 DOS 换行符转换。
+
+列表中每种编码系统都包括三种变种，确切指定了换行符转换的方式：
+
+...-unix
+不作转换；假设文件使用新行符来分行。(这是 Unix 和 GNU 系统中的方式)
+...-dos
+假设文件使用回车换行来分行，做相应转换。(这是 Microsoft 系统中的方式9)
+...-mac
+假设文件使用回车来分行，做相应转换。(这是 Macintosh 系统中的方式)
+
+为求简洁，在 list-coding-systems 的输出中忽略这些变种，因为它们可以构造出来。例如，iso-latin-1 编码系统的变种就是 iso-latin-1-unix，iso-latin-1-dos 和 iso-latin-1-mac。
+
+编码系统 raw-text 用来处理大部分是 ASCII，但是包含大于 127 的字节值，而它们不是非 ASCII 字符的情况。在 raw-text 编码系统中，Emacs 将不变地复制这些字节值，并且设置当前缓冲区的 enable-multibyte-characters 为 nil，以正确解析它们。raw-text 以通常方式处理换行符，也就是基于文件内容判断，也有三种变种来指定转换的方式。
+
+与之对比，编码系统 no-conversion 不作任何字符代码转换，无论是非 ASCII 字节值还是换行符。这在读写二进制文件、tar 归档文件和其他必须不变地处理的文件时游泳。它也将 enable-multibyte-characters 设置为 nil。
+
+最简单的编辑文件而不作任何转换的办法是用 M-x find-file-literally 命令。它启用 no-conversion，并且禁止其他可能在您看到文件内容前作转换的 Emacs 特性。参见查看。
+
+编码系统 emacs-mule 意味着文件包含非 ASCII 字符，以 Emacs 内部编码保存。它基于文件内容判断换行符，也有三种变种来指定转换的方式。
+
+识别编码
+
+Emacs 尝试识别给定文本的编码，这是读取文本时重要的一步。(无论是读取文件、子进程的输出，还是 X 选区都是如此。) Emacs 大多数时候都可以选出正确的编码系统，只要您指定了优先级。
+
+一些编码系统可以通过数据中的字节序列来识别或区分。但是，有些编码系统无法区分，毫无办法。例如，无法区分 Latin-1 和 Latin-2；它们使用相同的字节，代表了不同的含义。
+
+Emacs 用编码系统优先级列表处理这种情况。当 Emacs 读取文件时，如果您不指定要使用的编码系统，Emacs 就针对每种编码系统检测数据，从优先级最高的开始，直到找到与数据匹配的编码系统为止。然后，它转换文件内容，假定文件是以这种编码系统表示。
+
+编码系统的优先级列表依赖于所选的语言环境(参见语言环境)。例如，如果您说法语，您会希望 Emacs 首选 Latin-1 而不是 Latin-2；如果您说捷克语，您可能更希望 Latin-2 是首选。这也是指定语言环境的原因之一。
+
+您可以用 M-x prefer-coding-system 来调整编码系统的优先级列表。这个命令从辅助缓冲区中读取编码系统的名称，然后将它插入到优先级列表的最前，这样它就成了首选。如果您多次执行这个命令，每次都将向优先级列表最前插入一个元素。
+
+如果您使用指定了带换行符转换的编码系统，类似 iso-8859-1-dos，Emacs 将首先尝试识别 iso-8859-1，如果识别到，就使用 DOS 换行转换。
+
+有时文件名指定了要使用的编码系统。变量 file-coding-system-alist 保存了这种对应关系。有一个特别的函数 modify-coding-system-alist，用来向列表加入元素。例如，要用编码系统 chinese-iso-8bit 读写所有 '.txt' 文件，可以执行 Lisp 表达式
+(modify-coding-system-alist 'file "\\.txt\\'" 'chinese-iso-8bit)
+第一个参数是 file，第二个参数是一个正则表达式，指定了要应用的文件，第三个参数是要在这些文件中使用的编码系统。
+
+Emacs 根据文件内容判断使用哪种换行符转换：如果它只读到了回车，或者只读到了回车换行序列，那么它将随之选择转换。您可以禁掉自动的转换，只要设置变量 inhibit-eol-conversion 为非 nil。如果这样，DOS 文件在缓冲区中将显示为包含 '^M' 字符；有些人认为这样比在状态行左侧显示小小的 '(DOS)' 标记更好(参见换行助记符)。
+
+默认情况下，自动探测对于转义序列是敏感的。如果 Emacs 发现以转义字符开始的转义序列，并且序列可以识别为 ISO-2022 代码，那么 Emacs 将使用 ISO-2022 编码之一来解码文件。
+
+但是，如果您希望转义序列被原样读出，这时就应当设置变量 inhibit-iso-escape-detection 为非 nil。这样，编码检测将忽略转义序列，不使用 ISO-2022 编码。结果是，转义序列将在缓冲区中可见。
+
+inhibit-iso-escape-detection 的默认值是 nil。我们建议您不要一直改变它的值，只在特定的操作中改变它。这是因为很多 Emacs Lisp 源代码包含非 ASCII 字符，以 iso-2022-7bit 编码系统编码，如果禁止转义序列探测，将无法正确读取解码这些文件。
+
+您可以在某个文件的开始，用 '-*-...-*-' 结构来指定编码系统，或者在文件结尾用局部变量列表指定(参见文件变量)。看起来像是指定了"变量" coding 的值，实际上 Emacs 并没有叫做 coding 的变量；它只是用指定的编码系统作为文件的编码。例如，‘-*-mode: C; coding: latin-1;-*-’ 指定使用 Latin-1 编码系统和 C 模式。当您在文件中指定编码后，它将覆盖 file-coding-system-alist 的值。
+
+变量 auto-coding-alist，auto-coding-regexp-alist 和 auto-coding-functions 是为特定文件名模式，或包含特定模式的文件，指定编码系统的最有力的手段；它们甚至比文件中指定的 '-*-coding:-*-' 标记优先级更高。Emacs 使用 auto-coding-alist 来处理 tar 和存档文件，避免存档文件中，某个文件的 '-*-coding:-*-' 标记导致整个存档文件被一起处理。同样，Emacs 使用 auto-coding-regexp-alist 来保证文件名毫无规律的 RMAIL 文件可以被正确解码。某个内建的 auto-coding- 函数可以检测 XML 文件的编码。
+
+如果 Emacs 没有正确识别文件的编码，您可以用 C-x <RET> r coding-system <RET> 来用正确的编码系统重新读取文件。要查看 Emacs 实际用来解码文件的编码系统，查看状态行左侧的编码系统助记符(参见状态行)或者输入 C-h C <RET>。
+
+当解码文本时，命令 unify-8859-on-decoding-mode 启用一种"归一化"拉丁字母表的模式。具体办法是将非 ASCII 的 Latin-n 字符转换为 Latin-1 或 Unicode 字符。这样就可以简单地同时使用多种 Latin-n 字母表了。在将来版本的 Emacs 中，我们希望可以全面转向 Unicode，实现完整的字符集统一。
+
+当 Emacs 为一个缓冲区选定编码系统后，它将编码系统保存在 buffer-file-coding-system 中，默认情况下，在将缓冲区写入文件时使用这个编码系统。保存操作包括 save-buffer 和 write-region。如果您希望以不同的编码系统来保存缓冲区到文件，可以用 set-buffer-file-coding-system 为缓冲区设置不同的编码系统(参见指定编码)。
+
+您可以向任意 Emacs 缓冲区插入任意字符，但是大多数编码系统只能处理有限的字符。这意味着，插入的字符可能无法用保存时使用的编码系统编码。例如，您可以打开一个 ASCII 文件，插入一些 Latin-1 字符，或者打开 iso-8859-2 编码的波兰文字并插入一些俄语词汇。当保存缓冲区的时候，Emacs 就无法使用 buffer-file-coding-system 的当前值，因为您插入的字符无法以那种编码系统编码。
+
+出现这种情况时，Emacs 将尝试优先级最高的编码系统(由 M-x prefer-coding-system 或 M-x set-language-environment 设置)，如果这些编码系统可以安全地编码缓冲区中所有字符，Emacs 就会用它保存，并将它的值保存在 buffer-file-coding-system 中。否则，Emacs 将显示一系列可用于编码缓冲区内容的编码系统，让您选择用哪一个。
+
+如果您向邮件消息中插入不合适的字符，Emacs 的行为会稍有区别。它将检测优先级最高的编码系统是否可以用于 MIME 消息。如果不能，Emacs 将提示优先级最高的编码系统并不合适，并提示选择另外一个。这样，您就不会无意间发出接受方无法解码的消息。(如果您确实希望用优先级最高的那个编码系统，只要在提示时仍然选择它。)
+
+当在 Mail 邮件模式下发送消息时(参见发送邮件)，Emacs 有四种方法来判断用于编码消息文本的编码系统。它尝试缓冲区本身的 buffer-file-coding-system 值，如果非 nil 的话。否则，它将尝试 sendmail-coding-system 的值，如果非空的话。第三种办法是使用新文件的默认编码系统，如果非空的话，它由您的语言环境决定。如果前面三个变量都是 nil，Emacs 将用 Latin-1 编码系统来编码发出的邮件。
+
+当您在 RMAIL 中收到新邮件时，每条消息都自动以自己的编码系统来解码，就好像单独的文件一样。解码会使用您指定的编码系统优先级列表。如果 MIME 消息指定了字符集，RMAIL 将遵照约定，除非 rmail-decode-mime-charset 是 nil。
+
+对于读取和保存 RMAIL 文件本身，Emacs 使用 rmail-file-coding-system 指定的编码系统。默认值是 nil，也就是说 RMAIL 文件不会转换(它们将使用 Emacs 内部字符表示来读写)。
+
+指定编码
+
+当 Emacs 无法自动选择正确的编码系统时，您可以用这些命令来指定一个：
+C-x <RET> f coding <RET>
+使用编码系统 coding 来查看当前缓冲区中的文件。
+C-x <RET> c coding <RET>
+指定下一个命令的编码系统为 coding。
+C-x <RET> k coding <RET>
+设置键盘输入的编码系统为 coding。
+C-x <RET> t coding <RET>
+设置终端输出的编码系统为 coding。
+C-x <RET> p input-coding <RET> output-coding <RET>
+使用编码系统 input-coding 和 output-coding 作为当前缓冲区中子进程的输入和输出。
+C-x <RET> x coding <RET>
+在窗口系统中与其它程序传递选中文本时使用编码系统 coding。
+C-x <RET> X coding <RET>
+在窗口系统中与其它程序传递下一次选中文本时(仅一次)使用编码系统 coding。
+
+命令 C-x <RET> f(set-buffer-file-coding-system) 指定当前缓冲区的文件的编码系统。换句话说，在保存或重读取当前文件时使用的编码系统。您在辅助缓冲区中指定要使用的编码系统。由于这个命令只对您已打开的文件有用，它只影响文件保存的方式。
+
+还有一种指定编码系统的办法是在打开文件的时候。首先用命令 C-x <RET> c(universal-coding-system-argument)；这个命令在辅助缓冲区中提示输入编码系统的名称。之后，这个编码系统会作用于 紧随其后的命令。
+
+因此，如果紧随其后的命令是 C-x C-f，那么它将使用指定的编码系统来打开文件 (也会在后面保存文件时使用这个编码系统)。如果紧随其后的命令是 C-x C-w，它将用这个编码系统写文件。如果这样指定保存文件的编码，与 C-x <RET> f 命令不同，当缓冲区包含编码系统无法处理的字符时不再警告。
+
+其他受指定编码系统影响的命令包括 C-x C-i 和 C-x C-v，以及在其他窗口中打开文件的 C-x C-f 变体。C-x <RET> c 影响产生子进程的命令，包括 M-x shell (参见 Shell 交互环境)。
+
+如果紧随其后的命令不使用编码系统，那么 C-x <RET> c 没有任何作用。
+
+要在查看文件时不作转换，可以用命令 M-x find-file-literally。参见查看。
+
+变量 default-buffer-file-coding-system 指定了创建新文件时的编码系统。当打开新文件、创建缓冲区并保存为文件的时候将应用它。设置语言环境通常会设置这个变量为合适的默认值。
+
+如果您使用错误的编码系统查看文件，您可以用 C-x <RET> r(revert-buffer-with-coding-system) 来纠正。这个命令用您指定的编码重新查看文件。
+
+命令 C-x <RET> t(set-terminal-coding-system) 指定终端输出的编码。如果您指定了终端输出的编码，所有输出到终端的字符将转换为那个编码。
+
+这个特性用于内建特定语言或字符集支持的字符终端，例如，欧式终端，支持 ISO Latin 字符集之一。您在使用多字节文本时需要指定终端编码系统，这样 Emacs 就可以知道终端实际支持的字符。
+
+默认情况下，到终端的输出不会做任何转换，除非 Emacs 可以根据终端类型或您的语言环境设定推断出使用的编码 (参见 语言环境)。
+
+命令 C-x <RET> k(set-keyboard-coding-system) 或者变体 keyboard-coding-system 指定了键盘输入的编码。键盘输入的字符代码转换对于带有不可打印的 ASCII 字符按键的终端很有用，例如一些为 ISO Latin-1 字符集或其子集设计的终端。
+
+默认情况下，键盘输入是根据系统语言环境设置来转换的。如果终端不支持语言环境设定的编码 (例如，输入 M-i 得到了非 ASCII 字符)，您需要设置 keyboard-coding-system 为 nil 来关闭编码。您可以将这一句
+(set-keyboard-coding-system nil)
+写入您的 ~/.emacs 文件。
+
+对键盘输入转换编码系统，与使用一种输入法，其间有相似之处：它们都定义了键盘输入的序列，转换为单个字符。但是，输入法是为了让人可以方便地交互使用的，要转换的序列通常是 ASCII 字符串。编码系统通常转换的是不可打印的字符。
+
+命令 C-x <RET> x(set-selection-coding-system) 指定了向窗口系统发送所选文本，以及接受从其他应用程序中选取的文本时的编码系统。命令对全部后续选取都会有效，除非您再次用它指定了别的编码。命令 C-x <RET> X(set-next-selection-coding-system) 指定了下一次 Emacs 读取或选中文本时的编码系统。
+
+命令 C-x <RET> p(set-buffer-process-coding-system) 指定了向子进程输入输出时的编码系统。这个命令对当前缓存有效，每个子进程都有自己的缓存，因此您可以在一个子进程的缓存中执行这个命令，以为这个子进程指定输入和输出的转换。
+
+进程输入输出转换的默认值依赖于当前语言环境。
+
+如果文本插入缓冲时使用了错误的编码系统，您可以用 M-x recode-region 再次解码。它将提示您输入旧的编码系统以及期望的编码系统，然后转换选区中的文本。
+
+变量 file-name-coding-system 指定了编码文件名时的编码系统。如果您将它设置为一个编码系统的名称 (一个 Lisp 符号或字符串)，Emacs 将在所有文件操作中使用此编码系统来编码文件名。这样就可以在文件名中使用非 ASCII 字符了，或者说，可以用指定编码系统中包含的非 ASCII 字符。使用 C-x <RET> F(set-file-name-coding-system) 来交互地指定它。
+
+如果 file-name-coding-system 是 nil，Emacs 将使用默认的编码系统，由语言环境决定。在默认语言环境中，文件名中的非 ASCII 字符不会被特别编码；它们以 Emacs 内部表示出现在文件系统中。
+
+警告: 如果您在一次 Emacs 会话当中修改了 file-name-coding-system (或语言环境)，如果打开的文件使用先前的编码系统来编码文件名，但是文件名无法在新的编码系统中正确编码 (或编码有所不同)，就会出问题。如果您试图用原来的文件名保存缓冲区，保存结果可能是错误的名字，或者会产生错误。如果出现这种问题，用 C-x C-w 为那个缓冲区设置一个新的文件名。
+
+如果编码文件名时出错，使用命令 M-x recode-file-name 来改变文件名的编码系统。它将提示已有的文件名，旧的编码系统，以及要转换到的编码系统。
+
+变量 locale-coding-system 指定编码和解码系统字符串，类似系统错误消息和 format-time-string 格式以及时间戳时的编码系统。它也用来解码 X 窗口系统中的非 ASCII 键盘输入。您应当选择一个与底层文本表示相兼容的编码系统，通常它是由环境变量 LC_ALL，LC_CTYPE 和 LANG 之一决定的 (这三个变量，按照这个顺序，第一个非空的值将决定文本表示的编码)。
+
+字体集
+
+每种 X 字体通常只定义一种字母表或文字的字形。因此，要显示 Emacs 支持的所有文字，需要很多字体才行。在 Emacs 中，这样的字体集合被称为字体集 fontset。字体集是以一系列字体定义的，每种字体负责一批字符。
+
+每个字体集有一个名字，就像字体一样。可用的 X 字体是由 X 服务器定义的，而字体集是 Emacs 自行定义的。当您定义了一个字体集后，就可以在 Emacs 中引用它的名字，把它用在任何可以使用单个字体的地方。当然，Emacs 字体集只能包含 X 服务器支持的字体；如果某些字符在屏幕上显示为中空的方块，这表示在当前使用的字体集中不包含对应这些字符的字体。7
+
+Emacs 自动创建两个字体集：标准 (standard) 和启动 (startup) 字体集。标准字体集可能包含针对宽泛的非 ASCII 字符的字体；但是，这不是 Emacs 默认使用的字体。(默认情况下，Emacs 尝试使用有粗体和斜体变体的字体。)您可以用 -fn 命令行选项，或 Font 资源(参见 X 字体(Font X))。例如，
+emacs -fn fontset-standard
+
+字体集不会为每个字符编码都设定字体。如果一个字体集没有为某个字符设定字体，或者设定了您的系统中不存在的字体，那么它将无法正确显示这个字符。这个字符将被显示为一个中空的方块。
+
+字体集的高度和宽度是由 ASCII 字符决定的(也就是，字体集中用于显示 ASCII 字符的字体)。如果字体集中另一个字体拥有不同的高度或不同的宽度，那么用这些字体显示的字符将被截断为字体集的大小。如果 highlight-wrong-size-font 不为 nil，还将在大小错误的字符周围显示一个方框。
+
+定义字体集
+
+Emacs 根据 standard-fontset-spec 的值，自动创建标准字体集。字体集的名字是
+-*-fixed-medium-r-normal-*-16-*-*-*-*-*-fontset-standard
+也可以使用简称 fontset-standard。
+
+标准字体集的粗体、斜体和粗斜体变种都是自动创建的。它们的名字是以 bold 替换 medium，以 i 替换 r，或者同时替换二者得到的。
+
+如果您使用 Font 资源(X 窗口系统)，或者 -fn 命令行参数设定默认 ASCII 字体，Emacs 将自动为它创建一个字体集，也就是启动字体集，它的名字是 fontset-startup。创建步骤是将厂商、字体族、附加属性和平均宽度域替换为星号，将字符集登记(charset_registry，[mhss])替换为 fontset，将字符集编码替换为 startup，然后用结果字符串指定字体集。
+
+例如，如果您这样启动 Emacs，
+emacs -fn "*courier-medium-r-normal--14-140-*-iso8859-1"
+Emacs 将生成下面的字体集，用在最初的 X 窗口窗格中：
+-*-*-medium-r-normal-*-14-140-*-*-*-*-fontset-startup
+
+在 X 资源 emacs.Font 中，您可以指定字体集名称，像真实字体名一样用它。但是小心不要在通配符表达的资源中(类似 emacs*Font)指定字体集名称--通配符可以匹配各种其他资源，包括菜单等等，而菜单无法处理字体集。
+
+您可以在名为 Fontset-n 的 X 资源中指定附加的字体集，这里 n 是一个整数，从 0 开始。资源值应该是下面的形式：
+fontpattern, [charsetname:fontname]...
+fontpattern 应当是标准的 X 字体名，除了最后两个域应当是 fontset-alias 的形式。
+
+这个字体集有两个名字，其一是长名字，也就是 fontpattern，其二是短名字 fontset-alias。您可以用任何一个名字来引用这个字体集。
+
+结构 charset:font 指定了对于某个特定的字符集，使用(这个字体集中的)哪个字体。这里，charset 是字符集的名称，而 font 是将在这个字符集中使用的字体。在定义一个字体集的时候，您可以重复这个结构任意次。
+
+对于其他字符集，Emacs 根据 fontpattern 来选择一种字体。它将 fontset-alias 替换为描述字符集的值。对于 ASCII 字符，fontset-alias 将替换为 ISO8859-1。
+
+另外，如果有数个连续的域都是通配符，Emacs 将把它们折叠为一个。这是为了避免使用自动缩放的字体。通过缩放大字体得到的字体不适于编辑，而缩放小字体没有用处，因为以原始大小使用小字体效果更好，这就是 Emacs 的做法。
+
+因此，如果 fontpattern 是这样，
+-*-fixed-medium-r-normal-*-24-*-*-*-*-*-fontset-24
+那么 ASCII 字符的字体声明将是：
+-*-fixed-medium-r-normal-*-24-*-ISO8859-1
+而中文 GB2312 字符的字体声明将是：
+-*-fixed-medium-r-normal-*-24-*-gb2312*-*
+
+您也许没有安装任何匹配上述字体声明的中文字体。大多数 X 发行版仅仅包含 family 域是 song ti 或 fangsong ti 的中文字体。这种情况下，可以把 Fontset-n 声明为：
+Emacs.Fontset-0: -*-fixed-medium-r-normal-*-24-*-*-*-*-*-fontset-24,\
+chinese-gb2312:-*-*-medium-r-normal-*-24-*-gb2312*-*
+这样，所有字体声明，除了中文 GB2312 之外，都在 family 域使用 fixed，而为中文 GB2312 字符使用的字体声明将在 family 域使用星号。
+
+用来处理字体集资源，创建字体集的函数是 create-fontset-from-fontset-spec。您也可以显式调用它，来创建一个字体集。
+
+参见 X 字体(Font X) 来获取有关 X 字体命名的更多信息。
+
+无法显示的字符
+
+您的终端也许无法显示一些非 ASCII 字符。大多数非窗口系统的终端只能使用单一字符集(设置变量 default-terminal-coding-system (参见指定编码)来告诉 Emacs 用的是哪一个)；在这个编码系统中无法编码的字符将默认显示为问号。
+
+窗口系统的终端可以显示更大范围的字符，但是您也许没有安装完全相应的字体；找不到字体的字符将显示为一个中空的方块。
+
+如果您用的是 Latin-1 字符集，而终端无法显示 Latin-1，那么您可以设置显示助记的 ASCII 序列。例如，"o 就是变音的 o。加载 iso-ascii 库就可以了。
+
+如果您的终端可以显示 Latin-1，那么您可以用混合等价的 Latin-1 字符与 ASCII 助记序列的方式，显示其他欧洲字符集的字符。加载 latin1-display 来启用这种行为。助记的 ASCII 序列大都相应于输入法的前缀。
+
+单字节字符集支持
+
+ISO 8859 Latin-n 字符集定义了八进制 0240 到 0377(十进制 160 到 255) 范围内的字符代码，来处理各种欧洲语种(以及一些非欧洲语种)中的重音字母以及标点符号。如果您禁用了多字节字符，Emacs 仍然可以处理这些字符集，尽管每次只能处理一种。要设定使用哪一种，执行 M-x set-language-environment 并且指定一个合适的语言环境值，例如 Latin-n。
+
+要获取更多关于单字节操作的信息，参见使用多字节字符。需要特别注意的是，您也许需要保证初始化文件是以单字节方式读取的，如果其中包含了非 ASCII 字符的话。
+
+Emacs 可以显示这些字符，只要正在使用的终端或字体支持它们的话，就会自动显示。如果您在使用窗口系统，Emacs 也可以通过字体集来显示单字节字符，它会根据当前语言环境，显示等价的多字节字符。要启用这种效果，可以设置变量 unibyte-display-via-language-environment 为非 nil 值。
+
+如果终端不支持 Latin-1 字符集，Emacs 可以将这些字符显示为 ASCII 序列，这样至少可以让您知道这些字符是什么。要启用这种效果，加载 iso-ascii 库。针对其他 Latin-n 字符集的库也可以实现，不过我们还没有去做。
+
+非 ISO 8859 字符(十进制代码 128 到 159，包括两端)将显示为八进制转义符号。对于非标准的"扩展"版本的 ISO 8859 字符集，您可以用 disp-table 库中的 standard-display-8bit 函数来改变这个行为。
+
+有很多办法，可以用来输入单字节非 ASCII 字符：
+
+- 如果您的键盘可以产生 128(十进制)及更大的字符编码，表示非 ASCII 字符，那么您可以直接输入那些字符。
+
+在窗口系统的终端下，您应当无需特别配置就能使用这些键；它们自然而然地就能用。在文本终端下，您应当使用命令 M-x set-keyboard-coding-system 或定制选项 keyboard-coding-system 来指定键盘使用的编码系统(参见指定编码)。启用这一特性很可能需要您使用 Esc 来输入 Meta 字符；但是，在 Linux 终端下或 xterm 中，您可以重新设定 Meta 为输入 Esc，同时仍然可以输入键盘上直接标示的，或用 Compose 或 AltGr 键得到的单字节字符。参见用户输入(User Input)。
+
+- 您可以使用所选的语言环境中的输入法。参见输入法。当您在单字节的缓冲区中使用输入法时，您在输入法中选择的字符将被转换为单字节。
+
+- 您可以用按键 C-x 8 作为"组合字符"前缀，输入非 ASCII 的 Latin-1 可打印字符。这只对 Latin-1 有效。C-x 8 在插入(包括命令缓冲区以及其他缓冲区)、搜索和其他任何允许组合键的环境中都可以用。
+
+C-x 8 需要加载 iso-transl 库。加载之后，<ALT> 修饰键将与 C-x 8 拥有相同的效果；按下 <ALT> 然后按一个重音符号，就可以改变下一个字符。另外，如果您有针对 Latin-1 的重音字符的寂键("dead accent chars")，加载了 iso-transl 之后，它们也被定义为与下一个字符组合。使用 C-x 8 C-h 来列出所有翻译，以及助记的命令名。
+
+- 对于 Latin-1、Latin-2 和 Latin-3，M-x iso-accents-mode 可以打开一个辅助模式，它与 latin-1-prefix 输入法很像，但是不依赖于输入法。这个模式是缓冲区范围的。用 M-x iso-accents-customize 可以定制它以适于多种语言。

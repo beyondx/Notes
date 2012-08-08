@@ -1,0 +1,370 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-03-28T21:02:32+08:00
+
+====== LnF Awards 2010 ======
+Created Monday 28 March 2011
+https://bbs.archlinux.org/viewtopic.php?id=88515
+
+Another year, another set of awards to give out... More likely than not, we will see many of the same candidates as last year, but given the recent trend in software development I'm expecting to see some new arrivals. I will be regularly updating this post with an overall count of the votes.
+
+Diplay/Login Managers
+- [56] None/startx/xinitrc
+- [22] SLiM
+- [4] CDM
+- [1] XDM
+
+Tiling Window Managers
+- [17] Awesome
+- [16] DWM
+- [14] XMonad
+- [6] PyTyle
+- [6] wmii
+- [4] Musca
+- [4] ratpoison
+- [3] Scrotwm
+- [2] i3
+- [1] Ion
+- [1] StumpWM
+- [1] subtle
+- [1] WMFS
+
+Floating Window Managers
+- [42] Openbox
+- [10] Fluxbox
+- [4] Compiz
+- [3] PekWM
+- [1] evilwm
+- [1] JWM
+- [1] WindowMaker
+
+Desktop Environments
+- [10] Xfce
+- [4] LXDE
+- [3] GNOME
+- [1] KDE
+- [1] KDEmod
+
+Shells
+- [56] Bash
+- [30] ZSH
+- [1] fish
+- [1] ksh
+
+Archive Managers
+- [34] tar
+- [10] Xarchiver
+- [7] bsdtar
+- [6] File Roller
+- [4] P7ZIP
+- [3] atool
+- [2] Squeeze
+- [1] coreutils
+- [1] FlyBack
+
+CD Burners
+- [14] cdrkit
+- [8] K3b
+- [7] Xfburn
+- [6] BashBurn
+- [5] Brasero
+- [2] cdrtools
+- [1] DVD+RW-tools
+- [1] Graveman
+- [1] SoX
+
+CD Rippers
+- [10] abcde
+- [6] dd
+- [4] Asunder
+- [4] CDParanoia
+- [4] rubyripper
+- [2] Sound Juicer
+- [1] LAME
+- [1] soundKonverter
+
+Communications Apps
+- [2] Skype
+- [1] Linphone{,-cli}
+- [1] SipToSis
+
+Email Clients
+- [19] Mutt
+- [13] Thunderbird
+- [10] Claws Mail
+- [3] Alpine
+- [3] Sup
+- [1] offlineimap
+
+File Managers
+- [30] coreutils
+- [19] PCManFM
+- [18] Thunar
+- [12] vifm
+- [6] mc
+- [6] Ranger
+- [3] ROX-Filer
+- [3] XFE
+- [1] Dolphin
+- [1] emelFM2
+- [1] pyfmii
+- [1] Tux Commander
+- [1] Worker
+
+Image Editors (Raster)
+- [28] GIMP
+- [8] ImageMagick
+- [4] mtPaint
+- [1] CinePaint
+- [1] Fotoxx
+- [1] KolourPaint
+- [1] PGF/TikZ
+
+Image Editors (Vector)
+- [14] Inkscape
+
+Image Viewers
+- [46] Feh
+- [20] Mirage
+- [11] GPicView
+- [6] GQview
+- [4] Gwenview
+- [3] Geeqie
+- [2] Comix
+- [2] GLiv
+- [2] XV
+- [1] cacaview
+- [1] Eye Of Gnome
+- [1] fbida
+- [1] fbv
+- [1] QIV
+- [1] Viewnior
+
+Instant Messengers
+- [34] Pidgin
+- [17] BitlBee
+- [5] emesene
+- [4] CenterIM
+- [3] Finch
+- [3] MCabber
+- [1] aMSN
+- [1] Gajim
+- [1] Kopete
+- [1] Minbif
+- [1] Miranda
+- [1] Psi
+
+IRC Clients
+- [36] Irssi
+- [13] WeeChat
+- [9] XChat
+- [2] Pidgin
+- [1] ChatZilla!
+- [1] Konversation
+
+Music Players
+- [28] ncmpcpp
+- [15] mocp
+- [7] Sonata
+- [6] cmus
+- [5] mpc
+- [3] gmusicbrowser
+- [3] Goggles Music Manager
+- [2] Amarok
+- [2] Banshee
+- [1] Ario
+- [1] Audacious
+- [1] cPlay
+- [1] DeaDBeeF
+- [1] Decibel
+- [1] EMMS
+- [1] Exaile
+- [1] GMPC
+- [1] ncmpc
+- [1] Pianobar
+- [1] pyampc
+- [1] Quod Libet
+- [1] vitunes
+
+Network Managers
+- [29] wicd{,-curses}
+- [19] netcfg
+- [10] {if,iw}config/dhcpcd
+- [3] NetworkManager
+- [1] ifplugd
+- [1] WvDial
+
+Office Apps (Spreadsheet/Math):
+- [5] Gnumeric
+- [2] gnuplot
+- [2] Mathematica
+- [2] OpenOffice
+- [2] R
+- [1] ESS
+- [1] Qalculate!
+- [1] sc
+- [1] wxMaxima
+
+Office Apps (Word Processing)
+- [26] OpenOffice
+- [11] AbiWord
+- [11] VIM-LaTeX
+- [3] AUCTeX
+- [4] Go-OO
+- [4] LyX
+- [3] LaTeX
+- [1] teTeX
+- [1] Texmaker
+- [1] xdvi
+
+Office Apps (Other)
+- [4] Calcurse
+- [1] Remind
+- [1] Sane/XSane
+- [1] scrot
+
+Package Managers
+- [38] pacman/makepkg
+- [19] yaourt
+- [6] Clyde
+- [6] packer
+- [2] aurget
+- [2] bauerbill
+- [2] powerpill
+- [1] Slurpy
+
+PDF Readers
+- [26] Evince
+- [20] apvlv
+- [20] EPDFView
+- [10] Xpdf
+- [9] zathura
+- [3] Okular
+- [2] Acrobat Reader
+- [2] MuPDF
+
+RSS Readers
+- [6] newsbeuter
+- [5] Liferea
+- [3] Snownews
+- [2] Akregator
+- [2] rsstail
+- [1] GNUS
+- [1] Sage
+- [1] voracious
+
+Security/Backup Utilities
+- [10] slock
+- [2] alock
+- [1] GPass
+- [1] KeePassX
+- [1] rsync
+- [1] XScreenSaver
+
+System Monitors
+- [49] {h,}top
+- [29] Conky{,-cli}
+- [3] ps
+- [3] statnot
+- [2] Iotop
+- [2] xfce4-taskmanager
+- [1] GKrellM
+- [1] Gnome System Monitor
+- [1] MultiTail
+- [1] LXTask
+
+System Panels/Menus/Trays
+- [24] Tint2
+- [22] dmenu
+- [8] dzen
+- [4] fbpanel
+- [3] BMPanel
+- [3] Trayer
+- [3] xmobar
+- [2] gmrun
+- [2] NetWMPager
+- [2] Xfce4-Panel
+- [2] yaganesh
+- [1] Cairo-Dock
+- [1] LXPanel
+- [1] stalonetray
+
+Terminal Emulators
+- [53] rxvt-unicode
+- [14] XTERM
+- [9] tmux
+- [7] Terminal
+- [5] Sakura
+- [4] LilyTerm
+- [4] ROXTerm
+- [4] Screen
+- [4] Terminator
+- [2] Gnome Terminal
+- [1] stjerm
+- [1] Tilda
+
+Text Editors
+- [58] vim
+- [13] Geany
+- [13] nano
+- [6] Mousepad
+- [5] Emacs
+- [2] gedit
+- [2] Leafpad
+- [1] medit
+- [1] ne
+- [1] SciTE
+
+Torrent Clients
+- [33] rTorrent
+- [15] Transmission{,-cli}
+- [14] Deluge
+- [1] btpd
+- [1] MLDonkey
+
+Video Players
+- [62] MPlayer
+- [18] VLC
+- [11] SMPlayer
+- [2] xine
+- [1] Totem
+
+Web Browsers
+- [35] Firefox
+- [25] Chromium
+- [21] uzbl
+- [5] Opera
+- [4] Midori
+- [4] vimprobable
+- [3] Conkeror
+- [3] ELinks
+- [2] Iron
+- [2] Links
+- [2] W3M
+- [1] Arora
+- [1] Epiphany
+- [1] Lynx
+
+Web Utilities
+- [6] OpenSSH
+- [3] TTYtter
+- [1] Drivel
+- [1] gPodder
+- [1] prowl.pl
+
+Other Apps
+- [4] Nitrogen
+- [4] skvm
+- [2] pmount
+- [1] gPhoto/gtkam
+- [1] LXAppearance
+- [1] Octave
+- [1] Wyrd
+- [1] Xephyr
+- [1] XBMC
+
+Overall best application for 2010
+- MPlayer currently winning with 62 votes.
+
+Last user voted
+- mythus

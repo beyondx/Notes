@@ -1,0 +1,49 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-08-07T09:47:01+08:00
+
+====== 类（三、复制构造函数） ======
+Created Sunday 07 August 2011
+
+1 #include<iostream>
+ 2 using namespace std;
+ 3 class Point {
+ 4     public:
+ 5         Point(int xx=0,int yy=0) {
+ 6             x=xx;
+ 7             y=yy;
+ 8         }
+ 9 /*------------------复制构造函数--------------------*/
+10         Point(Point &p) {                       __  //常用于初始化一个类的对象，或者是作为函数的参数进行值传递时调用，有时也在返回对像后使用；__
+11             x=p.x;
+12             y=p.y;
+13             cout<<"copy constructor....."<<endl;
+14         }
+15         int getX();
+16         int getY();
+17     private:
+18         int x,y;
+19 };
+20 int Point::getX() {
+21     return x;
+22 }
+23 int Point::getY() {
+24     return y;    
+25 } 
+26 fun1(__Point b__) {                               __ //进行值传递时调用类的复制构造函数；注意：实参与形参类型不同时还有可能调用构造函数进行隐式类型转换。__
+27     cout<<b.getX()<<endl;
+28 }
+29 Point fun2(){
+30     Point a(3,4);                             __//返回值为类的对象时，复制构造函数也会被调用；__
+31     return a;
+32 }
+33 int main() {
+34     Point m(3,0);
+35     Point l;
+36     fun1(m);
+37     l=fun2();
+38     cout<<"----------"<<endl;
+39     Point n(m);                  __ //用一个类的对象去初始化另一个对象；__
+40     Point o=m;                    __//上一种情况的另一种表示方法；__
+41     return 0;
+42 }

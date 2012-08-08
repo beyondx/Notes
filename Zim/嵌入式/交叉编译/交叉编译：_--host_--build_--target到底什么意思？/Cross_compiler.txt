@@ -1,0 +1,109 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-12T16:26:15+08:00
+
+====== Cross compiler ======
+Created Thursday 12 January 2012
+http://en.wikipedia.org/wiki/Cross_compiler
+
+**A cross compiler** is__ a compiler capable of creating executable code for a platform other than the one on which the compiler is run__. 
+
+**Cross compiler tools **are used to generate executables for embedded system or multiple platforms. It is used to compile for a platform upon which it is **not feasible to do the compiling**, like microcontrollers that don't support an operating system. It has become more common to use this tool for__ paravirtualization__ where a system may have one or more platforms in use.
+
+===== Contents =====
+
+    1 Uses of cross compilers
+    2 Canadian Cross
+    3 Time line of early cross compilers
+    4 GCC and cross compilation
+    5 Manx Aztec C cross compilers
+    6 Microsoft C cross compilers
+        6.1 Early History – 1980s
+        6.2 1987
+        6.3 Early 1990s
+        6.4 Late 1990s
+        6.5 .NET and beyond
+    7 Free Pascal
+    8 See also
+    9 References
+    10 External links
+
+===== Uses of cross compilers =====
+
+The fundamental use of a cross compiler is to __separate the build environment from target environment__. This is useful in a number of situations:
+
+* **Embedded computers** where a device has **extremely limited resources**. For example, a microwave oven will have an extremely small computer to read its touchpad and door sensor, provide output to a digital display and speaker, and to control the machinery for cooking food. This computer will not be powerful enough to run **a compiler, a file system, or a development environment**. Since debugging and testing may also require more resources than are available on an embedded system, cross-compilation can be less involved and less prone to errors than native compilation.
+* **Compiling for multiple machines. **For example, a company may wish to support several different versions of an operating system or to support several different operating systems. By using a cross compiler, a single build environment can be set up to compile for each of these targets.
+* **Compiling on a server farm.** Similar to compiling for multiple machines, a complicated build that involves many compile operations can be executed across any machine that is free, regardless of its underlying hardware or the operating system version that it is running.
+* __Bootstrapping to a new platform.__ When developing software for a new platform, or the emulator of a future platform, one uses a cross compiler to compile** necessary tools **such as the operating system and a __native compiler__.
+* Compiling native code for emulators for older now-obsolete platforms like the Commodore 64 or Apple II by enthusiasts who use cross compilers that run on a current platform (such as Aztec C's MS DOS 6502 cross compilers running under Windows XP).
+
+Typically the __hardware architecture differs__ (e.g. compiling a program destined for the MIPS architecture on an x86 computer) but cross-compilation is also applicable when __only the operating system environment differs__, as when compiling a FreeBSD program under Linux, or even** just the system library**, as when compiling programs with uClibc on a glibc host.
+
+===== Canadian Cross =====
+
+The Canadian Cross is a technique for building cross compilers for other machines. Given three machines A, B, and C, one uses machine A (e.g. running Windows XP on an IA-32 processor) to build a cross compiler that__ runs on__ machine B (e.g. running Mac OS X on an x86-64 processor) to create executables__ for machine C__ (e.g. running Android on an ARM processor). When using the Canadian Cross with GCC, there may be four compilers involved:
+
+* The proprietary (describes goods which are made and sent out by a particular company whose name is on the product) __native Compiler__ for machine A (1) (e.g. compiler from Microsoft Visual Studio) is used to build the gcc native compiler for machine A (2).
+* The gcc native compiler for machine A (2) is used to build the __gcc cross compiler__ from machine A to machine B (3)
+* The gcc cross compiler from machine A to machine B (3) is used to build the __gcc cross compiler__ from machine B to machine C (4)。
+The end-result cross compiler (4) will not be able to run on your build machine A; instead you would use it __on machine B__ to compile an application into executable code that would then be __copied to __machine C and executed on machine C.
+
+For instance, NetBSD provides a POSIX Unix shell script named build.sh which will first build** its own toolchain** with the **host's compiler;** this, in turn, will be used to build the cross-compiler which will be used to build the whole system.
+
+The term Canadian Cross came about because at the time that these issues were all being hashed out, Canada had three national political parties.[1]
+
+===== GCC and cross compilation =====
+
+GCC, a free software__ collection__ of compilers, can be set up to cross compile. It supports many platforms and languages.
+
+GCC requires that a compiled copy of __binutils__ be available for each __targeted platform.__ Especially important is the **GNU Assembler.** Therefore, binutils first has to be compiled correctly with the switch **--target=some-target **sent to the configure script. GCC also has to be configured with the same **--target **option. GCC（已经生成的交叉编译器） can then be run normally provided that the tools, __which binutils creates__, are available in the path, which can be done using the following (on UNIX-like operating systems with bash):
+
+**PATH=/path/to/binutils/bin:${PATH} make**
+
+Cross compiling GCC requires that a portion of the__ target platform's C standard library__ be available on the __host platform__. At least the **crt0**, ... components of the library must be available. You may choose to compile the full C library, but that can be too large for many platforms. The alternative is to use__ newlib__, which is a small C library containing only the most essential components required to compile C source code. To configure GCC with newlib, use the switch __--with-newlib.__
+
+The **GNU autotools** packages (i.e. autoconf, automake, and libtool) use the notion of__ a build platform, a host platform, and a target platform.__ 
+
+The build platform is where the compiler is actually compiled. In most cases, __build should be left undefined__ (it will default from host). The host platform is where the **output** artefacts from the compiler will be __executed__. 
+The target platform is used when cross compiling cross compilers, it represents __what type of object code__ the package itself will produce; otherwise the target platform setting is irrelevant.[2] For example, consider cross-compiling a video game that will run on a Dreamcast. The machine where the game is compiled is the host platform while the Dreamcast is the target platform.
+
+Another method that is popularly used by embedded Linux developers is to use **gcc, g++, gjc** etc. with scratchbox or the newer __scratchbox2__. These tools create a **"chroot"ed sandbox **where you can build up your tools, libc, and libraries without having to set extra paths. It also has facilities for tricking the runtime into thinking it is on (for example) an ARM CPU so things like configure scripts will run. The downside to scratchbox is that it is slower and you lose access to most of your tools that are on the host. The speed loss is not terrible and you can move host tools into scratchbox.
+
+[edit] See also
+
+    Compiler
+    MinGW
+    Scratchbox
+    Free Pascal
+
+[edit] References
+
+    ^ "4.9 Canadian Crosses". CrossGCC. Retrieved 2007-10-11. "This is called a `Canadian Cross' because at the time a name was needed, Canada had three national parties."
+    ^ http://www.gnu.org/s/libtool/manual/automake/Cross_002dCompilation.html
+    ^ Obsolete Macintosh Computers
+    ^ Aztec C
+    ^ Commodore 64
+    ^ Apple II
+    ^ MS DOS Timeline
+    ^ Inside Windows CE (search for Fenwick)
+    ^ Microsoft Language Utility Version History
+    ^ History of PC based C-compilers
+    ^ Which Basic Versions Can CALL C, FORTRAN, Pascal, MASM
+    ^ "Free Pascal Supported Platform List". Platform List. Retrieved 2010-06-17. "i386"
+
+[edit] External links
+
+    Cross Compilation Tools – reference for configuring GNU cross compilation tools
+    Building Cross Toolchains with gcc is a wiki of other GCC cross-compilation references
+    Scratchbox is a toolkit for Linux cross-compilation to ARM and x86 targets
+    Grand Unified Builder (GUB) for Linux to cross-compile multiple architectures e.g.:Win32/Mac OS/FreeBSD/Linux used by GNU LilyPond
+    Crosstool is a helpful toolchain of scripts, which create a Linux cross-compile environment for the desired architecture, including embedded systems
+    crosstool-NG is a rewrite of Crosstool and helps building toolchains.
+    buildroot is another set of scripts for building a uClibc-based toolchain, usually for embedded systems. It is utilized by OpenWrt.
+    ELDK (Embedded Linux Development Kit). Utilized by Das U-Boot.
+    T2 SDE is another set of scripts for building whole Linux Systems based on either GNU libC, uClibc or dietlibc for a variety of architectures
+    Cross Linux from Scratch Project
+    IBM has a very clear structured tutorial about cross-building a GCC toolchain.
+    (French) Cross-compilation avec GCC 4 sous Windows pour Linux - A tutorial to build a cross-GCC toolchain, but from Windows to Linux, a subject rarely developed
+
