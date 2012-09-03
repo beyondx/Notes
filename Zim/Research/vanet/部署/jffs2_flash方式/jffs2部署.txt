@@ -1,0 +1,7 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-11T21:47:58+08:00
+
+====== jffs2部署 ======
+Created Saturday 11 August 2012
+

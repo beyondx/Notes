@@ -1,0 +1,37 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-10T16:52:25+08:00
+
+====== uboot-nand ======
+Created Friday 10 August 2012
+
+如果在编译nand型的uboot时提示如下错误：
+[geekard@kb310 u-boot-2009.03-rc2]$ make distclean
+[geekard@kb310 u-boot-2009.03-rc2]$ make MPC8315ERDB_NAND_config
+... NAND Configuring for MPC8315ERDB board...
+[geekard@kb310 u-boot-2009.03-rc2]$ make
+        -o /home/geekard/PPC/ltib-mpc8315erdb-20100719/rpm/BUILD/u-boot-2009.03-rc2/nand_spl/u-boot-spl
+mpc8315erdb.o: In function `putc':
+/home/geekard/PPC/ltib-mpc8315erdb-20100719/rpm/BUILD/u-boot-2009.03-rc2/nand_spl/board/freescale/mpc8315erdb/mpc8315erdb.c:324: undefined reference to __`_savegpr_31'__
+/home/geekard/PPC/ltib-mpc8315erdb-20100719/rpm/BUILD/u-boot-2009.03-rc2/nand_spl/board/freescale/mpc8315erdb/mpc8315erdb.c:332: undefined reference to __`_restgpr_31_x'__
+sdram.o: In function `initdram':
+/home/geekard/PPC/ltib-mpc8315erdb-20100719/rpm/BUILD/u-boot-2009.03-rc2/nand_spl/board/freescale/mpc8315erdb/sdram.c:129: undefined reference to `_restgpr_29_x'
+nand_init.o: In function `puts':
+/home/geekard/PPC/ltib-mpc8315erdb-20100719/rpm/BUILD/u-boot-2009.03-rc2/nand_spl/board/freescale/mpc8315erdb/nand_init.c:112: undefined reference to `_restgpr_30_x'
+time.o: In function `usec2ticks':
+/home/geekard/PPC/ltib-mpc8315erdb-20100719/rpm/BUILD/u-boot-2009.03-rc2/nand_spl/board/freescale/mpc8315erdb/time.c:38: undefined reference to `_savegpr_31'
+/home/geekard/PPC/ltib-mpc8315erdb-20100719/rpm/BUILD/u-boot-2009.03-rc2/nand_spl/board/freescale/mpc8315erdb/time.c:48: undefined reference to `_restgpr_31_x'
+time.o: In function `udelay':
+/home/geekard/PPC/ltib-mpc8315erdb-20100719/rpm/BUILD/u-boot-2009.03-rc2/nand_spl/board/freescale/mpc8315erdb/time.c:67: undefined reference to `_restgpr_28_x'
+make[1]: *** [/home/geekard/PPC/ltib-mpc8315erdb-20100719/rpm/BUILD/u-boot-2009.03-rc2/nand_spl/u-boot-spl] Error 1
+make[1]: Leaving directory `/home/geekard/PPC/ltib-mpc8315erdb-20100719/rpm/BUILD/u-boot-2009.03-rc2/nand_spl/board/freescale/mpc8315erdb'
+make: *** [nand_spl] Error 2
+[geekard@kb310 u-boot-2009.03-rc2]$ 
+
+------------------------------
+http://gcc.gnu.org/bugzilla/show_bug.cgi?id=43810#c4
+calls to _savegpr_32 and _restgpr_r31_x are only generated when compiling libgcc with -Os , but same compiled with -O2 does not emit the calls
+所以解决的方法是，编辑uboot顶层目录中的config.mk文件将
+119 DBGFLAGS= -g # -DDEBUG
+120 OPTFLAGS= -Os #-fomit-frame-pointer
+上面的-Os改为-O2即可。

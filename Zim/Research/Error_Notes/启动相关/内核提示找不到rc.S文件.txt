@@ -1,0 +1,19 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-11T15:57:47+08:00
+
+====== 内核提示找不到rc.S文件 ======
+Created Saturday 11 August 2012
+
+内核启动后输出如下内容：
+RAMDISK: gzip image found at block 0
+VFS: Mounted root (ext2 filesystem) on device 1:0.
+Freeing unused kernel memory: 152k freed
+can't run '/etc/rc.d/rcS': No such file or directory
+--------------------------------------------
+rcS是一个shell脚本文件，使用的解释器是/bin/sh，而该文件在ramdisk中并没由存在。
+这可能是busybox中的配置有误：
+   Choose which shell is aliased to 'sh' name (ash)  --->                                                                      │ │  
+   Choose which shell is aliased to 'bash' name (ash)  --->
+
+选中上面两个选项即可。

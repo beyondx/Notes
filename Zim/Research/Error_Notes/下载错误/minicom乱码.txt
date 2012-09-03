@@ -1,0 +1,20 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-10T14:08:29+08:00
+
+====== minicom乱码 ======
+Created Friday 10 August 2012
+
+错误的可能原因：
+1. 波特率不对，应该设置为115200
+2.串口的位数为8，无奇偶校验，停止位为1位，即：8N1
+3.**软件、硬件流控不设置**。
+
+设置结果应该如下：
+A -    Serial Device      : /dev/ttyUSB0                              |                                                       
+B - Lockfile Location     : /var/lock                                 |                                                       
+C -   Callin Program      :                                           |                                                       
+D -  Callout Program      :                                           |                                                       
+E -    Bps/Par/Bits       : **115200 8N1**                                |                                                       
+F - Hardware Flow Control : **No**                                        |                                                       
+G - Software Flow Control : **No**        

@@ -8,5 +8,5 @@ Created Wednesday 22 February 2012
 这可能与uboot的环境变量bootargs中console设置错误有关，正确的应该为：
 setenv bootargs root=/dev/ram rw console=ttyS0,115200 ramdisk_size=xxxx
 
-注意：ramdisk_size大小要和ltib输出的一致，但可以比后者大，否则kernel启动的最后
-在mount该文件时，会出错。
+注意：ramdisk_size大小要和ltib输出的一致，但可以比后者大(有时设置较大时会出错，所以最好设为ltib的输出值)，否则kernel启动的最后
+在mount该文件时，VFS子系统会出错。

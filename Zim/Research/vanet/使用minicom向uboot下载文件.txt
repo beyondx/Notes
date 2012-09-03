@@ -1,0 +1,16 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-10T14:24:46+08:00
+
+====== 使用minicom向uboot下载文件 ======
+Created Friday 10 August 2012
+
+1. 设置好minicom的环境，如[[../../Error_Notes/下载错误/minicom乱码.txt]]
+2. 复位开发板，启动uboot，在命令行界面输入loady命令，这是uboot处于文件下载等待状态。注意，必须先在minicom环境中与uboot相连而且使uboot处于
+	等待状态后才进行第三步. 
+3. 如下配置minicom的文件传输：
+	a. Ctrl + a进入minicom的配置环境。
+	b. 按s, 进入send file配置界面。
+	c. 选择列表中的ymodem协议模式	
+	d. 这时出现“待上传的文件选择列表”菜单，使用上下键在目录项中移动，按两次空格进入光标所在的目录，然后按一次空格选中文件，确保[Okey]被选中
+然后按回车。 这时会出现文件上传的进度窗口。

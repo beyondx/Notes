@@ -1,0 +1,120 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-15T15:31:21+08:00
+
+====== 内核模块的makefile ======
+Created Wednesday 15 August 2012
+http://blog.csdn.net/hansel/article/details/1872008
+
+hansel@163.com  2007.11.07
+编译模块的make file 必须是Makefile,不能是makefile.
+
+Linux 2.6的内核使用Kbuild来编译内核模块。Kbuild能够编译内核树目录内的内核模块，也__能够编译内核目录树外的内核模块__（外部内核模块）。
+
+* **编译外部内核模块的命令：**
+   #cd <your-module-dir>
+   #make -C <path-to-kernel> M=`pwd` 
+   
+   其中<your-module-dir>为要编译的内核模块所在目录，<path-to-kernel> 为内核源码所在的目录。   对于发行版本的Linux，可以用：
+   #make -C /lib/modules/`uname -r`/build M=`pwd`
+   
+   注意：使用Kbuild之前，必须先成功编译过内核源码。
+   说明：
+	* #make -C <path-to-kernel> M=`pwd` **modules**
+        作用与上面的命令一样 
+	* 以前的内核版本可以使用
+         #make -C <path-to-kernel> SUBDIRS=`pwd`  modules
+
+* **安装外部内核模块**
+   #make -C <path-to-kernel> M=`pwd` **modules_install**   
+    默认安装目录为：/lib/modules/`uname -r`/extra，可以通过__INSTALL_MOD_PATH__宏在默认安装路径前加前缀。
+    例如：
+   #make -C <path-to-kernel> INSTALL_MOD_PATH=/opt M=`pwd` modules_install   
+   则编译后的模块会放在/opt/lib/modules/`uname -r`/extra
+
+   通过宏__INSTALL_MOD_DIR__可以修改是否放在'extra'下，例如：
+   #make -C <path-to-kernel> INSTALL_MOD_DIR=**golf** M=`pwd` modules_install  
+   则编译后的模块会放在/lib/modules/`uname -r`/golf
+   
+* **编译单个文件**
+   #make -C <path-to-kernel> M=`pwd` <filename>
+
+* **其他命令**
+   #make -C <path-to-kernel> M=`pwd` clean
+   #make -C <path-to-kernel> M=`pwd` help
+
+* **Kbuild文件**
+  Linux的Kbuild会在内核模块目录下查找Kbuild文件，如果有，则在编译时会使用该文件。
+
+==== 示例： ====
+  假设有这么几个文件：8123_if.c 8123_if.h  8123_pci.c 8123_bin.o_shipped(二进制的模块文件)
+
+  **Kbuild文件的内容：**
+     obj-m := 8123.o
+     **8123-y**:8123_if.o 8123_pci.o 8123_bin.o
+     
+  **Makefile的内容：**
+     #为了兼容旧版本的Kbuild
+     ifneq($(KERNELRELEASE),)
+        include Kbuild
+     else
+        #正常的Makefile
+        KDIR:=/lib/modules/`uname -r`/build
+        all::
+           $(MAKE) -C $(KDIR) M=`pwd` $@
+           
+        #其他target
+        genbin:
+          echo "X" > 8123_bin_shipped
+     endif
+     
+     注意，没有源码的二进制.o文件必须以原文件名加_shipped结尾，例如8123_bin.o_shipped，KBuild会把8123_bin.o_shipped
+         复制为8123_bin.o，然后一起编译。         
+         
+Makefile中如何包括自己的include文件
+    由于__采用Kbuild编译外部内核模块时，编译路径切换到了内核源码树的目录__，因此如果在Makefile中使用相对路径来包含另一个文件
+    时，会找不到该文件。因此，不能用
+       include ../config.mk
+       
+    应该用：
+       ifeq ($(obj),)
+          obj= .
+       endif
+       include $(obj)/../config.mk 
+---------------------------------------------------
+一般用下面的Makefile，
+http://www.cnblogs.com/hnrainll/archive/2011/06/15/2081136.html
+
+    # Makefile2.6  
+    ifneq ($(KERNELRELEASE),)  
+    #__kbuild syntax__. dependency relationshsip of files and target modules are listed here.  
+      
+    mymodule-objs := hello.o  
+    obj-m := hello.o     
+      
+    else  
+    PWD  := $(shell pwd)  
+      
+    KVER ?= $(shell uname -r)  
+    KDIR := /lib/modules/$(KVER)/build #KDIR目录其实是链接到上面那个Makefile中的那个  
+                                             /usr/src/linux-source-2.6.15/*中  
+    all:  
+           $(MAKE) -C $(KDIR) M=$(PWD)  modules
+      
+    clean:  
+           rm -rf .*.cmd *.o *.mod.c *.ko .tmp_versions  
+      
+    endif  
+
+KERNELRELEASE 是在内核源码的顶层Makefile中定义的一个变量，在第一次读取执行此Makefile时，KERNELRELEASE没有被定义，所以make将读取执行else之后的内容。
+
+当make的目标为all时，__-C $(KDIR) 指明跳转到内核源码目录下读取那里的Makefile__；M=$(PWD) 表明然后返回到当前目录重新读入、执行当前的Makefile。
+
+当从内核源码目录返回时，KERNELRELEASE已被被定义，__kbuild也被启动去解析kbuild语法的语句__，make将继续读取else之前的内容。else之前的内容为kbuild语法的语句, 指明模块源码中各文件的依赖关系，以及要生成的目标模块名。
+
+-------------------------------------
+**关于GNU make工具扩展的说明** 
+   在上面的Makefile中使用了 
+   obj-m := 这个赋值语句的含义说明要使用目标文件helloworld.o建立一个模块，最后生成的模块的名字就是helloworld.ko，如果你有一个名为module.ko的模块依赖于两个文件file1.o和file2.o，那么我们可以使用module-obj扩展，如下所示
+   obj-m := module.o 
+   module-objs := file1.o file2.o

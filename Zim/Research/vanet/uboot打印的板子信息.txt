@@ -1,0 +1,85 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-10T13:58:44+08:00
+
+====== uboot打印的板子信息 ======
+Created Friday 10 August 2012
+
+**=> clocks**
+Clock configuration:
+  Core:                400  MHz
+  Coherent System Bus: 133.333 MHz
+  Local Bus Controller:133.333 MHz
+  Local Bus:           66.667 MHz
+  DDR:                 266.667 MHz
+  SEC:                 133.333 MHz
+  I2C1:                133.333 MHz
+  I2C2:                133.333 MHz
+  TDM:                 133.333 MHz
+  TSEC1:               133.333 MHz
+  TSEC2:               133.333 MHz
+  USB DR:              133.333 MHz
+  SATA:                133.333 MHz
+=> 
+**=> coninfo**
+List of available devices:
+serial   80000003 SIO stdin stdout stderr 
+=> 
+
+**=> flinfo   #NOR flash信息**
+
+Bank # 1: CFI conformant FLASH (16 x 16)  Size: 8 MB in 128 Sectors
+  AMD Standard command set, Manufacturer ID: 0x01, Device ID: 0x227E
+  Erase timeout: 16384 ms, write timeout: 2 ms
+  Buffer write timeout: 5 ms, buffer size: 32 bytes
+
+  Sector Start Addresses:
+  FE000000   RO   FE010000   RO   FE020000   RO   FE030000   RO   FE040000   RO 
+  FE050000        FE060000   RO   FE070000        FE080000        FE090000      
+  FE0A0000        FE0B0000        FE0C0000        FE0D0000        FE0E0000      
+  FE0F0000        FE100000        FE110000        FE120000        FE130000      
+  FE140000        FE150000        FE160000        FE170000        FE180000      
+  FE190000        FE1A0000        FE1B0000        FE1C0000        FE1D0000      
+  FE1E0000        FE1F0000        FE200000        FE210000        FE220000      
+  FE230000        FE240000        FE250000        FE260000        FE270000      
+  FE280000        FE290000        FE2A0000        FE2B0000        FE2C0000      
+  FE2D0000        FE2E0000        FE2F0000        FE300000        FE310000      
+  FE320000        FE330000        FE340000        FE350000        FE360000      
+  FE370000        FE380000        FE390000        FE3A0000        FE3B0000      
+  FE3C0000        FE3D0000        FE3E0000        FE3F0000        FE400000      
+  FE410000        FE420000        FE430000        FE440000        FE450000      
+  FE460000        FE470000        FE480000        FE490000        FE4A0000      
+  FE4B0000        FE4C0000        FE4D0000        FE4E0000        FE4F0000      
+  FE500000        FE510000        FE520000        FE530000        FE540000      
+  FE550000        FE560000        FE570000        FE580000        FE590000      
+  FE5A0000        FE5B0000        FE5C0000        FE5D0000        FE5E0000      
+  FE5F0000        FE600000        FE610000        FE620000        FE630000      
+  FE640000        FE650000        FE660000        FE670000        FE680000      
+  FE690000        FE6A0000        FE6B0000        FE6C0000        FE6D0000      
+  FE6E0000        FE6F0000        FE700000        FE710000        FE720000      
+  FE730000        FE740000        FE750000        FE760000        FE770000      
+  FE780000        FE790000        FE7A0000        FE7B0000        FE7C0000      
+  FE7D0000        FE7E0000        FE7F0000      
+=> 
+**=> tftp 1000000 uImage**
+Speed: 100, full duplex
+Using eTSEC0 device
+TFTP from server 192.168.2.101; our IP address is 192.168.2.33
+Filename 'uImage'.
+Load address: 0x1000000
+Loading: #################################################################
+         #################################################################
+done
+Bytes transferred = 1902018 (1d05c2 hex)
+**=> iminfo 1000000   #查看Image的header info。**
+
+## Checking Image at 01000000 ...
+   Legacy image found
+   Image Name:   Linux-3.2.4-g390c4dd
+   Created:      2012-08-08   8:44:26 UTC
+   Image Type:   PowerPC Linux Kernel Image (gzip compressed)
+   Data Size:    1901954 Bytes =  1.8 MB
+   Load Address: 00000000
+   Entry Point:  00000000
+   Verifying Checksum ... OK
+=> 

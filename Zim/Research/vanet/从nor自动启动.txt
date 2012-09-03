@@ -1,0 +1,10 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-11T18:06:55+08:00
+
+====== 从nor自动启动 ======
+Created Saturday 11 August 2012
+
+从NOR Flash启动的话，需要将uboot, uImage，rootfs和dtb分别烧写到flash中。
+启动时，只需将后面三者在flash中的起始地址传给bootm即可。具体过程如下：
+

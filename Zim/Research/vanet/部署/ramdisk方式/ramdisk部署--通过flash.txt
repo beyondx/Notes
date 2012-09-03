@@ -1,0 +1,369 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-11T21:21:44+08:00
+
+====== ramdisk部署--通过flash ======
+Created Saturday 11 August 2012
+
+一、NOR Flash方式:
+这种部署方式是将ramdisk格式的根文件系统、内核、设备树烧写到flash中，然后复位后摘bootcmd中指定三个文件在flash中起始地址即可。适合与较小的固件。
+
+首先要规划NOR Flash的空间安排，在mpc8315dtb-default.dts文件中，安排如下：
+  flash@0,0 {
+                        #address-cells = <0x1>;
+                        #size-cells = <0x1>;
+                        compatible = "cfi-flash";
+                        reg = <0x0 0x0 0x800000>;
+                        bank-width = <0x2>;
+                        device-width = <0x1>;
+
+                        u-boot@0 {
+                                reg = <0x0 0x100000>;
+                                read-only;
+                        };
+
+                        fs@100000 {
+                                reg = <0x100000 0x400000>;
+                        };
+
+                        kernel@500000 {
+                                reg = <0x500000 0x200000>;
+                        };
+
+                        dtb@700000 {
+                                reg = <0x700000 0x100000>;
+                        };
+                };
+由于MPC831ERDB上的NOR Flash只有8MB空间，因此三个文件的大小加起来不能超过8MB。由于使用ramdisk方式时，是使用SDRAM作为根文件系统，所以
+实际为这三个文件分配空间时可以任意，只要够用就行。
+
+二、 NAND Flash方式：
+当固件较大时，可以将其烧写到容量较大的NAND Flash中，然后启动时将这三个文件读取到内存中(通过nand read命令)启动。__注意如果是NOR Flash则bootm的三个参数可以直接是文件在NOR Flash中烧写的首地址，因为NOR Flash支持在芯片执行(XIP).__
+
+可以将NOR Flash和NAND Flash烧写相结合的方式启动，如将较小的uImage和dtb烧写到NOR中，将较大的rootfs烧写到NAND中，然后在bootm前将NAND 中的文件读到内存中即可。
+
+**=> help nand**
+nand info - show available NAND devices
+nand device [dev] - show or set current device
+nand read - addr off|partition size
+nand write - addr off|partition size
+    read/write 'size' bytes starting at offset 'off'
+    to/from memory address 'addr', skipping bad blocks.
+nand erase [clean] [off size] - erase 'size' bytes from
+    offset 'off' (entire device if not specified)
+nand bad - show bad blocks
+nand dump[.oob] off - dump page
+nand scrub - really clean NAND erasing bad blocks (UNSAFE)
+nand markbad off - mark bad block at offset (UNSAFE)
+nand biterr off - make a bit error at offset (UNSAFE)
+
+**=> nand erase  #擦出整个NAND Flash**
+
+NAND erase: device 0 whole chip
+Bad block table found at page 65504, version 0x01
+Bad block table found at page 65472, version 0x01
+nand_read_bbt: Bad block at 0x000a8000
+nand_read_bbt: Bad block at 0x000ac000
+nand_read_bbt: Bad block at 0x000b0000
+nand_read_bbt: Bad block at 0x000b4000
+Skipping bad block at  0x000a8000                                            
+Skipping bad block at  0x000ac000                                            
+Skipping bad block at  0x000b0000                                            
+Skipping bad block at  0x000b4000                                            
+Skipping bad block at  0x01ff0000                                            
+Skipping bad block at  0x01ff4000                                            
+Skipping bad block at  0x01ff8000                                            
+Skipping bad block at  0x01ffc000                                            
+
+OK
+**=> nand write 1000000 0 $filesize**
+
+NAND write: device 0 offset 0x0, size 0x17acfc
+Attempt to write __non page aligned data  #K9F5608的page大小为512Bytes__
+ 1551612 bytes written: ERROR
+
+**=> nand write 1000000 0 200000**   
+
+NAND write: '$200000' is not a number
+=> nand write 1000000 0 200000 
+
+NAND write: device 0 offset 0x0, size 0x200000
+Skip bad block 0x000a8000
+Skip bad block 0x000ac000
+Skip bad block 0x000b0000
+Skip bad block 0x000b4000
+ 2097152 bytes written: OK
+**=> tftp 2000000 rootfs.ext2.gz.uboot**
+Speed: 100, full duplex
+Using eTSEC0 device
+TFTP from server 192.168.2.105; our IP address is 192.168.2.100
+Filename 'rootfs.ext2.gz.uboot'.
+Load address: 0x2000000
+Loading: #################################################################
+         #################################################################
+         #################################################################
+         #################################################################
+         #################################################################
+         #################################################################
+         ####################################
+done
+Bytes transferred = 6252712 (5f68a8 hex)
+**=> nand write 2000000 300000 700000**
+
+NAND write: device 0 offset 0x300000, size 0x700000
+ 7340032 bytes written: OK 
+**=> tftp c00000 mpc8315.dtb**
+Speed: 100, full duplex
+Using eTSEC0 device
+TFTP from server 192.168.2.105; our IP address is 192.168.2.100
+Filename 'mpc8315.dtb'.
+Load address: 0xc00000
+Loading: ##
+done
+Bytes transferred = 20000 (4e20 hex)
+**=> nand write c00000 a00000 100000**
+
+NAND write: device 0 offset 0xa00000, size 0x100000
+ 1048576 bytes written: OK
+**=> setenv bootargs root=/dev/ram rw console=ttyS0,115200 ramdisk_size=19034**
+**=> setenv  bootcmd "nand read 1000000 0 200000;nand read 2000000 300000 700000;nand read c00000 a00000 100000;bootm 1000000 2000000 c00000"   #设置环境变量bootcmd的参数，注意前后的引号和命令间的分号。**
+**=> saveenv   #将环境变量保存，这样下次重启时6秒后将自动自行bootcmd环境变量对应的命令**
+Saving Environment to Flash...
+. done
+Un-Protected 1 sectors
+Erasing Flash...
+. done
+Erased 1 sectors
+Writing to Flash... done
+. done
+Protected 1 sectors
+=> 
+__=> boot__
+
+NAND read: device 0 offset 0x0, size 0x200000
+Bad block table found at page 65504, version 0x01
+Bad block table found at page 65472, version 0x01
+nand_read_bbt: Bad block at 0x000a8000
+nand_read_bbt: Bad block at 0x000ac000
+nand_read_bbt: Bad block at 0x000b0000
+nand_read_bbt: Bad block at 0x000b4000
+Skipping bad block 0x000a8000
+Skipping bad block 0x000ac000
+Skipping bad block 0x000b0000
+Skipping bad block 0x000b4000
+ 2097152 bytes read: OK
+
+NAND read: device 0 offset 0x300000, size 0x700000
+ 7340032 bytes read: OK
+
+NAND read: device 0 offset 0xa00000, size 0x100000
+ 1048576 bytes read: OK
+## Booting kernel from Legacy Image at 01000000 ...
+   Image Name:   Linux-3.2.4-gfd2812f
+   Created:      2012-08-10   7:58:18 UTC
+   Image Type:   PowerPC Linux Kernel Image (gzip compressed)
+   Data Size:    1551548 Bytes =  1.5 MB
+   Load Address: 00000000
+   Entry Point:  00000000
+   Verifying Checksum ... OK
+## Loading init Ramdisk from Legacy Image at 02000000 ...
+   Image Name:   uboot ext2 ramdisk rootfs
+   Created:      2012-08-11  12:56:37 UTC
+   Image Type:   PowerPC Linux RAMDisk Image (gzip compressed)
+   Data Size:    6252648 Bytes =  6 MB
+   Load Address: 00000000
+   Entry Point:  00000000
+   Verifying Checksum ... OK
+## Flattened Device Tree blob at 00c00000
+   Booting using the fdt blob at 0xc00000
+   Uncompressing Kernel Image ... OK
+   Loading Ramdisk to 1f932000, end 1ff28868 ... OK
+   Loading Device Tree to 007f8000, end 007ffe1f ... OK
+Using MPC831x RDB machine description
+Cannot reserve gpages without hugetlb enabled
+Linux version 3.2.4-gfd2812f (geekard@kb310) (gcc version 4.7.1 (GCC) ) #4 Fri Aug 10 15:58:17 CST 2012
+Found initrd at 0xdf932000:0xdff28868
+bootconsole [udbg0] enabled
+setup_arch: bootmem
+mpc831x_rdb_setup_arch()
+Found FSL PCI host bridge at 0x00000000e0008500. Firmware bus number: 0->0
+PCI host bridge /pci@e0008500 (primary) ranges:
+ MEM 0x0000000090000000..0x000000009fffffff -> 0x0000000090000000 
+ MEM 0x0000000080000000..0x000000008fffffff -> 0x0000000080000000 Prefetch
+  IO 0x00000000e0300000..0x00000000e03fffff -> 0x0000000000000000
+arch: exit
+Zone PFN ranges:
+  DMA      0x00000000 -> 0x00020000
+  Normal   empty
+Movable zone start PFN for each node
+early_node_map[1] active PFN ranges
+    0: 0x00000000 -> 0x00020000
+Built 1 zonelists in Zone order, mobility grouping on.  Total pages: 130048
+Kernel command line: root=/dev/ram rw console=ttyS0,115200 ramdisk_size=19034
+PID hash table entries: 2048 (order: 1, 8192 bytes)
+Dentry cache hash table entries: 65536 (order: 6, 262144 bytes)
+Inode-cache hash table entries: 32768 (order: 5, 131072 bytes)
+Memory: 510412k/524288k available (2992k kernel code, 13876k reserved, 124k data, 59k bss, 152k init)
+Kernel virtual memory layout:
+* 0xfffdf000..0xfffff000  : fixmap
+* 0xfdefb000..0xfe000000  : early ioremap
+* 0xe1000000..0xfdefb000  : vmalloc & ioremap
+NR_IRQS:512 nr_irqs:512 16
+IPIC (128 IRQ sources) at e1000700
+clocksource: timebase mult[7800001] shift[22] registered
+pid_max: default: 32768 minimum: 301
+Mount-cache hash table entries: 512
+NET: Registered protocol family 16
+             
+PCI: Probing PCI hardware
+bio: create slab <bio-0> at 0
+vgaarb: loaded
+SCSI subsystem initialized
+Switching to clocksource timebase
+NET: Registered protocol family 2
+IP route cache hash table entries: 4096 (order: 2, 16384 bytes)
+TCP established hash table entries: 16384 (order: 5, 131072 bytes)
+TCP bind hash table entries: 16384 (order: 4, 65536 bytes)
+TCP: Hash tables configured (established 16384 bind 16384)
+TCP reno registered
+UDP hash table entries: 256 (order: 0, 4096 bytes)
+UDP-Lite hash table entries: 256 (order: 0, 4096 bytes)
+NET: Registered protocol family 1
+Trying to unpack rootfs image as initramfs...
+rootfs image is not initramfs (no cpio magic); looks like an initrd
+Freeing initrd memory: 6108k freed
+WDT driver for MPC8xxx initialized. mode:reset timeout=65535 (32 seconds)
+JFFS2 version 2.2. (NAND) © 2001-2006 Red Hat, Inc.
+msgmni has been set to 1008
+io scheduler noop registered
+io scheduler deadline registered
+io scheduler cfq registered (default)
+Serial: 8250/16550 driver, 4 ports, IRQ sharing disabled
+serial8250.0: ttyS0 at MMIO 0xe0004500 (irq = 16) is a 16550A
+console [ttyS0] enabled, bootconsole disabled
+console [ttyS0] enabled, bootconsole disabled
+serial8250.0: ttyS1 at MMIO 0xe0004600 (irq = 17) is a 16550A
+brd: module loaded
+loop: module loaded
+fe000000.flash: Found 1 x16 devices at 0x0 in 16-bit bank. Manufacturer ID 0x000001 Chip ID 0x000c01
+Amd/Fujitsu Extended Query Table at 0x0040
+  Amd/Fujitsu Extended Query version 1.3.
+number of CFI chips: 1
+4 ofpart partitions found on MTD device fe000000.flash
+Creating 4 MTD partitions on "fe000000.flash":
+0x000000000000-0x000000100000 : "u-boot"
+0x000000100000-0x000000500000 : "fs"
+0x000000500000-0x000000700000 : "kernel"
+0x000000700000-0x000000800000 : "dtb"
+NAND device: Manufacturer ID: 0xec, Chip ID: 0x75 (Samsung NAND 32MiB 3,3V 8-bit)
+Bad block table found at page 65504, version 0x01
+Bad block table found at page 65472, version 0x01
+nand_read_bbt: bad block at 0x0000000a8000
+nand_read_bbt: bad block at 0x0000000ac000
+nand_read_bbt: bad block at 0x0000000b0000
+nand_read_bbt: bad block at 0x0000000b4000
+6 ofpart partitions found on MTD device e0600000.flash
+Creating 6 MTD partitions on "e0600000.flash":
+0x000000000000-0x000000100000 : "U-Boot-NAND"
+0x000000100000-0x000000900000 : "JFFS2-NAND"
+0x000000900000-0x000000d00000 : "Ramdisk-NAND"
+0x000000d00000-0x000001d00000 : "Reserved-NAND"
+0x000001d00000-0x000001f00000 : "Kernel-NAND"
+0x000001f00000-0x000002000000 : "DTB-NAND"
+eLBC NAND device at 0xe0600000, bank 1
+Freescale PowerQUICC MII Bus: probed
+mdio_bus mdio@e0024520: error probing PHY at address 0
+Freescale PowerQUICC MII Bus: probed
+fsl-gianfar e0024000.ethernet: eth0: mac: 04:00:00:00:00:0a
+fsl-gianfar e0024000.ethernet: eth0: Running with NAPI enabled
+fsl-gianfar e0024000.ethernet: eth0: RX BD ring size for Q[0]: 256
+fsl-gianfar e0024000.ethernet: eth0: TX BD ring size for Q[0]: 256
+fsl-gianfar e0025000.ethernet: eth1: mac: 04:00:00:00:00:0b
+fsl-gianfar e0025000.ethernet: eth1: Running with NAPI enabled
+fsl-gianfar e0025000.ethernet: eth1: RX BD ring size for Q[0]: 256
+fsl-gianfar e0025000.ethernet: eth1: TX BD ring size for Q[0]: 256
+i2c /dev entries driver
+mpc-i2c e0003000.i2c: timeout 1000000 us
+rtc-ds1307 0-0068: rtc core: registered ds1339 as rtc0
+TCP cubic registered
+NET: Registered protocol family 17
+Registering the dns_resolver key type
+rtc-ds1307 0-0068: setting system clock to 2000-01-01 00:00:00 UTC (946684800)
+RAMDISK: gzip image found at block 0
+VFS: Mounted root (ext2 filesystem) on device 1:0.
+Freeing unused kernel memory: 152k freed
+Mounting /proc and /sys 
+Starting the hotplug events dispatcher udevd
+Synthesizing initial hotplug eveudevd (807): /proc/807/oom_adj is deprecated, please use /proc/807/oom_score_adj instead.
+nts
+cfg80211: Calling CRDA to update world regulatory domain
+cfg80211: World regulatory domain updated:
+cfg80211:     (start_freq - end_freq @ bandwidth), (max_antenna_gain, max_eirp)
+cfg80211:     (2402000 KHz - 2472000 KHz @ 40000 KHz), (300 mBi, 2000 mBm)
+cfg80211:     (2457000 KHz - 2482000 KHz @ 20000 KHz), (300 mBi, 2000 mBm)
+cfg80211:     (2474000 KHz - 2494000 KHz @ 20000 KHz), (300 mBi, 2000 mBm)
+cfg80211:     (5170000 KHz - 5250000 KHz @ 40000 KHz), (300 mBi, 2000 mBm)
+cfg80211:     (5735000 KHz - 5835000 KHz @ 40000 KHz), (300 mBi, 2000 mBm)
+ath5k 0000:00:0e.0: registered as 'phy0'
+ath5k channel bandwidth setting 10MHz default
+VANET-debug: ieee80211_register_hw
+VANET-debug: ieee80211_rate_control_ops_get select minstrel_ht
+VANET-debug: register vanet network interface
+VANET-debug: ieee80211_if_add, name: ath5k%d
+ath5k phy0: Atheros AR5414 chip found (MAC: 0xa5, PHY: 0x61)
+cfg80211: Calling CRDA for country: US
+cfg80211: Regulatory domain changed to country: US
+cfg80211:     (start_freq - end_freq @ bandwidth), (max_antenna_gain, max_eirp)
+cfg80211:     (2402000 KHz - 2472000 KHz @ 40000 KHz), (300 mBi, 2700 mBm)
+cfg80211:     (5170000 KHz - 5250000 KHz @ 40000 KHz), (300 mBi, 1700 mBm)
+cfg80211:     (5250000 KHz - 5330000 KHz @ 40000 KHz), (300 mBi, 2000 mBm)
+cfg80211:     (5490000 KHz - 5600000 KHz @ 40000 KHz), (300 mBi, 2000 mBm)
+cfg80211:     (5650000 KHz - 5710000 KHz @ 40000 KHz), (300 mBi, 2000 mBm)
+cfg80211:     (5735000 KHz - 5835000 KHz @ 40000 KHz), (300 mBi, 3000 mBm)
+Setting the hostname to mpc8315erdb
+Mounting filesystems
+mount: mounting usbfs on /proc/bus/usb failed: No such file or directory
+Starting syslogd and klogd
+Running sysctl
+Setting up networking on loopback device: 
+
+Warning: no IPADDR is set, please set this from the ltib
+config screen, or directly in /etc/rc.d/rc.conf.
+IP address setup bypassed
+
+Setting up networking on eth1: 
+
+
+        Welcome to the LTIB Embedded Linux Environment
+
+!!!!! WARNING !!!!!!!
+
+The default password for the root account is: root
+please change this password using the 'passwd' command
+and then edit this message (/etc/issue) to remove this message
+
+mpc8315erdb login: PHY: mdio@e0024520:01 - Link is Up - 100/Full
+
+
+        Welcome to the LTIB Embedded Linux Environment
+
+!!!!! WARNING !!!!!!!
+
+The default password for the root account is: root
+please change this password using the 'passwd' command
+and then edit this message (/etc/issue) to remove this message
+
+mpc8315erdb login: root
+Password: 
+root
+Login incorrect
+mpc8315erdb login: root
+Password: 
+[root@mpc8315erdb root]# uname -a
+Linux mpc8315erdb 3.2.4-gfd2812f #4 Fri Aug 10 15:58:17 CST 2012 ppc GNU/Linux
+[root@mpc8315erdb root]# 
+
+
+
+
+

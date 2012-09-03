@@ -1,0 +1,7 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-11T21:48:46+08:00
+
+====== jffs2 flash方式 ======
+Created Saturday 11 August 2012
+

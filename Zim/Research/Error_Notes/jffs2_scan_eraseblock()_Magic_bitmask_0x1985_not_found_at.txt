@@ -1,0 +1,36 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-11T19:15:34+08:00
+
+====== jffs2 scan eraseblock() Magic bitmask 0x1985 not found at ======
+Created Saturday 11 August 2012
+
+如果在mount一个 jffs2文件系统到目录中出现：
+jffs2_scan_eraseblock(): Magic bitmask 0x1985 not found at 0x00000024: 0x2b10 instead ... 
+Further such events for this erase block will not be printed
+类似的错误时，可能的原因是：
+1. 该设备文件(/dev/mtdblock1)对应的存储单元并没有存放一个有效的jffs2文件系统，这时可以用LTIB或mtd-utils软件包中的mkfs.jffs2工具制作
+该jffs2文件系统映像，然后用uboot命令行着那个的nand或cp.b等命令或系统启动后用mtd-utils软件包中的nanderase,nandwrite工具烧写。
+
+2. 如果设备对应的是一个有效的jffs2文件系统，那么很可能是在制作jffs2文件系统映像时 erase block size option not matches the one you have in your NAND. 对于LTIB而言，默认的擦出块大小是64KB，对于K9F5608的该值为16KB(参考其datasheet), 所以需要将下面该的值改为16.
+	  --- Choose your root filesystem image type                                                                                     │ │  
+	  │ │                                                               Target image: (jffs2)  --->                                                                                                │ │  
+	  │ │                                                           [ ] Run a command after building the target image                                                                              │ │  
+	  │ │                                                           (**64**) jffs2 erase block size in KB                                                                                              │ │  
+	  │ │                                                           [ ] read-only root filesystem
+
+
+如果使用mkfs.jffs2命令行选项，则参数（针对K9F1G08U08 256MB NAND Flash）含义如下：
+http://hi.baidu.com/_%CB%BC%CF%EB%B5%C4%D0%A1%D3%E3_/blog/item/ccb2d2d69c8bf9ca50da4b59.html
+
+mkfs.jffs2 -n -s 2048 -e 128KiB --pad=0x800000 -d root_fs -o kevin.jffs2
+
+参数注释：
+
+   -s 页大小，试验可以不特别要求，512亦可
+
+   __-e 擦除块大小(Block Erase)__，需和手册相匹配，此处为128（由手册可知），1 Block = （2K + 64）B + 64 Pages = （__128K__ + 4K）bytes
+
+   此处如果设置过大（如 256），将出现jffs2_scan_eraseblock():Magic bitmask......问题, 如果设置过小（如 64），将出现Empth flash at .......问题
+
+  --pad 设置**生成文件大小**，其实此处也不算是设置，因为此选项是填充的意思，当生成文件比参数规定大小大时，   此选项不起作用。只有当生成文件小于规定大小才会进行填充。

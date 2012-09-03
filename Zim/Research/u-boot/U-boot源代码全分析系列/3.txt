@@ -1,0 +1,174 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-15T19:24:09+08:00
+
+====== 3 ======
+Created Sunday 15 January 2012
+
+   这里首先更正下上一篇中的一个错误，最后一步中的跳转代码当时一时仓促贴错了，先改正如下：
+
+7、跳转到Stage2入口处
+
+    这也是Stage1的最后一步，程序在执行到这一步后，基本的硬件初始化工作也就完成了，下面是跳转的代码：
+[cpp] view plaincopy
+
+    clear_bss:  
+        /* 执行清空bss操作 */  
+        lwz r3,GOT(__bss_start)  
+    #if defined(CONFIG_HYMOD)  
+        /* 
+		* For HYMOD - the environment is the very last item in flash. 
+		* The real .bss stops just before environment starts, so only 
+		* clear up to that point. 
+		* taken from mods for FADS board 
+		* 检查当前代码位置 
+         */  
+        lwz r4,GOT(environment)  
+    #else  
+        lwz r4,GOT(_end)  
+    #endif  
+      
+    /* 计算跳转 */  
+        cmplw   0, r3, r4  
+        beq 6f  
+      
+        li  r0, 0  
+    5:  
+        stw r0, 0(r3)  
+        addi    r3, r3, 4  
+        cmplw   0, r3, r4  
+        bne 5b  
+    6:  
+      
+        mr  r3, r9      /* Global Data pointer  */  
+        mr  r4, r10     /* Destination Address  */  
+        bl  board_init_r  
+
+其中board_init_r就是Stage2的函数入口。
+
+    由上可以看出start.S的流程为：异常向量——上电复位后进入复位异常向量——跳到启动代码处——设置处理器进入管理模式——关闭看门狗——关闭中断——设置时钟分频——关闭MMU和CACHE——进入low level初始化代码——检查当前代码所处的位置，如果在FLASH中就将代码搬移到RAM中。至此，Stage1分析到此结束。
+
+    跳转到board_init_r后，程序开始执行Stage2阶段，代码多为C。
+
+望谅解。
+
+    在上篇分析完Stage1的汇编代码后，又细看了两个C函数，也是属于很重要的初始化函数，所以，在分析Stage2的代码前，先还要看下Stage1的两个C代码程序，分别为cpu_init_f和board_init_f，二者在汇编程序in_flash中被调用，虽是C代码，但实现的仍是基本的初始化功能，且运行在ROM中，属于Stage1的范畴。
+
+    先看cpu_init_f函数，它是用来初始化low-level CPU的，主要功能包括建立内存映射map、初始化一些寄存器和UPM(User-Programmable Machine)。
+    首先初始化一个结构体：
+[cpp] view plaincopy
+
+    gd = (gd_t *) (CFG_INIT_RAM_ADDR + CFG_GBL_DATA_OFFSET);  
+      
+    /* Clear initial global data */  
+    memset ((void *) gd, 0, sizeof (gd_t));  
+
+    此处的结构体gd_t是一个放在启动后很早就可用的内存中的，就像mpc8xx、mpc82xx的DPRAM，或者是数据cache的locked parts，主要用于存放一小部分系统初始化时要用的全局变量，直到初始化内存控制器可用RAM之前，这是我们唯一能用的全局变量。这个区间是很小的，在本区间中只有256个字节。之后就开始配置各种设备的时钟模式，下面是对PCI和DMA的配置：
+[cpp] view plaincopy
+
+    #ifdef CFG_SCCR_PCICM  
+        /* PCI & DMA clock mode */  
+        im->clk.sccr = (im->clk.sccr & ~SCCR_PCICM) |  
+                   (CFG_SCCR_PCICM << SCCR_PCICM_SHIFT);  
+    #endif  
+
+    这个配置的选项是要根据datasheet里的SCCR寄存器来定的，下面是mpc83xx的一个系统时钟控制寄存器的各位：
+
+
+    根据说明来对应uboot中include/Mpc83xx.h中的相关配置，不过大多数的CPU型号都已经配置好了，一般无需改动。
+
+    接下来初始化一些寄存器，如复位控制寄存器，DDR控制驱动寄存器等：
+[cpp] view plaincopy
+
+    /* RSR - Reset Status Register - clear all status */  
+        gd->reset_status = im->reset.rsr;  
+        im->reset.rsr = ~(RSR_RES);  
+      
+        /* RMR - Reset Mode Register  contains checkstop reset enable*/  
+        im->reset.rmr = (RMR_CSRE & (1<<RMR_CSRE_SHIFT));  
+      
+        /* LCRR - Clock Ratio Register */  
+        im->lbus.lcrr = CFG_LCRR;  
+      
+        /* Enable Time Base & Decrimenter ( so we will have udelay() )*/  
+        im->sysconf.spcr |= SPCR_TBEN;  
+      
+        /* System General Purpose Register */  
+    im->sysconf.sicrh = CFG_SICRH;  
+
+    这些都需要对照着Datasheet里的第四章：Reset,Clockig,and Initialization一一比对着看，这样才能加深印象(尽管大多数实际应用中都不用修改)。
+
+    最后是初始化内存映射，下面代码作用为将bank0映射到Flash的bank0的初始地址，后面还有部分代码，将根据需要映射bank1~7的：
+[cpp] view plaincopy
+
+    im->lbus.bank[0].br = CFG_BR0_PRELIM;  
+    im->lbus.bank[0].or = CFG_OR0_PRELIM;  
+    im->sysconf.lblaw[0].bar = CFG_LBLAWBAR0_PRELIM;  
+    im->sysconf.lblaw[0].ar = CFG_LBLAWAR0_PRELIM;  
+
+    再来看下board_init_f函数，它主要用于在启动时尽快的提供一个控制台接口(串口)用于输出错误信息，并且初始化内存以便于复制代码。这段代码的编写需要注意：全局变量是只读的，BSS还未初始化，堆栈空间也很小(尽量不要有复杂操作)。最开始先进行一系列的初始化操作，和ARM系列类似，将初始化函数列表放在结构体init_sequence中：
+[cpp] view plaincopy
+
+    for (init_fnc_ptr = init_sequence; *init_fnc_ptr; ++init_fnc_ptr) {  
+        if ((*init_fnc_ptr) () != 0) {  
+            hang ();  
+        }  
+    }  
+
+    主要包括板件前期初始化、获取CPU及总线时钟、初始化SDRAM时钟、初始化串口等操作。此时内存已经映射好了，就可以在DRAM中运行程序了，接下来我们需要在RAM的末端保存一些数据，包括uboot和Linux不能操作的区域、内核日志缓存、PRAM(被保护的RAM)、LCD帧缓存、监听代码、板件信息等。
+[cpp] view plaincopy
+
+     /*通过修改gd->ram_size可以使uboot无法访问指定区间*/  
+    gd->ram_size -= CFG_MEM_TOP_HIDE;  
+    addr = CFG_SDRAM_BASE + get_effective_memsize();  
+      
+    #ifdef CONFIG_LOGBUFFER  
+    #ifndef CONFIG_ALT_LB_ADDR  
+        /*保存内核日志*/  
+        addr -= (LOGBUFF_RESERVE);  
+        debug ("Reserving %dk for kernel logbuffer at %08lx\n", LOGBUFF_LEN, addr);  
+    #endif  
+    #endif  
+      
+    #ifdef CONFIG_PRAM  
+        /* reserve protected RAM */  
+        i = getenv_r ("pram", (char *)tmp, sizeof (tmp));  
+        reg = (i > 0) ? simple_strtoul ((const char *)tmp, NULL, 10) : CONFIG_PRAM;  
+        addr -= (reg << 10);      /* size is in kB */  
+        debug ("Reserving %ldk for protected RAM at %08lx\n", reg, addr);  
+    #endif /* CONFIG_PRAM */  
+      
+    #ifdef CONFIG_LCD  
+        /* reserve memory for LCD display (always full pages) */  
+        addr = lcd_setmem (addr);  
+        gd->fb_base = addr;  
+    #endif /* CONFIG_LCD */  
+      
+    #if defined(CONFIG_VIDEO) && defined(CONFIG_8xx)  
+        /* reserve memory for video display (always full pages) */  
+        addr = video_setmem (addr);  
+        gd->fb_base = addr;  
+    #endif /* CONFIG_VIDEO  */  
+      
+    #ifdef CONFIG_AMIGAONEG3SE  
+        gd->relocaddr = addr;  
+    #endif  
+      
+        /* reserve memory for malloc() arena */  
+        addr_sp = addr - TOTAL_MALLOC_LEN;  
+        debug ("Reserving %dk for malloc() at: %08lx\n",  
+                TOTAL_MALLOC_LEN >> 10, addr_sp);  
+      
+    /* (permanently) allocate a Board Info struct and a permanent copy of the "global" dat*/  
+        addr_sp -= sizeof (bd_t);  
+        bd = (bd_t *) addr_sp;  
+        gd->bd = bd;  
+        debug ("Reserving %zu Bytes for Board Info at: %08lx\n",sizeof (bd_t), addr_sp);  
+        addr_sp -= sizeof (gd_t);  
+        id = (gd_t *) addr_sp;  
+        debug ("Reserving %zu Bytes for Global Data at: %08lx\n",  
+        sizeof (gd_t), addr_sp);  
+
+    接下来的代码比较容易理解，就是将板件信息存储到结构体board_info里，包括串口信息、PHY芯片信息、启动参数、RAM参数、flash信息等。
+
+    分析完这两个C函数后，Stage1的分析就全部结束了。接下来跳入board_init_r函数中开始Stage2。

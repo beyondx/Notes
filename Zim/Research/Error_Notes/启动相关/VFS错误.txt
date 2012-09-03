@@ -1,0 +1,7 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-11T21:15:04+08:00
+
+====== VFS错误 ======
+Created Saturday 11 August 2012
+如果内核可以正常地启动，但是当执行到挂载root时出错，这可能与bootargs的ramdisk_size的值与ltib输出的不一致有关。

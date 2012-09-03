@@ -12,7 +12,7 @@ http://www.embexperts.com/forum.php/forum.php?mod=viewthread&tid=20&extra=page%3
 **1. kmalloc 和 kfree**
 __基于page和slab之上__的内存分配函数。Linux初始化时构造13个大小分别为32, 64, 128, 256, 512, 1,024, 2,048, 4,096, 8,192, 16,384, 32,768, 65,536, 和 131,072 字节的Cache.因此如果调用kmalloc(100, GFP_KERNEL)实际上内核分配的空间为128.
 
-2. kzalloc
+2. **kzalloc**
 3. **vmalloc和vfree**
 4. **get_free_page**
 **5.kmem_cache_create**

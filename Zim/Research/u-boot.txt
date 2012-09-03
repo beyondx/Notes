@@ -126,3 +126,6 @@ setenv bootargs root=/dev/ram rw ramdisk_size=24508
 
 == ================== ==
 setenv bootargs root=/dev/ram rw ramdisk_size=24508
+
+== ============================== ==
+setenv bootargs root=/dev/ram rw ramdisk_size=20015

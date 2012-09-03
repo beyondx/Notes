@@ -1,0 +1,300 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-15T19:23:41+08:00
+
+====== 2 ======
+Created Sunday 15 January 2012
+
+3、初始化CPU相关
+
+    下面为初始化CPU的代码，实现的功能依次为屏蔽watchdog、初始化中断控制寄存器、清空Cache、关闭MMU等。
+[cpp] view plaincopy
+
+        .globl  init_e300_core  
+    init_e300_core: /* time t 10 */  
+        /* Initialize machine status; enable machine check interrupt */  
+      
+        li  r3, MSR_KERNEL      /*设置MSR，允许数据\指令复制以及Machine check*/  
+        rlwimi  r3, r5, 0, 25, 25   /* preserve IP bit set by HRCW */  
+    #ifdef DEBUG  
+        rlwimi  r3, r5, 0, 21, 22   /* debugger might set SE & BE bits */  
+    #endif  
+        SYNC                        /* Some chip revs need this... */  
+        mtmsr   r3  
+        SYNC  
+        mtspr   SRR1, r3            /* Make SRR1 match MSR 中断相关*/  
+      
+        lis r3, CFG_IMMR@h  
+    #if defined(CONFIG_WATCHDOG)  
+        /* Initialise the Wathcdog values and reset it (if req) */  
+        lis r4, CFG_WATCHDOG_VALUE  
+        ori r4, r4, (SWCRR_SWEN | SWCRR_SWRI | SWCRR_SWPR)  
+        stw r4, SWCRR(r3)  
+      
+        /* and reset it */  
+      
+        li  r4, 0x556C  
+        sth r4, SWSRR@l(r3)  
+        li  r4, -0x55C7  
+        sth r4, SWSRR@l(r3)  
+    #else  
+        /* 关闭Wathcdog  */  
+        lwz r4, SWCRR(r3)  
+        /* Check to see if its enabled for disabling 
+           once disabled by SW you can't re-enable */  
+        andi. r4, r4, 0x4  
+        beq 1f  
+        xor r4, r4, r4  
+        stw r4, SWCRR(r3)  
+    1:  
+    #endif /* CONFIG_WATCHDOG */  
+      
+        /* Initialize the Hardware Implementation-dependent Registers */  
+        /* HID0 also contains cache control         */  
+        /*------------------------------------------------------*/  
+      
+        lis r3, CFG_HID0_INIT@h  
+        ori r3, r3, CFG_HID0_INIT@l  
+        SYNC  
+        mtspr   HID0, r3  
+      
+        lis r3, CFG_HID0_FINAL@h  
+        ori r3, r3, CFG_HID0_FINAL@l  
+        SYNC  
+        mtspr   HID0, r3  
+      
+        lis r3, CFG_HID2@h  
+        ori r3, r3, CFG_HID2@l  
+        SYNC  
+        mtspr   HID2, r3  
+      
+        /* 关闭MMU功能，先清空所有BAT (块地址转换)*/  
+      
+        xor r0, r0, r0  
+        mtspr   DBAT0U, r0  
+        mtspr   DBAT0L, r0  
+        mtspr   DBAT1U, r0  
+        mtspr   DBAT1L, r0  
+        mtspr   DBAT2U, r0  
+        mtspr   DBAT2L, r0  
+        mtspr   DBAT3U, r0  
+        mtspr   DBAT3L, r0  
+        mtspr   IBAT0U, r0  
+        mtspr   IBAT0L, r0  
+        mtspr   IBAT1U, r0  
+        mtspr   IBAT1L, r0  
+        mtspr   IBAT2U, r0  
+        mtspr   IBAT2L, r0  
+        mtspr   IBAT3U, r0  
+        mtspr   IBAT3L, r0  
+        SYNC  
+      
+        /* 禁用tlb(快表) */  
+      
+        li  r3, 32  
+        mtctr   r3  
+        li  r3, 0  
+    1:  tlbie   r3  
+        addi    r3, r3, 0x1000  
+        bdnz    1b  
+        SYNC  
+      
+        /* Done! */  
+        Blr  
+
+    这里需要注意的是，当程序在Flash中运行时，执行程序跳转时使用了跳转指令，但是不是使用绝对地址的跳转(即直接对PC操作)。因为若使用绝对地址，那么程序的取址就是相对于当前PC位置向前或向后的一段空间，而不会跳进SDRAM中。
+
+4、初始化内存控制器
+
+    PowerPC处理器初识化内存控制器就是通过操作BAT以及TLB来实现的，将IBAT0~7以及DBAT0~7初始化，并禁用TLB，代码如下：
+[cpp] view plaincopy
+
+    /* setup_bats - set them up to some initial state */  
+        .globl  setup_bats  
+    setup_bats:  
+        addis   r0, r0, 0x0000  
+      
+        /* IBAT 0 */  
+        addis   r4, r0, CFG_IBAT0L@h  
+        ori r4, r4, CFG_IBAT0L@l  
+        addis   r3, r0, CFG_IBAT0U@h  
+        ori r3, r3, CFG_IBAT0U@l  
+        mtspr   IBAT0L, r4  
+        mtspr   IBAT0U, r3  
+        isync  
+      
+        /* DBAT 0 */  
+        addis   r4, r0, CFG_DBAT0L@h  
+        ori r4, r4, CFG_DBAT0L@l  
+        addis   r3, r0, CFG_DBAT0U@h  
+        ori r3, r3, CFG_DBAT0U@l  
+        mtspr   DBAT0L, r4  
+        mtspr   DBAT0U, r3  
+        isync  
+      
+    #ifdef CONFIG_HIGH_BATS  
+        /* IBAT 4 */  
+        addis   r4, r0, CFG_IBAT4L@h  
+        ori     r4, r4, CFG_IBAT4L@l  
+        addis   r3, r0, CFG_IBAT4U@h  
+        ori     r3, r3, CFG_IBAT4U@l  
+        mtspr   IBAT4L, r4  
+        mtspr   IBAT4U, r3  
+        isync  
+      
+        /* DBAT 4 */  
+        addis   r4, r0, CFG_DBAT4L@h  
+        ori     r4, r4, CFG_DBAT4L@l  
+        addis   r3, r0, CFG_DBAT4U@h  
+        ori     r3, r3, CFG_DBAT4U@l  
+        mtspr   DBAT4L, r4  
+        mtspr   DBAT4U, r3  
+        isync  
+      
+    #endif  
+      
+        /* Invalidate TLBs. 
+		* -> for (val = 0; val < 0x20000; val+=0x1000) 
+		* ->   tlbie(val); 
+         */  
+        lis r3, 0  
+        lis r5, 2  
+      
+    1:  
+        tlbie   r3  
+        addi    r3, r3, 0x1000  
+        cmp 0, 0, r3, r5  
+        blt 1b  
+      
+        blr  
+
+上面只贴出了高低位各一个BAT的操作代码，其他的类似。
+
+5、复制程序到RAM
+
+    PowerPC中此段程序并不返回，在将程序代码全部复制到ROM中后，将会直接继续在RAM中运行：
+[cpp] view plaincopy
+
+    /*完成了代码复制，不返回，直接调用in_ram执行*/  
+        addi    r0, r10, in_ram - _start + EXC_OFF_SYS_RESET  
+        mtlr    r0  
+        blr  
+    .globl  relocate_code  
+    relocate_code:  
+        mr  r1,  r3     /* 创建一个新的栈指针 */  
+        mr  r9,  r4     /* 备份 */  
+        mr  r10, r5       
+      
+        mr  r3,  r5             /* r3:拷贝的终点 */  
+        lis r4, CFG_MONITOR_BASE@h      /* r4:拷贝的起点 */  
+        ori r4, r4, CFG_MONITOR_BASE@l  
+        lwz r5, GOT(__init_end)  
+        sub r5, r5, r4                      /* r5:拷贝的长度 */  
+        li  r6, CFG_CACHELINE_SIZE      /* Cache Line Size */  
+      
+    /* New GOT-PTR = (old GOT-PTR - CFG_MONITOR_BASE) + Destination Address */  
+        sub r15, r10, r4  
+      
+        /* First our own GOT */  
+        add r14, r14, r15  
+        /* then the one used by the C code */  
+        add r30, r30, r15  
+      
+        /* Now relocate code */  
+        cmplw   cr1,r3,r4  
+        addi    r0,r5,3  
+        srwi.   r0,r0,2  
+        beq cr1,4f      /* In place copy is not necessary */  
+        beq 7f      /* Protect against 0 count    */  
+        mtctr   r0  
+        bge cr1,2f  
+        la  r8,-4(r4)  
+        la  r7,-4(r3)  
+      
+        /* copy */  
+    1:  lwzu    r0,4(r8)  
+        stwu    r0,4(r7)  
+        bdnz    1b  
+      
+        addi    r0,r5,3  
+        srwi.   r0,r0,2  
+        mtctr   r0  
+        la  r8,-4(r4)  
+        la  r7,-4(r3)  
+      
+        /* and compare */  
+    20: lwzu    r20,4(r8)  
+        lwzu    r21,4(r7)  
+        xor. r22, r20, r21  
+        bne  30f  
+        bdnz    20b  
+        b 4f  
+      
+        /* compare failed */  
+    30: li r3, 0  
+        blr  
+      
+    2:  slwi    r0,r0,2 /* re copy in reverse order ... y do we needed it? */  
+        add r8,r4,r0  
+        add r7,r3,r0  
+    3:  lwzu    r0,-4(r8)  
+        stwu    r0,-4(r7)  
+        bdnz    3b  
+      
+    /* 
+	* Now flush the cache: note that we must start from a cache aligned 
+	* address. Otherwise we might miss one cache line. 
+     */  
+    4:  cmpwi   r6,0  
+        add r5,r3,r5  
+        beq 7f      /* Always flush prefetch queue in any case */  
+        subi    r0,r6,1  
+        andc    r3,r3,r0  
+        mr  r4,r3  
+    5:  dcbst   0,r4  
+        add r4,r4,r6  
+        cmplw   r4,r5  
+        blt 5b  
+        sync            /* Wait for all dcbst to complete on bus */  
+        mr  r4,r3  
+    6:  icbi    0,r4  
+        add r4,r4,r6  
+        cmplw   r4,r5  
+        blt 6b  
+    7:  sync            /* Wait for all icbi to complete on bus */  
+        isync  
+
+6、初始化堆栈
+
+    对于mpc83xx系列，初始化堆栈代码如下：
+[cpp] view plaincopy
+
+    /* set up the stack pointer in our newly created cache-ram (r1) */  
+    lis r1, (CFG_INIT_RAM_ADDR + CFG_GBL_DATA_OFFSET)@h  
+    ori r1, r1, (CFG_INIT_RAM_ADDR + CFG_GBL_DATA_OFFSET)@l  
+      
+    li  r0, 0       /* Make room for stack frame header and */  
+    stwu    r0, -4(r1)  /* clear final stack frame so that  */  
+    stwu    r0, -4(r1)  /* stack backtraces terminate cleanly   */  
+
+7、跳转到Stage2入口处
+
+    这也是Stage1的最后一步，程序在执行到这一步后，基本的硬件初始化工作也就完成了，下面是跳转的代码：
+[cpp] view plaincopy
+
+    GET_GOT         /* initialize GOT access    */  
+    /* r3: IMMR */  
+    lis r3, CFG_IMMR@h  
+    /* run low-level CPU init code (in Flash)*/  
+    bl  cpu_init_f  
+      
+    /* r3: BOOTFLAG */  
+    mr  r3, r21  
+    /* run 1st part of board init code (in Flash)*/  
+    bl  board_init_f  
+
+其中board_init_f就是Stage2的函数入口。
+
+    由上可以看出start.S的流程为：异常向量——上电复位后进入复位异常向量——跳到启动代码处——设置处理器进入管理模式——关闭看门狗——关闭中断——设置时钟分频——关闭MMU和CACHE——进入lowlever_init.S——检查当前代码所处的位置，如果在FLASH中就将代码搬移到RAM中。至此，Stage1分析到此结束。
+
+    跳转到board_init_f后，程序开始执行Stage2阶段，代码多为C。

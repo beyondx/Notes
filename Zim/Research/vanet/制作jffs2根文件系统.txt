@@ -1,0 +1,91 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-11T18:43:56+08:00
+
+====== 制作jffs2根文件系统 ======
+Created Saturday 11 August 2012
+
+http://www.embedu.org/Column/Column17.htm
+
+JFFS2是Flash上应用最广的一个日志结构文件系统。它提供的垃圾回收机制，不需要马上对擦写越界的块进行擦写，而只需要将其设置一个标志，标明为脏块，当可用的块数不足时，垃圾回收机制才开始回收这些节点。同时，由于JFFS2基于日志结构，在意外掉电后仍然可以保持数据的完整性，而不会丢失数据。
+
+本文阐述如何在nand flash上实现JFFS2根文件文件系统。实验环境是：FS2410开发平台及ubantu7.04主机环境。
+
+**1．下载MTD工具包**
+制作jffs2根文件系统需要使用__mtd-utils__软件包提供的**mkfs.jffs2**命令，所以先要安装该软件包。完成此步骤后，系统中就有了mkfs.jffs2的工具。注意：这个工具不同于mkfs.ext2工具，它只能制作相应的JFFS2文件系统的镜像，__而不具有进行格式化的功能__，而mkfs.ext2具备这以上两种功能。然后用这个工具就可以制作JFFS2文件系统的镜像了。
+
+**2、制作JFFS2文件镜像**
+
+实验平台用到的nand flash 是K9F1208，在制作镜像过程添加的参数需要和它对应。
+
+farsight#mkfs.jffs2 -r /source/rootfs -o rootfs.jffs2 **-e 0x4000** **--pad=0x800000** -n
+
+这样就会生成一个8M大小的rootfs.jffs2的镜像，它也正是JFFS2文件系统的镜像，关于这个命令行里的选项的内容，可以用man a mkfs.jffs2命令来查看内容。
+也可以参考：[[../../Error_Notes/jffs2_scan_eraseblock()_Magic_bitmask_0x1985_not_found_at.txt]]
+
+JFFS2 维护了几个链表来管理擦写块，根据擦写块上的内容，一个擦写块会在不同的链表上。具体来说，当一个擦写块上都是合法(valid)的节点时，它会在 clean_list 上；当一个擦写块包含至少一个过时(obsolete)的节点时，它会在 dirty_list 上；当一个擦写块被擦写完毕，并被写入 CLEANMARKER 节点后，它会在 free_list 上。而当你在挂载这个文件系统的时候，如果出现CLEANMARKER node found at 0x0042c000 has totlen 0xc != normal 0x0的警告的时候，可以加一个“-n”的选项，这个主要是由于针对Nand Flash不需要在每个擦除块的开始写入CLEANMARKER 节点。
+
+**3、设置内核启动参数**
+
+本处用的bootloader是U-BOOT.所以在U-BOOT的命令终端设置如下：
+
+FS2410#setenv bootargs __root=/dev/mtdblock2 rootfstype=jffs2__ rw console=ttySAC0,115200 
+
+__注意：bootargs参数是传给kernel的启动参数，设备分区mtdblock2所对应的flash空间是通过设备树文件指定的，在内核启动前要通过uboot等工具将制作的__
+__jffs2文件系统映像烧写到该空间中。__
+
+
+**4、配置内核支持JFFS2文件系统**
+
+File systems ---> Miscellaneous filesystems --->
+
+	<*>JournallingFlash File System v2 (JFFS2) support
+	
+	[*]JFFS2write-bufferingsupport
+	
+	[*]AdvancedcompressionoptionsforJFFS2
+	
+	[*]JFFS2ZLIBcompressionsupport
+	
+	[*]JFFS2RTIMEcompressionsupport
+	
+	[*] JFFS2 RUBIN compression support
+
+**5、下载rootfs.jffs2镜像**
+
+通过uboot命令行，将jffs2映像__下载到Nand Flash第二个分区（Flash分区情况是由dtb文件指明的）__。
+
+FS2410#nand erase 200000 800000
+
+FS2410#nand write.jffs2 300008000 200000 800000
+
+这里说明下关于nand flash操作的几个常用命令的含义
+
+nand write：向Nand Flash写入数据，如果NandFlash相应的区域有坏块，则直接报错。
+nand write.jffs2：向Nand Flash写入数据，如果NandFlash相应的区域有坏块，可以跳过坏块。
+nand read：读取Nand Flash相应区域的数据，如果NandFlash相应的区域有坏块，则直接报错。
+nand read.jffs2s：读取Nand Flash相应区域的数据，如果NandFlash相应的区域有坏块，将对应坏块区域的缓冲填充0xff，然后跳过此坏块继续读取。
+nand read.jffs2：读取Nand Flash相应区域的数据，如果NandFlash相应的区域有坏块，直接跳过坏块。
+
+具体的参考代码参看U-BOOT源码：common/cmd_nand.c文件。
+
+下载完JFFS2文件系统镜像后，需要把Linux内核NandFlash的驱动关于第二个分区的大小改为8M（和镜像一样大，__对于MPC8315而言，由于使用了设备树文件，所以不需要修改内核__），否则会出现类似如下错误：
+
+Freeing init memory: 124K
+Warning: unable to open an initial console.
+Argh. Special inode #171 with mode 0xa1ff had more than one node
+Kernel panic: No init found. Try passing init= option to kernel.
+Argh. Specia inode #63 with mode 0xa1ff had more than one node
+Returned error for crccheck of ino #63. Expect badness...
+Argh. Special inode #67 with mode 0xa1ff had more than one node
+Returned error for crccheck of ino #67. Expect badness...
+Argh. Special inode #68 with mode 0xa1ff had more than one node
+
+到此，一个JFFS2文件系统的镜像制作成功。可以启动系统并测试JFFS2的性能了。还有一种制作JFFS2文件系统镜像的方法，在制作镜像的参数中可以不加—pad选项，过程如下：
+
+farsight#mkfs.jffs2 -r /source/rootfs -o rootfs.jffs2 -e 0x4000 -n
+
+启动开发板烧写rootfs.jffs2镜像
+
+FS2410#**nand erase 200000 800000/**/(注意把整个存放文件系统的分区全部给擦除)。
+FS2410#**nand write.jffs2 30008000 200000 31a28c**//(必须是rootfs.jffs2的实际大小。如果是你写成了4M，那么分区的其余部分JFFS2文件系统将无法识别)。

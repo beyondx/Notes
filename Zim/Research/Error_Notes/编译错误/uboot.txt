@@ -5,7 +5,16 @@ Creation-Date: 2012-08-02T15:31:27+08:00
 ====== uboot ======
 Created Thursday 02 August 2012
 
-1. ltib在编译uboot时长时间地停在下面的命令行上：
+
+1.编译时提示
+make[1]: Leaving directory `/home/geekard/PPC/ltib-mpc8315erdb-20100719/rpm/BUILD/u-boot-2009.03-rc2/cpu/mpc83xx'
+make[1]: Entering directory `/home/geekard/PPC/ltib-mpc8315erdb-20100719/rpm/BUILD/u-boot-2009.03-rc2/cpu/mpc83xx'
+.depend:117: *** multiple target patterns.  Stop.
+错误。
+---------------
+解决方法是将cpu/mpc83xx/.depend文件删除即可。
+
+2. ltib在编译uboot时长时间地停在下面的命令行上：
 powerpc-e300c3-linux-gnu-objcopy -O srec u-boot u-boot.srec
 powerpc-e300c3-linux-gnu-objcopy --gap-fill=0xff -O binary u-boot u-boot.bin
 而且生成的uboot.bin文件非常大：

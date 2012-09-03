@@ -1,0 +1,37 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-11T20:46:27+08:00
+
+====== mtd-utils ======
+Created Saturday 11 August 2012
+
+**编译时出现下列错误：**
+gcc -I./include -DWITHOUT_XATTR -O2 -g -Wall -c -o ftl_format.o ftl_format.c -g -Wp,-MD,./.ftl_format.c.dep
+In file included from /home/geekard/PPC/sysroot/usr/include/endian.h:60:0,
+                 from /home/geekard/PPC/sysroot/usr/include/sys/types.h:216,
+                 from ftl_format.c:37:
+./include/bits/byteswap.h:21:3: error: __#error "Never use <bits/byteswap.h> directly; include <byteswap.h> instead."__
+make: *** [ftl_format.o] Error 1
+error: Bad exit status from /home/geekard/PPC/ltib-mpc8315erdb-20100719/tmp/rpm-tmp.69478 (%build)
+---------------------------
+解决的方法是打开byteswap.h文件，将下面几行注释掉：
+20 #if !defined _BYTESWAP_H && !defined _NETINET_IN_H
+ 21 # error "Never use <bits/byteswap.h> directly; include <byteswap.h> instead."
+ 22 #endif
+------------------------------------------------------------
+make -C ./ubi-utils
+make[1]: Entering directory `/home/geekard/PPC/ltib-mpc8315erdb-20100719/rpm/BUILD/mtd-utils/ubi-utils'
+gcc -I./inc -I./src -I../include -std=gnu99 -DPACKAGE_VERSION=\"1.0\" -O2 -g -Werror -Wall -Wwrite-strings -W -c -o pfiflash.o ./src/pfiflash.c -g -Wp,-MD,.pfiflash.c.dep
+gcc -I./inc -I./src -I../include -std=gnu99 -DPACKAGE_VERSION=\"1.0\" -O2 -g -Werror -Wall -Wwrite-strings -W -c -o libpfiflash.o ./src/libpfiflash.c -g -Wp,-MD,.libpfiflash.c.dep
+gcc -I./inc -I./src -I../include -std=gnu99 -DPACKAGE_VERSION=\"1.0\" -O2 -g -Werror -Wall -Wwrite-strings -W -c -o list.o ./src/list.c -g -Wp,-MD,.list.c.dep
+gcc -I./inc -I./src -I../include -std=gnu99 -DPACKAGE_VERSION=\"1.0\" -O2 -g -Werror -Wall -Wwrite-strings -W -c -o reader.o ./src/reader.c -g -Wp,-MD,.reader.c.dep
+gcc -I./inc -I./src -I../include -std=gnu99 -DPACKAGE_VERSION=\"1.0\" -O2 -g -Werror -Wall -Wwrite-strings -W -c -o error.o ./src/error.c -g -Wp,-MD,.error.c.dep
+./src/error.c: In function 'info_msg':
+./src/error.c:77:6: error: **variable 'n' set but not used [-Werror=unused-but-set-variable]**
+cc1: all warnings being treated as errors
+------------------
+解决方法是：将ubi-utils/Makefile中的-Werror去掉：
+ 11 CC := $(CROSS)gcc
+ 12 CFLAGS ?= -O2 -g __-Werror__
+ 13 CFLAGS += -Wall -Wwrite-strings -W
+

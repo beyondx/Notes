@@ -17,4 +17,22 @@ Created Friday 03 August 2012
 4.执行/usr/sbin/visudo命令，在打开的文件中添加
 	geekard ALL = NOPASSWD: /bin/rpm, /opt/freescale/ltib/usr/bin/rpm
 	
-5. 
+5. 修改jffs2的erase block size 为16(按照K9F5608 datasheet上的Erase Block参数指定)
+	     --- Choose your root filesystem image type                                                                                     │ │  
+	  │ │                                                               Target image: __(jffs2)__  --->                                                                                                │ │  
+	  │ │                                                           [ ] Run a command after building the target image                                                                              │ │  
+	  │ │                                                           __(16)__ jffs2 erase block size in KB                                                                                              │ │  
+	  │ │                                                           [ ] read-only root filesystem                                                                                                  │ │  
+	  │ │                                                           (512k) tmpfs size                                                                                                              │ │  
+	  │ │                                                           (/tmp /var) Place these dirs in writable RAM                                                                                   │ │  
+	  │ │                                                           ()  rootfs target directory
+
+6. ltib在编译某个软件包如busybox前，会先到rpm/RPMS/ppc/目录下查看busybox rpm软件包是否存在已经存在，如果存在的话将不会再
+编译它，而是在最后直接将其安装到rootfs目录下，所以如果想配置busybox则除了在package list中选中configure busybox before compile外
+还要删除rpm/RPMS/ppc目录下的busybox rpm包。如果该软件包的rpm包不存在，则ltib会到rpm/BUILD目录中查看该软件包的源代码目录是否存在
+如果存在则直接编译(编译完后并不删除该源代码目录)，如果不存子则会从/opt/freescale/pkg目录下解压该软件包到BUILD目录中，编译完后会自动删除
+BUILD中的源代码目录，所以如果用户希望ltib在编译时使用自己的源代码，可以使用一下方法：
+1. #./ltib -m prep -p busybox    #将/opt/freescale/pkg目录中的busybox软件包解压到BUILD目录中，同时打补丁和配置源代码。
+2. # cp -rv MY-busybox/* rpm/BUILD/busybox  #用户的代码替换就代码
+3. # ./ltib -m scbuild -p busybox
+4. #./ltib -m scdeploy -p busybox

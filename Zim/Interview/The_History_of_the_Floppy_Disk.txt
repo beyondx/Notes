@@ -1,0 +1,68 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-08-29T19:03:08+08:00
+
+====== The History of the Floppy Disk ======
+Created Wednesday 29 August 2012
+http://h30565.www3.hp.com/t5/Feature-Articles/The-History-of-the-Floppy-Disk/ba-p/6434
+
+**The History of the Floppy Disk**
+by Steven Vaughan-Nichols (sjvn01) on 27-08-2012 08:00 AM - last edited on 27-08-2012 08:14 AM by  	 estherschindler
+
+In the fall of 1977, I experimented with a newfangled PC, a Radio Shack TRS-80. For data storage it used—I kid you not—**a cassette tape player**. Tape had a long history with computing; I had used the IBM 2420 **9-track tape system** on IBM 360/370 mainframes to load software and to back-up data. Magnetic tape was common for storage in pre-personal computing days, but it had two main annoyances: it held **tiny amounts** of data, and it was **slower** than a slug on a cold spring morning. There had to be something better, for those of us excited about technology. And there was: the floppy disk.
+{{./1.jpg}}
+//Welcome to the floppy disk family: 8”, 5.25” and 3.5”//
+
+In the mid-70s I had heard about floppy drives, but they were expensive, exotic equipment. I didn't know that IBM had decided as early as 1967 that tape-drives, while fine for back-ups, simply weren't good enough to load software on mainframes. So it was that Alan Shugart assigned David L. Noble to lead the development of “a reliable and inexpensive system for loading **microcode** into the IBM System/370 mainframes using a process called **Initial Control Program Load (ICPL).**” From this project came the first 8-inch floppy disk.
+
+Oh yes, before the 5.25-inch drives you remember were the 8-inch floppy. By 1978 I was using them on mainframes; later I would use them on Online Computer Library Center (OCLC) dedicated cataloging PCs.
+
+The 8-inch drive began to show up in 1971. Since they enabled developers and users to stop using the dreaded paper tape (which were easy to fold, spindle, and mutilate, not to mention to pirate) and the loathed IBM 5081 punch card. Everyone who had ever twisted a some tape or—the horror!—dropped a deck of Hollerith cards was happy to adopt 8-inch drives.
+{{./2.gif}}
+//Before floppy drives, we often had to enter data using punch cards.//
+
+Besides, the early single-sided 8-inch floppy could hold the data of up to 3,000 punch cards, or __80K__ to you. I know that's nothing today — this article uses up 66K with the text alone – but then it was a big deal.
+
+Some early model microcomputers, such as the Xerox 820 and Xerox Alto, used 8-inch drives, but these first generation floppies never broke through to the larger consumer market. That honor would go to the next generation of the floppy: the 5.25 inch model.
+
+By 1972, Shugart had left IBM and founded his own company, Shugart Associates. In 1975, Wang, which at the time owned the then big-time dedicated word processor market, approached Shugart about creating a computer that would fit on top of a desk. To do that, Wang needed a smaller, cheaper floppy disk.
+
+According to Don Massaro (PDF link), another IBMer who followed Shugart to the new business, Wang’s founder Charles Wang said, “I want to come out with a much lower-end word processor. It has to be much lower cost and I can't afford to pay you $200 for your 8" floppy; I need a $100 floppy.”
+
+So, Shugart and company started working on it. According to Massaro, “We designed the 5 1/4" floppy drive in terms of the overall design, what it should look like, in a car driving up to Herkimer, New York to visit Mohawk Data Systems.” The design team stopped at a stationery store to buy cardboard while trying to figure out **what size** the diskette should be. “It's real simple, the reason why it was 5¼,” he said. “5 1/4 was the smallest diskette that you could make that would not __fit in your pocket__. We didn't want to put it in a pocket because we didn't want it bent, okay?”
+
+Shugart also designed the diskette to be that size because an analysis of the cassette tape drives and their bays in microcomputers showed that a 5.25” drive was as big as you could fit into the PCs of the day.
+
+According to another story from Jimmy Adkisson, a Shugart engineer, “Jim Adkisson and Don Massaro were discussing the proposed drive's size with Wang. The trio just happened to be doing their discussing at a bar. An Wang motioned to a drink napkin and stated 'about that size' which happened to be 5 1/4-inches wide.”
+Wang wasn’t the most important element in the success of the 5.25-inch floppy. George Sollman, another Shugart engineer, took an early model of the 5.25” drive to a Home Brew Computer Club meeting. “The following Wednesday or so, Don came to my office and said, 'There's a bum in the lobby,’” Sollman says. “‘And, in marketing, you're in charge of cleaning up the lobby. Would you get the bum out of the lobby?’ So I went out to the lobby and this guy is sitting there with holes in both knees. He really needed a shower in a bad way but he had the most dark, intense eyes and he said, 'I've got this thing we can build.'”
+The bum's name was Steve Jobs and the “thing” was the Apple II.
+Apple had also used cassette drives for its first computers. Jobs knew his computers also needed a smaller, cheaper, and better portable data storage system. In late 1977, the Apple II was made available with optional 5.25” floppy drives manufactured by Shugart. One drive ordinarily held programs, while the other could be used to store your data. (Otherwise, you had to swap floppies back-and-forth when you needed to save a file.)
+{{./3.png}}
+The PC that made floppy disks a success: 1977's Apple II
+The floppy disk seems so simple now, but it changed everything. As IBM's history of the floppy disk states, this was a big advance in user-friendliness. “But perhaps the greatest impact of the floppy wasn’t on individuals, but on the nature and structure of the IT industry. Up until the late 1970s, most software applications for tasks such as word processing and accounting were written by the personal computer owners themselves. But thanks to the floppy, companies could write programs, put them on the disks, and sell them through the mail or in stores. 'It made it possible to have a software industry,' says Lee Felsenstein, a pioneer of the PC industry who designed the Osborne 1, the first mass-produced portable computer. Before networks became widely available for PCs, people used floppies to share programs and data with each other—calling it the 'sneakernet.'”
+In short, it was the floppy disk that turned microcomputers into personal computers.
+{{./4.jpg}}
+ Which of these drives did you own?
+The success of the Apple II made the 5.25” drive the industry standard. The vast majority of CP/M-80 PCs, from the late 70s to early 80s, used this size floppy drive. When the first IBM PC arrived in 1981 you had your choice of one or two 160 kilobyte (K – yes, just one K) floppy drives.
+Throughout the early 80s, the floppy drive became the portable storage format. (Tape quickly was relegated to business back-ups.) At first, the floppy disk drives were only built with one read/write head, but another set of heads were quickly incorporated. This meant that when the IBM XT PC arrived in 1983, double-sided floppies could hold up to 360K of data.
+There were some bumps along the road to PC floppy drive compatibility. Some companies, such as DEC with its DEC Rainbow, introduced its own non-compatible 5.25” floppy drives. They were single-sided but with twice the density, and in 1983 a single box of 10 disks cost $45 – twice the price of the standard disks.
+In the end, though, market forces kept the various non-compatible disk formats from splitting the PC market into separate blocks. (How the data was stored was another issue, however. Data stored on a CP/M system was unreadable on a PC-DOS drive, for examples, so dedicated applications like Media Master promised to convert data from one format to another.)
+That left lots of room for innovation within the floppy drive mainstream. In 1984, IBM introduced the IBM Advanced Technology (AT) computer. This model came with a high-density 5.25-inch drive, which could handle disks that could up hold up to 1.2MB of data.
+A variety of other floppy drives and disk formats were tried. These included 2.0, 2.5, 2.8, 3.0, 3.25, and 4.0 inch formats. Most quickly died off, but one, the 3.5” size – introduced by Sony in 1980 – proved to be a winner.
+The 3.5 disk didn't really take off until 1982. Then, the Microfloppy Industry Committee approved a variation of the Sony design and the “new” 3.5” drive was quickly adopted by Apple for the Macintosh, by Commodore for the Amiga, and by Atari for its Atari ST PC. The mainstream PC market soon followed and by 1988, the more durable 3.5” disks outsold the 5.25” floppy disks. (During the transition, however, most of us configured our PCs to have both a 3.5” drive and a 5.25” drive, in addition to the by-now-ubiquitous hard disks. Still, most of us eventually ran into at least one situation in which we had a file on a 5.25” disk and no floppy drive to read it on.)
+{{./5.jpg}}
+ The one 3.5” diskette that everyone met at one time or another: An AOL install disk.
+The first 3.5” disks could only hold 720K. But they soon became popular because of the more convenient pocket-size format and their somewhat-sturdier construction (if you rolled an office chair over one of these, you had a chance that the data might survive). Another variation of the drive, using Modified Frequency Modulation (MFM) encoding, pushed 3.5” diskettes storage up to 1.44Mbs in IBM's PS/2 and Apple's Mac IIx computers in the mid to late 1980s.
+By then, though floppy drives would continue to evolve, other portable technologies began to surpass them.
+In 1991, Jobs introduced the extended-density (ED) 3.5” floppy on his NeXT computer line. These could hold up to 2.8MBs. But it wasn't enough. A variety of other portable formats that could store more data came along, such as magneto-optical drives and Iomega's Zip drive, and they started pushing floppies out of business.
+The real floppy killers, though, were read-writable CDs, DVDs, and, the final nail in the coffin: USB flash drives. Today, a 64GB flash drive can hold more data than every floppy disk I've ever owned all rolled together.
+Apple prospered the most from the floppy drive but ironically was the first to abandon it as read-writable CDs and DVDs took over. The 1998 iMac was the first consumer computer to ship without any floppy drive.
+However, the floppy drive took more than a decade to die. Sony, which at the end owned 70% of what was left of the market, announced in 2010 that it was stopping the manufacture of 3.5” diskettes.
+Today, you can still buy new 1.44MB floppy drives and floppy disks, but for the other formats you need to look to eBay or yard sales. If you really want a new 3.5” drive or disks, I'd get them sooner than later. Their day is almost done.
+But, as they disappear even from memory, we should strive to remember just how vitally important floppy disks were in their day. Without them, our current computer world simply could not exist. Before the Internet was open to the public, it was floppy disks that let us create and trade programs and files. They really were what put the personal in “personal computing.”
+See also:
+6 Products That Became Technology Roadkill
+Searching the Internet B.G. (Before Google)
+The Birth and Rise of Ethernet: A History
+7 Awesome Bits of Tech That Just Freakin’ Disappeared
+30 Years Later: an Unfair Comparison between an IBM PC and an Apple iPhone4 (Infographic)

@@ -1,0 +1,164 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-01-15T19:23:20+08:00
+
+====== 1 ======
+Created Sunday 15 January 2012
+http://blog.csdn.net/juana1/article/details/6699785
+一、概述
+
+    U-Boot，全称Universal Boot Loader，是遵循GPL条款的开放源码项目，是从FADSROM、8xxROM、PPCBOOT逐步发展演化而来的。其源码目录、编译形式与Linux内核很相似，事实上，不少U-Boot源码就是相应的Linux内核源程序的简化，尤其是一些设备的驱动程序，这从U-Boot源码的注释中能体现这一点。但是U-Boot不仅仅支持嵌入式Linux系统的引导，当前，它还支持NetBSD, VxWorks, QNX, RTEMS, ARTOS, LynxOS嵌入式操作系统。其目前要支持的目标操作系统是OpenBSD, NetBSD, FreeBSD,4.4BSD, Linux, SVR4, Esix, Solaris, Irix, SCO, Dell, NCR, VxWorks, LynxOS, pSOS, QNX, RTEMS, ARTOS。这是U-Boot中Universal的一层含义，另外一层含义则是U-Boot除了支持PowerPC系列的处理器外，还能支持MIPS、 x86、ARM、NIOS、XScale等诸多常用系列的处理器。这两个特点正是U-Boot项目的开发目标，即支持尽可能多的嵌入式处理器和嵌入式操作系统。
+
+    就目前来看，U-Boot对PowerPC系列处理器支持最为丰富，对Linux的支持最完善。其它系列的处理器和操作系统基本是在2002年11 月PPCBOOT改名为U-Boot后逐步扩充的。从PPCBOOT向U-Boot的顺利过渡，很大程度上归功于U-Boot的维护人德国DENX软件工程中心Wolfgang Denk[以下简称W.D]本人精湛专业水平和持着不懈的努力。当前，U-Boot项目正在他的领军之下，众多有志于开放源码BOOT LOADER移植工作的嵌入式开发人员正如火如荼地将各个不同系列嵌入式处理器的移植工作不断展开和深入，以支持更多的嵌入式操作系统的装载与引导。
+
+    选择U-Boot的理由如下：
+
+1、开放源码； 
+
+2、支持多种嵌入式操作系统内核，如Linux、NetBSD, VxWorks, QNX, RTEMS, ARTOS, LynxOS； 
+
+3、支持多个处理器系列，如PowerPC、ARM、x86、MIPS、XScale； 
+
+4、较高的可靠性和稳定性； 
+
+5、较高的可靠性和稳定性； 
+
+6、高度灵活的功能设置，适合U-Boot调试、操作系统不同引导要求、产品发布等； 
+
+7、丰富的设备驱动源码，如串口、以太网、SDRAM、FLASH、LCD、NVRAM、EEPROM、RTC、键盘等； 
+
+8、较为丰富的开发调试文档与强大的网络技术支持；
+
+    本文将从整体架构出发，尽自己的理解分析u-boot源码及其启动原理，之后再介绍下移植u-boot时的一些技巧，最后将以叙述移植的实例的方式来阐述其使用方法。
+二、程序架构
+
+    要使用u-boot，首先需要搞清楚它的程序架构，要实现启动开发板需要修改哪些文件，下面列举了uboot的主要目录结构：
+
+- board：目标板相关文件，主要包含SDRAM、Flash的驱动；
+
+- common：独立于处理器体系结构的通用代码，如内存大小探测与故障检测等，它实现了u-boot的所有命令，其中内置了一个shell脚本解释器(hush.c,a prototype bourne shell grammar parser)，busybox中也使用了它；
+
+- cpu：与处理器相关的文件，如mpc8xx子目录下有串口、网口、LCD驱动及中断初始化等文件。其中cpu.c负责初始化CPU、设置指令cache和数据cache等，interrupt.c负责设置系统的各种中断和异常，如快速中断、开关中断、时钟中断、软件中断、预取中止和未定义指令等，start.S负责u-boot启动时执行的第一个文件，它主要设置系统堆栈和工作方式，为跳转到C程序入口点做准备；
+
+- driver：通用设备驱动，如CFI Flash驱动（目前对INTEL Flash支持较好） 
+
+- doc：U-Boot的说明文档； 
+
+- examples：可在U-Boot下运行的示例程序，如hello_world.c、timer.c； 
+
+- include：U-Boot头文件，注意：configs子目录下与目标板相关的配置头文件是移植过程中经常要修改的文件； 
+
+- lib_xxx：处理器体系相关的文件，如lib_ppc, lib_arm目录分别包含与PowerPC、ARM体系结构相关的文件，lib_generic为通用的库函数实现； 
+
+- net：与网络功能相关的文件目录，如bootp、nfs、sntp、tftp； 
+
+- post：上电自检文件目录，目前仍有待于进一步完善； 
+
+- rtc：RTC驱动程序； 
+
+- tools：用于创建U-Boot S-RECORD和BIN镜像文件的工具；
+
+-fs：文件系统程序，包括ext2、Jffs2等；
+
+-disk：硬盘接口程序。
+
+    在board目录下的每个子平台目录内，都有一个连接脚本文件u-boot.lds，从中可以找到u-boot的函数入口。另外，该目录下还有一个config.mk文件，用于设置TEXT_BASE的地址，该地址就是希望运行的地址、链接地址。
+
+    u-boot 是一个层次式结构，要让它跑起来，应当至少提供串口驱动（UART Driver）、以太网驱动(Ethernet Driver)、Flash 驱动（Flash 驱动）以及USB 驱动（USB Driver）。目前，通过USB 口下载程序显得不是十分必要，所以暂时没有移植USB 驱动。驱动层之上是u-boot 的应用，command 通过串口提供人机界面。
+三、代码分析
+
+    本文的代码分析主要针对freescale的PowerPC芯片mpc83系列，从u-boot启动的过程来分析其源代码，目前大多数的bootloader都分为了Stage1和Stage2两个部分启动，依赖于CPU体系结构的代码常放在Stage1且常用汇编语言实现，在u-boot中功能代码集中在cpu/mpc83xx/start.S中，它包括从系统上电后在基地址开始执行的部分，它运行在flash中，包括对cpu寄存器的初始化和将Stage2的代码拷贝到SDRAM中的代码。而Stage2则用于实现复杂的应用，用C也有更好的可读性和移植性，主要功能代码集中在lib_ppc/board.c中，通过指定一系列的初始化函数表，实现对系统的初始化工作。一般情况下，u-boot编译后的程序不超过100k，且Stage1的代码编译后的大小一般不超过10k，。
+
+    以下内容属转载，虽是ARM，但PowerPC与之类似：
+
+*************************************************************************
+ */
+
+注：ARM微处理器支持字节（8位）、半字（16位）、字（32位）3种数据类型
+@向量跳转表，每条占四个字节（一个字），地址范围为0x0000 0000～@0x0000 0020
+@ARM体系结构规定在上电复位后的起始位置，必须有8条连续的跳
+
+@转指令，通过硬件实现。他们就是异常向量表。ARM在上电复位后，@是从0x00000000开始启动的，其实如果bootloader存在，在执行
+
+@下面第一条指令后，就无条件跳转到start_code，下面一部分并没@执行。设置异常向量表的作用是识别bootloader。以后系统每当有@异常出现，则CPU会根据异常号，从内存的0x00000000处开始查表@做相应的处理
+
+/******************************************************
+
+;当一个异常出现以后，ARM会自动执行以下几个步骤:
+;1.把下一条指令的地址放到连接寄存器LR(通常是R14).---保存位置
+;2.将相应的CPSR(当前程序状态寄存器)复制到SPSR(备份的程序状态寄存器)中---保存CPSR
+;3.根据异常类型，强制设置CPSR的运行模式位
+;4.强制PC(程序计数器)从相关异常向量地址取出下一条指令执行，从而跳转到相应的异常处理程序中
+*****************************************************************************/
+
+    首先来看下Stage1的过程，系统主要实现了一下的功能：
+
+1、指定入口函数
+
+    一个可执行的镜像必须要有且只有一个全局入口，通常情况下，这个入口函数是放在ROM的起始位置，而它是由处理器中断复位向量来决定的，代码如下：
+[cpp] view plaincopy
+
+    . = EXC_OFF_SYS_RESET  
+      
+        .globl  _start  
+    _start: /* time t 0 */  
+        li  r21, BOOTFLAG_COLD  /* Normal Power-On: Boot from FLASH*/  
+        nop  
+        b   boot_cold  
+      
+    . = EXC_OFF_SYS_RESET + 0x10  
+      
+        .globl  _start_warm  
+    _start_warm:  
+        li  r21, BOOTFLAG_WARM  /* Software reboot  */  
+        b   boot_warm  
+
+    需要注意的是，我们必须自己告诉编译器这个入口，而这个工作就是修改链接脚本文件(lds)。由上可见，函数执行开始后，一个立即读取指令后就是一个跳转语句。一般情况下(上电、复位等)，程序都会执行boot_cold，通过调用系统复位中断从System reset偏移向量0x100来获取指令，每个中断向量有256个字节的空间。另外，与start.s文件在一起的也有一个config.mk文件，该文件用于定义编译选项。通过链接地址TEXT_BASE和运行地址.start的不同决定是否要复制代码。
+
+2、设置异常向量(Exception Vector)
+
+    异常向量表也可称为中断向量表，在mpc83xx中，它是以0x100的偏移量连续分布的，基地址的值取决于MSR[IP]，当它为0是，基地址为0x00000000，为1时，基地址为0xfff00000。该值是由启动方式决定的。源码如下：
+[cpp] view plaincopy
+
+    /* 
+	* Vector Table 
+     */  
+      
+        .globl  _start_of_vectors  
+    _start_of_vectors:  
+      
+    /* Machine check */  
+        STD_EXCEPTION(0x200, MachineCheck, MachineCheckException)  
+      
+    /* Data Storage exception. */  
+        STD_EXCEPTION(0x300, DataStorage, UnknownException)  
+      
+    /* Instruction Storage exception. */  
+        STD_EXCEPTION(0x400, InstStorage, UnknownException)  
+      
+    /* External Interrupt exception. */  
+    #ifndef FIXME  
+        STD_EXCEPTION(0x500, ExtInterrupt, external_interrupt)  
+    #endif  
+      
+    /* Alignment exception. */  
+        . = 0x600  
+    Alignment:  
+        EXCEPTION_PROLOG(SRR0, SRR1)  
+        mfspr   r4,DAR  
+        stw r4,_DAR(r21)  
+        mfspr   r5,DSISR  
+        stw r5,_DSISR(r21)  
+        addi    r3,r1,STACK_FRAME_OVERHEAD  
+        li  r20,MSR_KERNEL  
+        rlwimi  r20,r23,0,16,16     /* copy EE bit from saved MSR */  
+        rlwimi  r20,r23,0,25,25     /* copy IP bit from saved MSR */  
+        lwz r6,GOT(transfer_to_handler)  
+        mtlr    r6  
+        blrl  
+    .L_Alignment:  
+        .long   AlignmentException - _start + EXC_OFF_SYS_RESET  
+        .long   int_return - _start + EXC_OFF_SYS_RESET  
+    ….  
+
+    这里的代码太长了，就没再粘贴，有兴趣的可以下载源码看一下，上面的只包括了机器校验、数据存储异常、指令存储异常等异常处理函数，由上也可以看到其连续存储的特性。
