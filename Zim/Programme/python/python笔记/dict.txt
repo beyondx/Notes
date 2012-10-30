@@ -1,0 +1,40 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-10-04T13:21:05+08:00
+
+====== dict ======
+Created Thursday 04 October 2012
+
+Help on class dict in module __builtin__:
+
+class dict(object)
+ |  dict() -> new empty dictionary
+ |  dict(mapping) -> new dictionary initialized from **a mapping object**'s   #mapping为__一个__pairs对象
+ |      (key, value) pairs
+ |  dict(iterable) -> new dictionary initialized as if via:
+ |      d = {}
+ |      for **k, v** in iterable:    #迭代器对象每次返回的元素必须是一个容器类型，__容器中元素的个数为2__.**如[a,b], "ab",(a,b)**
+ |          d[k] = v
+ |  dict(__**kwargs)__ -> new dictionary initialized with the name=value pairs
+ |      in the keyword argument list.  For example:  dict(one=1, two=2)
+ |  
+ |  Methods defined here:
+
+
+>>> dict(__[('sape', 4139), ('guido', 4127), ('jack', 4098)]__)
+{'sape': 4139, 'jack': 4098, 'guido': 4127}
+
+>>> dict([(x, x**2) for x in (2, 4, 6)])     # use a list comprehension
+{2: 4, 4: 16, 6: 36}
+
+>>> dict(sape=4139, guido=4127, jack=4098)
+{'sape': 4139, 'jack': 4098, 'guido': 4127}
+tel = {'jack': 4098, 'sape': 4139}
+
+>>> dc=dict(["df","12"]);dc   #["df","12"]为一科迭代对象，每次返回的元素为两个字符的str，所以可以被unpack给key,value
+{'1': '2', 'd': 'f'}
+>>> dc=dict(["df",__"123"__]);dc
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ValueError: dictionary update sequence element __#1 has length 3; 2 is required__
+>>> 

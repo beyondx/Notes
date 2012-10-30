@@ -97,14 +97,14 @@ done
 
 
 注意： 
-1.   <$pipe放在while的里或外面是有区别的，前者每次loop都重新打开$pipe文件，后者在整个loop中只打开文件一次。
+1. <$pipe放在while的里或外面是有区别的，前者每次loop都重新打开$pipe文件，后者在整个loop中只打开文件一次。
 2. __bash对pipe是行缓冲__。
 
 -----------------------------
 You should __explicitly exit from the trap command__, otherwise the script will continue running past it. You should also catch a few other signals.
 
 So: trap "rm -f $pipe" EXIT
-Becomes: trap "rm -f $pipe; exit" INT TERM EXIT
+Becomes: trap "rm -f $pipe; exit"  INT TERM EXIT
 
 Excellent article. Thank you!
 ----------
@@ -113,4 +113,3 @@ Not really necessary in this case
 __The EXIT trap gets executed when the shell exits regardless of why it exits so trapping INT and TERM aren't really necessary in this case.__
 
 However, your point about "exit" is good: trapping a signal removes the default action that occurs when a signal occurs, so if the default action is to exit the program and you want that to happen in addition to executing your code, you need to include an exit statement in your code.
-

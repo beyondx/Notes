@@ -1,0 +1,402 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-09-04T10:34:08+08:00
+
+====== 第二天BGP对等体的分类 ======
+Created Tuesday 04 September 2012
+
+BGP分类：
+1． EBGP
+2． IBGP
+
+BGP邻居关系就是对等体关系; BGP邻居就是BGP对等体（peer）
+__BGP对等体关系是手动建立__。信息交换（BGP更新）也是手动化的。
+
+EBGP对等体关系：
+默认情况下，__EBGP建立对等体关系必须物理直连__（必须使用物理接口来建立）。原因：
+1． BGP会对信息的发送源进行校验：你指定的BGP对等体地址和BGP信息发送源接口必须匹配。默认情况下，所有BGP信息的发送源接口都是出站物理接口。
+2． 默认情况下，EBGP信息TTL值为1。
+
+IBGP对等体关系：
+默认情况下，IBGP建立对等体关系**不必**物理直连。原因：
+1. BGP会对信息的发送源进行校验：你指定的BGP对等体地址和BGP信息发送源接口必须匹配。默认情况下，所有BGP信息的发送源接口都是出站物理接口。
+2. 默认情况下，IBGP信息TTL值为64。
+
+IBGP是靠IGP的快速收敛来达到快速收敛。IBGP用于传输AS承载外部（客户）EBGP更新。传输AS内的IGP：
+1．负责建立IBGP对等体关系（TCP连接）
+2．负责帮助IBGP对等体的快速收敛。
+
+EBGP可以做到防止环路; IBGP可以通过__水平分割__防止环路; 通过IBGP对等体学习到的BGP更新不会再宣告经任意的IBGP对等体。
+下一跳不可达问题（重分发，指定下一跳）
+递归解析
+BGP和IGP的相互的
+BGP的基本配置
+
+R0的基本配置：
+Router&gt;en
+Router#conf t
+Enter configuration commands, one per line. End with CNTL/Z.
+Router (config)#host R0
+R0(config)#no ip do lo
+R0(config)#line con 0
+R0(config-line)#logg syn
+R0(config-line)#exec-timeout 0 0
+R0(config-line)#exit
+R0(config)#
+R0(config)#int lo0
+R0(config-if)#ip add 1.1.1.1 255.255.255.0
+R0(config-if)#no shut
+R0(config-if)#exit
+R0(config)#int fa0/0
+R0(config-if)#ip add 192.168.1.1 255.255.255.0
+R0(config-if)#no shut
+R0(config-if)#exit
+R0(config)#int e1/0
+R0(config-if)#ip add 192.168.2.1 255.255.255.0
+R0(config-if)#no shut
+R0(config-if)#exit
+R0(config)#router bgp 1[lty1]
+R0(config-router)#neighbor 192.168.1.2 remote-as 1[lty2]
+R0(config-router)#neighbor 192.168.2.2 remote-as 1
+Router&gt;en
+Router#conf t
+Enter configuration commands, one per line. End with CNTL/Z.
+Router(config)#host R1
+R1(config)#no ip do lo
+R1(config)#line con 0
+R1(config-line)#logg syn
+R1(config-line)#exec-timeout 0 0
+R1(config-line)#exit
+R1(config)#
+R1(config)#int lo0
+R1(config-if)#ip add 2.2.2.2 255.255.255.0
+R1(config-if)#no shut
+R1(config-if)#exit
+R1(config)#int fa0/0
+R1(config-if)#ip add 192.168.1.2 255.255.255.0
+R1(config-if)#no shut
+R1(config-if)#exit
+R1(config)#int e1/0
+R1(config-if)#ip add 192.168.2.2 255.255.255.0
+R1(config-if)#no shut
+R1(config-if)#exit
+R1(config)#router bgp 1
+R1(config-router)#neighbor 192.168.1.1 remote-as 1
+R1(config-router)#neighbor 192.168.2.1 remote-as 1
+R1(config-router)#end
+R1#
+在R0或R1上查看BGP的表项
+R0#sh ip bgp
+R0#
+如果为空，表示没有BGP路由表项
+BGP network命令：表示将某些IP前缀以手动的形式向对等体宣告出去。被发布的IP前缀的掩码必须和network命令精确匹配。
+现在将我的1.1.1.0宣告出去。
+R0(config)#router bgp 1
+R0(config-router)#network 1.1.1.0 mask 255.255.255.0[lty3]
+R0(config-router)#end
+R0#
+现在去对方的BGP表项中看看有没有内容：
+R1#sh ip bgp
+BGP table version is 2[lty4] , local router ID is 2.2.2.2[lty5]
+Status codes: s suppressed, d damped, h history, * valid, &gt; best, i - internal,
+r RIB-failure[刘廷友6] , S Stale
+Origin codes: i - IGP, e - EGP, ? - incomplete
+Network Next Hop Metric LocPrf Weight Path
+* i1.1.1.0/24 192.168.2.1 0 100 0 i
+*&gt;i 192.168.1.1 0 100 0 i
+R1#
+已经有了
+再看看R1上面的路由表：
+R1#sh ip rout
+Codes: C - connected, S - static, R - RIP, M - mobile, B - BGP
+D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area
+N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+E1 - OSPF external type 1, E2 - OSPF external type 2
+i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+ia - IS-IS inter area, * - candidate default, U - per-user static route
+o - ODR, P - periodic downloaded static route
+Gateway of last resort is not set
+1.0.0.0/24 is subnetted, 1 subnets
+B 1.1.1.0 [200/0] via 192.168.1.1, 00:05:10
+[lty7] 2.0.0.0/24 is subnetted, 1 subnets
+C 2.2.2.0 is directly connected, Loopback0
+C 192.168.1.0/24 is directly connected, FastEthernet0/0
+C 192.168.2.0/24 is directly connected, Ethernet1/0
+R1#
+现在通过递归查找看一下1.1.1.0这条路由通过那个接口出去。
+R1#sh ip route 1.1.1.0
+Routing entry for 1.1.1.0/24
+Known via "bgp 1", distance 200, metric 0, type internal
+Last update from 192.168.1.1 00:06:56 ago
+Routing Descriptor Blocks:
+* 192.168.1.1, from 192.168.1.1, 00:06:56 ago[lty8]
+Route metric is 0, traffic share count is 1
+AS Hops 0
+R1#sh ip route 192.168.1.1
+Routing entry for 192.168.1.0/24
+Known via "connected", distance 0, metric 0 (connected, via interface)
+Routing Descriptor Blocks:
+* directly connected, via FastEthernet0/0
+Route metric is 0, traffic share count is 1
+R1#
+分析BGP表：
+R1#sh ip bgp
+BGP table version is 2, local router ID is 2.2.2.2
+Status codes: s suppressed, d damped, h history, * valid, &gt; best, i - internal,
+r RIB-failure, S Stale
+Origin codes: i - IGP, e - EGP, ? - incomplete[lty9]
+Network Next Hop Metric LocPrf Weight Path
+*[lty10] i[lty11] 1.1.1.0/24 192.168.2.1 [lty12] 0[lty13] 100[lty14] 0 [lty15] i[lty16]
+*&gt;[lty17] i 192.168.1.1 0 100 0 i
+R1#
+如果要更详细的看某条路由：
+R1#show ip bgp 1.1.1.0
+BGP routing table entry for 1.1.1.0/24, version 2
+Paths: (2 available, best #2, table Default-IP-Routing-Table)
+Not advertised to any peer
+Local
+192.168.2.1 from 192.168.2.1 (1.1.1.1)
+Origin IGP, metric 0, localpref 100, valid, internal
+Local
+192.168.1.1 from 192.168.1.1 (1.1.1.1)
+Origin IGP, metric 0, localpref 100, valid, internal, best
+R1#
+现在再去R0上面看看BGP表：
+R0#sh ip bgp
+BGP table version is 2, local router ID is 1.1.1.1
+Status codes: s suppressed, d damped, h history, * valid, &gt; best, i - internal,
+r RIB-failure, S Stale
+Origin codes: i - IGP, e - EGP, ? - incomplete
+Network Next Hop Metric LocPrf Weight Path
+*&gt; [lty18] 1.1.1.0/24 0.0.0.0[lty19] 0 [lty20] 32768[lty21] i
+这就是两张BGP表不同之处。
+将前面BGP的配置删除了。
+R0(config)#no router bgp 1
+R1(config)#no router bgp 1
+现在我们通过回环接口来建立BGP邻居
+R0(config)#router bgp 1
+R0(config-router)#neighbor 2.2.2.2 remote-as 1
+R0(config-router)#end
+R1(config)#router bgp 1
+R1(config-router)#neighbor 1.1.1.1 remote-as 1
+现在查看一下BGP邻居表
+R0#sh ip bgp summary
+BGP router identifier 1.1.1.1, local AS number 1
+BGP table version is 1, main routing table version 1
+Neighbor V AS MsgRcvd MsgSent TblVer InQ OutQ Up/Down State/PfxRcd
+2.2.2.2 4 1 0 0 0 0 0 never Active
+R0#
+看看为什么
+R0(config)#router bgp 1
+R0(config-router)#nei
+R0(config-router)#neighbor 2.2.2.2 up
+R0(config-router)#neighbor 2.2.2.2 update-source lo0
+R0(config-router)#end
+R1(config-router)#neighbor 1.1.1.1 up
+R1(config-router)#neighbor 1.1.1.1 update-source lo0
+R1(config-router)#end
+现在看看BGP邻居表：
+R0#sh ip bgp summary
+BGP router identifier 1.1.1.1, local AS number 1
+BGP table version is 1, main routing table version 1
+Neighbor V AS MsgRcvd MsgSent TblVer InQ OutQ Up/Down State/PfxRcd
+2.2.2.2 4 1 0 0 0 0 0 never Active
+R0#
+看看为什么这时候他的状态还是active呢？
+这是因为我们R0上面没有2.2.2.0/24的路由。所以建立不起来邻居。要建立邻居我们就需要有2.2.2.0/24的路由，所以这里我们起一个ospf协议，以保障我们BGP邻居的正常建立。
+R0(config-router)#net 192.168.1.0 0.0.0.255 a 0
+R0(config-router)#net 192.168.2.0 0.0.0.255 a 0
+R0(config-router)#net 1.1.1.0 0.0.0.255 a 0
+R0(config-router)#exit
+R1(config)#router ospf 100
+R1(config-router)#net 192.168.1.0 0.0.0.255 a 0
+R1(config-router)#net 192.168.2.0 0.0.0.255 a 0
+R1(config-router)#net 2.2.2.0 0.0.0.255 a 0
+R1(config-router)#exit
+现在先看看OSPF协议运行起来没有！在R0上面查看一下路由表！看看有没有2.2.2.0/24路由没有。
+R0#sh ip route
+Codes: C - connected, S - static, R - RIP, M - mobile, B - BGP
+D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area
+N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+E1 - OSPF external type 1, E2 - OSPF external type 2
+i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+ia - IS-IS inter area, * - candidate default, U - per-user static route
+o - ODR, P - periodic downloaded static route
+Gateway of last resort is not set
+1.0.0.0/24 is subnetted, 1 subnets
+C 1.1.1.0 is directly connected, Loopback0
+2.0.0.0/32 is subnetted, 1 subnets
+O 2.2.2.2 [110/2] via 192.168.1.2, 00:03:30, FastEthernet0/0
+[lty22] C 192.168.1.0/24 is directly connected, FastEthernet0/0
+C 192.168.2.0/24 is directly connected, Ethernet1/0
+R0#
+现在再来看看我们的BGP的邻居建立起来没有？
+R0#sh ip bgp summary
+BGP router identifier 1.1.1.1, local AS number 1
+BGP table version is 1, main routing table version 1
+Neighbor V AS MsgRcvd MsgSent TblVer InQ OutQ Up/Down State/PfxRcd
+2.2.2.2 4 1 7 7 1 0 0 00:04:03 0
+R0#
+从这里我们可以看见！BGP邻居已经建立起来了！通过回环口来建立邻居，邻居就只有一个了。
+现在将这两台路由器变成EBGP邻居关系。
+现在将两台路由器上面的BGP删除了
+R0(config)#no router bgp 1
+R1(config)#no router bgp 1
+现在建立EBGP邻居
+R0(config)#router bgp 1
+R0(config-router)#nei
+R0(config-router)#neighbor 192.168.2.2 remote-as 1
+R0(config-router)#neighbor 192.168.1.2 remote-as 2
+R0(config-router)#
+*Mar 1 00:59:27.563: %BGP-5-ADJCHANGE: neighbor 192.168.1.2 Up
+R0(config-router)#network
+R0(config-router)#network
+% Incomplete command.
+R0(config-router)#net
+R0(config-router)#network 1.1.1.0 mask 255.255.255.0
+R0(config-router)#end
+R0#
+R1(config)#router bgp 2
+R1(config-router)#nei
+R1(config-router)#neighbor 192.168.1.1 remote
+R1(config-router)#neighbor 192.168.1.1 remote-as 1
+R1(config-router)#end
+现在我们查看一下BGP的邻居表：
+R0#sh ip bgp summary
+BGP router identifier 1.1.1.1, local AS number 1
+BGP table version is 2, main routing table version 2
+1 network entries using 117 bytes of memory
+1 path entries using 52 bytes of memory
+2/1 BGP path/bestpath attribute entries using 248 bytes of memory
+0 BGP route-map cache entries using 0 bytes of memory
+0 BGP filter-list cache entries using 0 bytes of memory
+BGP using 417 total bytes of memory
+BGP activity 1/0 prefixes, 1/0 paths, scan interval 60 secs
+Neighbor V AS MsgRcvd MsgSent TblVer InQ OutQ Up/Down State/PfxRcd
+192.168.1.2 4 2 9 10 2 0 0 00:06:19 0
+192.168.2.2 4 2 5 5 2 0 0 00:00:08 0
+R0#
+现在查看一下BGP表：
+R1#sh ip bgp
+BGP table version is 2, local router ID is 2.2.2.2
+Status codes: s suppressed, d damped, h history, * valid, &gt; best, i - internal,
+r RIB-failure, S Stale
+Origin codes: i - IGP, e - EGP, ? - incomplete
+Network Next Hop Metric LocPrf Weight Path
+* 1.1.1.0/24 192.168.2.1 0 0 1 i
+*&gt; 192.168.1.1 0 0 1 i
+R1#
+看看为什么这里会有两条BGP表项呢？
+现在我们通过回环回来建立一下EBGP邻居：
+R0(config)#no router bgp 1
+R0(config)#router bgp 1
+R0(config-router)#nei
+R0(config-router)#neighbor 2.2.2.2 remote
+R0(config-router)#neighbor 2.2.2.2 remote-as 2
+R0(config-router)#nei
+R0(config-router)#neighbor 2.2.2.2 up
+R0(config-router)#neighbor 2.2.2.2 update-source lo0
+R0(config-router)#nei
+R0(config-router)#neighbor 2.2.2.2 e
+R0(config-router)#neighbor 2.2.2.2 ebgp-multihop
+R0(config-router)#net
+R0(config-router)#network 1.1.1.1
+R0(config-router)#no network 1.1.1.1
+R0(config-router)#net
+R0(config-router)#network 1.1.1.0 mask 255.255.255.0
+R0(config-router)#end
+R0#
+R1(config)#no router bgp 2
+R1(config)#
+*Mar 1 01:08:41.339: %BGP-5-ADJCHANGE: neighbor 192.168.1.1 Down BGP protocol initialization
+*Mar 1 01:08:41.343: %BGP-5-ADJCHANGE: neighbor 192.168.2.1 Down BGP protocol initialization
+R1(config)#router bgp
+R1(config)#router bgp 2
+R1(config-router)#nei
+R1(config-router)#neighbor 1.1.1.1 re
+R1(config-router)#neighbor 1.1.1.1 remot
+R1(config-router)#neighbor 1.1.1.1 remote-as 1
+R1(config-router)#nei
+R1(config-router)#neighbor 1.1.1.1 up
+R1(config-router)#neighbor 1.1.1.1 update-source lo0
+R1(config-router)#nei
+R1(config-router)#neighbor 1.1.1.1 e
+R1(config-router)#neighbor 1.1.1.1 ebgp-multihop
+R1(config-router)#nei
+R1(config-router)#neighbor 2.2.2.0 mask 255.255.255.0
+^
+% Invalid input detected at '^' marker.
+R1(config-router)#
+*Mar 1 01:10:47.403: %BGP-5-ADJCHANGE: neighbor 1.1.1.1 Up
+R1(config-router)#network
+R1(config-router)#network 2.2.2.0 mask 255.255.255.0
+R1(config-router)#end
+R1#
+现在查看一下BGP邻居：
+R1#sh ip bgp summary
+BGP router identifier 2.2.2.2, local AS number 2
+BGP table version is 3, main routing table version 3
+2 network entries using 234 bytes of memory
+2 path entries using 104 bytes of memory
+3/2 BGP path/bestpath attribute entries using 372 bytes of memory
+1 BGP AS-PATH entries using 24 bytes of memory
+0 BGP route-map cache entries using 0 bytes of memory
+0 BGP filter-list cache entries using 0 bytes of memory
+BGP using 734 total bytes of memory
+BGP activity 2/0 prefixes, 2/0 paths, scan interval 60 secs
+Neighbor V AS MsgRcvd MsgSent TblVer InQ OutQ Up/Down State/PfxRcd
+1.1.1.1 4 1 5 5 3 0 0 00:01:59 1
+R1#
+在再看一下BGP表
+R1#sh ip bgp
+BGP table version is 3, local router ID is 2.2.2.2
+Status codes: s suppressed, d damped, h history, * valid, &gt; best, i - internal,
+r RIB-failure, S Stale
+Origin codes: i - IGP, e - EGP, ? - incomplete
+Network Next Hop Metric LocPrf Weight Path
+*&gt; 1.1.1.0/24 1.1.1.1 0 0 1 i
+*&gt; 2.2.2.0/24 0.0.0.0 0 32768 i
+R1#
+log-adjacency-changes这条命令从我们运行BGP路由协议以后，自动会运行这条命令。用于向用户反映BGP事件
+BGP同步：BGP路由器不会把自己通过IBGP对等到体学习到的外部BGP更新（EBGP更新）宣告给自己的EBGP对等体，除非这台BGP路由器已经通过IGP学习到该外部EBGP路由。
+BGP表的IP前缀进入IP路由表的条件：下一跳可达。这条BGP表就会复制到路由表里面。
+--------------------------------------------BGP原理已完-------------------------------------------------------
+BGP选路策略：
+1． BGP过滤
+2． BGP选路控制
+IP前缀列表（prefix list）vs. IP ACL
+例如：
+Access-list 1 permit 192.168.1.0 0.0.0.255 （192.168.1.0/24）
+Ip prefix-list mybgp[lty23] seq 5 [lty24] permit 192.168.1.0/24 （192.168.1.0/24）
+前缀列表里面有一个
+把B类地址中主机数量有254的子网全部给挑出来。
+Ip prefix-list my permiy 128.0.0.0/2 ge[lty25] 24 le[lty26] 24[lty27]
+正则表达式（regular expression，regex）
+[lty1]启动BGP路由协议
+[lty2]指定邻居，后面的remote-as是指AS号，如果这个AS号与自己BGP后面的AS号相同的话表示是IBGP邻居，如果两个AS号表示是EBGP邻居
+[lty3]宣告网段，在这被发布的IP前缀的掩码必须和network命令精确匹配。
+[lty4]BGP表的版本号，每一次更新了路由信息时这个版本号就会向上加1
+[lty5]本地的RID号
+[刘廷友6]一般由于地址冲突带来的故障，一般对通信不会产生影响。
+[lty7]这一条就是通过BGP学习过来的！
+在这里要注意看其它的直连路由都有出站接口，而这条BGP路由没有出站接口。
+[lty8]
+[lty9]起源代码
+[lty10]*表示有效的
+[lty11]表示这个条目是通过IBGP或EBGP学习过来的
+[lty12]下一跳
+[lty13]MED
+[lty14]本地优先级
+[lty15]权重
+[lty16]I表示起源于IGP
+[lty17]这个条目作为bast最佳的，并放入路由表
+[lty18]这里没有i，表示自己产生的
+[lty19]自己产生的下一跳是 0.0.0.0
+[lty20]自己产生的本地优先级为空
+[lty21]自己产生的权重是32768
+[lty22]我们可以看见，这里OSPF已经运行起来了！2.2.2.0已经学到了！
+[lty23]命令
+[lty24]序列号，默认是5
+[lty25]大于等于
+[lty26]小于等于
+[lty27]这样写表示等于24

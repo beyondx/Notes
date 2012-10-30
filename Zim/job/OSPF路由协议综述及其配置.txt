@@ -1,0 +1,160 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-09-03T19:57:11+08:00
+
+====== OSPF路由协议综述及其配置 ======
+Created Monday 03 September 2012
+
+链路状态路由协议（link-state routing protocol）的一些特征：
+
+　　1.对网络发生的变化能够快速响应
+　　2.当网络发生变化的时候发送**触发式更新**（triggered update）
+　　3.发送周期性更新（**链路状态刷新**），间隔时间为30分钟
+
+链路状态路由协议只在网络拓扑发生变化以后产生路由更新。当链路状态发生变化以后，检测到变化的设备创建__LSA（link state advertisement）__，通过使用__组播地址__传送给所有的__邻居设备__，然后每个设备拷贝一份LSA，更新它自己的__链路状态数据库（link state database，LSDB）__，接着再转发LSA给其他的邻居设备。这种__LSA的洪泛（flooding）__保证了所有的路由设备在更新自己的路由表之前更新它自己的LSDB
+
+LSDB通过使用__Dijkstra算法__（**shortest path first**，SPF）来计算到达目标网络的最佳路径，建立一条__SPF树（tree）__，然后最佳路径从SPF树里选出来，被放进路由表里。
+
+OSPF和IS-IS协议被归类到__链路状态路由协议__中。链路状态路由协议在一个特定的__区域（area）__里从邻居处收集网络信息，一旦路由信息都被**收集齐**以后，每个路由器开始通过使用Dijkstra算法（SPF）**独立计算**到达目标网络的最佳路径
+
+运行了链路状态路由协议的路由器跟踪以下信息：
+　　1.它们各自的邻居
+　　2.在同一个区域中的所有路由器
+　　3.到达目标网络的最佳路径
+
+为了能够做出更好的路由决策，OSPF路由器必须维持的有以下内容：
+　　1.neighbor table：也叫__adjacency database__.存储了邻居路由器的信息。如果一个OSPF路由器和它的邻居路由器失去联系，在几秒中的时间内，它会标记所有到达那条路由均为无效并且重新计算到达目标网络的路径
+　　2.topology table：一般叫做LSDB.  OSPF路由器通过LSA学习到其他的路由器和网络状况，__LSA存储在LSDB中__
+　　3.routing table：也就是我们所说的路由表了，也叫**forwarding database**，包含了到达目标网络的最佳路径的信息
+
+链路状态路由协议和距离向量路由协议的一个区别就是：距离向量路由协议是routing by rumors，也就是说，距离向量路由协议依靠邻居发给它的信息来做路由决策，而且路由器不需要保持完整的网络信息；而运行了链路状态路由协议的路由器保持的有__完整的网络信息的快照__，而且每个路由器自己做出路由决策
+
+OSPF的网络设计要求是__双层层次化（2-layer hierarchy）__，包括如下2层：
+　　1.transit area（backbone或area 0）
+　　2.regular areas（nonbackbone areas）
+
+　　transit area负责的主要功能是IP包快速和有效的传输。transit area__互联__OSPF其他区域(类型)。一般的，这个区域里不会出现端用户（end user）
+　　regular areas负责的主要功能就是**连接用户和资源**。这种区域一般是根据功能和地理位置来划分。一般的，一个regular area__不允许__其他区域的流量通过它到达另外一个区域，__必须穿越transit area__比如area 0.   regular areas还可以有很多子类型，比如stub area，locally area和not-so-stubby area
+
+在链路状态路由协议中，所有的路由器都保持有LSDB，OSPF路由器越多，LSDB就越大。这可能对了解完整的网络信息有帮助，但是随着网络的增长，__可扩展性__的问题就会越来越大。采用的__折中方案就是引入区域的概念__。在某一个区域里的路由器__只保持该区域中所有路由器__**或链路的详细信息**和其他区域的一般信息。当某个路由器或某条链路出故障以后，信息**只会**在那个区域以内在邻居之间传递。那个区域以外的路由器不会收到该信息。OSPF要求层次化的网络设计，意味着所有的区域要和area 0__直接相连__。如下图：　　
+　{{./1.jpg}}
+
+注意area 1和area 2或3之间的连接是不允许的，它们都必须通过backbone area 0进行连接。Cisco建议每个区域中路由器的数量为50到100个构建area 0的路由器称为__骨干路由器__（backbone router，BR），如上图，A和B就是BR；__区域边界路由器__（area border router，ABR）连接area 0和nonbackbone areas.如图，C，D和E就是ABR. 
+
+ABR通常具有以下特征：
+　　1.**分隔LSA洪泛的区域**
+　　2.是区域地址汇总的主要因素
+　　3.一般做为默认路由的源头
+　　4.__为每个区域保持LSDB__
+
+理想的设计是使每个ABR只连接2个区域，backbone和其他区域，3个区域为上限
+
+
+运行OSPF的路由器通过交换__hello包__和别的路由器建立__邻接（adjacency）关系__，过程如下：
+　　1.路由器和别的路由器交换hello包，目标地址采用**多播地址**
+　　2.hello包交换完毕，**邻接关系形成**
+　　3.接下来通过交换LSA和对接收方的确认进行**同步LSDB**.对于OSPF路由器而言，进入__完全__**邻接状态**
+　　4.如果需要的话，路由器转发新的LSA给其他的邻居，来保证整个区域内LSDB的完全同步
+
+　　对于点到点的WAN串行连接，两个OSPF路由器通常使用**HDLC或PPP**来形成完全邻接状态
+　　对于LAN连接，选举一个路由器做为__designated router（DR）__再选举一个做为__backup designated router（BDR）__，所有其他的和DR以及BDR相连的路由器形成完全邻接状态而且**只传输LSA给DR和BDR**.
+
+DR从邻居处转发更新到另外一个邻居那里。DR的主要功能就是在一个LAN内的所有路由器拥有相同的数据库，而且把__完整的数据库信息__发送给__新加入__的路由器。路由器之间还会和LAN内的其他路由器（非DR/BDR，即DR OTHERs）维持一种**部分邻居关系**（two-way adjacency）。OSPF的邻接一旦形成以后，会交换LSA来同步LSDB，LSA将进行可靠的洪泛
+
+链路状态陆游协议使用Dijkstra算法来查找到达目标网络中的最佳路径。所有的路由器拥有**相同**的LSDB后，__把自己放进SPF tree中的root里__，然后根据每条链路的耗费（cost），选出耗费最低的做为最佳路径，最后把最佳路径放进**forwarding database（路由表）**里。下图就是一个SPF计算的例子：　　
+　
+{{./2.jpg}}
+
+　　1.LSA遵循split horizon原则，H对E宣告它的存在，E把H的宣告和它自己的宣告再传给C和G；C和G再和之前类似，继续传播开来……
+　　2.X有4个邻居：A，B，C和D，假设这里都是以太网，每条网链路的耗费为10，经过计算，路由器可以算出最佳路径。上图的右半部分实线所标即为最佳路径
+
+　　LS Data Structures： LSA Options
+关于LSA的操作流程图如下：　　
+　{{./3.jpg}}
+
+如图可以看出当路由器收到一个LSA以后，先会查看它自己的LSDB看有没有相应的条目，如果没有就加进自己的LSDB中去，并反馈__LSA确认包（LSAck）__，接着再继续洪泛LSA，最后运行SPF算法算出新的路由表
+
+如果当它收到LSA的时候，自己的LSDB有该条目而且__版本号__一样，就忽略这个LSA；如果有相应条目，但是收到的LSA的版本号__更新__，就加进自己的LSDB中，发回LSAck，洪泛LSA，最后用SPF计算最佳路径；如果版本号没有自己LSDB中那条新，就__反馈LSU信息给发送源__
+
+Types of OSPF Packets
+OSPF包的5种类型如下：
+　　1.hello：用来建立邻居关系的包
+　　2.database description（DBD）：用来检验路由器之间数据库的同步
+　　3.link state request（LSR）：链路状态请求包
+　　4.link state update（LSU）：特定链路之间的请求记录
+　　5.link state acknowledgement（LSAck）：确认包
+
+OSPF Packet Header Format
+　　5种OSPF包都是__直接被封装在IP包里__的而不使用TCP或UDP.由于没有使用可靠的TCP协议，但是OSPF包又要求可靠的传输，所以就有了LSAck包。如下图所示就是OSPF包在IP包里的形式：　　
+　{{./4.jpg}}
+
+　　协议号为89（EIGRP协议号为8，一些字段如下：
+　　1.Version Number：当前为OSPF版本2
+　　2.Type：定义OSPF包的类型
+　　3.Packet Length：包的长度，单位字节
+　　4.**Router ID（RID）**：产生OSPF包的__源路由器__
+　　5.**Area ID**：定义OSPF包是从哪个area产生出来的
+　　6.Checksum（校验和）：错误校验
+　　7.**Authentication Type**：验证方法，可以是明文（cleartext）密码或者是Message Digest 5（MD5）加密格式
+　　8.Data：对于hello包来说，该字段是已知邻居的列表；对于DBD包来说，该字段包含的是__LSDB的汇总信息__，包括RID等等；对于LSR包来说，该字段包含的是需要的LSU类型和需要的LSU类型的RID；对于LSU包来说，包含的是完全的LSA条目，多个LSA条目可以装在一个包里；对于LSAck来说，字段为空
+
+OSPF Neighbor Adjacency Establishment
+__Hello协议__用来建立和保持OSPF邻居关系，采用__多播地址224.0.0.5__，hello包包含的信息如下：
+　　1.Router ID（RID）：路由器的32位长的一个唯一标识符，选举规则是，如果loopback接口不存在的话，就选物理接口中IP地址等级最高的那个；否则就选取loopback接口
+　　2.hello/dead intervals：定义了发送hello包频率（默认在一个多路访问网络中间隔为__10秒__）；dead间隔是4倍于hello包间隔。邻居路由器之间的这些计时器必须设置成一样
+　　3.neighbors：__邻居列表__
+　　4.area ID：为了能够通信，OSPF路由器的接口必须属于__同一网段中的同一区域（area）__，即共享子网以及子网掩码信息
+　　5.__router priority__：优先级，选举DR和BDR的时候使用。8位长的一串数字
+　　6.DR/BDR IP address：DR/BDR的IP地址信息
+　　7.authentication password：如果启用了验证，邻居路由器之间必须交换相同的密码信息。此项可选
+　　8.stub area flag：stub area是通过使用默认路由代替路由更新的一种技术（有点像EIGRP中的stub功能）
+
+Establishing Bidirectional Communication
+1.星型(star/hub-and-spoke):最常见的帧中继网络拓扑,代价最小
+2.全互连(full-mesh):冗余,但是代价大,在这样的环境中计算VC的数量,使用n(n-1)/2的公式,n为网络中的节点数
+3.部分互连(partial-mesh):前两种的折中方案
+
+OSPF运行的两种RFC中定义的模式如下:
+
+1.NBMA:一般和部分互连的网络结合使用,需要选举DR/BDR和人工指定邻居.优点是相对point-to-multipoint模式它的负载较低
+2.point-to-multipoint:把非广播的网络当作点到点连接的集合,自动发现邻居,不指定DR/BDR,一般和部分互连的网络结合使用.优点是配置较为简便
+
+一些其他的可运行模式如下:
+
+1.point-to-multipoint nonbroadcast
+2.broadcast
+3.point-to-point
+
+定义OSPF网络类型的命令如下:
+
+Router(config-if)#ip OSPF network [{broadcast | nonbroadcast | point-to-multipoint | point-to-multipoint nonbroadcast}]
+
+几种选项的含义如下:
+
+1.broadcast:使得WAN接口看上去像LAN接口;一个IP子网;多播hello包自动发现邻居;选举DR/BDR;要求网络全互连
+2.nonbroadcast(NBMA):一个IP子网;邻居手工指定;选举DR/BDR;DR/BDR要求和DROTHER完全互连;一般用在部分互连的网络中
+3.point-to-multipoint:一个IP子网;多播hello包自动发现邻居;不要求DR/BDR的选举;一般用在部分互连的网络中
+4.point-to-multipoint nonbroadcast:如果VC中多播和广播能力没有启用的话就不能使用point-to-multipoint模式,也路由器没办法多播hello包;邻居必须人工指定;不需选举DR/BDR
+5.point-to-point:一个子网;不选举DR/BDR;当只有2个路由器的接口要形成邻接关系的时候才使用;接口可以为LAN或WAN接口
+
+Common OSPF Configuration for Frame Relay
+
+先看看NBMA模式,如下图:
+
+
+1.OSPF会把NBMA当作broadcast网络进行处理(比如LAN)
+2.如图,所有的serial口处于同一子网
+3.ATM,X.25和帧中继默认为NBMA操作
+4.邻居手动指定
+5.洪泛LSU的时候,要对每条PVC进行洪泛
+6.RFC 2328兼容
+
+对NBMA类型人工指定邻居使用如下命令:
+
+Router(config-router)#neighbor [x.x.x.x] priority [number] poll-interval [number]
+
+x.x.x.x为邻居的IP地址
+
+priority [number]为优先级,如果设置为0的话将不能成为DR/BDR
+
+poll-interval [number]是轮询的间隔时间,单位为秒.NBMA接口发送hello包给邻居之前等待的时间

@@ -1,0 +1,35 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-10-24T09:48:16+08:00
+
+====== Virtual file system ======
+Created Wednesday 24 October 2012
+http://en.wikipedia.org/wiki/Virtual_file_system
+From Wikipedia, the free encyclopedia
+
+A virtual file system (VFS) or virtual filesystem switch is __an abstraction layer on top of a more concrete file system__. The purpose of a VFS is to allow client applications __to access different types of concrete file systems in a uniform way__. A VFS can, for example, be used to access local and network storage devices __transparently__ without the client application noticing the difference. It can be used to bridge the differences in Windows, Mac OS and Unix filesystems, so that applications can access files on local file systems of those types without having to know what type of file system they are accessing.
+
+__A VFS specifies an interface (or a "contract") between the kernel and a concrete file system__. Therefore, it is easy to add support for new file system types to the kernel simply __by fulfilling the contract__. The terms of the contract might change incompatibly from release to release, which would require that concrete file system support be recompiled, and possibly modified before recompilation, to allow it to work with a new release of the operating system; or the supplier of the operating system might make only backward-compatible changes to the contract, so that concrete file system support built for a given release of the operating system would work with future versions of the operating system.
+
+===== Implementations =====
+One of the first virtual file system mechanisms on **Unix-like systems** was introduced by Sun Microsystems in **SunOS 2.0 in 1985**. It allowed Unix system calls to access local UFS file systems and remote NFS file systems transparently. For this reason, Unix vendors who licensed the NFS code from Sun often copied the design of Sun's VFS. 
+
+Other file systems could be plugged into it also: there was an implementation of the **MS-DOS FAT file system** developed at Sun that plugged into the SunOS VFS, although it wasn't shipped as a product until **SunOS 4.1**. The SunOS implementation was the basis of the VFS mechanism in System V Release 4.
+
+John Heidemann developed __a stacking VFS__ under SunOS 4.0 for the experimental Ficus file system. This design provided for code reuse among file system types with differing but similar semantics (e.g., an encrypting file system could reuse all of the naming and storage-management code of a non-encrypting file system). Heidemann adapted this work for use in 4.4BSD as a part of his thesis research; descendants of this code underpin the file system implementations in modern BSD derivatives including Mac OS X.
+
+Other Unix virtual file systems include the File System Switch in System V Release 3, the Generic File System in Ultrix, and __the VFS in Linux__. In OS/2 and Microsoft Windows, the virtual file system mechanism is called the Installable File System.
+
+The __Filesystem in Userspace (FUSE) mechanism __allows userland code to plug into the virtual file system mechanism in Linux, NetBSD, FreeBSD, OpenSolaris, and Mac OS X.
+
+In Microsoft Windows, virtual filesystems can also be implemented through userland Shell namespace extensions; however, they do not support the lowest-level file system access application programming interfaces in Windows, so not all applications will be able to access file systems that are implemented as namespace extensions. 
+
+__KIO and GVFS/GIO__ provide similar mechanisms in the KDE and GNOME desktop environments (respectively), with similar limitations, although they can be made to use FUSE techniques and therefore integrate smoothly into the system.
+
+===== Single-file virtual file systems =====
+Sometimes Virtual File System refers to a file or a group of files (not necessarily inside a concrete file system) that acts as __a manageable container__ which should provide the functionality of a concrete file system through the usage of a **software**. Examples of such containers are SolFS or a single-file virtual file system in an emulator like PCTask or so-called WinUAE, Oracle's VirtualBox, Microsoft's Virtual PC, VMware.
+
+The primary benefit for this type of file system is that __it is centralized and easy to remove__. A single-file virtual file system may include all the basic features expected of any file system (virtual or otherwise), but access to the internal structure of these file systems is often limited to programs specifically written to make use of the single-file virtual file system (instead of implementation through a driver allowing universal access).  Another major drawback is that performance is relatively low when compared to other virtual file systems. Low performance is mostly due to the cost of shuffling virtual files when data is written or deleted from the virtual file system.
+
+===== Implementation of single-file virtual filesystems =====
+Direct examples of single-file virtual file systems include emulators, such as PCTask and WinUAE, which encapsulate not only the filesystem data but also emulated disk layout. This makes it easy to treat an OS installation like any other piece of software—transferring it with removable media or over the network.

@@ -67,12 +67,10 @@ dfs! s
 [geekard@geekard ~]$ 
 
 
-
-
 *********** 字符串中若含有空格、换行、TAB键，则必须要用引号包围：
 [geekard@geekard ~]$ echo "dfd\df"
 dfd\df
-[geekard@geekard ~]$ echo 'df    #字符串中可以包含换行，但是C语言的字符串中不行(必须要使用转义字符)。
+[geekard@geekard ~]$ echo 'df    #__Shell字符串中可以包含换行__，但是C语言的字符串中不行(必须要使用转义字符)。
 > df'
 df
 df

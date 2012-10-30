@@ -1,0 +1,80 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-10-25T10:41:50+08:00
+
+====== linux中使用MMAP访问内核虚拟地址 ======
+Created Thursday 25 October 2012
+
+mmap是作为用户空间访问内核空间（或者设备空间）等的接口，本文今天讨论的是，使用mmap访问内核虚拟地址空间的内存。
+
+===== 预备 =====
+内核地址空间的地址，无论是从kmalloc还是vmalloc获得的，都称为__内核虚拟地址（__即内核可以访问的地址），这些地址都对应着物理内存中的一个个页面（即page)。这里不讨论有关高端内存映射的问题，因为通过正常手段得到了一个虚拟地址后，内核必然已经建立好其中的映射关系以及其中的page结构。kmalloc和vmalloc分配内存最大的不同在于，kmalloc能分配到物理上连续的页，所以kmalloc得到的地址也称为“逻辑地址”（因为是连续的页，所以访问物理内存只需要一个偏移量计算即可，速度快）。系统运行久了以后，连续的地址当然变少，如果在这个时候，分配大片内存，kmalloc得不到满足，而可能需要内核进行移动页面等操作，无益于系统内存的利用和管理。vmalloc分配内存时，不考虑物理内存中是否连续，而使用一个表来转换虚拟地址与物理地址的关系。在分配大内存的时候，vmalloc成功率高，也很好地利用了内存空间。
+
+为了以下的叙述，必须知道，kmalloc分配到连续的物理内存页，而vmalloc则不连续
+
+===== mmap的实现 =====
+在标准的 file_operation 中，mmap的原型为：
+int mmap(struct file *file, struct vm_area_struct *vma);
+其中的 struct vm_area_struct 结构体，是__由内核初始化的，里面给出了内核赋予用户空间的虚拟地址范围等信息（所以驱动不用手动构造该结构）__。
+
+mmap的操作实际上为，将内核空间的地址与页的对应关系，转化为用户空间中的对应关系。
+
+==== 连续的页映射（kmalloc分配的空间） ====
+其中最常用到的函数为：
+int remap_pfn_range(struct vm_area_struct *vma, unsigned long addr, unsigned long pfn, unsigned long size, pgprot_t prot);
+这个函数就完成“将内核空间的地址与页的对应关系，转化为用户空间中的对应关系”。pfn是Page Frame Number的缩写，即表示一个页的编号。
+
+从函数名称便可以看出，它”remap”一个”range”的”pfn”，就是重新映射一个范围的页表。也就是只能映射连续的页。
+因此这个函数只适用于__连续的物理内存页__（即kmalloc或者__get_free_pages获得的）
+
+调用方法：rempa_pfn_range(vma, vma->vm_start, **vma->vm_pgoff**, vma->vm_end - vm_start, vma->vm_page_prot)
+
+==== 不连续的页映射（vmalloc分配的空间） ====
+这种情况可以使用内核提供的vm_operations_struct结构。其结构如下 ：
+struct vm_operations_struct {
+        void (*open)(struct vm_area_struct * area);
+        void (*close)(struct vm_area_struct * area);
+        int __(*fault)__(struct vm_area_struct *vma, struct vm_fault *vmf);
+  /* ..... */
+}
+open和close方法不必多说，平常也很少使用。其中的fault原型，指出了内核在找不到某个地址对应的页时，调用的函数。
+
+于是我们来理一理不连续的页mmap的思路：
+由于页不连续，不能使用remap_pfn_range，即没有建立地址和页的对应关系，所以在MMAP后，用户访问该范围的某地址时，
+肯定会发生__缺页异常__，即找不到页！这时会调用fault函数，由驱动来负责寻找这页！怎么找呢？
+
+首先，我们可以计算一下，用户试图访问的这个地址，离映射起始地址的偏移 offset；
+然后，通过这个偏移 offset，我们可以得到内核空间中的地址（通过与vmalloc得出的地址相加即可）；
+最后，通过vmalloc_to_page函数，得到我们找到的内核虚拟地址对应的页表。这就是这个用户地址所对应的页表。
+
+**实例代码：**
+void * kernel_space_addr; /* 将来在某地分配 */
+unsigned long kernel_space_size; /* 指定分配空间的大小 */
+ 
+static int vma_fault(struct vm_area_struct *vma, struct vm_fault *vmf) {
+     unsigned long offset;
+     void * our_addr;
+ 
+     offset = (unsigned long)vmf->virtual_address - (unsigned long)vma->vm_start;  /* 计算PAGE_FAULT时的偏移量 */
+     if (offset >= kernel_space_size) {  return -VM_FAULT_NOPAGE; }  /* 这次是真的页错误了 */
+     our_addr = kernel_space_addr + offset; /* 得到该偏移量下的内核虚拟地址 */
+     vmf->page = __vmalloc_to_page__(our_addr); /* 将得到的页面告知内核 */
+     get_page(vmf->page); /* 别忘了增加其引用计数 */
+     return 0;
+}
+ 
+static const struct vm_operations_struct vmops = {
+		__.fault__	                =	vma_fault,
+}; 
+ 
+int mmap(struct file *file, struct vm_area_struct *vma) {
+    vma->vm_ops = &amp;vmops; /* 指定vm_ops */
+    vma->vm_flags |= VM_RESERVED;  /* 声明这片内存区不能交换！ */
+    return 0;
+}
+
+不连续页的另外一个实现：__remap_vmalloc_range__
+
+这是2.6.18后的内核版本实现的，使用方法也很简单：
+int remap_vmalloc_range(struct vm_area_struct *vma, void *addr,unsigned long pgoff);
+addr为vmalloc分配的地址，pgoff为页偏移量（一般为0即可）。

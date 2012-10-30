@@ -48,7 +48,8 @@ http://molinux.blog.51cto.com/2536040/469296
     4 
      
     [root@localhost ~]# 
-    [root@localhost ~]# A[0]=9 [root@localhost ~]# A[10]=1 
+    [root@localhost ~]# A[0]=9
+    [root@localhost ~]# A[10]=1 
     [root@localhost ~]# echo ${A[*]} 
     9 1 
     [root@localhost ~]# echo ${#A[*]} 

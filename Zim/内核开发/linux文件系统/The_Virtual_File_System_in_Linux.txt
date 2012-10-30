@@ -1,0 +1,260 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-10-24T12:57:07+08:00
+
+====== The Virtual File System in Linux ======
+Created Wednesday 24 October 2012
+http://www.linux.it/~rubini/docs/vfs/vfs.html
+(May 1997)
+Reprinted with permission of Linux Journal
+
+This article outlines the VFS idea and gives an overview of the how the Linux kernel accesses its file hierarchy. The information herein refers to Linux 2.0.x (for any x) and 2.1.y (with y up to at least 18). The sample code, on the other hand, is for 2.0 only.
+by Alessandro Rubini
+
+The main data item in any Unix-like system is the __``file''__, and __an unique pathname__ identifies each file within a running system. Every file appears like any other file in the way is is accessed and modified: the same system calls and the same user commands apply to every file. This applies independently of both the physical medium that holds information and the way information is laid out on the medium. __Abstraction from the physical storage of information__ is accomplished by dispatching data transfer to different device drivers; __abstraction from the information layout__ is obtained in Linux through the VFS implementation.
+
+===== The Unix way =====
+Linux looks at its file-system in the way Unix does: it adopts the concepts of __super-block, inode, directory and file__ in the way Unix uses them. The tree of files that can be accessed at any time is determined by how the different parts are assembled together, each part being a partition of the hard driver or another physical storage device that is ``mounted'' to the system.
+
+While the reader is assumed to be confident with the idea of mounting a file-system, I'd better detail the concepts of super-block, inode, directory and file.
+
+* The **super-block** owes its name to its historical heritage, from when **the first data block of a disk or partition** was used to hold **meta-information about the partition itself**. The super-block is now detached from the concept of data block, but still is __the data structure that holds information about each mounted file-system__. The actual data structure in Linux is called **struct super_block** and hosts various housekeeping information, like //mount flags, mount time and device blocksize//. The 2.0 kernel keeps a static array of such structures to handle up to 64 mounted file-systems.
+* An **inode** is __associated to each file__. Such __an ``index node'' encloses all the information about a named file except its name and its actual data__. The owner, group, permissions and access times for a file are stored in its inode, as well as the size of the data it holds, the number of links and other information. The idea of detaching file information from filename and data is what __allows to implement hard-links__ -- and to use the `dot' and `dot-dot' notations for directories without any need to treat them specially. An inode is described in the kernel by a **struct inode**.
+* The **directory** is a file that __associates inodes to filenames__. The kernel has no special data strcture to represent a directory, which is treated like a normal file in most situations. Functions specific to each filesystem-type are used to read and modify the contents of a directory independently of the actual layout of its data.
+* The **file** itself is something that is //associated to an inode//. Usually files are data areas, but they can also be directories, devices, FIFO's or sockets. An ``open file'' is described in the Linux kernel by a **struct file** item; the structure encloses a pointer to the inode representing the file. file structures are created by system calls like open, pipe and socket, and are shared by father and child across fork.
+
+===== Object Orientedness =====
+While the previous list describes the theoretical organization of information, an operating system must be able to deal with different ways to __layout information on disk__. While it is theoretically possible to __look for an optimum layout of information on disks and use it for every disk partition__, most computer users need to access all of their hard drives without reformatting, mount NFS volumes across the network, and sometimes even access those funny CDROM's and floppy disks whose filenames can't exceed 8+3 characters.
+
+The problem of handling different data formats in a transparent way has been addresses by __making super-blocks, inodes and files into ``objects''__: an object declares a set of operations that must be used to deal with it. The kernel won't be stuck into big switch statements to be able to access the different physical layouts of data, and new ``filesystem types'' can be added and removed at run time.
+
+All the VFS idea, therefore, is implemented around sets of operations to act on the objects. Each object includes a structure declaring its own operations, and most operations receive a pointer to the ``self'' object as first argument, thus allowing modification of the object itself.
+
+In practice, a super-block structure, encloses a field ``**struct super_operations *s_op**'', an inode encloses ``**struct inode_operations *i_op**'' and a file encloses ``**struct file_operations *f_op**''.
+
+All the data handling and buffering that is performed by the Linux kernel is independent of the actual format of the stored data: every communication with the storage medium passes through one of the operations structures. The ``**file-system type**'', then, is the software module that is in charge of mapping the operations to the actual storage mechanism -- either a block device, a network connection (NFS) or virtually any other mean to store/retrieve data. These software modules implementing filesystem types can either be linked to the kernel being booted or actually compiled in the form of loadable modules.
+
+The current implementation of Linux allows to use loadable modules for all the filesystem types but __the root filesystem__ (the root filesystem must be mounted before loading a module from it). Actually, __the initrd machinery__ allows to load a module before mounting the root filesystem, but this technique is usually only exploited in installation floppies.
+
+In this article I use the phrase ``filesystem module'' to refer independently to a loadable module or a filesystem decoder linked to the kernel.
+
+This is in summary how all the file handling happens for any given file-system type, and is depicted in figure 1.
+{{./lj-vfs.png}}
+	 Figure 1: VFS data structure (available as PostScript here
+
+**struct file_system_type** is a structure that declares only its own name and **a read_super function**. At mount time, the function is passed information about the storage medium being mounted and is asked to fill a super-block structure, as well al loading **the inode of the root directory** of the filesystem as **sb-">"s_mounted** (where sb is the super-block just filled). The additional field **requires_dev** is used by the filesystem type to state if it will access __a block device or not__: for example, the NFS and proc types don't require a device, while ext2 and iso9660 do. After the superblock is filled, struct file_system_type is not used any more; only the superblock just filled will hold a pointer to it in order to be able to give back status information to the user (**/proc/mounts** is an example of such information). The structure is shown in panel 1.
+
+struct file_system_type中的read_super函数的功能是：
+1.在mount含有该文件系统的存储媒介时，读取该媒介的信息用以填充该媒介对应的文件系统的struct super_block。
+2.从媒介中读取其文件系统根目录的inode信息用以填充文件系统根目录的struct inode，同时将sb->s_mounted指向该inode。
+
+**Panel 1**
+struct file_system_type {
+    struct super_block *(*read_super) (struct super_block *, void *, int);
+    const char *name;
+    int requires_dev;
+    struct file_system_type * next; /* there's a linked list of types */
+};
+
+The __structure  super_operations__ is used by the kernel to read/write inodes, write superblock information back to disk and collect statistics (to deal with the **statfs** and **fstatfs** system calls). When a filesystem is eventually unmounted, the put_super operation is called -- in standard kernel wording ``get'' means ``allocate and fill'', ``read'' means ``fill'' and ``put'' means ``release''. **The super_operations declared by each filesystem type** are shown in panel 2.
+
+每个文件系统类型module还要声明一个与之相关的读取、写入、释放inode和supter block相关的super_operations 结构
+
+**Panel 2**
+struct super_operations {
+    void (*read_inode) (struct inode *);  /* fill the structure */
+    int (*notify_change) (struct inode *, struct iattr *);
+    void (*write_inode) (struct inode *);
+    void (*put_inode) (struct inode *);
+    void (*put_super) (struct super_block *);
+    void (*write_super) (struct super_block *);
+    void (*statfs) (struct super_block *, struct statfs *, int);
+    int (*remount_fs) (struct super_block *, int *, char *);
+};
+
+After a memory copy of the inode has been created, the kernel will act on it using its own operations. **struct inode_operations** is the second set of operations declared __by filesystem modules__, and are listed below: they deal __mainly with the directory tree__. Directory-handling operations are part of the inode operations because the implementation of a dir_operations structure would bring in extra conditionals in filesystem access. Instead, inode operations that only make sense for directories will do their own error checking. The first field of the inode operations defines the file operations for regular files: if the inode is a FIFO, a socket or a device specific file operations will be used. Inode operations appear in panel 3, note that the definition of rename was changed in 2.0.1.
+
+**Panel 3**
+struct inode_operations {  //由文件系统module提供，主要是一些和目录树处理相关的函数。
+    __struct file_operations__ * default_file_ops;   //非目录文件的操作方法
+    int (*create) (struct inode *,const char *,int,int,struct inode **);
+    int (*lookup) (struct inode *,const char *,int,struct inode **);
+    int (*link) (struct inode *,struct inode *,const char *,int);
+    int (*unlink) (struct inode *,const char *,int);
+    int (*symlink) (struct inode *,const char *,int,const char *);
+    int (*mkdir) (struct inode *,const char *,int,int);
+    int (*rmdir) (struct inode *,const char *,int);
+    int (*mknod) (struct inode *,const char *,int,int,int);
+    //int (*rename)// (struct inode *,const char *,int, struct inode *,
+               const char *,int, int); /* this from 2.0.1 onwards */
+    int (*readlink) (struct inode *,char *,int);
+    int (*follow_link) (struct inode *,struct inode *,int,int,struct inode **);
+    int (*readpage) (struct inode *, struct page *);
+    int (*writepage) (struct inode *, struct page *);
+    int (*bmap) (struct inode *,int);
+    void (*truncate) (struct inode *);
+    int (*permission) (struct inode *, int);
+    int (*smap) (struct inode *,int);
+};
+
+__The file_operations, finally, specify how data in the actual file is handled__: the operations implement the low-level details of read, write, lseek and the other data-handling system calls. Since the same file_operations structure is used to act on devices, it also encloses some fields that only make sense for char or block devices. It's interesting to note that the structure shown here is the one declared in the 2.0 kernels, while 2.1 chenged the prototypes of read, write and lseek to allow a wider range of file offsets. The file operations (as of 2.0) are shown in panel 4.
+
+**Panel 4**
+struct file_operations {
+	 struct module *owner;
+	 loff_t (*llseek) (struct file *, loff_t, int);
+	 ssize_t (*read) (struct file *, char __user *, size_t, loff_t *);
+	 ssize_t (*write) (struct file *, const char __user *, size_t, loff_t *);
+	 ssize_t (*aio_read) (struct kiocb *, const struct iovec *, unsigned long, loff_t);
+	 ssize_t (*aio_write) (struct kiocb *, const struct iovec *, unsigned long, loff_t);
+	 int (*readdir) (struct file *, void *, filldir_t);
+	 unsigned int (*poll) (struct file *, struct poll_table_struct *);
+	 int (*ioctl) (struct inode *, struct file *, unsigned int, unsigned long);
+	 long (*unlocked_ioctl) (struct file *, unsigned int, unsigned long);
+	 long (*compat_ioctl) (struct file *, unsigned int, unsigned long);
+	 int (*mmap) (struct file *, struct vm_area_struct *);
+	 int (*open) (struct inode *, struct file *);
+	 int (*flush) (struct file *, fl_owner_t id);
+	 int (*release) (struct inode *, struct file *);
+	 int (*fsync) (struct file *, struct dentry *, int datasync);
+	 int (*aio_fsync) (struct kiocb *, int datasync);
+	 int (*fasync) (int, struct file *, int);
+	 int (*lock) (struct file *, int, struct file_lock *);
+	 ssize_t (*sendpage) (struct file *, struct page *, int, size_t, loff_t *, int);
+	 unsigned long (*get_unmapped_area)(struct file *, unsigned long, unsigned long,
+		unsigned long, unsigned long);
+	 int (*check_flags)(int);
+	 int (*flock) (struct file *, int, struct file_lock *);
+	 ssize_t (*splice_write)(struct pipe_inode_info *, struct file *, loff_t *, size_t,
+		unsigned int);
+	 ssize_t (*splice_read)(struct file *, loff_t *, struct pipe_inode_info *, size_t,
+		unsigned int);
+	 int (*setlease)(struct file *, long, struct file_lock **);
+};
+
+===== Typical Implementation Problems =====
+The mechanisms to access filesystem data described above are detached from the physical layout of data and are designed to account for all the Unix semantics as far as filesystems are concerned.
+
+Unfortunately, however, not all the filesystem types support all of the functions just described -- in particular, not all the types have to concept of ``inode'', even though the kernel identifies every file by means of its unsigned long inode number. If the physical data being accessed by a filesystem type has no physical inodes, the code implementing readdir and read_inode must invent an inode number for each file in the storage medium.
+
+A typical technique to choose an inode number is **using the offset of the control block for the file within the filesystem data area**, assuming the files are identified by something that can be called `control block'. The iso9660 type, for example, uses this technique to create an inode number for each file in the device.
+
+The /proc filesystem, on the other hand, has no physical device to extract its data from, and therefore uses **hardwired numbers for files** that always exist, like /proc/interrupts, and dynamically allocated inode numbers for other files. The inode numbers are stored in the data structure associated to each dynamic file.
+
+Another typical problem to face when implementing a filesystem type is dealing with limitations in the actual storage capabilities. For example, how to react when the user tries to rename a file to a name longer than the maximum allowed length for the particular filesystem, or when she tries to modify the access time of a file within a filesystem that doesn't have the concept of access time.
+
+In these cases, the standard is to return **-ENOPERM,** which means ``Operation not permitted''. Most VFS functions, like all the system calls and a number of other kernel functions, return 0 or a positive number in case of success, and a negative number in case of errors. Error codes returned by kernel functions are always one of the integer values defined in "<"asm/errno.h">".
+
+===== Dynamic /proc Files =====
+I'd like to show now a little code to play with the VFS idea, but it's quite hard to conceive a small enough filesystem type to fit in the article. Writing a new filesystem type is surely an interesting task, but a complete implementation includea 39 ``operation'' functions. In practice, is there the need to build yet another filesystem type just for the sake of it?
+
+Fortunately enough, the /proc filesystem as defined in the Linux kernel lets modules play with the VFS internals without the need to register a whole-new filesystem type. Each file within /proc can define its own inode operations and file operations, and is therefore able to exploit all the features of the VFS. The interface to creating /proc files is easy enough to be introduced here, although not in too much detail. `Dynamic /proc files' are called that way __because their inode number is dynamically allocated at file creation__ (instead of being extracted from an inode table or generated by a block number).
+
+In this section we'll build a module called burp, for ``Beautiful and Understandable Resource for Playing''. Not all of the module will be shown because the innards of each dynamic file is not related with the VFS idea.
+
+The main structure used in building up the file tree of /proc is **struct proc_dir_entry**: one such structure is associated to each node within /proc and it is used to keep track of the file tree. The default readdir and lookup inode operations for the filesystem access a tree of struct proc_dir_entry to return information to the user process.
+
+The burp module, once equipped with the needed structures, will create three files: /proc/root is the block device associated the current root partition; /proc/insmod is an interface to load/unload modules without the need to become root; proc/jiffies reads as the current value of the jiffy counter (i.e., the number of clock ticks since system boot). These three files have no real value and are just meant to show how the inode and file operations are used. As you see, burp is really a ``Boring Utility Relying on Proc''. To avoid making the utility too boring I won't tell here the details about module loading and unloading: they have been described in previous Kernel Korner articles which are now accessible through the web. The whole burp.c file is available as well.
+
+Creation and desctruction of /proc files is performed by calling the following functions:
+
+proc_register_dynamic(struct proc_dir_entry *where,
+                      struct proc_dir_entry *self);
+proc_unregister(struct proc_dir_entry *where, int inode);
+In both functions, where is the directory where the new file belongs, and we'll use &proc_root to use the root directory of the filesystem. The self structure, on the other hand, is declared inside burp.c for each of the three files. The definition of the structure is reported in panel 5 for your reference; I'll show the three burp incantations of the structure in a while, after discussing their role in the game.
+
+Panel 5
+
+struct proc_dir_entry {
+        unsigned short low_ino;  /* inode number for the file */
+        unsigned short namelen;  /* lenght of filename */
+        const char *name;        /* the filename itself */
+        mode_t mode;             /* mode (and type) of file */
+        nlink_t nlink;           /* number of links (1 for files) */
+        uid_t uid;               /* owner */
+        gid_t gid;               /* group */
+        unsigned long size;      /* size, can be 0 if not relevant */
+        struct inode_operations * ops; /* inode ops for this file */
+        int (*get_info)(char *, char **, off_t, int, int);  /* read data */
+        void (*fill_inode)(struct inode *);  /* fill missing inode info */
+        struct proc_dir_entry *next, *parent, *subdir; /* internal use */
+        void *data;              /* used in sysctl */
+};
+The `synchronous' part of burp reduces therefore to three lines within init_module() and three within cleanup_module(). Everything else is dispatched by the VFS interface and is `event-driven' as far as a process accessing a file can be considered an event (yes, this way to see things is etherodox, and you should never use it with professional people).
+
+The three lines in ini_module() look like:
+
+proc_register_dynamic(&proc_root, &burp_proc_root);
+and the ones in cleanup_module() look like:
+
+proc_unregister(&proc_root, burp_proc_root.low_ino);
+The low_ino field here is the inode number for the file being unregistered, and has been dynamically assigned at load time.
+
+But how will these three files respond to user access? Let's look at each of them independently.
+
+/proc/root is meant to be a block device. Its `mode' should therefore have the S_IBLK bit set, its inode operations should be those of block devices and its device number should be the same as the root device currently mounted. Since the device number associated to the inode is not part of the proc_dir_entry structure, the fill_inode field must be used. The inode number of the root device will be extracted from the table of mounted filesystems.
+/proc/insmod is a writable file: it needs own file_operations to declare its own ``write'' method. Therefore it declares its own inode_operations that point to its file operations. Whenever its write() implementation is called, the file asks to kerneld to load or unload the module whole name has been written. The file is writable by anybody: this is not a big problem as loading a module doesn't mean accessing its resources; and what is loadable is still controlled by root via /etc/modules.conf.
+/proc/jiffies is much easier: the file is only read from. Kernel version 2.0 and later ones offer a simplified interface for read-only files: the get_info function poiinter, if set, will be asked to fell a page of data each time the file is read. Therefore /proc/jiffies doesn't need own file operations nor inode operations: it just uses get_info. The function uses sprintf() to convert the integer jiffies value to a string.
+The snapshot of tty session in panel 6 shows how the files appear and how two of them work. Panel 7, finally, shows the three structures used to declare the file entries in /proc. The structures have not been completely defined, because the C compiler fills with zeroes any partially-defined structure without issuing any warning (feature, not bug).
+
+The module has been compiled and run on a PC, an Alpha and a Sparc, all of them running Linux version 2.0.x
+
+Panel 6
+
+morgana% ls -l /proc/root /proc/insmod /proc/jiffies
+--w--w--w-   1 root     root            0 Feb  4 23:02 /proc/insmod
+-r--r--r--   1 root     root           11 Feb  4 23:02 /proc/jiffies
+brw-------   1 root     root       3,   1 Feb  4 23:02 /proc/root
+morgana% cat /proc/jiffies
+0002679216
+morgana% cat /proc/modules
+burp               1            0
+morgana% echo isofs ">" /proc/insmod
+morgana% cat /proc/modules
+isofs              5            0 (autoclean)
+burp               1            0
+morgana% echo -isofs ">" /proc/insmod
+morgana% cat /proc/jiffies
+0002682697
+morgana%
+Panel 7
+
+struct proc_dir_entry burp_proc_root = {
+    0,                  /* low_ino: the inode -- dynamic */
+    4, "root",          /* len of name and name */
+    S_IFBLK | 0600,     /* mode: block device, r/w by owner */
+    1, 0, 0,            /* nlinks, owner (root), group (root) */
+    0, &blkdev_inode_operations,  /* size (unused), inode ops */
+    NULL,               /* get_info: unused */
+    burp_root_fill_ino, /* fill_inode: tell your major/minor */
+    /* nothing more */
+};
+
+struct proc_dir_entry burp_proc_insmod = {
+    0,                  /* low_ino: the inode -- dynamic */
+    6, "insmod",        /* len of name and name */
+    S_IFREG | S_IWUGO,  /* mode: REGular, Write UserGroupOther */
+    1, 0, 0,            /* nlinks, owner (root), group (root) */
+    0, &burp_insmod_iops, /* size - unused; inode ops */
+};
+
+struct proc_dir_entry burp_proc_jiffies = {
+    0,                  /* low_ino: the inode -- dynamic */
+    7, "jiffies",       /* len of name and name */
+    S_IFREG | S_IRUGO,  /* mode: regular, read by anyone */
+    1, 0, 0,            /* nlinks, owner (root), group (root) */
+    11, NULL,           /* size is 11; inode ops unused */
+    burp_read_jiffies,  /* use "get_info" instead */
+};
+The /proc implementation has other interesting features to offer, the most interesting being the sysctl implementation. The idea is so interesting that it doesn't fit here, and the kernel-korner article of Sptember 1997 will fill the gap.
+
+===== Interesting Examples to Look at =====
+My discussion is over now, but there are many interesting places where interesting source code is on show. Interesting implementations of filesystem types are:
+
+Obviously, the ``/proc'' filesystem: it is quite easy to look at because it is neither performance-critical nor particularly full-featured (except the sysctl idea). Enough said.
+The ``umsdos'' filesystem: it is part of the mainstream kernel and runs piggy-back on the ``msdos'' filesystem. It implements only a few of the operations of the VFS to add new capabilities to an old-fashioned filessytem format.
+The ``userfs'' module: it is available from both tsx-11 and sunsite under ALPHA/userfs; version 0.9.3 will load to Linux 2.0. The module defines a new filesystem type which uses external programs to retrieve data; interesting applications are the ftp filesystem and a read-only filesystem to mount compressed tar files. Even though reverting to user programs to get filesystem data is dangerouus and might lead to unexpected deadlocks, the idea is quite interesting.
+``supermount'': the filesystem is available on sunsite and mirrors. This filesystem type is able to mount removable devices like floppies of cdrom and handle device removal without forcing the user to umount/mount the device. The module works by controlling another filesystem type while arranging to keep the device unmounted when it is not used; the operation is transparent to the user.
+``ext2'': the extended-2 filesystem has been the standard Linux filesystem for a few years now. It is difficult code, but really worth reading for who is interested in looking at how a real filesystem is implemented. It also has hooks for interesting security features like the immutable-flag and the append-only-flag. Files marked as immutable or append-only can only be deleted when the system is in single-user mode, and are therefore secured from network intruders.
+Alessandro is a wild soul with an attraction for source code. He's the author of "Writing Linux Device Drivers": an O'Reilly book due out in summer. He is a fan of Linus Torvalds and Baden Powell and enjoys the two communities of volunteer workers they happened to build. He can be reached as rubini@linux.it.
+Verbatim copying and distribution of this entire article is permitted in any medium, provided this notice is preserved

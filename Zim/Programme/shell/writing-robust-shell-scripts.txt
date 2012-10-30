@@ -113,7 +113,6 @@ What happens if someone kills your script while critical-section is running? The
 
 if [ ! -e $lockfile ]; then
    **trap "rm -f $lockfile; exit" INT TERM EXIT    #在捕获信号前需安装信号及其执行的命令**
-~~   #上述命令有一个bug，存在重复触发的死循环。~~
    touch $lockfile
    critical-section
    rm $lockfile

@@ -34,8 +34,6 @@ ls: cannot access thisfiledoesntexist: No such file or directory   #coproc的出
 #let the output of the coprocess go to stdout
 $ __{ coproc mycoproc { awk '{print "foo" $0;fflush()}' ;} >&3 ;} 3>&1__
 
-
-
 {....} 分组命令代表在**当前shell中**执行其中的命令，所以3>&1，表示将{...}中使用的3描述符与__当前shell__的1描述符相连接。
 而 {...}中的>&3是在coproc与当前shell的pipe建立之后执行的，其标准输出的描述符其环境中的3相连后，实际上是与当前shell的标准输出相连。
 

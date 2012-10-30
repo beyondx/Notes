@@ -1,0 +1,38 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-10-04T13:47:32+08:00
+
+====== unpack ======
+Created Thursday 04 October 2012
+
+>>> for k,v in ["fdf",23,"dfdf",33]:
+...   print k,v
+... 
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ValueError: __too many__ values to unpack
+
+顺序容器类型如str, list, tuple__每次迭代时只能返回其中的一个元素__。
+所以第一次返回循环返回**"fdf"**，但是它有三个元素最多只能赋值给两个
+变量。
+
+>>> for k,v in "dfdf":
+...   print k,v
+... 
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ValueError: __need more than 1 value__ to unpack
+
+字符串迭代时，每次返回其中的一个字符。所以最多只能unpack给一个变量。
+
+>>> k,v="dfdf"
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ValueError: __too many values to unpack__
+
+unpack一个顺序容器类型时，左边变量的数目必须要与容器中元素的个数相同。
+
+>>> k,v="df"
+>>> print k,v
+d f
+>>> 

@@ -1,0 +1,72 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-10-24T10:24:51+08:00
+
+====== Filesystem in Userspace (FUSE) ======
+Created Wednesday 24 October 2012
+http://en.wikipedia.org/wiki/Filesystem_in_Userspace
+From Wikipedia, the free encyclopedia
+
+{{./280px-FUSE_structure.svg.png?width=564}}
+                                  A flow-chart diagram showing how FUSE works
+
+Filesystem in Userspace (FUSE) is __a loadable kernel module__ for Unix-like computer operating systems that __lets non-privileged users create their own file systems__ without editing kernel code. This is achieved by running file system code in user space while the FUSE module provides only __a "bridge"__ to the actual kernel interfaces.
+
+Released under the terms of the GNU General Public License and the GNU Lesser General Public License, FUSE is free software. The FUSE system was originally part of A Virtual Filesystem (AVFS), but has since split off into its own project on SourceForge.net.
+
+FUSE is available for Linux, FreeBSD, NetBSD (as puffs), OpenSolaris, and OS X.[1] It was officially merged into the mainstream Linux kernel tree in kernel version 2.6.14.[2]
+
+===== Virtual file system =====
+FUSE is particularly useful for writing virtual file systems. Unlike traditional file systems that essentially save data to and retrieve data from disk, virtual filesystems do not actually store data themselves. __They act as a view or translation of an existing file system or storage device__.
+
+In principle, any resource available to a FUSE implementation can be exported as a file system.
+
+===== Examples =====
+Wuala: A multi-platform, Java-based fully OS integrated distributed file system. Using FUSE, MacFUSE and Callback File System respectively for file system integration, in addition to a Java-based app accessible from any Java-enabled web browser.
+MyVDrive: Fully OS integrated Internet file system using FUSE.
+__WebDrive:__ A commercial filesystem implementing WebDAV, SFTP, FTP, FTPS and Amazon S3
+jSYS: A commercial software to create jails and virtual filesystems in user-space using FUSE.
+Transmit: A commercial FTP client that also adds the ability to mount WebDAV, SFTP, FTP and Amazon S3 servers as disks in Finder, via MacFUSE.
+ExpanDrive: A commercial filesystem implementing SFTP/FTP/FTPS using FUSE
+GlusterFS: Clustered Distributed Filesystem having ability to scale up to several petabytes.
+SSHFS: Provides access to a remote filesystem through SSH
+FTPFS
+__GmailFS:__ Filesystem which stores data as mail in Gmail
+GAEDrive: A Network Storage based on Google App Engine
+gae-filestore: Virtual File System library on Google App Engine
+__GVFS:__ The virtual filesystem for the GNOME desktop
+EncFS: Encrypted virtual filesystem
+__NTFS-3G__ and Captive NTFS, allowing access to NTFS filesystems
+exFAT: The Extended File Allocation Table file system from Microsoft
+WikipediaFS: View and edit Wikipedia articles as if they were real files
+Sun Microsystems's Lustre cluster filesystem will use FUSE to allow it to run in userspace, so that a FreeBSD port is possible.[3] However, the ZFS-Linux port of Lustre will be running ZFS's DMU (Data Management Unit) in userspace.[4]
+archivemount
+LoggedFS: Logging of file system access
+__HDFS:__ FUSE bindings exist for the open source **Hadoop distributed filesystem**
+mtpfs: mounting MTP devices like Creative Zen music players
+Sector File System: Sector is a distributed file system designed for large amount of commodity computers. Sector uses FUSE to provide a mountable local file system interface
+CurlFtpFS Filesystem to access FTP/SFTP locations.
+fuse-ext2 An open source ext2/ext3 file system. (Supports OS X 10.4 and later (Universal Binary), using MacFuse)
+Lessfs: inline data de-duplicating filesystem for Linux that includes support for lzo or QuickLZ compression and encryption.
+__CloudStore__ (formerly, Kosmos filesystem): By mounting via FUSE, existing Linux utilities can interface with CloudStore
+SoundCloudFS: An open source filesystem that allows Linux systems to mount SoundCloud streams so that they can be opened with your own choice of software.
+MooseFS: An open source distributed fault-tolerant file system available on every OS with FUSE implementation (Linux, FreeBSD, NetBSD, OpenSolaris, OS X), able to store petabytes of data spread over several servers visible as one resource
+NagusFS: Filesystem representation of Nagios services.
+NagiosFS (http://sourceforge.net/apps/mediawiki/fuse/index.php?title=NetworkFileSystems#NagiosFS): Filesystem representation of remote monitoring values
+CassandraFS (https://code.launchpad.net/cassandrafs): Filesystem over Cassandra (cassandra.apache.org)
+ZFS: ZFS-Fuse-Linux implementation
+fuse-zip: Allows to use zip files as a filesystem (supports writing)
+OWFS [1] One-Wire File System giving access to 1-Wire devices via a file system directory structure
+TrueCrypt: a software application used for on-the-fly encryption (OTFE). It can create a virtual encrypted disk within a file as well as encrypt a partition or entire storage device
+s3fs-FuseOverAmazonS3: A FUSE-based file system backed by Amazon S3. Mount a bucket as a local file system read/write. Store files/folders natively and transparently on AWS: Simple Storage Service
+s3fs-c: A file system backed by Amazon S3. Forked from s3fs and rewritten to be compatible with some other S3 clients such as AWS Management Console
+LR|FS [2]: An OS X file system for Adobe Lightroom catalogs. Requires MacFuse
+boxfs: A file system for accessing files on your box.net account
+remotefs: Network file system designed for use with home NAS
+virtualbox-fuse:virtualbox-fuse allows mounting of Virtualbox VDI images
+Fuse for FreeBSD
+Fuse4X is a port of Fuse to OS X
+MacFUSE is an old port of Fuse to Mac OS X; no longer maintained
+OSXFuse is a port of Fuse to OS X and a successor to MacFUSE
+Dokan Windows user mode file system library
+UsiFe A flexible file system that allows intra file encryption. It is possible to selectively encrypt/decrypt parts of a file and then display them.

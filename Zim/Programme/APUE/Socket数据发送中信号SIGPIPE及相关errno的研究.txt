@@ -4,10 +4,9 @@ Creation-Date: 2011-06-04T14:36:51+08:00
 
 ====== Socket数据发送中信号SIGPIPE及相关errno的研究 ======
 Created 星期六 04 六月 2011
-Socket数据发送中信号SIGPIPE及相关errno的研究
-好久没做过C开发了，最近重操旧业。
-听说另外一个项目组socket开发遇到问题，发送端和接受端数据大小不一致。建议他们采用writen的重发机制，以避免信号中断错误。采用后还是有问题。PM让我帮忙研究下。
-UNP n年以前看过，很久没做过底层开发，手边也没有UNP vol1这本书，所以做了个测试程序，研究下实际可能发生的情况了。
+原文地址 http://blog.chinaunix.net/u/31357/showart_242605.html
+
+听说另外一个项目组socket开发遇到问题，发送端和接受端数据大小不一致。建议他们采用writen的重发机制，以避免信号中断错误。采用后还是有问题。PM让我帮忙研究下。UNP n年以前看过，很久没做过底层开发，手边也没有UNP vol1这本书，所以做了个测试程序，研究下实际可能发生的情况了。
  
 测试环境：AS3和redhat 9(缺省没有nc)
  
@@ -67,11 +66,8 @@ main(int argc, char **argv)
     exit(0);
 }
 
- 
 
 为了方便观察错误输出，lib/writen.c也做了修改，加了些日志：
-
- 
 
 /* include writen */
 #include    "unp.h"
@@ -112,20 +108,14 @@ Writen(int fd, void *ptr, size_t nbytes)
 }
 
  
-
 client.c放在tcpclieserv目录下，修改了Makefile，增加了client.c的编译目标
-
- 
-
 
 client: client.c
                 ${CC} ${CFLAGS} -o $@ $< ${LIBS}
 
- 
-
 接着就可以开始测试了。
-测试1 忽略SIGPIPE信号，writen之前，对方关闭接受进程
 
+测试1 忽略SIGPIPE信号，writen之前，对方关闭接受进程
 本机服务端：
 nc -l -p 30000
  
@@ -141,7 +131,8 @@ Already write 40960, left 0, errno=0
 Begin send 40960 data
 Begin Writen 40960
 writen error: Broken pipe(32)
-结论:可见write之前，对方socket中断，发送端write会返回-1,errno号为EPIPE(32)
+结论:__可见write之前，对方socket中断，发送端write会返回-1,errno号为EPIPE(32)__
+
 测试2 catch SIGPIPE信号，writen之前，对方关闭接受进程
 
 修改客户端代码，catch sigpipe信号
@@ -167,7 +158,7 @@ Begin send 40960 data
 Begin Writen 40960
 Signal is 13
 writen error: Broken pipe(32)
-结论:可见write之前，对方socket中断，发送端write时，会先调用SIGPIPE响应函数，然后write返回-1,errno号为EPIPE(32)
+结论:__可见write之前，对方socket中断，发送端write时，会先调用SIGPIPE响应函数，然后write返回-1,errno号为EPIPE(32)__
  
 测试3 writen过程中，对方关闭接受进程
 
@@ -186,7 +177,7 @@ Already write 589821, left 3506179, errno=0
 Begin Writen 3506179
 writen error: Connection reset by peer(104)
 
-结论:可见socket write中，对方socket中断，发送端write会先返回已经发送的字节数,再次write时返回-1,errno号为ECONNRESET(104)
+结论:__可见socket write中，对方socket中断，发送端write会先返回已经发送的字节数,再次write时返回-1,errno号为ECONNRESET(104)__
 
 为什么以上测试，都是对方已经中断socket后，发送端再次write，结果会有所不同呢。从后来找到的UNP5.12,5.13能找到答案
 
@@ -203,6 +194,3 @@ If the process either catches the signal and returns from the signal handler, or
 以上解释了测试1，2的现象,write一个已经接受到RST的socket，系统内核会发送SIGPIPE给发送进程，如果进程catch/ignore这个信号，write都返回EPIPE错误.
 
 因此,UNP建议应用根据需要处理SIGPIPE信号，至少不要用系统缺省的处理方式处理这个信号，系统缺省的处理方式是退出进程，这样你的应用就很难查处处理进程为什么退出。
-
- 原文地址 http://blog.chinaunix.net/u/31357/showart_242605.html
-

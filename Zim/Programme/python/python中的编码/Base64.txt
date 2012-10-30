@@ -122,13 +122,3 @@ Base64编码可用于在HTTP环境下传递较长的__标识信息__。例如，
         MIME::Base64 Perl module
         Firefox extension
         emacs函数
-
-===== 参见 =====
-
-    Radix-64
-    ASCII85
-    Quoted-printable
-    uuencode
-    yEnc
-    8BITMIME
-    URL

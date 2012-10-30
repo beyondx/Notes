@@ -1,0 +1,72 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-10-23T10:13:38+08:00
+
+====== 使用sendfile() 提升网络文件发送性能 ======
+Created Tuesday 23 October 2012
+http://hily.me/blog/2011/01/use-sendfile-accelerate-file-sending/
+
+偶见一好文，清楚地阐述了什么是零拷贝（Zero Copy）以及 sendfile 的由来，不复述下实感不快。
+原文见：http://www.linuxjournal.com/article/6345
+
+文章中列出了我们平时通过网络发送文件时会用到的两个系统调用：
+read(file, tmp_buf, len);
+write(socket, tmp_buf, len);
+
+调用过程示意图如下：
+{{./1.jpg}}
+
+在用户空间调用 read() 读取文件时发生两次内存拷贝：
+
+* DMA引擎将文件读取到内核的文件缓冲区
+* 调用返回用户空间时将内核的文件缓冲区的数据复制到用户空间的缓冲区
+
+接着调用 write() 把数据写入 socket 时，又发生了两次内存拷贝：
+
+* 将用户空间的缓冲区的数据复制到内核的 socket 缓冲区
+* 将内核 socket 缓冲区的数据复制到网络协议引擎
+
+也就是说，在整个文件发送的过程中，发生了四次内存拷贝。
+然后，数据读取到用户空间后并没有做过任何加工处理，因此通过网络发送文件时，
+根本没有必要把文件内容复制到用户空间。
+
+于是引入了 mmap()：
+tmp_buf = mmap(file, len);
+write(socket, tmp_buf, len);
+
+调用过程示意图：
+{{./2.jpg}}
+
+* 调用 mmap() 时会将文件直接读取到内核缓冲区，并把内核缓冲区直接__共享__到用户空间
+* 调用 write() 时，直接将内核缓冲区的数据复制到 socket 缓冲区
+
+这样一来，就少了用户空间和内核空间之间的内存复制了。这种方式会有个问题，当前进程
+在调用 write() 时，另一个进程把文件清空了，程序就会报出 SIGBUS 类型错误。
+
+Linux Kernel __2.1__ 引进了 sendfile()，只需要一个系统调用来实现文件发送。
+sendfile(socket, file, len);
+
+调用过程示意图：
+{{./3.jpg}}
+* 调用 sendfile() 时会直接在内核空间把文件读取到内核的文件缓冲区
+* 将内核的文件缓冲区的数据复制到内核的 socket 缓冲区中
+* 将内核的 socket 缓冲区的数据复制到网络协议引擎
+
+从性能上看，这种方式只是少了一个系统调用而已，还是做了3次拷贝操作。
+
+Linux Kernel __2.4__ 改进了 sendfile()，调用接口没有变化：
+sendfile(socket, file, len);
+
+调用过程示意图：
+{{./4.jpg}}
+
+* 调用 sendfile() 时会直接在内核空间把文件读取到内核的文件缓冲区
+* 内核的 socket 缓冲区中保存的是当前要发送的数据在内核的文件缓冲区中的位置和偏移量
+* DMA gather copy 将内核的文件缓冲区的数据复制到网络协议引擎
+
+这样就只剩下2次拷贝啦。
+
+在许多 http server 中，都引入了 sendfile 的机制，如 nginx、lighttpd 等，它们正是利用
+sendfile() 这个特性来实现高性能的文件发送的。
+
+– EOF –

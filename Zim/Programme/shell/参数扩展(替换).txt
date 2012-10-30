@@ -28,7 +28,7 @@ Created Friday 23 December 2011
 **bar,** i=
 [geekard@geekard ~]$ echo ${i:=bar}, i=$i   #如果i变量未初始化或初始化为空，则参数扩展为__字符串bar__，i变量__设置为字符串bar__。
 **bar**, i=**bar**
-[geekard@geekard ~]$ unset i; echo ${i:?bar}, i=$i; date   #如果变量i未初始化或初始化为空，则显示**i: =bar**同时__停止当前命令和后续命令的执行__。
+[geekard@geekard ~]$ unset i; echo ${i:?bar}, i=$i; date   #如果变量i未初始化或初始化为空，则显示**i: bar**同时__停止当前命令和后续命令的执行__。
 bash:** i: bar**
 [geekard@geekard ~]$ echo ${i:+bar}, i=$i  #如果变量i存在且不为空，则参数扩展为字符串__bar__的值，否则扩展为__空值__。
 , i=

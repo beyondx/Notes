@@ -1,0 +1,37 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-10-04T13:20:52+08:00
+
+====== int long ======
+Created Thursday 04 October 2012
+
+>>> 1&2  #按__位与__
+0
+
+>>> 0xff&0xf1  #按位与
+241
+>>> 0xff&0xf0
+240
+>>> __hex__(0xff&0xf0)  #返回的__字符串__
+'0xf0'   
+__与hex()类似, bin(), oct()等返回的都是int或long型的字符串代表__
+
+>>> 1&&2   __#python没有&&, ||, !逻辑运算符，但是有and, or, not，而且这三个逻辑运算符返回的是最后一个元素的内容__
+  File "<stdin>", line 1
+    1&&2
+      ^
+SyntaxError: invalid syntax
+
+>>> 1 and 2  __#返回的是最后一个元素的内容而不是True或False，这里为2__
+2
+
+>>> 'fff' & 'dfad'  __#str类型没有定义__and__方法，所以没有位运算__
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+TypeError: unsupported operand type(s) for &: 'str' and 'str'
+>>> help(str)
+
+>>> 'fff' and 'dfad'
+'dfad'
+>>> 
+

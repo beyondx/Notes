@@ -57,7 +57,7 @@ exit 0
 **********竞争处理
 if ( __set -o noclobber__; echo "$$" > "$lockfile") 2> /dev/null;   #如果lockfile存在，则**含有重定向的命令**出错返回
 then
-   trap 'rm -f "$lockfile"; exit $?' INT TERM EXIT
+   trap 'rm -f "$lockfile"; __exit $?__' INT TERM EXIT
    critical-section
    rm -f "$lockfile"
    trap __-__ INT TERM EXIT
@@ -69,7 +69,6 @@ fi
 
 if [ ! -e $lockfile ]; then
    **trap "rm -f $lockfile; exit" INT TERM EXIT    #在捕获信号前需安装信号及其执行的命令**
-   #上述命令有一个bug，存在重复触发的死循环。
    touch $lockfile
    critical-section
    rm $lockfile
@@ -78,7 +77,7 @@ else
    echo "critical-section is already running"
 fi
 
-****************Counted loops
+****************Counted loops---------------
 # Three expression for loop:
 for__ (( i = 0; i < 20; i++ ))__
 do

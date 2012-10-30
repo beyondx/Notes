@@ -1,0 +1,109 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-10-24T15:33:13+08:00
+
+====== buffer cache ======
+Created Wednesday 24 October 2012
+http://oss.org.cn/kernel-book/ch08/8.3.1.htm
+
+8.3.1  块高速缓存
+Linux支持的__文件系统大多以块的形式组织文件__，为了减少对物理块设备的访问，在文件以块的形式调入内存后，使用__块高速缓存（buffer_cache)__对它们进行管理。每个缓冲区由两部分组成，第一部分称为**缓冲区首部**，用数据结构buffer_head表示，第二部分是真正的**缓冲区内容**（即所存储的数据）。由于缓冲区首部不与数据区域相连，数据区域独立存储。因而在缓冲区首部中，有一个指向数据的指针和一个缓冲区长度的字段。图8.6给出了一个缓冲区的格式。
+
+缓冲区首部包含：
+·用于描述缓冲区内容的信息，包括：所在设备号、起始物理块号、包含在缓冲区中的字节数。
+·缓冲区状态的域：是否有有用数据、是否正在使用、重新利用之前是否要写回磁盘等。
+·用于管理的域。
+         {{./image002.gif}}
+ 
+                  图8.6 缓冲区格式
+buffer-head数据结构在include\linux\fs.h中定义如下：
+/*
+  * Try to keep the most commonly used fields in single cache lines (16
+  * bytes) to improve performance.  This ordering should be
+  * particularly beneficial on 32-bit processors.
+  *
+  * We use the first 16 bytes for the data which is used in searches
+  * over **the block hash lists** (ie. getblk() and friends).
+  *
+  * The second 16 bytes we use for **lru buffer** scans, as used by
+  * sync_buffers() and refill_freelist().  -- sct
+  */
+__struct buffer_head__ {
+        /* First cache line: */
+         struct buffer_head *b_next;     /* 哈希队列链表t */
+         unsigned long b_blocknr;        /* 逻辑块号 */
+         unsigned short b_size;          /* 块大小 */
+         unsigned short b_list;          /* 本缓冲区所出现的链表 */
+         kdev_t b_dev;                   /* 虚拟设备标示符(B_FREE = free) */
+         atomic_t b_count;               **/* 块引用计数器 */**
+          kdev_t b_rdev;                  **/* 实际设备标识符*/**
+         unsigned long b_state;          **/* 缓冲区状态位图 */**
+	unsigned long b_flushtime;      /* 对脏缓冲区进行刷新的时间*/
+         struct buffer_head *b_next_free;/* 指向lru/free 链表中的下一个元素 */
+         struct buffer_head *b_prev_free;/* 指向链表中的上一个元素*/
+	 struct buffer_head ***b_this_page**;/* 每个页面中的缓冲区链表*/（单个page中可以存多个连续的buff）
+         struct buffer_head *b_reqnext;  /*请求队列 */
+ 
+         struct buffer_head **b_pprev;   /* 哈希队列的双向链表 */
+        char * b_data;                  __/* 指向数据块 */__
+        struct page *b_page;            /* 这个bh所映射的页面*/
+	void (*b_end_io)(struct buffer_head *bh, int uptodate); /* I/O结束方法*/
+         void *b_private;                /* 给b_end_io保留 */
+ 
+        unsigned long b_rsector;        /* 缓冲区在磁盘上的实际位置，扇区号*/
+         wait_queue_head_t b_wait;     /* 缓冲区等待队列 */
+ 
+         struct inode *       b_inode;
+	struct list_head    b_inode_buffers;   /* __inode脏缓冲区的循环链表__*/
+};
+ 
+其中缓冲区状态在fs.h中定义为枚举类型：
+/* bh state bits */
+enum bh_state_bits {
+        BH_Uptodate,    /* 如果缓冲区包含有效数据则置1 */
+        BH_Dirty,       /* 如果**缓冲区数据被改变**则置1 */
+        BH_Lock,        /* 如果缓冲区被锁定则置1*/
+        BH_Req,         /* 如果缓冲区数据无效则置0  */
+        BH_Mapped,      /* 如果缓冲区有一个**磁盘映射**则置1 */
+        BH_New,         /* 如果缓冲区为新且还没有被写出则置1 */
+        BH_Async,       /* 如果缓冲区是进行end_buffer_io_async I/O 同步则置1 */
+        BH_Wait_IO,     /* 如果我们应该把这个缓冲区写出则置1 */
+        BH_launder,     /* 如果我们应该“清洗”这个缓冲区则置1 */
+        BH_JBD,         /* 如果与journal_head相连接则置1 */
+ 
+        BH_PrivateStart,/* 这不是一个状态位，但是，第一位由其他实体用于私有分配*/
+｝                        
+显然一个缓冲区可以同时具有上述状态的几种。
+
+块高速缓存的管理很复杂，下面先对空缓冲区、空闲缓冲区、正使用的缓冲区、缓冲区的大小以及缓冲区的类型作一个简短的介绍：
+缓冲区可以分为两种，一种是包含了有效数据的，另一种是没有被使用的，即空缓冲区。
+
+具有有效数据并不能表明某个缓冲区正在被使用，毕竟，在同一时间内，被进程访问的缓冲区（即处于使用状态）只有少数几个。__当前没有被进程访问的有效缓冲区和空缓冲区称为空闲缓冲区__。其实，buffer_head结构中的b_count就可以反映出缓冲区是否处于使用状态。如果它为0，则缓冲区是空闲的。大于0，则缓冲区正被进程访问。
+
+缓冲区的大小不是固定的，当前Linux支持5种大小的缓冲区，分别是512、1024、2048、4096、8192字节。Linux所支持的文件系统都使用共同的块高速缓存，在同一时刻，块高速缓存中存在着来自不同物理设备的数据块，为了支持这些不同大小的数据块，Linux使用了几种不同大小的缓冲区。
+
+当前的Linux缓冲区有3种类型，在include/linux/fs.h中有如下的定义：
+#define BUF_CLEAN        0       /*未使用的、干净的缓冲区(含有有效数据但是引用计数为0即没有正在被进程访问，或则空缓冲区)*/
+#define BUF_LOCKED       1       /*__被锁定的缓冲区，正等待写入__*/
+#define BUF_DIRTY        2        /*脏的缓冲区，其中有有效数据，需要写回磁盘*/
+ 
+VFS使用了多个链表来管理块高速缓存中的缓冲区。
+* 首先，对于包含了**有效数据**的缓冲区，用一个哈希表来管理，用__hash_table__来指向这个哈希表。哈希索引值**由数据块号以及其所在的设备标识号**计算（散列）得到。所以在buffer_head这个结构中有一些用于哈希表管理的域。__使用哈希表可以迅速地查找到所要寻找的数据块所在的缓冲区__。
+* 对于每一种类型的**未使用的有效缓冲区**，系统还使用一个LRU（最近最少使用）双链表管理，即lru-list链。由于共有三种类型的缓冲区，所以__有三个这样的LRU链表__。
+ 
+当需要访问某个数据块时，系统采取如下算法：
+1. 首先，根据数据块号和所在设备号在块高速缓存中查找，如果找到，则将它的b-count域加1，因为这个域正是反映了**当前使用这个缓冲区的进程数**。如果这个缓冲区同时又处于某个LRU链中，则将它从LRU链中解开。
+2. 如果数据块还没有调入缓冲区，则系统必须进行磁盘I/O操作(**以块为单位**)，将数据块调入块高速缓存，同时将空缓冲区分配一个给它。如果块高速缓存已满（即没有空缓冲区可供分配），则从某个LRU**链首**取下一个，先看是否置了“脏”位，如已置，则将它的内容写回磁盘。然后清空内容，将它分配给新的数据块。
+在缓冲区使用完了后，将它的b_count域减1，如果b_count变为0，则将它放在某个LRU**链尾**，表示该缓冲区已可以重新利用。
+
+为了配合以上这些操作，以及其它一些多块高速缓存的操作，系统另外使用了几个链表，主要是：
+* 对于**每一种**大小的空闲缓冲区，系统使用一个链表管理，即__free_list链__。
+* 对于空缓冲区，系统使用一个__unused_list链__管理。
+以上几种链表都在fs/buffer.c定义。
+
+Linux中，__用bdflush守护进程__完成对块高速缓存的一般管理。bdflush守护进程是一个简单的内核线程，在系统启动时运行，它在系统中注册的进程名称为 __kflushd__，你可以使用ps命令看到此系统进程。它的一个作用是**监视块高速缓存中的“脏”缓冲区**，在分配或丢弃缓冲区时，将对“脏”缓冲区数目作一个统计。通常情况下，该进程处于休眠状态，当块高速缓存中“脏”缓冲区的数目达到一定的比例，默认是60%，该进程将被唤醒。但是，如果系统急需，则在任何时刻都可能唤醒这个进程。使用update命令可以看到和改变这个数值。
+# update -d
+ 
+当有数据写入缓冲区使之变成“脏”时，所有的“脏”缓冲区被连接到一个__BUF_DIRTY_LRU链表__中，bdflush会将适当数目的缓冲区中的数据块写到磁盘上。这个数值的缺省值为500，可以用update命令改变这个值。
+
+另一个与块高速缓存管理相关的是update命令，它不仅仅是一个命令，还是一个后台进程。当以超级用户的身份运行时（在系统初始化时），它将周期性调用系统服务例程将老的“脏”缓冲区中内容“冲刷”到磁盘上去。它所完成的这个工作与bdflush类似，不同之处在于，当一个“脏”缓冲区完成这个操作后, 它将把写入到磁盘上的时间标记到buffer_head结构中。update每次运行时它将在系统的所有“脏”缓冲区中查找那些“冲刷”时间已经超过一定期限的，这些过期缓冲区都要被写回磁盘。

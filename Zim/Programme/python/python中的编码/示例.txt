@@ -9,10 +9,13 @@ Created Friday 14 October 2011
 Python 2.7.2 (default, Jun 29 2011, 11:17:09) 
 [GCC 4.6.1] on linux2
 Type "help", "copyright", "credits" or "license" for more information.
->>> '张俊'     #python2 会自动将字符串转换为合适的编码字节字符串
+
+>>> '张俊'     #python2 会自动将字符串转换为合适编码的字节字符串
 '\xe5\xbc\xa0\xe4\xbf\x8a'    #自动转换为utf-8编码的字节字符串
+
 >>> u'张俊'             #显式指定字符串类型为unicode类型， 此类型字符串没有编码，保存的是字符在unicode**字符集中的代码点(序号)**
 u'\u5f20\u4fca'
+
 >>> '张俊'.encode('utf-8')   #python2 已经自动将其转化为utf-8类型编码，因此再次编码(python2会将该字符串当作用ascii或unicode编码过)会出现错误。
 Traceback (most recent call last):
   File "<stdin>", line 1, in <module>

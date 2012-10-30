@@ -1,0 +1,93 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-10-15T19:33:26+08:00
+
+====== 实验 ======
+Created Monday 15 October 2012
+
+ulimit命令是shell的__内置命令__，因为它设置的资源限制值需要被当前shell或其子进程继承。进程的资源限制通常在系统的初始化时由进程0建立，然后由每个后续进程继承。一般用户登录时使用PAM机制时，系统会自动读取__/etc/security/limits.conf__文件中的内容，设置__会话中所有进程__的资源限制。
+
+limits.conf 文件实际是 Linux __PAM__（插入式认证模块，Pluggable Authentication Modules）中 __pam_limits.so__ 的配置文件，而且只针对于**单个会话**。
+
+limits.conf的格式如下：
+
+username|@groupname type resource limit
+
+username|@groupname：设置需要被限制的用户名，组名前面加@和用户名区别。也可以用通配符*来做所有用户的限制。
+
+type：有 soft，hard 和 -，soft 指的是当前系统生效的设置值。hard 表明系统中所能设定的最大值。soft 的限制不能比hard 限制高。用 - 就表明**同时设置**了 soft 和 hard 的值。
+
+resource：
+	core - 限制内核转储文件的大小
+	date - 最大数据大小
+	fsize - 最大文件大小
+	memlock - 最大锁定内存地址空间
+	nofile - 打开文件的最大数目
+	rss - 最大持久设置大小
+	stack - 最大栈大小
+	cpu - 以分钟为单位的最多 CPU 时间
+	noproc - 进程的最大数目
+	as - 地址空间限制
+	maxlogins - 此用户允许登录的最大数目
+
+要使 limits.conf 文件配置生效，必须要确保 pam_limits.so 文件被加入到启动文件中。查看 /etc/pam.d/login 文件中有：
+
+session required /lib/security/pam_limits.so
+
+Bash__内建了__一个限制器"ulimit"。注意任何硬限制都不能设置得太高，因此如果你在/etc/profile或用户的 .bash_profile （用户不能编辑或删除这些文件）中定义了限制规则，你就能对用户的Bash shell实施限制。这对于**缺少PAM支持的LINUX旧发行版本**是很有用的。你还必须确保用户不能改变他们的登录shell。
+
+[__root__@kb310 ~]# **getconf **-a |grep OPEN   
+**OPEN_MAX                           1024**
+_POSIX_OPEN_MAX                    1024
+[root@kb310 ~]# ulimit -HSn 2048       #root可以提高系统的硬限制(H)和软限制(S), 但是H__必须大于或等于__S的值。
+[root@kb310 ~]# getconf -a |grep OPEN    #getconf和ulimit -a显示的是进程的__软限制值__。
+**OPEN_MAX                           2048**
+_POSIX_OPEN_MAX                    2048         
+[root@kb310 ~]# ulimit **-a**
+core file size          (blocks, -c) 0      #(a, b)：a表示后面数值的单位，b表示设置或显示该资源的**ulimit命令行选项**。这里为0表示**不能生成**core文件。
+data seg size           (kbytes, -d) unlimited     #可以从__ulimit -c unlimited__命令指定进程生成的core file大小不限。 
+scheduling priority             (-e) 30
+file size               (blocks, -f) unlimited
+pending signals                 (-i) 30802
+max locked memory       (kbytes, -l) unlimited
+max memory size         (kbytes, -m) unlimited    
+**open files                      (-n) 2048**
+pipe size            (**512 bytes**, -p) 8   #管道的容量(pipe capacity)，决定write是否阻塞。PIPE_BUF决定一次write的内容是否可能与别的进程write内容__交错，即write的原子性__。
+POSIX message queues     (bytes, -q) 819200
+real-time priority              (-r) 99
+stack size              (kbytes, -s) 8192
+cpu time               (seconds, -t) unlimited
+max user processes              (-u) 30802
+virtual memory          (kbytes, -v) unlimited
+file locks                      (-x) unlimited
+[root@kb310 ~]# logout
+[__geekard__@kb310 Documents]$ ulimit -a
+core file size          (blocks, -c) 0
+data seg size           (kbytes, -d) unlimited
+scheduling priority             (-e) 30
+file size               (blocks, -f) unlimited
+pending signals                 (-i) 30802
+max locked memory       (kbytes, -l) unlimited
+max memory size         (kbytes, -m) unlimited
+open files                      (-n) 1024
+pipe size            (512 bytes, -p) 8
+POSIX message queues     (bytes, -q) 819200
+real-time priority              (-r) 99
+stack size              (kbytes, -s) 8192
+cpu time               (seconds, -t) unlimited
+max user processes              (-u) 30802
+virtual memory          (kbytes, -v) unlimited
+file locks                      (-x) unlimited
+[geekard@kb310 ~]$ ulimit -n 1026   #没有加H或S参数时，默认设置进程的软限制。非root进程__只能减小__其软限制值。
+-bash: ulimit: open files: cannot modify limit: __Operation not permitted__
+[geekard@kb310 ~]$ ulimit -n **1023**
+[geekard@kb310 ~]$ ulimit -a |grep open
+open files                      (-n) 1023
+[geekard@kb310 ~]$ ulimit __-H__n 1022  #任何进程都可以降低其硬限制值，但是它__必须要大于或等于__其软限制值。这种降低对普通用户不可逆。
+-bash: ulimit: open files: cannot modify limit: __Invalid__ argument  #因为软限制值为1023，所以设的硬限制值**无效**。
+[geekard@kb310 ~]$ ulimit __-S__n 1022
+[geekard@kb310 ~]$ ulimit -Sn 10
+[geekard@kb310 ~]$ ulimit -Hn 1022  #__降低__硬限制值，而且比软限制值大。
+[geekard@kb310 ~]$ ulimit -a |grep open
+open files                      (-n) 10    #显示的是进程的软限制值。
+[geekard@kb310 ~]$ 

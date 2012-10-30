@@ -177,7 +177,7 @@ This manual is meant as a brief introduction to features found in Bash. The Bash
 
 ===== 1 Introduction =====
 
-* What is Bash?: A short description of Bash.
+* What is Bash? :A short description of Bash.
 * What is a shell?: A brief introduction to shells. 
 
 ===== 1.1 What is Bash[bæʃ]? =====
@@ -275,9 +275,9 @@ This chapter briefly summarizes the shell's `__building blocks__': commands, con
 
 When the shell reads input, it proceeds through a sequence of operations. If the input indicates the beginning of a comment, the shell ignores the comment symbol (‘#’), and the rest of that line.
 
-Otherwise, roughly speaking, the shell reads its input and divides the input into __words and operators__, employing the __quoting rules __to select which meanings to assign various words and characters.
+Otherwise, roughly speaking, the shell reads its input and divides the input into __words（words是一组连续的字符，用metacharacter分割。） and operators(具有特定功能的字符序列，由control operator和重定向符组成)__, employing the __quoting rules __to select which meanings to assign various words and characters.
 
-The shell then parses these tokens into commands and other constructs, removes the **special meaning** of certain words or characters, expands others, redirects input and output as needed, executes the specified command, waits for the command's exit status, and makes that exit status available for further inspection or processing.
+The shell then parses these tokens(由word和operator组成。) into commands and other constructs, removes the **special meaning** of certain words or characters, expands others, redirects input and output as needed, executes the specified command, waits for the command's exit status, and makes that exit status available for further inspection or processing.
 
 ==== 3.1.1 Shell Operation ====
 
@@ -299,7 +299,7 @@ The following is a brief description of the shell's operation when it reads and 
 * ANSI-C Quoting: How to expand ANSI-C sequences in quoted strings.
 * Locale Translation: How to translate strings into different languages. 
 
-Quoting is used to __remove the special meaning of certain characters or words__ to the shell. Quoting can be used to disable special treatment for special characters, to prevent reserved words from being recognized as such, and to prevent parameter expansion.
+Quoting is used to __remove the special meaning of certain characters or words__ to the shell. Quoting can be used to disable special treatment for special characters, to prevent reserved words from being recognized as such, and to prevent parameter expansion. 
 
 Each of the shell metacharacters (see Definitions) has special meaning to the shell and must be quoted if it is to__ represent itself__. When the command history expansion facilities are being used (see History Interaction), the history expansion character, usually__ ‘!’__, must be quoted to prevent history expansion. See Bash History Facilities, for more details concerning history expansion.
 
@@ -312,7 +312,8 @@ A non-quoted backslash ‘\’ is the Bash escape character. It preserves the __
 
 === 3.1.2.2 Single Quotes(单引号中的任何字符都无特殊含义，因此单引号中的\'是无效的) ===
 
-Enclosing characters in single quotes (‘'’) preserves the__ literal value of each character__ within the quotes. A single quote may **not occur **between single quotes, even when preceded by a backslash.单引号中的\无特殊含义。
+Enclosing characters in single quotes (‘'’) preserves the__ literal value of each character__ within the quotes. A single quote may **not occur **between single quotes, even when preceded by a backslash.
+单引号中的\无特殊含义。
 
 === 3.1.2.3 Double Quotes(除$ ` \和！外，其它任何字符都无特殊含义。其中\只有当后接$ ` \ 或换行时才有特殊含义，否则为正常字符) ===
 
@@ -320,9 +321,7 @@ Enclosing characters in double quotes (‘"’) preserves the literal value of a
 
 The backslash retains its special meaning__ only when followed by one of the following characters: ‘$’, ‘`’, ‘"’, ‘\’, or newline__. Within double quotes, backslashes that are followed by one of these characters are **removed**. Backslashes preceding characters without a special meaning are** left unmodified**. A double quote may be quoted within double quotes by preceding it with a backslash. If enabled, history expansion will be performed unless an ‘!’ appearing in double quotes is escaped using a backslash. The backslash preceding the ‘!’ is not removed.
 
-单独列出的
-
-===== 特殊规则 =====
+=== 特殊规则 ===
 ：__The special parameters ‘*’ and ‘@’ have special meaning when in double quotes__ (see Shell Parameter Expansion).
 
 
@@ -369,7 +368,7 @@ __The expanded result is single-quoted__, as if the dollar sign had not been pre
 [geekard@geekard ~]$ set |grep IFS
 __IFS=$' \t\n'__
 [geekard@geekard ~]$
-原来是因为值中含有ANSI-C的转义字符，所以使用了$'...'形式。
+原来是因为值中含有ANSI-C的转义字符，所以使用了 **$'...' **形式。
 [geekard@geekard ~]$ echo ' \t\n'    #正常情况下单引号中的内容**无任何特殊含义**，所以，\t\n并__不是__转义字符。
  \t\n
 [geekard@geekard ~]$ echo $' \t\n'  #但是，如果使用$' \t\n'形式，bash将其解释为__含有转义字符序列的特殊字符串__
@@ -385,7 +384,7 @@ cd
 
 === 3.1.2.5 Locale-Specific Translation ===
 
-A double-quoted string preceded by a dollar sign (‘$’) will cause the string to be translated according to the c**urrent locale**. If the current locale is__ C or POSIX__, the dollar sign is ignored. If the string is translated and replaced, the replacement is **double-quoted**.
+A double-quoted string preceded by a dollar sign (‘$’) will cause the string to be translated according to the **current locale**. If the current locale is__ C or POSIX__, the dollar sign is ignored. If the string is translated and replaced, the replacement is **double-quoted**.
 
 Some systems use the message catalog selected by the LC_MESSAGES shell variable. Others create the name of the message catalog from the value of the TEXTDOMAIN shell variable, possibly adding a suffix of ‘.mo’. If you use the TEXTDOMAIN variable, you may need to set the TEXTDOMAINDIR variable to the location of the message catalog files. Still others use both variables in this fashion: TEXTDOMAINDIR/LC_MESSAGES/LC_MESSAGES/TEXTDOMAIN.mo.
 
@@ -407,32 +406,31 @@ More complex shell commands are composed of simple commands __arranged together 
 * Compound Commands: Shell commands for control flow.
 * Coprocesses: Two-way communication between commands. 
 最后四个都是将简单命令组合为复杂命令的方法，它们__对外是一个整体__，可以被重定向。
-3.2.1 Simple Commands
 
+==== 3.2.1 Simple Commands ====
 A simple command is the kind of command encountered most often. It's just a** sequence of words separated by **__blanks__**, terminated by one of the shell's **__control operators__ (see Definitions). The first word generally specifies a command to be executed, with the rest of the words being that command's arguments.
 
 The return status (see Exit Status) of a simple command is its exit status as provided by the posix 1003.1 waitpid function, or __128+n__ if the command was terminated by **signal n**.
 
 
 ==== 3.2.2 Pipelines ====
-
 A pipeline is a sequence of simple commands separated by one of the control operators ‘|’ or ‘|&’.
 
 The format for a pipeline is
 
-     [time [-p]] [!] command1 [ [| or |&] command2 ...]
+     [time [-p]] [!] command1 [ [| or __|& __] command2 ...]
 
-The output(一般是标准输出) of each command in the pipeline is connected via a pipe to the input of the next command. That is, each command reads the previous command's output. This connection is performed before any redirections specified by the command. 管道在任何重定向操作之前完成。
+The output (一般是标准输出) of each command in the pipeline is connected via a pipe to the input of the next command. That is, each command reads the previous command's output. This connection is performed before any redirections specified by the command. 管道在任何重定向操作之前完成。
 
 If ‘|&’ is used, the __standard error__ of command1 is connected to command2's standard input through the pipe; it is shorthand for __2>&1 |__. This implicit redirection of the standard error is performed after any redirections specified by the command.
 
-The reserved word time causes timing statistics to be printed for the pipeline once it finishes. The statistics currently consist of __elapsed (wall-clock) time and user and system time__ consumed by the command's execution. The -p option changes the output format to that specified by posix. The TIMEFORMAT variable may be set to a format string that specifies how the timing information should be displayed. See Bash Variables, for a description of the available formats. The use of time as a reserved word permits the timing of shell builtins, shell functions, and pipelines. An external time command cannot time these easily.
+The reserved word __time__ causes timing statistics to be printed for the pipeline once it finishes. The statistics currently consist of __elapsed (wall-clock) time and user and system time__ consumed by the command's execution. The -p option changes the output format to that specified by posix. The TIMEFORMAT variable may be set to a format string that specifies how the timing information should be displayed. See Bash Variables, for a description of the available formats. The use of time as a reserved word permits the timing of shell builtins, shell functions, and pipelines. An external time command cannot time these easily.
 
 If the pipeline is not executed asynchronously (see Lists), the shell waits for all commands in the pipeline to complete.
 
 Each command in a pipeline is executed __in its own subshell __(see Command Execution Environment). The exit status of a pipeline is the exit status of the__ last command__ in the pipeline, unless the** pipefail option** is enabled (see The Set Builtin). If pipefail is enabled, the pipeline's return status is the value of the last (rightmost) command to exit with a non-zero status, or zero if all commands exit successfully. If the reserved word ‘!’ precedes the pipeline, the exit status is the logical negation of the exit status as described above. The shell waits for all commands in the pipeline to terminate before returning a value.
 
-管道线中各命令都在**各自的subshell**中执行，只有当最后一个命令执行完毕时，整个命令才结束，同时整个管道线命令的退出值为**最后一个命令**的退出值(而非中间某个命令的退出值)。如果打开了pipefail选项，则管道线中任何一个命令执行失败(退出吗非0)，则整个管道线退出。
+管道线中各命令都在__各自__**的subshell**中执行，只有当最后一个命令执行完毕时(不管中间的命令是否执行成功)，整个命令才结束，同时整个管道线命令的退出值为**最后一个命令**的退出值(而非中间某个命令的退出值)。如果打开了pipefail选项，则管道线中任何一个命令执行失败(退出码非0)，则整个管道线退出。
 
 
 ==== 3.2.3 Lists of Commands ====
@@ -506,7 +504,7 @@ Note that wherever a ‘;’ appears in the description of a command's syntax, i
     An alternate form of the for command is also supported: 借鉴了C的语法规则
 
               for __(( expr1 ; expr2 ; expr3 )) __; do commands ; done
-
+#这里的expr值得是算术表达式。
     First, the arithmetic expression expr1 is evaluated according to the rules described below (see Shell Arithmetic). The arithmetic expression expr2 is then evaluated repeatedly __until it evaluates to zero__. Each time expr2 evaluates to a non-zero value, commands are executed and the arithmetic expression expr3 is evaluated. If any expression is omitted, it behaves as if it evaluates to 1. The return value is the exit status of the last command in list that is executed, or false if any of the expressions is invalid. 
 
 The** break** and **continue** builtins (see Bourne Shell Builtins) may be used to control loop execution.
@@ -532,7 +530,7 @@ The** break** and **continue** builtins (see Bourne Shell Builtins) may be used 
     case will selectively execute the command-list corresponding to the **first** pattern that matches word. If the shell option nocasematch (see the description of shopt in The Shopt Builtin) is enabled, the match is performed without regard to the case of alphabetic characters. The __‘|’__ is used to separate multiple patterns, and the ‘)’ operator** terminates a pattern list**. A list of patterns and an associated command-list is known as a__ clause__.
 
     Each clause must be terminated with **‘;;’, ‘;&’, or ‘;;&’.** The word undergoes tilde expansion, parameter expansion, command substitution, arithmetic expansion, and quote removal **before** matching is attempted. Each pattern undergoes tilde expansion, parameter expansion, command substitution, and arithmetic expansion.
-pattern使用的是bash的匹配模式，多个pattern只能使用|相连，表示**或关系**__。bash会对模式和command-list中的内容进行“~”扩展、参数扩展、命令替换和算术扩展__。
+pattern使用的是__bash的匹配模式__，多个pattern只能使用|相连，表示**或关系**__。bash会对模式和command-list中的内容进行“~”扩展、参数扩展、命令替换和算术扩展__。
 
     There may be an arbitrary number of case clauses, each terminated by a ‘;;’, ‘;&’, or ‘;;&’. The first pattern that matches determines the command-list that is executed.
 
@@ -550,7 +548,6 @@ pattern使用的是bash的匹配模式，多个pattern只能使用|相连，表�
 
     If the ‘;;’ operator is used, no subsequent matches are attempted after the first pattern match. Using ‘__;&__’ in place of ‘;;’ causes execution to continue with the command-list associated with the **next clause**, if any. Using ‘;;&’ in place of ‘;;’ causes the shell to __test__ the patterns in the next clause, if any, and execute any associated command-list on a successful match.
 使用;;终止符号时，bash只会执行其前面的command-list然后退出case结构；使用;&结构时，bash还会__接着执行下一个__pattern对应的commandlist；使用;;&时，bash会__先判断__下一个pattern是否匹配，若是就执行对应的commandlist。
-
 
     The return status is zero if no pattern is matched. Otherwise, the return status is the exit status of the command-list executed.
 * select
@@ -573,9 +570,9 @@ The **PS3 **prompt is then displayed and a line is read from the standard input.
               done
 
 
-* ((...))
+* ((...))     #会被shell当作命令来执行，返回结果为true或false。
 
-              (( expression ))
+              (( expression ))  #expression必须为算术表达式，不能是命令，不会被扩展。
 
     The__ arithmetic expression__ is evaluated according to the rules described below (see Shell Arithmetic). If the value of the expression is non-zero, the return status is 0; otherwise the return status is 1. This is exactly equivalent to
 
@@ -587,7 +584,7 @@ The **PS3 **prompt is then displayed and a line is read from the standard input.
 
     Return a status of 0 or 1 depending on the evaluation of the __conditional expression__ **expression**. Expressions are composed of the primaries described below in Bash Conditional Expressions. __Word splitting and filename expansion are not performed __on the words between the ‘[ [’ and ‘] ]’; tilde expansion, parameter and variable expansion, arithmetic expansion, command substitution, process substitution, and **quote removal** are performed. Conditional operators such as ‘-f’ must be unquoted to be recognized as primaries.
 
-    When used with ‘[[’, The __‘<’__** and **__‘>’__ operators __sort lexicographically__ using the current locale.
+    When used with ‘[[’, The __‘<’__** and **__‘>’__ operators __sort lexicographically(对字符串而言，不能用于数字)__ using the current locale.
 
     When the__ ‘==’ and ‘!=’__ operators are used, the string to the right of the operator is __considered a pattern__ and matched according to the rules described below in Pattern Matching. If the shell option nocasematch (see the description of shopt in The Shopt Builtin) is enabled, the match is performed without regard to the case of alphabetic characters. The return value is 0 if the string matches (‘==’) or does not match (‘!=’)the pattern, and 1 otherwise. Any part of the pattern may be quoted to force it to be matched as a string.
 
@@ -606,6 +603,7 @@ The **PS3 **prompt is then displayed and a line is read from the standard input.
 
     The && and || operators do not evaluate expression2 if the value of expression1 is sufficient to determine the return value of the entire conditional expression. 
 
+对于[...]或test命令而言，其中不能有&&或||操作符，它们必须要放在[..]或test的外面；但是[[可以在内部使用它们。
 
 === 3.2.4.3 Grouping Commands ===
 
@@ -613,9 +611,9 @@ Bash provides two ways to group a list of commands to be __executed as a unit__.
 
 ()
 
-              ( list )   #在一个__子shell中__执行list中的命令。括号是运算符，因此它与list之间可以没有空格。
+              ( list )   #在同一个__子shell中__执行list中的命令。括号是运算符，因此它与list之间可以没有空格。
 
-    Placing a list of commands between parentheses causes __a subshell environment __to be created (see Command Execution Environment), and each of the commands in list to be executed in **that subshell**. Since the list is executed in a subshell, variable assignments do not remain in effect after the subshell completes.
+    Placing a list of commands between parentheses causes __a subshell environment __to be created (see Command Execution Environment), and each of the commands in list to be executed in **that subshell(正常情况下，list中的每个命令都是在不同的subshell中执行的。)**. Since the list is executed in a subshell, variable assignments do not remain in effect after the subshell completes.
 {}
 
               { list__; __}   #在__当前shell__中执行list中的命令，注意__最后的分号不可少。大括号是关键字，因此，它与list之间必须要有空格。__
@@ -632,7 +630,7 @@ A coprocess is a shell command preceded by the __coproc reserved word__. A copro
 
 The format for a coprocess is:
 
-     coproc [NAME] **com{**    #注意是**单条命令**，如果使用符合命令则必须用{}引住。
+     coproc [NAME] **com{ }  ** #注意是**单条命令**，如果使用复合命令则必须用{}引住。
 
 This creates a coprocess named NAME. If NAME is not supplied, the default name is __COPROC__. NAME must not be supplied if command is a simple command (see Simple Commands); otherwise, it is interpreted as the first word of the simple command.
 
@@ -1335,7 +1333,8 @@ The exit status of an executed command is the value returned by the **waitpid** 
 
 For the shell's purposes, a command which exits with __a zero exit status has succeeded__. A non-zero exit status indicates failure. This seemingly counter-intuitive scheme is used so there is one well-defined way to indicate success and a variety of ways to indicate various failure modes. When a command __terminates on a fatal signal whose number is N, Bash uses the value 128+N as the exit status__.
 
-* If a command is not found, the child process created to execute it returns a status of __127__. If a command is found but is not executable, the return status is __126__.
+* If a command is not found, the child process created to execute it returns a status of 
+* If a command is found but is not executable, the return status is 
 * If a command fails because of an error **during expansion or redirection**, the exit status is greater than zero.
 * The exit status is used by the Bash __conditional commands__ (see Conditional Constructs) and some of the __list constructs__ (see Lists).
 

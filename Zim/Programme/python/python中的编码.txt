@@ -6,8 +6,6 @@ Creation-Date: 2011-10-07T18:42:52+08:00
 Created Friday 07 October 2011
 http://yibin.us/archives/6817
 
-在一些python讨论版里，经常会见到一些“月经帖”，类似于“我用python读取一个文件乱码”，然后就会抱怨python的编码很麻烦，其实不是python编码难搞定，而是没有真正理解python的编码。
-
 如在windows环境下的以下示例代码：
 
 #!/usr/bin/env python
@@ -21,9 +19,10 @@ if __name__=='__main__':
     do()
 
 此时的ansi.txt编码为ansi,我们在cmd窗口执行，看到如下结果：
-{{~/sync/notes/zim/python/python中的编码/1.png}}
+{{./1.png}}
+
 此时一切正常，但，如果还是用上面的脚本去读取utf8.txt，文件是utf8编码，就会得到下面的结果：
-{{~/sync/notes/zim/python/python中的编码/2.png}}
+{{./2.png}}
 经典的“乱码”出现了，有朋友可能会说了，我在python脚本里指定编码应该就解决了，于是：
 	
 #!/usr/bin/env python
@@ -40,7 +39,7 @@ if __name__=='__main__':
     do()
 
 再次运行：
-{{~/sync/notes/zim/python/python中的编码/3.png}}
+{{./3.png}}
 OMG，还是乱码。。。。
 
 能不能正常输出中文不取决于#coding=utf-8，也不取决于目标文件的编码，而是取决于你的__终端输出设备__，这里就是CMD窗口，CMD窗口是不支持UTF-8的，它只支持__GBK__，所以，我们要转码。
@@ -64,7 +63,7 @@ if __name__=='__main__':
     do()
 
 结果：
-{{~/sync/notes/zim/python/python中的编码/4.png}}
+{{./4.png}}
 正常输出。
 
 做一个小结：

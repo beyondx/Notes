@@ -1,0 +1,71 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-10-25T11:38:09+08:00
+
+====== Page Cache ======
+Created Thursday 25 October 2012
+
+http://baike.baidu.com/view/1111885.htm
+
+===== 一、page cache简介 =====
+　　page cache，又称pcache，其中文名称为页高速缓冲存储器，简称页高缓。page cache的大小为一页，通常为4K。在linux读写文件时，它用于缓存文件的逻辑内容，从而加快对磁盘上映像和数据的访问。
+
+===== 二、page cache的功能详解 =====
+　　在从外存的一页到内存的一页的映射过程中，__page cache与buffer cache、swap cache__共同实现了高速缓存功能，以下是其简单映射图：
+
+		外存的一页(分解为几块，可能不连续)
+		　　|
+		物理磁盘的磁盘块
+		　　|
+		内存的buffer cache
+		　　|
+		内存的一页(由一个页框划分的几个连续buffer cache构成)
+		　　|
+		页高缓系统
+{{./buffer_head.jpeg}}
+　　在这个过程中，内存管理系统和VFS与page cache交互，内存管理系统负责维护每项page cache的分配和回收，同时在使用memory map方式访问时负责建立映射；VFS负责page cache与用户空间的数据交换。
+        bffer cache可以参考：[[内核开发:linux文件系统:块缓冲区和块缓冲区头]]  和  [[内核开发:linux文件系统:块缓冲区和块缓冲区头:buffer cache]]
+{{./1}}
+
+===== 三、page cache的管理 =====
+　　在Linux内核中，文件的每个数据块最多只能对应一个page cache项，它通过两个数据结构来管理这些cache项，**一个是radix tree，另一个是双向链表**。
+　　__一个页高速缓存对象(struct address_space)通常和一个文件关联，而且每个address_space对象都有唯一的radix tree。Radix tree是一种搜索树__，只要指定了文件偏移量，就可以在Radix tree中快速检索到相应的page地址，从而对page cache中的page进行快速定位。图1是radix tree的一个示意图，该radix tree的分叉为4(22)，树高为4，用来快速定位8位**文件内偏移**。
+　　另一个数据结构是双向链表，Linux内核为__每一片物理内存区域(zone)维护active_list和 inactive_list两个双向链表__，这两个list主要用来**实现物理内存的回收**。这两个链表上除了文件Cache之外，还包括其它匿名 (Anonymous)内存，如进程堆栈等。
+
+===== 四、page cache相关API及其实现 =====
+　　Linux内核中与文件Cache操作相关的API有很多，按其使用方式可以分成两类：一类是以__拷贝方式__操作的相关接口，如read/write/sendfile等，其中sendfile在2.6系列的内核中已经不再支持；另一类是以__地址映射方式__操作的相关接口，如mmap等。
+　　第一种类型的API在不同文件的Cache之间或者Cache与应用程序所提供的用户空间buffer之间拷贝数据，其实现原理如图2所示。
+　　第二种类型的API__将Cache项映射到用户空间__，使得应用程序可以像使用内存指针一样访问文件，Memory map访问Cache的方式在内核中是__采用请求页面机制实现的__，其工作过程如图3所示。
+　　首先，应用程序调用mmap（图中1），陷入到内核中后调用do_mmap_pgoff（图中2）。该函数从应用程序的地址空间中分配一段区域作为映射的内存地址，并使用一个VMA（vm_area_struct）结构代表该区域，之后就返回到应用程序（图中3）。当应用程序访问mmap所返回的地址指针时（图中4），由于虚实映射尚未建立，会触发__缺页中断__（图中5）。之后系统会调用缺页中断处理函数（图中6），__在缺页中断处理函数中，内核通过相应区域的 VMA结构判断出该区域属于文件映射__，于是调用具体文件系统的接口读入相应的Page Cache项（图中7、8、9），并填写相应的虚实映射表。经过这些步骤之后，应用程序就可以正常访问相应的内存区域了。
+
+===== 加入/离开page cache还涉及到如下几个函数: =====
+　　add_page_to_hash_queue /*加入page cache hash表*/
+　　add_page_to_inode_queue /*加入inode queue即address_space*/
+
+　　remove_page_from_inode_queue
+　　remove_page_from_hash_queue
+
+　　__remove_inode_page /*离开inode queue和hash 表*/
+　　remove_inode_page /*同上*/
+
+　　add_to_page_cache_locked /*加入inode queue,hash 和lru cache*/
+　　__add_to_page_cache /*同上*/
+
+仅罗列函数add_page_to_hash_queue,以示完整:
+　　static void add_page_to_hash_queue(struct page * page, struct page **p)
+　　{
+　　struct page *next = *p;
+　　*p = page; /* page->newNode */
+　　page->next_hash = next; /* +-----+ */
+　　page->pprev_hash = p; /* p--> |hashp|-->|oldNode| */
+　　if (next) /* next----+ */
+　　next->pprev_hash = &page->next_hash;
+　　if (page->buffers)
+　　PAGE_BUG(page); /*证明page 不会同时存在于page cache 　和 buffer cache*/
+　　/*2.6 已经与此不同了*/
+　　atomic_inc(&page_cache_size);
+　　}
+
+===== page cache 和 inode =====
+　　page cache 在代码中又称 __inode page cache__, 足以显示page cache 和inode__紧密关联__.加入page cache 和加入inode cache是同一个意思.加入page cache意味着同时加入page cache hash表和inode queue(也建立了page和addr sapce的关系). 见函数add_to_page_cache_locked,__add_to_page_cache即可取证.从page cache 删除在程序中叫__remove_inode_page,再次显示inode 和page cache的"一体化".
+{{~/linux地址空间相关的数据结构(取自深入理解Linux虚拟内存管理)}}

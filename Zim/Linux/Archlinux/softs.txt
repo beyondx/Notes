@@ -81,5 +81,6 @@ mendeley — a papers eg. pdf word  organizer
 dia   — a 'viso' like flow-chart drawing software.
 fcitx — a input method
 evince — a simple pdf viewer
+iftop    --- interface top
 
 ###################################################################

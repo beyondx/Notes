@@ -1,0 +1,7 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-10-24T10:12:31+08:00
+
+====== linux文件系统 ======
+Created Wednesday 24 October 2012
+

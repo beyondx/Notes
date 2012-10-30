@@ -1,0 +1,126 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-10-24T10:20:15+08:00
+
+====== GIO ======
+Created Wednesday 24 October 2012
+http://en.wikipedia.org/wiki/GIO_(GNOME)
+From Wikipedia, the free encyclopedia
+
+GIO is a software library from the GNOME software stack, designed to __present programmers with a modern and usable interface to a virtual file system__. It allows applications to access local and remote files __with a single consistent API__, which was designed "to overcome the shortcomings of GnomeVFS" and be "so good that developers prefer it over raw POSIX calls."[1] It ships as a separate library, libgio-2.0, bundled with GLib.
+
+===== Features =====
+* The abstract file system model of GIO consists of a number of interfaces and base classes for I/O and files.
+* There is a number of stream classes, similar to the input and output stream hierarchies that can be found in frameworks like Java.
+* There are interfaces related to applications and the types of files they handle.
+* There is a framework for storing and retrieving application settings.
+* There is support for network programming, including name resolution, lowlevel socket APIs and highlevel client and server helper classes.
+* There is support for connecting to __D-Bus__, sending and receiving messages, owning and watching bus names, and making objects available on the bus.
+Beyond these, GIO provides facilities for **file monitoring**, asynchronous I/O and filename completion. In addition to the interfaces, GIO provides implementations for the local case. Implementations for various network file systems are provided by the GVFS package as loadable modules.
+
+===== Example =====
+A simple example illustrating local file handling using GIO in C:
+
+#include <glib/gprintf.h>
+#include <gio/gio.h>
+ 
+#define _g_free0(var) (var = (g_free (var), NULL))
+#define _g_object_unref0(var) ((var == NULL) ? NULL : (var = (g_object_unref (var), NULL)))
+ 
+void log_g_error(GError * e, int line) {
+   g_printerr ("** ERROR **: %s (domain: %s, code: %d) at %d\n", 
+      e->message, g_quark_to_string (e->domain), e->code, line);
+}
+ 
+int main (int argc, char ** argv) {
+   g_type_init ();
+   if (argc < 2) {
+      g_message ("Usage: %s file-name", argv[0]);
+      return 1;
+   }
+   GFile* file = NULL;
+   GFileInfo* fileinfo = NULL;
+   GFileType filetype = G_FILE_TYPE_UNKNOWN;
+   const char* contenttype = NULL;
+   gchar* contenttype_desc = NULL;
+   GFileInputStream* fis = NULL;
+   GDataInputStream* dis = NULL;
+   gchar* line = NULL;
+   GError* inner_error = NULL;
+   int error_line = 0;
+   file = g_file_new_for_path (argv[1]);
+   fileinfo = g_file_query_info (file, "standard::*", G_FILE_QUERY_INFO_NONE, NULL, &inner_error);
+   if (inner_error == NULL) {
+      filetype = g_file_info_get_file_type(fileinfo);
+      contenttype = g_file_info_get_attribute_string (fileinfo, G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE);
+      contenttype_desc = g_content_type_get_description(contenttype);
+      g_printf ("\
+=== file-description ===\n\
+Content type: %s (%s)\n\
+Size: %lluB\n\
+=== description-end ===\n\
+", contenttype, contenttype_desc, g_file_info_get_attribute_uint64 (fileinfo, G_FILE_ATTRIBUTE_STANDARD_SIZE));
+      _g_free0 (contenttype_desc);
+      //_g_object_unref0 (fileinfo); //if you do this here, 'contenttype' gets destroyed.
+      switch (filetype) {
+      case G_FILE_TYPE_REGULAR:
+      case G_FILE_TYPE_SYMBOLIC_LINK:
+         if (!g_content_type_is_a(contenttype, "text/*")) {
+            g_printerr ("Not a text-based document.\n");
+      break;
+         }
+         fis = g_file_read (file, NULL, &inner_error);
+         if (inner_error != NULL) {
+            _g_object_unref0 (fis);
+            error_line = __LINE__;
+      break;
+         }
+         dis = g_data_input_stream_new (G_INPUT_STREAM(fis));
+         _g_object_unref0 (fis);
+         while (TRUE) {
+            line = g_data_input_stream_read_line (dis, NULL, NULL, &inner_error);
+            if (inner_error != NULL) {
+               _g_free0 (line);
+               error_line = __LINE__;
+         break;
+            }
+            if (line == NULL)
+         break;
+            g_printf ("%s\n", line);
+            _g_free0 (line);
+         }
+         _g_object_unref0 (dis);
+      break;
+      case G_FILE_TYPE_DIRECTORY:
+         g_printerr ("** INFO: Can't read a directory.\n");
+      break;
+      case G_FILE_TYPE_SPECIAL:
+         g_printerr ("** INFO: It's a \"special\" file.\n");
+      break;
+      case G_FILE_TYPE_SHORTCUT:
+         g_printerr ("** INFO: The given file is a shortcut.\n");
+      break;
+      case G_FILE_TYPE_MOUNTABLE:
+         g_printerr ("** INFO: File is a mountable location.\n");
+      break;
+      case G_FILE_TYPE_UNKNOWN:
+         g_printerr ("** INFO: Unknown file type.\n");
+      break;
+      }
+   }
+ 
+   _g_object_unref0 (fileinfo);
+   _g_object_unref0 (file);
+   if (inner_error != NULL) {
+      log_g_error (inner_error, error_line);
+      g_clear_error (&inner_error);
+      return 1;
+   }
+   return 0;
+}
+The above program takes a filename as an argument at runtime, prints its content-type and size, and if the input file is text-based, prints its contents too. To compile the above program in Linux using GCC and pkg-config, use:
+
+gcc -Wall -g gio-example.c -o gio-example $(pkg-config --cflags --libs gio-2.0)
+assuming the source file is gio-example.c. To execute the output file, use:
+
+./gio-example filename

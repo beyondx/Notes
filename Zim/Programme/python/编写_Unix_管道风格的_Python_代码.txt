@@ -1,0 +1,121 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-10-04T22:01:26+08:00
+
+====== 编写 Unix 管道风格的 Python 代码 ======
+Created Thursday 04 October 2012
+http://www.oschina.net/question/54100_11910
+
+先推荐一份幻灯片，David Beazley ("Python essiential reference", PLY 的作者) 在 PyCon’2008 上报告的幻灯片，强烈推荐！！这篇文章的很多内容都来自或者受这份幻灯片的启发而来。
+
+在上一篇文章里介绍了 Unix 管道的好处，那可不可以在写程序时也使用这样的思想呢？当然可以。看过 SICP 就知道，其实函数式编程中的 __map, filter__ 都可以看作是管道思想的应用。但其实管道的思想不仅可以在函数式语言中使用，只要语言支持定义函数，有能够存放一组数据的数据结构，就可以使用管道的思 想。
+
+一个日志处理任务
+
+这里直接以前面推荐的幻灯片里的例子来说明，应用场景如下：
+
+某个目录及子目录下有一些 web 服务器的日志文件，日志文件名以 access-log 开头
+日志格式如下
+81.107.39.38 - ... "GET /ply/ply.html HTTP/1.1" 200 97238
+81.107.39.38 - ... "GET /ply HTTP/1.1" 304 -
+其中最后一列数字为发送的字节数，若为 ‘-’ 则表示没有发送数据
+
+目标是算出总共发送了多少字节的数据，实际上也就是要把日志记录的没一行的最后一列数值加起来
+我不直接展示如何用 Unix 管道的风格来处理这个问题，而是先给出一些“不那么好”的代码，指出它们的问题，最后再展示管道风格的代码，并介绍如何使用 generator 来避免效率上的问题。想直接看管道风格的，点这里。
+
+问题并不复杂，几个 for 循环就能搞定：
+
+sum = 0
+for path, dirlist, filelist in __os.walk(top)__:
+    for name in __fnmatch.filter__(filelist, "access-log*"):
+        # 对子目录中的每个日志文件进行处理
+        with open(name) as f:
+            for line in f:
+                if line[-1] == '-':
+                    continue
+                else:
+                    sum += int(line__.rsplit(None, 1)__[1])
+
+利用 os.walk 这个问题解决起来很方便，由此也可以看出 python 的 for 语句做遍历是多么的方便，不需要额外控制循环次数的变量，省去了设置初始值、更新、判断循环结束条件等工作，相比 C/C++/Java 这样的语言真是太方便了。看起来一切都很美好。
+
+然而，设想以后有了新的统计任务，比如：
+
+   1. 统计某个特定页面的访问次数
+   2. 处理另外的一些日志文件，日志文件名字以 error-log 开头
+
+完成这些任务直接拿上面的代码过来改改就可以了，文件名的 pattern 改一下，处理每个文件的代码改一下。其实每次任务的处理中，找到特定名字为特定 pattern 的文件的代码是一样的，直接修改之前的代码其实就引入了重复。
+
+如果重复的代码量很大，我们很自然的会注意到。然而 python 的 for 循环实在太方便了，像这里找文件的代码一共就两行，哪怕重写一遍也不会觉得太麻烦。for 循环的方便使得我们会忽略这样简单代码的重复。然而，再怎么方便好用，for 循环无法重用，只有把它放到函数中才能进行重用。
+
+(先考虑下是你会如何避免这里的代码的重复。下面马上出现的代码并不好，是“误导性”的代码，我会在之后再给出“更好”的代码。)
+
+因此，我们__把上面代码中不变的部分提取成一个通用的函数，可变的部分以参数的形式传入__，得到下面的代码。
+
+def generic_process(topdir, filepat, processfunc):
+    for path, dirlist, filelist in os.walk(top):
+        for name in fnmatch.filter(filelist, filepat):
+            with open(name) f:
+                processfunc(f)
+ 
+sum = 0
+# 很遗憾，python 对 closure 中的变量不能进行赋值操作，
+# 因此这里只能使用全局变量
+def add_count(f):
+    global sum
+    for line in f:
+        if line[-1] == '-':
+            continue
+        else:
+            sum += int(line.rsplit(None, 1)[1])
+ 
+generic_process('logdir', 'access-log*', add_count)
+
+看起来不变和可变的部分分开了，然而 generic_process 的设计并不好。它除了寻找文件以外还调用了日志文件处理函数，因此在其他任务中很可能就无法使用。另外 add_count 的参数必须是 file like object，因此测试时不能简单的直接使用字符串。
+
+===== 管道风格的程序 =====
+下面考虑用 Unix 的工具和管道我们会如何完成这个任务：
+
+find logdir -name "access-log*" | \
+xargs cat | \
+grep '[^-]$' | \
+awk '{ total += $NF } END { print total }'
+
+find 根据文件名 pattern 找到文件，cat 把所有文件内容合并输出到 stdout，grep 从 stdin 读入，过滤掉行末为 ‘-’ 的行，awk 提取每行最后一列，将数值相加，最后打印出结果。（省掉 cat 是可以的，但这样一来 grep 就需要直接读文件而不是只从标准输入读。）
+
+我们可以在 python 代码中模拟这些工具，__Unix 的工具通过文本来传递结果，在 python 中可以使用 list__。
+
+def find(topdir, filepat, processfunc):
+    files = []
+    for path, dirlist, filelist in os.walk(top):
+        for name in fnmatch.filter(filelist, filepat):
+            files.append(name)
+    return files
+ 
+ def cat(files):
+    lines = []
+    for file in files:
+        with open(file) as f:
+            for line in f:
+                lines.append(line)
+    return lines
+ 
+ def grep(pattern, lines):
+    result = []
+    import re
+    pat = re.compile(pattern)
+    for line in lines:
+        if pat.search(line):
+            result.append(line)
+    resurn result
+ 
+lines = grep('[^-]$', cat(find('logdir', 'access-log*')))
+col = (line.rsplit(None, 1)[1] for line in lines)
+print sum(int(c) for c in col)
+
+有了 find, cat, grep 这三个函数，只需要连续调用就可以像 Unix 的管道一样将这些函数组合起来。数据在管道中的变化如下图（简洁起见，过滤器直接标在箭头上 ）：
+
+{{./1.gif}}
+
+看起来现在的代码行数比最初直接用 for 循环的代码要多，但现在的代码就像 Unix 的那些小工具一样，每一个都更加可能被用到。我们可以把更多常用的 Unix 工具用 Python 来模拟，从而在 Python 代码中以 Unix 管道的风格来编写代码。
+
+不过上面的代码性能很差，多个临时的 list 被创建。解决的办法是用 generator，因为篇幅比较长，具体做法放到下一篇文章中。

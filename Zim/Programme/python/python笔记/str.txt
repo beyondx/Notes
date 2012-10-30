@@ -1,0 +1,40 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-10-04T13:20:41+08:00
+
+====== str ======
+Created Thursday 04 October 2012
+
+ |  join(...)
+ |      S.join(iterable) -> string
+ |      
+ |      Return a string which is the concatenation of __the strings in the__
+__ |      iterable__.  The separator between elements is S.
+
+iterable迭代器对象每次返回的__必须是字符串对象__。
+
+>>> ":".join("abcd")
+'a:b:c:d'
+
+>>> ":".join(['a','b','c','d'])
+'a:b:c:d'
+
+>>> ":".join(['a',__123__,'c'])
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+TypeError: sequence item 1: __expected string__, int found
+
+>>> ":".join(['a',['ab'],'c'])
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+TypeError: sequence item 1: expected string, list found
+>>> 
+
+ |  rsplit(...)
+ |      S.rsplit([sep [,maxsplit]]) -> list of strings
+ |      
+ |      Return a list of the words in the string S, using sep as the
+ |      delimiter string, starting at the end of the string and working
+ |      to the front.  If maxsplit is given, at most maxsplit splits are
+ |      done. If sep is not specified or is __None__, any whitespace string
+ |      is a separator.

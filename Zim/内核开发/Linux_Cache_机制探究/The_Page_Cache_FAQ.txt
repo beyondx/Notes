@@ -1,0 +1,49 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-10-26T21:36:38+08:00
+
+====== The Page Cache FAQ ======
+Created Friday 26 October 2012
+http://rdc.taobao.com/blog/cs/?p=13
+
+The Page Cache FAQ(v0.1,欢迎补充与拍砖)
+The Page Cache FAQ
+
+本FAQ中所有的操作均以磁盘文件系统为例.
+
+page cache是linux中加快文件存取速度的重要组成部份。在Linux中，关于文件系统的缓存大致可以分为两类，
+一类用来缓存文件系统的元数据，比如indoe,dentry,另一类即是page cache，用来缓存文件本身。
+
+
+1.Q：同一个文件在page cache中是否有可能存在多个副本？
+A：可能。比如我们有一个文件a.txt，当打开并读取该文件的时候，page cache中会存一份，然后再打开该文件所在的磁盘(如/dev/sda)读取，
+此时，page cache中就有多个a.txt的副本(读取的内容)存在。
+
+2.Q：读取磁盘上的文件时，具体是以什么为单位？
+A：以page size为单位。
+
+3.Q：page cache里同一个页面里的内容在磁盘上是否连续？
+A：不一定连续，因为文件在磁盘上未必连续。
+
+4.Q：page cache和buffer cache是什么关系？
+A：buffer cache用page cache来实现，主要用来作文件不连续时的缓存和缓存磁盘块(如裸盘读写)。
+
+5.Q：同一个页面是否可会缓存多个文件的内容？
+A：不会。
+
+6.Q：当一个文件被mmap之后再打开，它有几份副本存在于内存中？
+A：当使用shared映射时，只存在一份。
+
+7.Q：page cache是否换出？
+A：不会，刷出(如果需要)后直接回收。
+
+8.Q：page cache中的写操作以什么样的策略刷回磁盘？
+A：有几个因素：
+1) /proc/sys/vm/dirty_background_ratio
+2) /proc/sys/vm/dirty_ratio
+3) /proc/sys/vm/dirty_writeback_centisecs
+9.Q：如何查看当前系统中的磁盘操作？
+A：echo “1″ > /proc/sys/vm/block_dump
+
+10.Q：主要有哪些文件系统/硬盘/iscsi/nas性能测试工具？
+A：我知道的有bonnie/iometer/iozone

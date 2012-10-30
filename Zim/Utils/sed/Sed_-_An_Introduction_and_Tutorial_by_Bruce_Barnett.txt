@@ -334,7 +334,7 @@ s/e/E/g
 s/i/I/g 
 s/o/O/g 
 s/u/U/g'  <old >new
-#bash的字符串引号里**可以包含换行**，但是单引号单不能对单换行单转以，双引号可以。
+#bash的字符串引号里**可以包含换行**，但是单引号单不能对单换行单转义，双引号可以。
 
 ===== A sed interpreter script =====
 
@@ -362,7 +362,6 @@ Sed comments are lines where the **first non-white** character is a "#." On many
 does work.
 
 ===== Passing arguments into a sed script =====
-
 Passing a word into a shell script that calls sed is easy if you remembered my tutorial on the Unix quoting mechanism. To review, you use the single quotes to turn quoting on and off. A simple shell script that uses sed to emulate grep is:
 
 #!/bin/sh
@@ -887,7 +886,7 @@ This line\
 And this line
 '
 
-===== Adding lines and the pattern space     =====
+===== Adding lines and the pattern space =====
 
 I have mentioned the pattern space before. Most commands operate **on** the pattern space, and subsequent commands may act on the __results__ of the last modification. The three previous commands, like the read file command, add the new lines to the output stream, __bypassing__ the pattern space.
 
