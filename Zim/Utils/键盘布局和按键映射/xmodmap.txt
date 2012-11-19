@@ -1,0 +1,133 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-11-19T11:27:20+08:00
+
+====== xmodmap ======
+Created Monday 19 November 2012
+http://lins05.mysmth.net/2011/04/24/67/
+
+注意：xmodmap修改键盘布局的方法只适用于X client app，对于虚拟终端应用，需要修改keymaps文件，可以参考：[[wiki KEYMAPS]]
+
+这是一篇介绍xmodmap工具的简单教程，适合于以下童鞋：
+* Emacs用户，需要交换 CapsLock 和 left Ctrl的人，或者和我一样交换Alt_L和Control_L。
+* 其他有改键需要的人。
+* 喜欢瞎折腾的人。
+读了这篇帖子，你会发现在linux下修改键盘布局是如此的简单(我替你们做了功课：花二十分钟通读了xmodmap的man手册)。
+
+===== 提出问题： =====
+如何交换CapsLock和左边的Ctrl键？ 
+
+答：
+# xmodmap -e "remove lock = Caps_Lock"
+# xmodmap -e "remove control = Control_L"
+# xmodmap -e "add control = Caps_Lock"
+# xmodmap -e "add lock = Control_L" 
+
+后面的内容是具体的教程，前面是提供给只需要一个做法而不需要了解具体的原理的。如果你属于此类，完全可以不看后面的内容了。 不过原理很简单，而且一旦学会，改键就跟grep一个正则表达式差不多简单。 
+
+===== 分析问题： =====
+看到这里的人，应该是有耐心理解下面三个概念的： keycode/keysym/modifier 这三个概念是键盘相关的、层次从低到高的三个名词。 
+
+===== keycode– =====
+一般的键盘上有102或者105键，每一个键被按下时会产生一个特有类型、主板能够分辨的电信号，传输给主板，主板给不同的电信号定下不同的编号，这就是所谓的keycode。 这些电信号是在生产键盘时就定死了的，比如左边的Ctrl键产生的keycode是37。CapsLock键产生的keycode是66。 要查找某个按键的keycode，可以在term中用__`xev`__程序来查看。xev使用很简单，它运行时，你按下一个键，term中就会显示这个键的许多信息，其中就有keycode。 这些keycode是硬件决定的，你我无法改变。总之记住，一个按键产生的keycode是不可能在软件中改变的。 
+
+===== keysym– =====
+操作系统按照统一的规范，给不同的keycode映射为不同的含义，这个映射后的含义的术语就叫做keysym。比如你在emacs中打字时按下一个s键。屏幕上出现一个`s`，而不是出现一个`b`，是因为：系统接收到s的keycode–我用xev查了下，keycode(s) = 39， 按照默认的标准，39对应于字母`s`，于是就这个`s`显示在屏幕上。 (当然，更严谨地、更准确地说，应该是把`s`这个字母作为输入传递给Emacs，emacs再把这个字母插入到当前的文件中的。) 这里，keycode是39，其对应的符号，术语叫keysym，即`key symbol`，就是字母`s`。 同理你按下键盘上的’b'(keycode(b) = 56)，它的(默认的)keysym就是字母`b`。 系统给一个keycode分配的keysym不只一个。对于一个字母键，至少两个。第一个是单独按下这个键时对应的一，第二个是shift和这个键同时按下时的keysym。 键盘上，还有另外一类按键，它们单独按下时，一般没有任何意义，只有与其他的按照一直按下时是，才会产生一些特殊的效果，比如Ctrl、Shift、win键；它们实现的效果，称为modifier。 
+
+===== Modifier–修饰符 =====
+“修饰符”的修饰二字很好解释，你按下s，是打一个字母s，你按下Ctrl+s，大部分软件里，会保存当前文件；你按下Shift+s，是打另一个字母S。总之是 “改变一个键的本来含义“。因为`modify`本来就是修改的意思。 在term里输入命令`xmodmap`，会出现以下内容 
+┌─[geekard @ kb310]─[16:27]─[~]─[326]
+└─[$] xmodmap
+xmodmap:  up to 4 keys per modifier (keycodes in parentheses):
+shift       Shift_L (0x32)  Shift_R (0x3e)
+lock        Caps_Lock (0x42)
+control     Control_L (0x40)  Control_R (0x69)
+mod1        Alt_L (0x25)  Alt_R (0x6c)  Alt_L (0xcc)  Meta_L (0xcd)
+mod2        Num_Lock (0x4d)
+mod3     
+mod4        Super_L (0x85)  Super_R (0x86)  Super_L (0xce)  Hyper_L (0xcf)
+mod5        ISO_Level3_Shift (0x5c)  Mode_switch (0xcb)
+
+左边那一列，就是系统中所有的`modifier`。 系统会把一些默认的keysym解释为modifier，比如，默认情况下，你按下Shift + s， 屏幕上出现大写的S整个过程其实是：
+* 系统收到Shift键和s键的keycode
+* 系统处理 keycode–>keysym 的映射: shift的keycode被映射到`SHIFT_L`这个keysym；s的keycode被映射到`s`这个keysym
+* 系统发现，SHIFT_L这个keysym被定义为shfit这个modifier。
+* `s`被shift这个modifier给修饰了，修饰的结果是变成了大写的S。
+
+基本概念讲完了，那么，`xmodmap`是如何帮我们实现`改键`的呢？ 可以看到，从按下一个键到最后，有两个层次的映射过程： 
+第一层： keycode–>keysym
+第二层： keysym –> modifier
+因此，我们可以通过两种方法来实现改键。 
+
+===== 目标1：把键盘上的s和a键交换位置 =====
+先查询s和a对应的keycode，方法还是使用`xev'程序。例如我的输出如下：
+
+KeyPress event serial 39 synthetic NO window 0x3200001
+    root 0xb7 subw 0x0 time 14363110 (97129) root:(99152)
+    state 0x10 keycode 39 (keysym 0x73 s) same_screen YES
+    XLookupString gives 1 bytes: (73) "s"
+    XmbLookupString gives 1 bytes: (73) "s"
+    XFilterEvent returns: False  
+......
+KeyPress event serial 39 synthetic NO window 0x3200001
+    root 0xb7 subw 0x0 time 14364150 (97129) root:(99152)
+    state 0x10 keycode 38 (keysym 0x61 a) same_screen YES
+    XLookupString gives 1 bytes: (61) "a"
+    XmbLookupString gives 1 bytes: (61) "a"
+    XFilterEvent returns: False
+
+===== 交换s/a的位置： =====
+# xmodmap -e "keycode 39 = a"
+# xmodmap -e "keycode 38 = s"
+
+这样，就交换了 s/a 这两个键的位置了！ 注意，在你执行了第一条语句之后，s立刻被重新映射到a了，那么你第二条语句中的`s`怎么打出来呢？
+两个方法： i) 从别处粘贴一个过来 ii)见最后的`xmodmap执行命令的三种方式` 
+
+注意：这个方法只能交换一般的keysym，那些定义为Modifier的键，就不能简单地用这个方式交换。
+因为： 当一个keysym被定义为modifier，那么，__本质上是在 keycode–>modifier之间建立起了一个映射__。因此，即使你改变了它的keycode–>keysym关系，也不起作用！ 也就是说：当你要把一个键定义一个modifier时，你只能把它的keycode对应的keysym定义为modifier，从而达到目的。但这之后，即使keycode映射到别的keysym了，这个keycode仍然是一个modifier。 因此，如果要交换CapsLock和Ctrl这两个键，只需要做两件事： 
+* 把`Caps_Lock`这个keysym定义为`control`这个modifer
+* 把`Control_L`这个keysym定义为`Caps_Lock`这个modifier （Control_L是左Ctrl键的默认keysym)
+
+===== 目标2： 交换 Caps_Lock和 左边的Ctrl =====
+先把CapsLock这个keysym映射到control这个modifier：  
+# xmodmap -e "remove lock = Caps_Lock"
+# xmodmap -e "add control = Caps_Lock"
+
+__因为一个keysym不能同时映射到两个modifier__，因此，我们需要先用remove把Caps_Lock这个keysym与lock这个modifier的映射关系删除（当前的modifier与keysymb的关系可以用xmodmap -pkm命令查看。）。然后，再把Caps_Lock这个keysym映射到Control这个modifier。 remove和add的的语法是： 
+复制代码
+remove/add modifier_name = keysym_name
+
+此时，你可以试一下，看看是否已经产生效果了？ 
+同样，再把左边的Ctrl键映射到CapsLock： 
+# xmodmap -e "remove control = Control_L"
+# xmodmap -e "add Caps_Lock = Control_L"
+
+===== 目标3：交换左侧的Ctrl和Alt，同时将右侧的Alt映射到Esc（这样可以支持命令行编辑） =====
+1. 先用xmodmap -pm查看当前的modifier与哪些keycode绑定(间接通过keysyms)
+$ xmodmap -pm
+xmodmap:  up to 4 keys per modifier, (keycodes in parentheses):
+
+shift       Shift_L (0x32),  Shift_R (0x3e)
+lock        Caps_Lock (0x42)
+control     Control_L (0x40),  Control_R (0x69)
+mod1        Alt_L (0x25),  Escape (0x6c),  Alt_L (0xcc),  Meta_L (0xcd)
+mod2        Num_Lock (0x4d)
+mod3      
+mod4        Super_L (0x85),  Super_R (0x86),  Super_L (0xce),  Hyper_L (0xcf)
+mod5        ISO_Level3_Shift (0x5c),  Mode_switch (0xcb)
+
+2. 然后编辑~/.xmodmap文件：
+!swithc alt and ctl
+remove Mod1 = Alt_L 
+remove Control = Control_L
+keycode  37= Alt_L
+keycode 64  = Control_L
+!Right Alt maps to Esc
+keycode 108 = Escape
+add Control = Control_L
+add Mod1 = Alt_L 
+
+xmodmap执行命令的三种方式：
+1) xmodmap -e "do somthing"   是让xmodmap执行后面的一条句子。但这样一次只能执行一条。
+2) 你也可以先输入 `xmodmap -`，然后回车，然后输入任意多句子，每输入一条就用回车分隔，最后用Ctrl+D结束输入。
+3) 把remove xxx = yyy 这些句子都写到一个文件里。一般是~/.Xmodmap。然后用 `xmodmap ~/.Xmodmap`执行。 这样的好处是，在启动时的某个脚本里加一行命令，就不用每次重启都手动地改键了。 

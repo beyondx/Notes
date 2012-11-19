@@ -1,0 +1,72 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-11-19T19:12:45+08:00
+
+====== wiki KEYMAPS ======
+Created Monday 19 November 2012
+https://wiki.archlinux.org/index.php/KEYMAP
+
+===== KEYMAP =====
+The **KEYMAP** variable is specified in the __/etc/vconsole.conf__ file. It defines what keymap the keyboard is in the virtual consoles. Keytable files are provided by the **kbd** package.
+
+===== Keyboard layouts =====
+This is the list of known keymap settings to work for the corresponding **keyboard layouts**. Most keymaps can be found in the **/usr/share/kbd/keymaps/i386**/layout (__layout=qwerty, azerty, dvorak, etc__.) directory.
+
+Less common but nonetheless useful keymaps for Arch Linux are found in the /usr/share/kbd/keymaps/architecture (architecture=mac, sun, etc.) directory.
+Note: In an X session, you can use setxkbmap to instantly apply keyboard layout: setxkbmap -layout dvorak
+
+Note: If these keymaps do not work for you, make sure the keymap file exists in /usr/share/kbd/keymaps/ using find: find /usr/share/kbd/keymaps/ -name "*[your desired keymap]*"
+
+**Keyboard	 Keymap setting**
+Belgian	KEYMAP=be-latin1
+Brazilian Portuguese	KEYMAP=br-abnt2
+Canadian-French	KEYMAP=cf
+Canadian Multilingual (in AUR)	KEYMAP=ca_multi
+Colemak (US)	KEYMAP=colemak
+Croatian	KEYMAP=croat
+Czech	KEYMAP=cz-lat2
+Dvorak	KEYMAP=dvorak
+French	KEYMAP=fr-latin1
+German	KEYMAP=de-latin1
+German (no dead keys)	KEYMAP=de-latin1-nodeadkeys
+Italian	KEYMAP=it
+Lithuanian (qwerty)	KEYMAP=lt.baltic
+Norwegian	KEYMAP=no-latin1
+Polish	KEYMAP=pl
+Portuguese	KEYMAP=pt-latin9
+Romanian	KEYMAP=ro_win
+Russian	KEYMAP=ru4
+Singapore	KEYMAP=sg-latin1
+Slovene	KEYMAP=slovene
+Swedish	KEYMAP=sv-latin1
+Swiss-French	KEYMAP=fr_CH-latin1
+Swiss-German	KEYMAP=de_CH-latin1
+Spanish	KEYMAP=es
+Spanish Latinoamerican	KEYMAP=la-latin1
+Turkish	KEYMAP=tr_q-latin5
+Ukrainian	KEYMAP=ua
+United Kingdom	KEYMAP=gb or KEYMAP=uk in the installer.
+
+===== Configuring the Console Keymap =====
+
+1. cd to /usr/share/kbd/keymaps/i386/qwerty
+
+2. Copy your default keymap (us.map.gz) to a new file personal.map.gz
+
+3. gunzip the new map file
+
+4. Edit personal.map using your favorite editor. Examples:
+      __Make the Right Alt key same as Left Alt key (Emacs)__
+		change the line include "linux-with-alt-and-altgr" to include "linux-with-two-alt-keys"
+     Swap CapsLock with Escape (Vim)
+		make keycode 1 = Caps_Lock and keycode 58 = Escape
+     Make CapsLock another Control key
+               change the line keycode 58 = Caps_Lock to keycode 58 = Control
+     Swap CapsLock with Left Control key
+               make keycode 29 = Caps_Lock and keycode 58 = Control
+注意：可以使用showkey命令查看，虚拟终端环境中某个按键的keycode（对于X 环境可以使用xev命令）。
+
+5. gzip the map file
+Change the default keyboard layout file that will be used by editing /etc/vconsole.conf (you might have to create this file) and changing the line that says KEYMAP=us to KEYMAP=personal
+
+6. Reboot to use your keymap the way nature intended (or run "__loadkeys personal__")

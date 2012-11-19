@@ -1,0 +1,802 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-11-19T10:36:25+08:00
+
+====== 小企鹅输入法 ======
+Created Monday 19 November 2012
+http://fcitx.github.com/handbook/fcitx.html
+
+版权 © 2005, 2006, 2007, 2008, 2009, 2010 Yuking
+
+摘要
+
+小企鹅中文输入法（Free Chinese Input Toy for X，fcitx） 是一个以GPL方式发布的输入法框架， 编写它的目是为桌面环境提供一个灵活的输入方案。
+
+
+===== 术语表 =====
+
+候
+
+候选字词窗口
+也叫候选词窗口或者候选窗口。
+
+在非英文直接上屏的输入情况下， fcitx 会根据你输入的编码列出一个或者多个候选字或词， 这个显示候选词的窗口就叫候选字词窗口。
+
+软
+
+软键盘
+在主窗口上点击软键盘按钮会出现软键盘。 利用软键盘可以输入一些特殊字符， 比如半角全角英文字符和标点、希腊字母、俄文字母、数字序号、数学符号、数字符号、日文平假名、日文片假名、制表符等。
+
+上
+
+上屏
+输入的文字实际输入到屏幕上。 比如，在候选字词窗口上选择一个字或词后，被选择的字或词实际输入到了屏幕上的文本框内。
+
+通
+
+通知区域
+见系统托盘.
+
+托
+
+托盘
+见系统托盘.
+
+托盘图标
+见系统托盘图标.
+
+系
+
+系统托盘
+桌面环境中常用来显示通知的区域，通常位于桌面的右上角或者右下角。
+
+系统托盘图标
+程序显示在托盘中的图标， 特指 fcitx 在托盘中显示的图标。 可以通过用鼠标点击它来控制程序的行为。
+
+参见系统托盘图标。
+
+主
+
+主窗口
+fcitx 启动后，出现的一个左侧带有徽标的窗口， 在徽标后面依次可能有一些按钮， 比如显示当前的输入法、简繁状态、全角半角状态、中文标点状态、软键盘和联想状态等的按钮。
+
+===== 部分 I. 软件概述 =====
+
+小企鹅中文输入法（Free Chinese Input Toy for X，fcitx）是一个以 GPL 方式发布的__输入法框架__， 编写它的目是为桌面环境提供一个灵活的输入方案。
+
+本程序目前可以支持__XIM和GTK2，GTK3，QT4的IM Module__，可为支持 XIM 的 X 应用程序提供输入服务(__自从4.1.0, Fcitx提供了它自己的input method module, fcitx-gtk2, fcitx-gtk3 and fcitx-qt, 建议使用它们而不是直接使用xim。（方法是下面定义环境变量时，GTK_IM_MODULE和QT_IM_MODULE值为fcitx而不是xim。）,注意，fcitx自带的im以来DBus，所以在启动fcitx前需确保DBus已经启动__)。 fcitx 的源码包内提供了区位和全/简/双拼，并支持基于码表的输入法（自带五笔、二笔和仓颉等输入码表）。
+
+您可以从 http://fcitx.googlecode.com 下载最新的发布版本。
+
+如果您有兴趣尝试 fcitx 最新功能， 可以用以下方式从代码仓库中获取代码（这样得到的代码可能并非是正式发布的版本）：
+
+hg clone https://fcitx.googlecode.com/hg/ fcitx
+
+===== 部分 II. 安装配置 =====
+
+fcitx 通常以源码的方式发布，您需要编译安装后才能使用。具体参见附录中的编译安装流程。
+
+===== 1.2. 从预编译包安装 =====
+
+各发行版如果提供了预编译的 fcitx，用户可以从对应的软件源直接下载预编译的 fcitx 包进行安装。
+
+===== 第 2 章 配置环境 =====
+
+各大发行版都有提供自己的__输入法选择工具__，并且在打包时提供了额外的配置脚本。 在具体使用的时候请尽量使用发行版提供的工具，而不是自己配置输入法。__下面的im是input module的缩写，一般为xim.但是由于fcitx提供了自己的input module(需要在编译时指定相关的参数)，所以其值也可以是fcitx.__
+
+Fedora：使用im-chooser（图形界面）
+Debian，Ubuntu：im-switch，执行 im-switch __-s fcitx__，im-config（图形界面）
+OpenSUSE：~/.profile中加入export INPUT_METHOD="fcitx"
+
+如果你并非使用以上列出的发行版，那么你可以按照你启动桌面的方式选择配置。
+
+采用KDM，GDM，LightDM：在~/.xprofile中加入(没有则新建一个)
+			export XMODIFIERS=@im=fcitx
+			export GTK_IM_MODULE=fcitx # 或者是xim，取决于你是否编译了对应的输入法模块
+			export QT_IM_MODULE=fcitx # 或者是xim，取决于你是否编译了对应的输入法模块
+		
+采用startx启动，或者Slim(使用.xinitrc的场合)：在~/.xinitrc中加入
+			export XMODIFIERS=@im=fcitx
+			export GTK_IM_MODULE=fcitx # 或者是xim，取决于你是否编译了对应的输入法模块
+			export QT_IM_MODULE=fcitx # 或者是xim，取决于你是否编译了对应的输入法模块
+		
+如果你需要使用im module(即上面提到的fcitx-gtk2, fcitx-gtk3, fcitx-qt)，__你需要保证dbus正确初始化__。如果你的fcitx启动输出中包含了dbus相关的错误，请在你的启动脚本开头加入
+			eval `dbus-launch --sh-syntax --exit-with-session`
+		
+
+===== 第 3 章 跟随桌面环境自动启动 =====
+
+对于支持 xdg 标准的桌面环境，例如 gnome，kde，xfce，lxde， 可以将文件 安装目录/share/applications/fcitx.desktop 建立符号链接或者复制到 ~/.config/autostart/ 或者 /etc/xdg/autostart（/usr/local/etc/xdg/autostart/） 目录里：
+
+ln -s 安装目录/share/applications/fcitx.desktop ~/.config/autostart/fcitx.desktop
+如果你采用独立的窗口管理器，例如Openbox，XMonad，等等。 不建议在~/.xinitrc 当中直接执行fcitx，而建议是采用这些窗口管理器的自动启动机制。 如果你希望使用IM Module，但是无法正确初始化DBus（IM Module依靠DBus进行通信），那将可能导致无法在GTK和QT程序中启用输入法。
+
+===== 第 4 章 全局配置文件说明 =====
+
+默认情况下，fcitx配置文件的存放位置尽量接近XDG标准（用户配置目录一般为~/.config/fcitx，首次运行时fcitx会自动创建该目录)，配置文件名为config。fcitx从4.0开始可以安装配置程序进行配置，程序将自动修改配置文件中的内容。
+
+配置文件在安装了fcitx-config-gtk之后（基于gtk的配置编辑器），或者kcm-fcitx（基于KDE的KCM Module的配置编辑器）可以不用手动编辑。
+
+如果您需要进行手动编辑，请参考配置文件中的注释，以及对应的配置文件描述文件
+
+===== 部分 III. 功能说明 =====
+
+目录
+
+5. 输入法
+5.1. 拼音输入法
+5.1.1. 常用字表
+5.1.2. 双拼输入
+5.1.3. 以词定字
+5.1.4. 特殊符号输入
+5.1.5. 制作拼音库
+5.2. 区位输入法
+5.3. 码表输入法
+5.3.1. 制作码表
+5.3.2. 反查拼音
+6. 中文标点
+7. 快速输入
+8. 系统托盘图标
+9. 皮肤
+10. 通过命令控制Fcitx
+11. 其它功能
+第 5 章 输入法
+
+目录
+
+5.1. 拼音输入法
+5.1.1. 常用字表
+5.1.2. 双拼输入
+5.1.3. 以词定字
+5.1.4. 特殊符号输入
+5.1.5. 制作拼音库
+5.2. 区位输入法
+5.3. 码表输入法
+5.3.1. 制作码表
+5.3.2. 反查拼音
+5.1. 拼音输入法
+
+支持全/简/双拼，双拼可自定义键盘方案
+
+支持常用字表
+
+特殊符号输入
+
+完善的预编辑
+
+支持以词定字
+
+模糊拼音
+
+5.1.1. 常用字表
+
+设置常用字表的目的是为了方便录入某些常用字。
+
+在候选字中，处于该表中的字总是排在其它字的前面。 fcitx的默认常用字表是空的。您可以用左ctrl+8/7来添加/删除常用字。 例如，您希望录入“d”时，“的”总放在第一个，可以按一下操作：
+
+进入拼音状态。
+
+输入“d”，用翻页键-=/,.查找“的”字，直到它显示在候选字表中按ctrl+8， 然后按“的”前面的数字序号即可。
+
+按上述操作可以为某个拼音编码设置多个常用字。您可以设置常用字表内的字频调节方式。
+
+5.1.2. 双拼输入
+
+如果在配置文件中打开双拼选项，即可进行双拼输入。 程序默认采用自然码的双拼方案，您也可以自定义键盘方案。 如果需要自定义，请将存放双拼方案的文件放在 ~/.config/fcitx下并重命名为sp.dat。 程序源码包中的data目录下有一个名为sp.dat的文件，该文件已经定义了一些双拼方案， 修改“默认方案”即可以使用用户指定的方案。请注意，模糊拼音的设置也会在双拼中生效。
+
+5.1.3. 以词定字
+
+fcitx支持“以词定字”，以方便录入某些排序比较靠后的字。 利用SHIFT_<词组序号>，按以词定字键（默认为'['/']'）选择该词组的第一个或最后一个字。
+
+比如，在默认设置下，如果需要录入“亥”字，可以输入“jh”， 按翻页键让词组“己亥”显示在输入条上， 然后按SHIFT_<它前面的序号>， 再按‘]’即可(如果按‘[’则是输出“已”字)。
+
+5.1.4. 特殊符号输入
+
+为了录入特殊符号，您必须将特殊符号按下列格式放在一个文件中：
+
+<编码> <符号>
+
+每个符号占一行。 编码部分必须是英文小写字母，且经拼音解析后的长度不应超过10个汉字(如zzz是3个汉字长度， 而zhangzhangzhang也是3个汉字长度)， fcitx的源码包中有一个例子(文件pySym.mb)。
+
+编辑好特殊符号后，将其保存为文件pySym.mb，并放在 ~/.config/fcitx 中，重新启动fcitx即可。
+
+建议：特殊符号的编码应该足够长，免得影响正常的汉字录入。
+
+注意：如果定义的编码与常用字表的编码相同，该特殊符号将无法使用。
+
+如果要录入“西安”这样的词组，请用单引号作为分隔符(xi'an)。
+
+5.1.5. 制作拼音库
+
+在tools目录下提供了一个制作拼音库的工具createPYMB。用法如下：
+
+./createPYMB {拼音单字库} {拼音词组库}
+
+该工具将在当前目录下生成pybase.mb和pyphrase.mb， 将它复制到您的fcitx安装目录下的share/fcitx/data中替换原有文件， 或者放到~/.config/fcitx/pinyin （可以重命名，但后缀需要是mb）即可。
+
+在源码包的data目录下包括了单字库和词组库，文件名为gbkpy.org和pyPhrase.org。 它们都是文本文件。一般说来，单字库无需更改，您可以将自己的词组加入到pyPhrase.org中，从而生成自己的词库。
+
+5.2. 区位输入法
+
+fcitx支持0~9的区位输入。
+
+5.3. 码表输入法
+
+fcitx支持用户自定义码表输入法。
+
+系统的码表放置在prefix/share/fcitx/data/table/*.conf， 用户的码表和配置放置在~/.config/fcitx/table/*.conf
+
+该文件用“[CodeTable]”来区分不同的码表。其它设置说明如下：
+
+[CodeTable]
+
+Name：名称，显示在程序主窗口的输入法名称。
+
+IconName：图标名称，皮肤中对应图标文件名。
+
+File：码表文件，该码表输入法的码表文件名，程序会先查找 ~/.config/fcitx/table，然后在安装目录中找。
+
+AdjustOrder：调频，与拼音中的相应设置意义一样。
+
+Priority：优先级，码表输入法的优先级排序。
+
+UsePY：使用拼音，是否使用临时拼音输入。
+
+PYKey：拼音键，如果“拼音”选项打开，则以该字母起头的输入按全拼处理。
+
+AutoSend：自动上屏，当输入达到最大码表且只有一个候选词时是否自动上屏。
+
+NoneMatchAutoSend：空码自动上屏，空码时出空码前的内容。比如说abcd是空码，而abc不是，那么打abcd时，就将abc的内容自动上屏，d留在提示行中待处理。
+
+UseMatchingKey：使用模糊键，是否使用模糊(通配符)输入。
+
+MatchingKey：模糊键，模糊键(通配符)。
+
+AutoPhrase：自动词组，是否使用自动组词功能(后面有详细说明)。
+
+AutoPhraseLength：自动词组长度。
+
+AutoPhrasePhrase：词组参与自动造词，指定录入的词组是否参与自动组词。
+
+SaveAutoPhrase：保存自动词组，设定自动生成的词组被选择多少次后才被保存。0表示不保存。
+
+ExactMatch：精确匹配，是否只在候选字表中显示精确匹配的结果。
+
+PromptTableCode：提示编码，是否提示录入字/词的编码。
+
+Symbol：符号，设置该选项则开启特殊符号输入功能。
+
+SymbolFile：符号文件，特殊符号所在的文件。
+
+Enabled：是否启用该码表。
+
+码表输入法提供了两种在线造词方法(词组最长为10个汉字)：
+
+在中文输入方式下按CTRL_8，则利用将刚刚输入的内容造词，默认为最近输入法两个字，可以用左右方向键的增加或减少词组中的字数。
+
+自动组词：将需要造的词按单字连续输入后，再按它的组词规则连续输入编码，程序会提示用户这个新词。 如果此时按空格或它前面的序号则将这个新词输入到用户程序中，您可以设置这个新词是否进入词库。 如果不想录入该词，继续进行下一次输入即可(fcitx会记录最近2048个输入的汉字)。
+
+如果想删除词库中的词，先让该词显示中输入条上，按CTRL_7，并按提示操作即可；或是当程序提示有该词组时，按CTRL_DEL删除。
+
+如果想调整词库中词的顺序，按CTRL_6，并按提示操作即可。(如果调频设置为1或2，您可能看不到有什么变化)。
+
+5.3.1. 制作码表
+
+data目录下包括制造码表的工具：txt2mb和mb2txt。 前者是将码表源文件转换为码表输入法所需的格式；后者是将码表文件转换为文本文件。码表源文件格式如下：
+
+;fcitx 版本 0x03 码表文件
+键码=abcdefghijklmnopqrstuvwxy
+码长=4
+规避字符=;iuv
+拼音=@
+拼音长度=12
+[组词规则]
+e2=p11+p12+p21+p22
+e3=p11+p21+p31+p32
+a4=p11+p21+p31+n11
+[数据]
+a 工
+a 戈
+a 或
+a 其
+@a 阿
+@a 啊
+@a 呵
+			
+
+
+键码：表示该码表输入法需要用的键；
+
+
+
+码长：指该码表输入法最长码长；
+
+
+
+规避字符：在象二笔这样的码表输入法中，某些字符如果出现在编码的第一个，表示特殊用途，虽然可以组成单字，但却不参与组词。如果有这样的字符，可以列在这个地方，以免自动造词出错；
+
+
+
+拼音：以此字母开头的为拼音；
+
+
+
+拼音长度：表示该码表中拼音的最长长度；
+
+
+
+[组词规则]：表示自动组词的规则，如果没该标志，则不能在线造词；
+
+组词规则的数目应该比码长小1。
+
+等号左边为词组的汉字个数。其中e表示“等于”，a表示“大于等于”(只能有这两个设置)。
+
+等号右边为规则，其中p指正序，n指逆序。如p11指第一个字的第一个编码，n11则是指最后一个字的第一个编码。
+
+
+
+[数据]：该标志以下为该码表输入法的数据，按“编码<空格>对应的汉字”。这部分无需排序。
+
+按上述格式制作好编码后，利用txt2mb将其转换为fcitx需要的格式：
+
+./txt2mb {源文件} {目标文件}
+
+然后将目标文件复制到~/.config/fcitx/table中， 并在~/.config/fcitx/table/中建立对应conf文件， 然后在中文输入状态下按CTRL_5重新读入配置文件即可。
+
+如果希望将已经制作好的码表文件转换为文本文件，可以：
+
+./mb2txt {码表文件} [ > 文本文件]
+
+生成的文本文件将形如上述码表源文件的格式。
+
+在码表输入法模式下，只输入单个“拼音键”指定的字符可以重复上次的录入。
+
+5.3.2. 反查拼音
+
+如果不知道某个汉字的读音，可以先用码表输入法录入这个字，然后按反查拼音的热键（默认为CTRL_ALT_E），就可以查到该字的读音。
+
+第 6 章 中文标点
+
+fcitx的中文标点由一个文本文件设置，您可以根据自己的需要修改。 该文件即<fcitx的安装目录>/share/fcitx/data/punc.mb（或用户配置目录下的punc.mb）。格式如下：
+
+对应的英文符号 中文标点 <中文标点>
+
+其中英文符号应该是类似“&*()”这样的符号，而中文标点最长为两个汉字，最多有两组，中间由空格隔开。如：
+
+_ ……
+" “ ”
+第 7 章 快速输入
+
+当配置文件中的，“分号键行为”设置为2时，按下分号键则进入快速输入模式。 在这种模式下，您可以设置某些常用短语或符号的快速录入规则。
+
+为了使用该功能，您需要将常用短语和符号按如下格式编辑
+
+<字符组合> <短语>
+并保存在用户配置目录data/QuickPhrase.mb（或fcitx的安装目录下的share/data）中，一个短语一行。如
+
+zg 中华人民共和国
+h http
+第 8 章 系统托盘图标
+
+当启用系统托盘图标的选项时，启动 fcitx 后系统托盘区域显示一个托盘图标，您可以通过用鼠标点击它来控制程序的行为：
+
+单击右键可以显示菜单，左键激活输入法。
+
+第 9 章 皮肤
+
+fcitx从4.0开始支持皮肤功能，皮肤安装在 ~/.config/fcitx/skin（用户目录）， 和PREFIX/share/fcitx/skin下面。 皮肤的配置需要建立一个目录放置所有相关文件，以及放置一个名为 fcitx_skin.conf的配置文件。 如果您需要创建一个新的皮肤，建议参考自带已有的三个皮肤的配置。并使用配置工具帮助配置。
+
+对于Fcitx皮肤的图片来说，采用了和CSS类似的盒模型，每个图片分为9个区域，边界区域采用距离上，下，左，右的边界的四个值确定。Fcitx的皮肤里面的数字是全部是采用像素作为单位（包括字体大小，以免定位受到dpi的影响）。
+
+菜单的是完全默认的盒模型，中间区域的大小完全根据菜单内容大大小进行变化修改。
+
+输入条有两种模式（横，竖）
+
+在横排模式下，输入条的高度为Margin Top + Margin Bottom + Output Pos，需要注意的是，Output Pos是相对于中间区域的纵坐标，而不是相对于整个输入框的位置。在竖排模式下， Output Pos代表的是第一行左下角的纵坐标的位置。
+
+主窗口由于其中的按钮个数是可以由插件加入的，因此从4.1之后也开始采用盒模型。默认情况图标保持单排。高度是图标图片中的最大值。对于还想要实现4.0时候不规则的排列的人来说，可以通过Placement这个属性进行设置，规则是：图标名称:横坐标,纵坐标;图标名称:横坐标,纵坐标....每一项之间由分号分隔。没有出现在Placement当中的图标，或者对应图片文件无法加载的图标不会显示。除了输入法图标和logo图标之外，剩下的图标的图片名称是固定的，一律按照“状态名称_active.png” “状态名称_inactive.png”。在Placement中，logo采用的名称是logo，输入法指示图标采用的名称是im。在采用了Placement属性进行布局时，主窗口的大小就是主窗口图片的大小，和Margin（边距）无关。下面是一个Placement的范例。
+
+Placement=logo:4,30;punc:49,30;chttrans:27,53;fullwidth:20,5;im:45,4
+
+Fcitx自带的属性图标的名称如下：logo，im，vk，chttrans，punc，fullwidth，legend。
+
+第 10 章 通过命令控制Fcitx
+
+fcitx提供了一个基于socket的工具，fcitx-remote可以用于控制fcitx
+
+具体命令参数参见fcitx-remote -h 和 man
+
+一个实用的例子是用它自动控制vim的输入状态
+
+let g:input_toggle = 1
+function! Fcitx2en()
+   let s:input_status = system("fcitx-remote")
+   if s:input_status == 2
+      let g:input_toggle = 1
+      let l:a = system("fcitx-remote -c")
+   endif
+endfunction
+
+function! Fcitx2zh()
+   let s:input_status = system("fcitx-remote")
+   if s:input_status != 2 && g:input_toggle == 1
+      let l:a = system("fcitx-remote -o")
+      let g:input_toggle = 0
+   endif
+endfunction
+
+set timeoutlen=150
+autocmd InsertLeave * call Fcitx2en()
+"autocmd InsertEnter * call Fcitx2zh()
+	
+将上面的代码加入 ~/.vimrc 中，可以实现退出插入模式时自动关闭输入法。去掉最后一行的注释可以实现进入插入模式自动启用输入法。
+
+第 11 章 其它功能
+
+可以任意拖动fcitx显示的图标和输入条（当处于光标跟随模式时，输入条的位置将根据用户程序输入点而决定）。
+
+可以用鼠标左键单击输入条的相应部分切换输入法/改变标点状态/改变全半角设置/改变联想状态/在简繁输出间切换。
+
+支持UTF8方式下的中文输入。
+
+在主窗口上按鼠标右键可以切换主窗口的显示模式。有两种：简洁模式和完整模式。
+
+按CTRL_5可以重新读取配置文件，向fcitx发送SIGHUP也可以重新读取配置文件。
+
+在联想方式下，按第二选择键输出半角空格，按第三选择键输出全角空格。
+
+单击企鹅图标可以改变输入法的状态。
+
+===== 部分 IV. 附录 =====
+
+目录
+
+12. 热键
+13. 相关项目
+14. 编译安装流程
+14.1. 依赖
+14.2. 安装
+14.3. 卸载
+15. 常见问题
+第 12 章 热键
+
+您可在fcitx的配置文件中使用以下热键：
+
+LCTRL	LSHIFT	LALT
+RCTRL	RSHIFT	RALT
+INSERT
+HOME	END
+PGUP	PGDN
+CTRL_CTRL	CTRL_LSHIFT	CTRL_LALT	CTRL_RSHIFT	CTRL_RALT
+SHIFT_LCTRL	SHIFT_SHIFT	SHIFT_LALT	SHIFT_RCTRL	SHIFT_RALT
+ALT_LCTRL	ALT_LSHIFT	ALT_ALT	ALT_RCTRL	ALT_RSHIFT
+其中，L前缀表示左键，R前缀表示右键。 如果需要CTRL/ALT+<字母/数字>的组合键，直接写入数字或字母即可，如CTRL_K等。
+
+第 13 章 相关项目
+
+目前一些相关的子项目分别host在Fcitx的googlecode和github上。
+
+fcitx-googlepinyin：Android上的Google拼音的非官方移植。（GoogleCode）
+
+fcitx-sunpinyin：Fcitx的Sunpinyin支持（GoogleCode）
+
+fcitx-cloudpinyin：为Fcitx的拼音输入法增加一个来自Sogou，QQ，或Google云输入法的候选词。（Github）
+
+fcitx-ui-light，fcitx-classic-ui的再fork，使用Xft和Xlib进行渲染，提供类似Fcitx 3.6 时代的界面支持（Github）
+
+fcitx-handwriting，采用zinnia的Fcitx手写支持。（Github）
+
+fcitx-config，基于GTK的配置工具（GoogleCode）
+
+kcm-fcitx，基于KDE的配置工具（Github）
+
+fcitx-fbterm，提供fbterm下的输入支持。（Github）
+
+===== 第 14 章 编译安装流程 =====
+
+摘要
+
+fcitx 通常以源码的形式发布，您需要编译安装后才能使用。
+
+目录
+
+14.1. 依赖
+14.2. 安装
+14.3. 卸载
+14.1. 依赖
+
+编译 fcitx 按照您需要的功能，需要（且不限于）以下包及其对应开发包，开发包在发行版中多以-dev或者-devel结尾：
+
+gcc
+
+gtk2，gtk3的IM Module需要gtk2，gtk3，以及__dbus-glib__
+
+qt的IM Module需要qt4，libicu
+
+fcitx-classic-ui（支持皮肤的默认界面），fcitx-vk（虚拟键盘）需要libx11（xlib），cairo，可选项为pango
+
+fcitx-kimpanel-ui需要dbus
+
+fcitx-chttrans（简繁转换）可选项为OpenCC
+
+14.2. 安装
+
+首先下载 fcitx 的源码包，文件名为 fcitx-4.1.0.tar.bz2，存放在某个临时的目录中（如 /temp ）。执行：
+
+cd <临时目录>
+tar jxvf fcitx-4.1.0.tar.bz2
+这样会在临时目录（如 /temp ）目录下建立目录 fcitx-4.1.0，所有的源码都在该目录中。
+
+执行以下命令编译安装：
+
+			cd fcitx-4.1.0
+			mkdir build
+			cd build
+			cmake .. -DCMAKE_INSTALL_PREFIX=<安装目录>
+			make && make install
+cmake 可选项（On/Off）
+
+-__DENABLE_DBUS__
+如果禁用DBus，同时不会编译任何的IM Module
+
+-DENABLE_CAIRO
+如果禁用，将无法使用fcitx-classic-ui
+
+-DENABLE_PANGO
+如果禁用，将不使用 pango 进行字体绘制，将只能支持单一字体显示（在字符集不足时）。
+
+-DENABLE_TABLE
+如果禁用，将不编译及生成码表相关数据
+
+-__DENABLE_GTK2_IM_MODULE__
+如果禁用，将不编译GTK2的IM Module
+
+-__DENABLE_GTK3_IM_MODULE__
+如果禁用，将不编译GTK3的IM Module
+
+-__DENABLE_QT_IM_MODULE__
+如果禁用，将不编译QT4的IM Module
+
+-DENABLE_OPENCC
+如果禁用，将不使用OpenCC作为简繁转换的后端
+
+14.3. 卸载
+
+如果你 cmake 之后产生的文件都还在。 用 root 权限执行 make uninstall 即可卸载了。 如果 cmake 之后的目录已经被你删除了，那就把代码重新下载下来，cmake 之后 make uninstall。
+
+第 15 章 常见问题
+
+15.1. 遭遇了4.1之前不曾遇到的输入问题（非输入法不能启用，而是例如删除文本错误，或者已经启用输入法但是无法输入）
+15.2. 编译时说找不到文件X11/Xlib.h
+15.3. 编译安装完成后，按ctrl_space无法打开fcitx的输入条啊？
+15.4. 界面的颜色怎么那么难看？
+15.5. 我将fcitx加到gnome的自动启动后，gnome怎么启动那么慢？
+15.6. 为什么有时候fcitx会卡几秒？
+15.7. 为什么我只按了一个键，输入条上却出现两个相同的字符？
+15.8. 当我使用en_US.UTF-8时，为什么无法激活fcitx？
+15.9. fcitx的默认字体并不是我常用字体
+15.10. 有些皮肤周围为什么有不透明的黑边
+15.11. fcitx启动后图标背景为黑色，但关闭后手动启动背景颜色正常
+15.12. 有时Firefox中输入的第一个字母会丢失
+15.13. fcitx在某些的程序中无法光标跟随/光标跟随存在问题
+15.14. 在flash中无法输入
+15.15. 我对于fcitx拼音词库很不满
+15.16. 我是kde4用户，kimpanel的问题太多了，可是我又想界面协调
+15.17. 我想输入日语怎么办？
+15.18. 我想输入颜文字
+15.19. 我在使用vnc/nomachine远程连接时，fcitx好像不太好使？
+15.20. 我发现了 fcitx 的 bug 怎么办？
+15.1.
+
+遭遇了4.1之前不曾遇到的输入问题（非输入法不能启用，而是例如删除文本错误，或者已经启用输入法但是无法输入）
+
+如果是gtk或者qt程序的问题，请先尝试ctrl+alt+p关掉预编辑嵌入模式。
+
+如果是x程序，请尝试关掉xim的On The Spot支持（需要重启输入法）。
+
+15.2.
+
+编译时说找不到文件X11/Xlib.h
+
+这个信息是说编译程序没有找到X的头文件，一般是因为您没有安装X的开发包（在RH/MDK中名为XF*-devel-*或xorg-*-devel-*）。
+
+15.3.
+
+编译安装完成后，按ctrl_space无法打开fcitx的输入条啊？
+
+这个的原因有很多并且十分复杂。你可能需要一一排查以下情况：
+
+如果其他程序可以成功使用fcitx，只有单独某个程序不能使用，那么也许是ctrl space的快捷键被抢占了，想办法设置保证不冲突。
+
+如果一类程序（GTK，或者QT），或者全部的程序都不能输入，你需要检查环境变量。
+
+打开一个终端，输入
+
+echo $XMODIFIERS
+echo $GTK_IM_MODULE
+echo $QT_IM_MODULE
+					
+检查是不是你想要的值。具体值参见配置环境。 如果是，先尝试从终端中启动程序看是否可以输入。如果不可以，有以下可能，你的locale没有生成，需要通过 locale -a 查看你当期的locale是否存在。
+
+对于GTK程序，可以通过 gtk-query-immodules-2.0/gtk-query-immodules-3.0 检查是否有 xim 以及 fcitx 。如果有，但是不能输入，你也许应该继续检查 /etc/gtk-2.0/gtk.immodules 和 /usr/lib/gtk-3.0/3.0.0/immodules.cache （不同发行版和cpu架构可能路径不同） 是否和之前的命令输出相同。如果没有 xim 模块（这一般出现在opensuse上，因为它单独打包了xim的im module）。
+
+如果终端中启动的程序可以，但是桌面启动的程序不行，那么你的环境变量可能仅仅设置在shell里面，而不是启动桌面的时候设置的环境变量，可以管用的位置有 ~/.xprofile （通过gdm或者kdm启动时），或者 ~/.xinitrc （通过slim或者startx启动时）
+
+检查 GTK 程序使用的输入模块。首先开启一个普通的gtk程序（不可以是firefox），比如gtk-demo就是一个不错的选择。在输入框右键单击，在输入法菜单里面检查是否是xim或者fcitx，如果不是，那么说明gtk没有选择fcitx支持的方式进行输入。需要设置 GTK_IM_MODULE=xim 或者 fcitx （4.1以后）才可以。
+
+检查 QT 程序使用的输入模块。执行qtconfig 看选中的输入法模块，可以使用的是xim和fcitx，xim在 4.0.1之前只支持over the spot。 还可能存在的问题就是 /usr/share/X11/locale/ 没有你的locale（在一些自行编译的嵌入式系统上可能出现）。
+
+检查是否正在使用fcitx im module 最简单的办法是执行 dbus-monitor，观察是否有org.fcitx.Fcitx 的内容。
+
+15.4.
+
+界面的颜色怎么那么难看？
+
+欢迎你贡献你自己觉得更好的配色。
+
+15.5.
+
+我将fcitx加到gnome的自动启动后，gnome怎么启动那么慢？
+
+把~/.gnome2/session-manual里面0,Priority=31的31换成50即可。
+
+15.6.
+
+为什么有时候fcitx会卡几秒？
+
+fcitx是在第一次输入时读入码表，如果码表比较大的话，读入的时间可能会比较久一些，感觉有些卡，但后面输入就不会再有这种现象了（如果切换了输入法的话，切换后的第一次输入也会重新读入码表）。
+
+15.7.
+
+为什么我只按了一个键，输入条上却出现两个相同的字符？
+
+这种情况一般出现在KDE中。应该是QT的XIM支持出现问题。出现这个现象时，请在窗口管理器的标题栏按鼠标右键弹出系统菜单，然后按ctrl_space关闭输入法，重新回到应用程序就可以了。
+
+15.8.
+
+当我使用en_US.UTF-8时，为什么无法激活fcitx？
+
+参加前面的环境配置和faq
+
+15.9.
+
+fcitx的默认字体并不是我常用字体
+
+由于fcitx并没有使用一些高层的字体处理，默认字体仅仅是利用Fontconfig找到的一个系统当中的中文字体（并无优先级关系，也不服从/etc/fonts.conf）。 可以通过配置文件指定具体的字体解决。或者你应该考虑编译时enable-pango，这样字体设置就有更好的支持了。
+
+15.10.
+
+有些皮肤周围为什么有不透明的黑边
+
+由于Xserver需要可以支持混成的窗口管理器才能处理真透明效果，因此需要对窗口管理器本身进行设置。相应的开启混成之后会消耗更多的CPU和GPU性能，因此是否开启这个效果请自己权衡。
+
+分为以下情况：
+
+Gnome
+
+Metacity可以支持混成，但由于不是所有的显卡和驱动程序都能很好地支持混成，因此混成在gnome中默认是未开启的。如果你的显卡和驱动程序支持3D加速，则可以开启之。
+
+使用gconf-editor进行编辑，编辑/apps/metacity/general/compositing_manager，设置为真即可。
+
+或者直接使用下面的命令启用：
+
+gconftool-2 -s --type bool /apps/metacity/general/compositing_manager true
+如果你想禁用它，修改“true”为“false”，并重新执行该命令。
+
+KDE4
+
+Kwin可以支持混成，在系统设置，桌面效果内设置。
+
+XFCE
+
+Xfwm4支持混成，在高级窗口管理器内进行设置。
+
+Compiz
+
+Compiz >= 0.9.0可能默认没有开启混成，可以通过安装ccsm进行配置。
+
+其他
+
+其他窗口管理器可以通过一个额外的混成管理器xcompmgr进行混成管理。只需要安装它即可。另外也可以将之前所述的窗口管理器在不开启混成的情形下同时使用xcompmgr，但相应的可能不如原生的效果那么好。
+
+15.11.
+
+fcitx启动后图标背景为黑色，但关闭后手动启动背景颜色正常
+
+你可以通过设置DelayStart延迟几秒启动fcitx，在支持混成的窗口管理器和面板启动之后再启动fcitx。
+
+15.12.
+
+有时Firefox中输入的第一个字母会丢失
+
+请使用GTK IM Module，参见环境配置
+
+15.13.
+
+fcitx在某些的程序中无法光标跟随/光标跟随存在问题
+
+请使用IM Module，以及调整xim的style，参见环境配置
+
+15.14.
+
+在flash中无法输入
+
+请使用GTK IM Module，参见环境配置
+
+15.15.
+
+我对于fcitx拼音词库很不满
+
+有两个折中的解决方案。
+
+利用createPYMB创建自己的词库，放在~/.config/fcitx/pinyin下面。
+
+尝试fcitx-sunpinyin，sunpinyin是一个基于语言模型的pinyin开源输入法项目，对于整句输入有很大提升。
+
+15.16.
+
+我是kde4用户，kimpanel的问题太多了，可是我又想界面协调
+
+你可以尝试这里的小工具http://csslayer.tk/wordpress/fcitx开发/fcitx-skingenerator/
+
+15.17.
+
+我想输入日语怎么办？
+
+你可以尝试这里：http://forum.ubuntu.org.cn/viewtopic.php?f=8&t=290712&start=0 5楼的码表。 或者请等待基于anthy的fcitx的输入法wrapper，这个项目目前在计划中。
+
+15.18.
+
+我想输入颜文字
+
+fcitx的QuickPhrase?在你有想象力的前提下，可以发挥很多功能，例如用来输入颜文字，例如用来根据Latex的标记输入特殊符号。
+
+15.19.
+
+我在使用vnc/nomachine远程连接时，fcitx好像不太好使？
+
+vnc下fcitx似乎确实有问题，但我们尚未验证是否这是基于xim的通病。 nomachine/nx下是没有问题的，不过由于你可能是使用windows进行远程连接，那么ctrl+space会被windows的输入法抢走而不会传递到远程的计算机上，你可以考虑将fcitx 的输入法切换快捷键设置为shift+space。在linux的nx客户端没有问题。
+
+15.20.
+
+我发现了 fcitx 的 bug 怎么办？
+
+确认你发现的问题不在常见问题列表里。
+
+在 Issues 中查询， 确认尚未有人报告该问题； 如果已经有人报告了该问题， 但是你想补充更多信息， 可以回复进行补充。
+
+如果确认了不是已知问题，那么不必拘束，在 Issues 中 New issue 提交 bug 的详细情况，我们将尽快确认。
+
+如果是导致 fcitx 退出的错误， 你可以查看 ~/.config/fcitx/log/crash.log 中是否有相关信息， 同时将这个信息和你的 fcitx 已经编译的二进制文件发上来。
+
+致谢
+
+fcitx（3.1.x 及以前的版本）使用了来自于 cjkvinput 项目的五笔 86 码表，请参看源码中的 doc/cjkvinput.txt。
+
+fcitx-3.2 使用了拼音佳佳 4.0 的拼音词库，并根据该词库制作了五笔 86 的词库。详情请参看源码包中的 doc/pinyin.txt。
+
+fcitx-3.3.X 以后使用了 kardinal@linuxsir 制作的五笔 86 词库（稍做修改）。
+
+fcitx-3.6.4，fcitx-4.0.0 及以后的版本采用了 open-phrase 词库。
+
+本程序参考了 rfinput-2.x 的源码，在此向其作者 Zhao yang （zyang@redflag-linux.com）致谢。
+
+感谢 www.linuxsir.org 的北南南北为 fcitx 提供一个家。同时，他与小凡为 gWuBi/fcitx 的推广和测试做了很多工作。
+
+感谢 xsim 的作者楚狂、scim 的 james_su 提供了宝贵的技术支持；
+
+感谢二笔输入法(ebf)的作者 tram，他为 fcitx 做了很多工作。
+
+感谢 winix 多次为 gWuBi/fcitx 提出宝贵的意见和建议。
+
+感谢 windrose 精心测试了双拼功能。
+
+感谢 Wang Yin 为拼音输入提出了宝贵的意见。
+
+感谢 Xie Yanbo 制作了安装配置脚本。
+
+感谢 t3swing 为 fcitx 编写了皮肤功能。
+
+感谢 Jarryson 和 Ukyoi 为 fcitx 制作了皮肤。
+
+同时感谢所有其它测试 gWuBi/fcitx 的朋友，非常感谢。

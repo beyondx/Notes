@@ -1,0 +1,110 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-11-19T10:18:22+08:00
+
+====== fcitx ======
+Created Monday 19 November 2012
+https://wiki.archlinux.org/index.php/Fcitx_(%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87)
+
+Fcitx (Flexible Input Method Framework) ──即小企鹅输入法，它是一个以 GPL 方式发布的输入法平台(即原来的 G 五笔)，包括五笔、拼音(全拼和双拼)、二笔、区位等输入模块，支持简入繁出，是在 Linux 操作系统中常用的中文输入法。它的优点是，短小精悍、跟程序的兼容性比较好。
+
+===== 安装 FCITX =====
+它在 extra 库中，可以用以下命令安装：
+# pacman -S fcitx
+__自从4.1.0, Fcitx提供了它自己的input method module, fcitx-gtk2, fcitx-gtk3 and fcitx-qt, 建议使用它们而不是直接使用xim。（方法是下面定义环境变量时，GTK_IM_MODULE和QT_IM_MODULE值为fcitx而不是xim。）__
+
+为了在gtk与qt程序中获得良好的输入体验(例如光标跟随与显示预编辑字符串)并避免一些xim无法解决的bug, 请根据需要安装对应的输入法模块
+**# pacman -S fcitx-gtk2 fcitx-gtk3 fcitx-qt**
+
+风波：因云帆论坛有人批评Fcitx代码写的很差，作者于2007年7月10日决定终止了本项目。但随即有人宣布接手。现在该项目代码已经转移到了 GitHub 上面（https://github.com/fcitx/fcitx ）。
+
+当前的最新版本是其 git 版，即 fcitx-git。可以从 AUR 上安装 (已包含全部输入法模块)：
+$ yaourt -S fcitx-git
+
+===== 使用 FCITX 输入中文 =====
+使用 FCITX 之前,你必须先进行环境设定:
+如果你采用KDM，GDM，LightDM：在~/.xprofile中加入(没有则新建一个)
+export XMODIFIERS=@im=fcitx
+export GTK_IM_MODULE=fcitx
+export QT_IM_MODULE=fcitx
+
+采用startx启动，或者Slim(使用.xinitrc的场合)：在~/.xinitrc中加入
+export XMODIFIERS=@im=fcitx
+export GTK_IM_MODULE=fcitx
+export QT_IM_MODULE=fcitx
+重新登录后，打开一个终端, 输入:
+  fcitx &
+为检验 fcitx 是否正常运行, 打开一个程序，比如 leafpad, 按 CTRL+Space 激活 FCITX 并试着输入几个字.
+
+===== 跟随桌面环境自动启动 =====
+对于支持 xdg 标准的桌面环境，例如 gnome，kde，xfce，lxde，Fcitx包已经包含了用于自动启动的 desktop 文件 /etc/xdg/autostart/fcitx-autostart.desktop 如果需要禁用自动启动或者调整自动启动的参数, 请用桌面环境提供的自动启动工具配置或者复制自动启动文件到用户目录后手动编辑
+cp /etc/xdg/autostart/fcitx-autostart.desktop ~/.config/autostart/
+
+===== 全局配置文件说明 =====
+默认情况下，fcitx配置文件的存放位置尽量接近XDG标准（用户配置目录一般为~/.config/fcitx，首次运行时fcitx会自动创建该目录)。
+Fcitx从4.0开始提供了图形界面的配置程序, 其AUR包分别为__fcitx-configtool__(基于gtk3), fcitx-configtool-gtk2(基于gtk2), kcm-fcitx(基于KDE的KCM). 不再推荐手动编辑配置文件以免出现问题.
+
+===== 常用快捷键 =====
+
+=== 内置快捷键 ===
+ctrl+5 重启
+ctrl+6 删除词语
+ctrl+7 增加词语
+可配置快捷键,请编辑~/.config/fcitx/config
+Warning: 建议使用图形界面，如果直接编辑配置文件，请务必小心
+
+=== [Hotkey] ===
+ #中英文切换
+ SwitchKey=L_CTRL 
+ #全角半角
+ FullWidthSwitchKey=SHIFT_SPACE 
+ #符号切换
+ PuncSwitchKey=CTRL_. 
+
+=== [Output] ===
+ #切换到英文时，编码上屏
+ SendTextWhenSwitchEng=True
+
+==== 禁用输入法 ====
+
+或许你并不希望看到一些输入法，比如双拼。那么你可以在配置界面里禁用相应的输入法
+
+==== 扩充拼音词库 ====
+
+用户配置拼音词库是在~/.config/fcitx/pinyin下，其中pybase.mb是拼音单字库 pyphrase.mb拼音词库（如果这两文件没有，那么fcitx就读取此目录/usr/share/fcitx/pinyin）,将你下载的词库放置到此目录后，重启（ctrl+5）fcitx就可以了。
+mv pybase.mb pyphrase.mb ~/.config/fcitx/pinyin/
+Vim
+
+如果你经常在vim下使用fcitx,那么在~/.vimrc 添加如下代码，可实现退出插入模式时，关闭fcitx；进入插入模式时，启用fcitx
+"##### auto fcitx  ###########
+let g:input_toggle = 1
+function! Fcitx2en()
+   let s:input_status = system("fcitx-remote")
+   if s:input_status == 2
+      let g:input_toggle = 1
+      let l:a = system("fcitx-remote -c")
+   endif
+endfunction
+
+function! Fcitx2zh()
+   let s:input_status = system("fcitx-remote")
+   if s:input_status != 2 && g:input_toggle == 1
+      let l:a = system("fcitx-remote -o")
+      let g:input_toggle = 0
+   endif
+endfunction
+
+set timeoutlen=150
+"退出插入模式
+autocmd InsertLeave * call Fcitx2en()
+"进入插入模式
+autocmd InsertEnter * call Fcitx2zh()
+"##### auto fcitx end ######
+Troubleshooting:
+
+==== 注意: ====
+当LC_CTYPE为英文时, 会出现Emacs下无法使用输入法的情况, 如出现此情况, 请在__启动Emacs时将LC_CTYPE设为zh_CN.UTF-8__. (终端下使用emacs无此问题, 输入法会由终端程序处理).
+
+===== 输入法模块（input module） =====
+Warning: 即使未安装输入法模块, 一般还是可以在大部分程序中使用输入法, 不过很可能出现从无法光标跟随, 无法显示预编辑字符串, 到无法输入甚至程序卡死等情况. 如无特殊情况请安装全部输入法模块
+Warning: firefox升级到13后可能与xim发生冲突造成菜单无法弹出等问题，安装fcitx-gtk2可以解决.

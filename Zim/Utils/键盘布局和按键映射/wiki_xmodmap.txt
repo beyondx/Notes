@@ -1,0 +1,88 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-11-19T19:58:36+08:00
+
+====== wiki xmodmap ======
+Created Monday 19 November 2012
+https://wiki.archlinux.org/index.php/Xmodmap
+
+===== Summary =====
+A general overview of modifying **keymaps and pointer** mappings with xmodmap.
+
+===== Introduction =====
+The Linux kernel generates a code each time a key is pressed on a keyboard. That code is compared to __a table of keycodes__ defining a figure that is then displayed.
+
+This process is complicated by **Xorg**, which starts its own table of keycodes. __Each keycode can belong to a keysym__. A keysym is like a function, started by typing a key. Xmodmap allows you to edit these keycode-keysym relations.
+
+===== Keymap table =====
+Print the current keymap table **formatted into expressions**:
+$ xmodmap -pke
+keycode  57 = n N
+
+Each keymap is followed by the keysyms it is mapped to. The above example indicates that the keycode 57 is mapped to the lowercase n, while the uppercase N is mapped to keycode 57 and Shift.
+
+**xmodmap文件的语法格式与keymaps相似，具体格式可以参考：**[[keymaps]] 。**内核可以识别的所有keysyms可以在虚拟终端中用dumpkeys -l命令查看。**
+Each keysym column in the table corresponds to a particular key combination:
+	1. Key
+	2. Shift+Key
+	3. mode_switch+Key
+	4. mode_switch+Shift+Key
+	5. AltGr+Key
+	6. AltGr+Shift+Key
+Not all keysyms have to be set, but if you want to assign a latter keysym without assigning earlier ones set them to **NoSymbol**.
+You can check which keymap corresponds to a key on your keyboard with __xev__.
+Tip: There are predefined descriptive keycodes that make mapping additional keys easier (e.g. XF86AudioMute, XF86Mail). Those keycodes can be found in: /usr/include/X11/XF86keysym.h
+
+===== Custom table =====
+You can create your own map and store it in your home directory (i.e. ~/.Xmodmap). Print the current keymap table into a configuration file:
+	__xmodmap -pke > ~/.Xmodmap__
+Make the desired changes to ~/.Xmodmap and then test the new configuration with:
+	xmodmap ~/.Xmodmap
+To activate your custom table when starting Xorg add the following:
+	~/.xinitrc
+	if [ -f $HOME/.Xmodmap ]; then
+	    /usr/bin/xmodmap $HOME/.Xmodmap
+	fi
+Alternatively, edit the global startup script /etc/X11/xinit/xinitrc.
+
+===== Test changes =====
+You can also make temporary changes for the current session. For example:
+	xmodmap -e "keycode  46 = l L l L lstroke Lstroke lstroke"
+	xmodmap -e "keysym a = e E"
+
+
+===== Special keys/signals =====
+You can also also edit the keys: Shift, Ctrl, Alt and Super (there always exists a left and a right one (__Alt_R=AltGr__))
+
+At first you have to delete/clear the signals that should be edited. In the beginning of your ~/.Xmodmap:
+	!clear Shift
+	!clear Lock
+	clear Control
+	!clear Mod1
+	!clear Mod2
+	!clear Mod3
+	clear Mod4
+	!clear Mod5
+	keycode   8 =
+	...
+Remember, ! is a comment so only Control and Mod4 (Standard: Super_L Super_R) get cleared.
+Write the new signals at the end of ~/.Xmodmap
+	keycode 255 =
+	!add Shift   = Shift_L Shift_R
+	!add Lock    = Caps_Lock
+	add Control = Super_L Super_R
+	!add Mod1    = Alt_L Alt_R
+	!add Mod2    = Mode_switch
+	!add Mod3    =
+	add Mod4    = Control_L Control_R
+	!add Mod5    =
+The Super keys have now been exchanged with the Ctrl keys.
+
+===== Reverse Scrolling =====
+The natural scrolling feature available in OS X Lion can be mimicked with xmodmap. Since the synaptics driver uses the buttons 4/5/6/7 for up/down/left/right scrolling, you simply need to swap the order of how the buttons are declared in ~/.Xmodmap.
+Open ~/.Xmodmap and append the following line to the file:
+pointer = 1 2 3 5 4 7 6 8 9 10 11 12
+Note how the 4 and 5 have been reversed.
+Then update xmodmap:
+xmodmap ~/.Xmodmap
+To return to regular scrolling simply reverse the order of the 4 and 5 or delete the line altogether. For more information check Peter Hutterer's post, Natural scrolling in the synaptics driver, or the Reverse scrolling direction ala Mac OS X Lion? forum thread.

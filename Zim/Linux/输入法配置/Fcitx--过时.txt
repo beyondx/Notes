@@ -2,9 +2,9 @@ Content-Type: text/x-zim-wiki
 Wiki-Format: zim 0.4
 Creation-Date: 2011-11-17T17:36:30+08:00
 
-====== Fcitx ======
+====== Fcitx--过时 ======
 Created Thursday 17 November 2011
-https://wiki.archlinux.org/index.php/Fcitx_%28%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87%29
+https://wiki.archlinux.org/index.php/Fcitx_%28简体中文%29
 
 ==== Contents ====
 
@@ -31,14 +31,13 @@ Fcitx (Free Chinese Input Toy for X) ──即小企鹅输入法 ，它是一个
 
 使用 FCITX 之前,你必须先进行环境设定，不过这并不难.
 
-    打开你主文件夹（/home/XXX）下的 .bashrc文件，添加以下几行： 
+打开你主文件夹（/home/XXX）下的 .bashrc文件，添加以下几行： 
 
- #setup** XIM environment**, needn't if use SCIM as    gtk-immodules
+ #setup** XIM environment**, needn't if use SCIM as gtk-immodules
  export XMODIFIERS="@im=fcitx"
  export GTK_IM_MODULE=xim
  export QT_IM_MODULE=xim
-注意：如果使用scim则，上述的xim需改为scim，因为 fxitx基于xim而scim不是。
-    重新登录以使其生效. 
+注意：如果使用scim则上述的xim需改为scim，因为 fxitx基于xim而scim不是。重新登录以使其生效. 
 
 重新登录后，打开一个终端, 输入:
 
@@ -108,7 +107,7 @@ export QT_IM_MODULE=xim
 
 关于 locale 的详情，请参阅 Google.
 
-=== 注意:  ===
+=== 注意: ===
 
 其实，在英文环境下，并__不需要__将 LC_CTYPE 变量设为中文的locale(但是**emacs例外**)。也就是说，完全不用设置 locale ，也能照样使用中文输入法。如果 ~/.bashrc or ~/.xinitrc 文件中，已经有了：
 

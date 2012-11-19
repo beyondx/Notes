@@ -1,0 +1,10 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-11-02T13:37:45+08:00
+
+====== 黑客辞典 ======
+Created Friday 02 November 2012
+
+grub：  gfx = graphics, 两者的读音差不多。
+VESA = Video Electronics Standards Association
+VBE = VESA BIOS Extensions
