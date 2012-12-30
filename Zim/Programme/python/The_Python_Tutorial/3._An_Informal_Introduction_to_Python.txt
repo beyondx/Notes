@@ -38,7 +38,7 @@ The interpreter acts as a simple calculator: you can type an expression at it an
 >>> #__ Integer division returns the floor__:
 ... 7/3
 2
->>> 7/-3
+>>> 7/-3  //对于整型出发，结果也是整数，而且结果总是rounded towards minus infinity。也就是说__结果总是取小于小数的最大整数值。__例如7/-3= -2.25...，而小于-2.25的最大整数为-3.
 -3
 
 The equal sign ('=') is used to assign a value to a variable. Afterwards, no result is displayed before the next interactive prompt:

@@ -6,10 +6,6 @@ Creation-Date: 2012-01-05T15:16:44+08:00
 Created Thursday 05 January 2012
 http://www.noah.org/wiki/Pexpect
 
-pexpect
-(Redirected from Pexpect)
-
-
 Contents
 
     1 Pexpect version 2.3
@@ -59,22 +55,12 @@ Download the current version here from the SourceForge site here: pexpect curren
 ===== Description of Pexpect =====
 
 Pexpect is a **pure Python module** that makes Python a better tool for__ controlling and automating other programs__. Pexpect is similar to the Don Libes `Expect` system, but Pexpect as a different interface that is easier to understand. 
+
 Pexpect is__ basically a pattern matching system__. It runs programs and watches output. When output matches a given pattern Pexpect can **respond** as if a human were typing responses. Pexpect can be used for** automation, testing, and screen scraping**. 
-Pexpect can be used for__ automating interactive console applications __such as ssh, ftp, passwd, telnet, etc.
-It can also be used to__ control web applications__ via `lynx`, `w3m`, or some other **text-based **web browser. Pexpect is pure Python. Unlike other Expect-like modules for Python Pexpect does not require TCL or Expect nor does it require C extensions to be compiled. It should work on any platform that supports the standard Python pty module.
+
+Pexpect can be used for__ automating interactive console applications __such as ssh, ftp, passwd, telnet, etc. It can also be used to__ control web applications__ via `lynx`, `w3m`, or some other **text-based **web browser. Pexpect is pure Python. Unlike other Expect-like modules for Python Pexpect does not require TCL or Expect nor does it require C extensions to be compiled. It should work on any platform that supports the standard Python __pty__ module.
 
 Send questions to: noah@noah.org Put 'pexpect' in the subject.
-License
-
-MIT style -- Free, open source, and all that good stuff.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-Pexpect Copyright (c) 2010 Noah Spurrier
 
 ===== Download and Installation =====
 

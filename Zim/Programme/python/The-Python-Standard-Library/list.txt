@@ -1,0 +1,74 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-12-02T09:40:06+08:00
+
+====== list ======
+Created Sunday 02 December 2012
+
+~ $ ipython2
+Python 2.7.3 (default, Apr 24 2012, 00:06:13) 
+Type "copyright", "credits" or "license" for more information.
+
+In [1]: lst = ['sdfds', 'dsfsd', 1, 3, [123, 22, 33, 'dsfds']]
+
+__In [2]: lst[0]=[1, 2, 3]    //为列表的某个成员赋值时，python不会对右边的值进行迭代。__
+
+In [3]: lst
+Out[3]: 1, 2, 3], 'dsfsd', 1, 3, [123, 22, 33, 'dsfds'
+
+__In [8]: lst[0:0] = 'dffds'  //为列表的成员列表赋值时，python会对右边的值进行迭代。__
+
+In [9]: lst
+Out[9]: [__'d', 'f', 'f', 'd', 's',__ 'dffds', 2, 3, 'dsfsd', 1, 3, [123, 22, 33, 'dsfds']]  //可见，python对等式右边序列进行了迭代。
+
+In [4]: lst[0:1] = [1, 2, 3]
+
+In [5]: lst
+Out[5]: [1, 2, 3, 'dsfsd', 1, 3, [123, 22, 33, 'dsfds']]  //同上
+
+In [10]: 
+
+__In [10]: lst[0:0] = ['dffds']   //将字符序列外加[和]就可以阻止迭代(因为这时字符串时列表的唯一成员)__
+
+In [11]: lst
+Out[11]: 
+['dffds',
+ 'd',
+ 'f',
+ 'f',
+ 'd',
+ 's',
+ 'dffds',
+ 2,
+ 3,
+ 'dsfsd',
+ 1,
+ 3,
+ [123, 22, 33, 'dsfds']]
+
+In [12]: 
+
+In [24]: lst
+Out[24]: '123\nstr'
+
+In [25]: lst = [1, 2, 3]
+
+In [26]: lst = lst + [4, 5, 6]  //列表相+时，python会对第二个列表进行__迭代__。
+
+In [27]: lst
+Out[27]: [1, 2, 3, **4, 5, 6]**
+
+__In [28]: lst = lst + 'fdf'  //只能list间相加__
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+<ipython-input-28-0818686a3a7d> in <module>()
+----> 1 lst = lst + 'fdf'
+
+TypeError: **can only concatenate list** (not "str") to list
+
+In [29]: lst = lst + list('fdf')
+
+In [30]: lst
+Out[30]: [1, 2, 3, 4, 5, 6, 'f', 'd', 'f']
+
+In [31]: 

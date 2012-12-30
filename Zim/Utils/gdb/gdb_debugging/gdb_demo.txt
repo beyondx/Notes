@@ -1,0 +1,174 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-12-25T22:10:21+08:00
+
+====== gdb demo ======
+Created Tuesday 25 December 2012
+
+[geekard@geekard elf]$ **cat demo.c**
+#include <stdio.h>
+#include <stdlib.h>
+
+int  globalVar = 1;
+int  globalVarUninit;
+
+static int  globalVarStatic = 3;
+
+extern int externVar;
+extern int add(int, int);
+  
+void greeting(char *name, int age, char** friends)
+{
+
+  int a = 23;
+  char *nm = "zhangjun";
+  char *fr[] = {"Tom", "John", "Pi", NULL};  //fr为__数组名称__，它指向一块内存单元，但是本身不咱用内存单元。
+  char **fr = {"Tom", "John", "Pi", NULL};   //fr为__指针变量，指向一个保存有4个字符指针的内存单元(位于greeting的栈中)。__
+
+  if (name == NULL)
+     name = nm;
+  if (age == 0)
+     age = a;
+  if (friends == NULL)
+     friends = fr;
+
+  printf("In greeting:\n");
+  printf("\tHello, %s:\n", name);
+  printf("\tYourt age is:%d.\n", age);
+  printf("\tYourt friends are:\n");
+  while (*friends != NULL) {
+    printf("\t\t%s\n", *friends);
+    friends += 1;
+  }
+
+ printf("Goodbye from greeting.\n");
+}
+
+int main(int argc, char *argv[]) 
+{
+  int autoVar = globalVar;
+  static int staticVar = 2;
+  int i = externVar;
+
+  char *name = "geekard";
+  int age = 23;
+  char *friends[] = {"Tom", "John", "Pi", NULL};
+  
+  printf("In main:\n");
+  printf("\tThe globalVarStatic is:%d\n",globalVarStatic);
+  greeting(name, age, friends);
+  add(2, 3);
+}
+[geekard@geekard elf]$ **cat foo.c** 
+int externVar = 1;
+int static staticVarStatic  = 2;
+
+int add(int a, int b)
+{ 
+  return a + b;
+}
+[geekard@geekard elf]$ **gcc -g demo.c foo.c -o demo**
+demo.c: In function ‘greeting’:
+demo.c:18:3: warning: initialization from incompatible pointer type [enabled by default]
+demo.c:18:3: warning: (near initialization for ‘fr’) [enabled by default]
+demo.c:18:3: warning: excess elements in scalar initializer [enabled by default]
+demo.c:18:3: warning: (near initialization for ‘fr’) [enabled by default]
+demo.c:18:3: warning: excess elements in scalar initializer [enabled by default]
+demo.c:18:3: warning: (near initialization for ‘fr’) [enabled by default]
+demo.c:18:3: warning: excess elements in scalar initializer [enabled by default]
+demo.c:18:3: warning: (near initialization for ‘fr’) [enabled by default]
+[geekard@geekard elf]$ **gdb demo**
+GNU gdb (GDB) 7.5.1
+Copyright (C) 2012 Free Software Foundation, Inc.
+。。。。。。
+**(gdb) info source**
+Current source file is demo.c
+Compilation directory is /home/geekard/Code/elf
+Located in /home/geekard/Code/elf/demo.c
+Contains 53 lines.
+Source language is c.
+Compiled with DWARF 2 debugging format.
+Does not include preprocessor macro info.
+**(gdb) info sources**
+Source files for which symbols have been read in:
+
+/home/geekard/Code/elf/demo.c
+
+Source files for which symbols will be read in on demand:
+
+/home/geekard/Code/elf/foo.c
+
+**(gdb) set args -a aa --bb=bbb ccc ** //设置dmo程序的默认命令行参数，执行run命令时会传入该参数。
+**(gdb) show args  **//查看demo程序的命令行参数
+Argument list to give program being debugged when it is started is "-a aa --bb=bbb ccc".
+**(gdb) info args ** //查看当前stack frame对应函数的参数列表信息。
+No frame selected.
+(gdb) show env
+XDG_VTNR=1
+。。。。。
+**(gdb) shell clear ** //执行shell命令，这里为clear。
+**(gdb) info address greeting**  //在symbol table中查找greeting函数的入口地址
+Symbol "greeting" is a function at address 0x804842c.
+**(gdb) b 0x804842c  //在某个地址处设置断点时，地址前应该加星号，否则gdb认为它为函数名称。**
+Function "0x804842c" not defined.
+Make breakpoint pending on future shared library load? (y or [n]) n
+**(gdb) b *0x804842c  **
+Breakpoint 1 at 0x804842c: file demo.c, line 13.
+**(gdb) b *greeting**  
+Note: breakpoint 1 also set at pc 0x804842c.
+Breakpoint 2 at 0x804842c: file demo.c, line 13.
+**(gdb) b greeting**   //在greeting函数入口处设一个断点
+Breakpoint 3 at 0x8048432: file demo.c, line 15.
+**(gdb) info b**
+Num     Type           Disp Enb Address    What
+1      breakpoint     keep y   0x0804842c in greeting at demo.c:13
+2       breakpoint     keep y   0x0804842c in greeting at demo.c:13
+3      breakpoint     keep y   0x08048432 in greeting at demo.c:15
+**(gdb) delete 2 //删除编号为2的断点**
+**(gdb) list 12,16 //查看当前文件的12至16行。**
+12      void greeting(char *name, int age, char** friends)
+13      {
+14
+15        int a = 23;
+16        char *nm = "zhangjun";
+**(gdb) r**
+Starting program: /home/geekard/Code/elf/demo -a aa --bb=bbb ccc  //gdb将set args命令的参数传给demo。
+Breakpoint 1, greeting (name=0x804868b "geekard", age=23, friends=0xbffff950) at demo.c:13
+13      {
+**(gdb) disassemble greeting**   //反汇编greeting函数。如果disassmble没有参数，则默认反汇编当前所执行的函数。
+Dump of assembler code for function greeting:
+=> 0x0804842c <+0>:     push   %ebp  //demo停止在greeting函数的入口处，函数的prologue指令还没有执行。
+   0x0804842d <+1>:     mov    %esp,%ebp
+   0x0804842f <+3>:     sub    $0x28,%esp
+(gdb) c  //继续执行，直到下一个断点处。
+Continuing.
+
+Breakpoint 3, greeting (name=0x804868b "geekard", age=23, friends=0xbffff950) at demo.c:15
+15        int a = 23;
+**(gdb) disassemble**  //反汇编当前执行的函数
+Dump of assembler code for function greeting:
+   0x0804842c <+0>:     push   %ebp
+   0x0804842d <+1>:     mov    %esp,%ebp
+   0x0804842f <+3>:     sub    $0x28,%esp
+=> 0x08048432 <+6>:     movl   $0x17,-0xc(%ebp) //指令前的"=>"表示下一条**待执行**的指令位置。
+//可见greeting的prologue指令已经执行，这意味着greeting的栈帧已经建立。但是greeting的auto variable初始化指令还没有执行。
+   0x08048439 <+13>:    movl   $0x8048620,-0x10(%ebp)
+   0x08048440 <+20>:    movl   $0x8048629,-0x14(%ebp)
+   0x08048447 <+27>:    cmpl   $0x0,0x8(%ebp)
+   0x0804844b <+31>:    jne    0x8048453 <greeting+39>
+   0x0804844d <+33>:    mov    -0x10(%ebp),%eax
+   0x08048450 <+36>:    mov    %eax,0x8(%ebp)
+。。。。。
+**(gdb) info args  //查看当前stack frame对应函数的参数列表。**
+name = 0x804868b "geekard"
+age = 23
+friends = 0xbffff950  //传经来的时指针
+**(gdb) info locals**   //greeting函数的auto variables还没有初始化，所以下列为无效值
+a = -1209680176
+nm = 0xbffff944 "\027"
+fr = 0x80486a4  //
+(gdb) 
+
+
+
+

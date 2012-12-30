@@ -1,0 +1,130 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-12-25T16:49:56+08:00
+
+====== gdb debugging ======
+Created Tuesday 25 December 2012
+
+[geekard@geekard elf]$ **gdb demo**
+GNU gdb (GDB) 7.5.1
+Copyright (C) 2012 Free Software Foundation, Inc.
+**(gdb) info source  **//查看当前使用的source file name
+
+
+**(gdb) info args ** 
+name = 0x80486a3 "geekard"
+age = 23
+friends = 0xbffff920
+**(gdb) info locals**   
+a = -1209680176
+nm = 0xbffff914 "\027"
+fr = {0xbffff948 "", 
+  0xb7e5beff <printf+47> "\203\304\030[\303f\220f\220f\220f\220f\220f\220S\203\354\030\215D$,\211D$\f\213D$(讷\r", 
+  0xb7fb5a00 <_IO_2_1_stdout_> "\204*\255", <incomplete sequence \373>, 0x80486b4 "\tThe globalVarStatic is:%d\n"}
+//从上面两次的反汇编结果可以得出如下结论：
+//1. break function-name 设置的断点并不位于function的入口处，而break  *function-name才是。
+//2. break function-name设置的断点位于function的prologue指令之后，auto variable初始化指令之前。
+//3. 当执行到前面设置的断点时，函数的args已经由caller通过stack传入，但是函数的auto variable还没有被初始化
+
+**(gdb) bt   **//查看函数调用信息，即backtrap。callee的编号小于其caller。
+#0  greeting (name=0x80486a3 "geekard", age=23, friends=0xbffff920) at demo.c:13
+#1  0x08048578 in main (argc=5, argv=0xbffff9e4) at demo.c:50
+**(gdb) info f 1  **//查看stack frame编号为1的函数帧信息
+Stack frame at 0xbffff950:
+ eip = 0x8048578 in main (demo.c:50); saved eip 0xb7e28605
+ caller of frame at 0xbffff910
+ source language c.
+ Arglist at 0xbffff948, args: argc=5, argv=0xbffff9e4
+ Locals at 0xbffff948, Previous frame's sp is 0xbffff950
+ Saved registers:
+  ebp at 0xbffff948, eip at 0xbffff94c
+**(gdb) info f 0**
+Stack frame at 0xbffff910:
+ eip = 0x804842c in greeting (demo.c:13); saved eip 0x8048578
+ called by frame at 0xbffff950
+ source language c.
+ Arglist at 0xbffff908, args: name=0x80486a3 "geekard", age=23, friends=0xbffff920
+ Locals at 0xbffff908, Previous frame's sp is 0xbffff910
+ Saved registers:
+  eip at 0xbffff90c
+**(gdb) disassemble main   **//反汇编main函数
+Dump of assembler code for function main:
+//从info f 1的输出可知，call main前esp的值为 0xbffff950。
+   0x080484f0 <+0>:     push   %ebp
+   0x080484f1 <+1>:     mov    %esp,%ebp  //main函数的prologue指令，break main时停止在下一条指令处。
+   0x080484f3 <+3>:     and    $0xfffffff0,%esp  //SystemV i386 ABI规定esp必须word对齐。
+   0x080484f6 <+6>:     sub    $0x30,%esp  //为main的auto variables预留空间，此后esp的值为0xbffff10。
+
+   0x080484f9 <+9>:     mov    0x8049918,%eax
+   0x080484fe <+14>:    mov    %eax,0x2c(%esp) //int autoVar = globVar;
+
+   0x08048502 <+18>:    mov    0x8049924,%eax
+   0x08048507 <+23>:    mov    %eax,0x28(%esp)  //i = externVar;
+
+   0x0804850b <+27>:    movl   $0x80486a3,0x24(%esp)  // char *name = "geekard"
+
+   0x08048513 <+35>:    movl   $0x17,0x20(%esp)  // int age = 23
+
+   0x0804851b <+43>:    movl   $0x8048639,0x10(%esp)  //"Tom"
+   0x08048523 <+51>:    movl   $0x804863d,0x14(%esp)   //"John"
+   0x0804852b <+59>:    movl   $0x8048642,0x18(%esp)   //"Pi"
+   0x08048533 <+67>:    movl   $0x0,0x1c(%esp)  //NULL
+//char **friends = {x, x,  NUU}，friends是一个指向字符指针的指针__变量(占有内存单元)__，其指向的数组有4个元素。
+//变量friends的地址为0xbffff918，即0x8($esp)处，可以用print &friends命令打印出。
+//变量friends的值为0xbffff920，指向栈上"Tom"所在的内参单元地址。对于指针数组变量friends，有以下调试信息：    
+       **(gdb) p &friends **
+	$21 = (char ***) 0xbffff918
+	**(gdb) p friends** 
+	$17 = (char **) 0xbffff920
+	**(gdb) p friends@4** 
+	$18 = {0xbffff920, 0x80485f2 <__libc_csu_init+82>, 0x8048639, 0x804863d}
+	**(gdb) p *friends@4**
+	$19 = {0x8048639 "Tom", 0x804863d "John", 0x8048642 "Pi", 0x0}
+	**(gdb) x /4wx friends@4**
+	0xbffff918:     0xbffff920      0x080485f2      0x08048639      0x0804863d
+	**(gdb) x /4wx *friends@4**
+	0xbffff920:     0x08048639      0x0804863d      0x08048642      0x00000000
+	**(gdb) p *friends@4**
+	$20 = {0x8048639 "Tom", 0x804863d "John", 0x8048642 "Pi", 0x0}
+//从main函数的auto variable初始化指令可以得出如下结论：
+//1. main函数的auto variable是保存在stack中，其layourt的顺序与定义的顺序一致，即先定义的变量先入栈。
+//2.static variable定义在全局数据段(.data section)中，而不是stack中(int static staticVar并没有在stack中初始化)。
+//3.数组的各元素入栈顺序与定义顺序相反，即索引越大越先入栈; 指针数组变量最后入栈。
+
+//auto variable初始化完成后的main栈分配如下：
+{{./stack.png?height=544}}
+
+
+   0x0804853b <+75>:    movl   $0x80486ab,(%esp)
+   0x08048542 <+82>:    call   0x8048300 <puts@plt>
+   0x08048547 <+87>:    mov    0x804991c,%eax
+   0x0804854c <+92>:    mov    %eax,0x4(%esp)
+   0x08048550 <+96>:    movl   $0x80486b4,(%esp)
+   0x08048557 <+103>:   call   0x80482f0 <printf@plt>
+   0x0804855c <+108>:   lea    0x10(%esp),%eax
+   0x08048560 <+112>:   mov    %eax,0x8(%esp)
+   0x08048564 <+116>:   mov    0x20(%esp),%eax
+   0x08048568 <+120>:   mov    %eax,0x4(%esp)
+   0x0804856c <+124>:   mov    0x24(%esp),%eax
+   0x08048570 <+128>:   mov    %eax,(%esp)
+   0x08048573 <+131>:   call   0x804842c <greeting>
+   __0x08048578__ <+136>:   movl   $0x3,0x4(%esp)
+   0x08048580 <+144>:   movl   $0x2,(%esp)
+   0x08048587 <+151>:   call   0x8048590 <add>
+   0x0804858c <+156>:   leave  
+   0x0804858d <+157>:   ret    
+End of assembler dump.
+
+//greeting函数的argumets是由main函数通过栈传入的。下面代码节选至main函数的反汇编输出。
+          //函数的auto variable是保存在其stack中的。下面时main函数的auto variable初始化代码。
+          0x0804850b <+27>:    movl   $0x80486a3,0x24(%esp)  //name
+          0x08048513 <+35>:    movl   $0x17,0x20(%esp)   //age
+          0x0804851b <+43>:    movl   $0x8048639,0x10(%esp) //friends  
+         //将greeting函数的friends参数圧入栈中，注意friends参数的值是main的auto variable，所以它保存在main的stack frame中。
+	   0x0804855c <+108>:   lea    0x10(%esp),%eax
+	   0x08048560 <+112>:   mov    %eax,0x8(%esp)  //frinnds
+	   0x08048564 <+116>:   mov    0x20(%esp),%eax
+	   0x08048568 <+120>:   mov    %eax,0x4(%esp) //通过栈传入age参数
+	   0x0804856c <+124>:   mov    0x24(%esp),%eax
+	   0x08048570 <+128>:   mov    %eax,(%esp)  //通过栈传入name参数
+	   0x08048573 <+131>:   call   0x804842c <greeting>

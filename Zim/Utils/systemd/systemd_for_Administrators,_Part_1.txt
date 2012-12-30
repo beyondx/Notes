@@ -1,0 +1,273 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-11-21T19:33:39+08:00
+
+====== systemd for Administrators, Part 1 ======
+Created Wednesday 21 November 2012
+http://www.0pointer.de/blog/projects/systemd-for-admins-1.html
+
+レナート   Wunschkonzert, Ponyhof und Abenteuerspielplatz   ﻟﻴﻨﺎﺭﺕ
+
+Mon, 23 Aug 2010
+systemd for Administrators, Part 1
+
+As many of you know, systemd is the new Fedora init system, starting with F14, and it is also on its way to being adopted in a number of other distributions as well (for example, OpenSUSE). For administrators systemd provides a variety of new features and changes and enhances the administrative process substantially. This blog story is the first part of a series of articles I plan to post roughly every week for the next months. In every post I will try to explain one new feature of systemd. Many of these features are small and simple, so these stories should be interesting to a broader audience. However, from time to time we'll dive a little bit deeper into the great new features systemd provides you with.
+
+===== Verifying Bootup =====
+Traditionally, when booting up a Linux system, you see a lot of little messages passing by on your screen. As we work on speeding up and parallelizing the boot process these messages are becoming visible for a shorter and shorter time only and be less and less readable -- if they are shown at all, given we use __graphical boot splash__ technology like **Plymouth** these days. Nonetheless the information of the boot screens was and still is very relevant, because it shows you for each service that is being started as part of bootup, wether it managed to start up successfully or failed (with those green or red [ OK ] or [ FAILED ] indicators). To improve the situation for machines that boot up fast and parallelized and to make this information more nicely available during runtime, we added a feature to systemd that tracks and remembers for each service whether it started up successfully, whether it exited with a non-zero exit code, whether it timed out, or whether it terminated abnormally (by segfaulting or similar), both during start-up and runtime. By simply typing systemctl in your shell you can query the state of all services, both **systemd native and SysV/LSB services**:
+
+[root@lambda] ~# systemctl
+UNIT                                          LOAD   ACTIVE       SUB          JOB             DESCRIPTION
+dev-hugepages.automount                       loaded active       running                      Huge Pages File System Automount Point
+dev-mqueue.automount                          loaded active       running                      POSIX Message Queue File System Automount Point
+proc-sys-fs-binfmt_misc.automount             loaded active       waiting                      Arbitrary Executable File Formats File System Automount Point
+sys-kernel-debug.automount                    loaded active       waiting                      Debug File System Automount Point
+sys-kernel-security.automount                 loaded active       waiting                      Security File System Automount Point
+sys-devices-pc...0000:02:00.0-net-eth0.device loaded active       plugged                      82573L Gigabit Ethernet Controller
+[...]
+sys-devices-virtual-tty-tty9.device           loaded active       plugged                      /sys/devices/virtual/tty/tty9
+-.mount                                       loaded active       mounted                      /
+boot.mount                                    loaded active       mounted                      /boot
+dev-hugepages.mount                           loaded active       mounted                      Huge Pages File System
+dev-mqueue.mount                              loaded active       mounted                      POSIX Message Queue File System
+home.mount                                    loaded active       mounted                      /home
+proc-sys-fs-binfmt_misc.mount                 loaded active       mounted                      Arbitrary Executable File Formats File System
+abrtd.service                                 loaded active       running                      ABRT Automated Bug Reporting Tool
+accounts-daemon.service                       loaded active       running                      Accounts Service
+acpid.service                                 loaded active       running                      ACPI Event Daemon
+atd.service                                   loaded active       running                      Execution Queue Daemon
+auditd.service                                loaded active       running                      Security Auditing Service
+avahi-daemon.service                          loaded active       running                      Avahi mDNS/DNS-SD Stack
+bluetooth.service                             loaded active       running                      Bluetooth Manager
+console-kit-daemon.service                    loaded active       running                      Console Manager
+cpuspeed.service                              loaded active       exited                       LSB: processor frequency scaling support
+crond.service                                 loaded active       running                      Command Scheduler
+cups.service                                  loaded active       running                      CUPS Printing Service
+dbus.service                                  loaded active       running                      D-Bus System Message Bus
+getty@tty2.service                            loaded active       running                      Getty on tty2
+getty@tty3.service                            loaded active       running                      Getty on tty3
+getty@tty4.service                            loaded active       running                      Getty on tty4
+getty@tty5.service                            loaded active       running                      Getty on tty5
+getty@tty6.service                            loaded active       running                      Getty on tty6
+haldaemon.service                             loaded active       running                      Hardware Manager
+hdapsd@sda.service                            loaded active       running                      sda shock protection daemon
+irqbalance.service                            loaded active       running                      LSB: start and stop irqbalance daemon
+iscsi.service                                 loaded active       exited                       LSB: Starts and stops login and scanning of iSCSI devices.
+iscsid.service                                loaded active       exited                       LSB: Starts and stops login iSCSI daemon.
+livesys-late.service                          loaded active       exited                       LSB: Late init script for live image.
+livesys.service                               loaded active       exited                       LSB: Init script for live image.
+lvm2-monitor.service                          loaded active       exited                       LSB: Monitoring of LVM2 mirrors, snapshots etc. using dmeventd or progress polling
+mdmonitor.service                             loaded active       running                      LSB: Start and stop the MD software RAID monitor
+modem-manager.service                         loaded active       running                      Modem Manager
+netfs.service                                 loaded active       exited                       LSB: Mount and unmount network filesystems.
+NetworkManager.service                        loaded active       running                      Network Manager
+ntpd.service                                  loaded maintenance  maintenance                  Network Time Service
+polkitd.service                               loaded active       running                      Policy Manager
+prefdm.service                                loaded active       running                      Display Manager
+rc-local.service                              loaded active       exited                       /etc/rc.local Compatibility
+rpcbind.service                               loaded active       running                      RPC Portmapper Service
+rsyslog.service                               loaded active       running                      System Logging Service
+rtkit-daemon.service                          loaded active       running                      RealtimeKit Scheduling Policy Service
+sendmail.service                              loaded active       running                      LSB: start and stop sendmail
+sshd@172.31.0.53:22-172.31.0.4:36368.service  loaded active       running                      SSH Per-Connection Server
+sysinit.service                               loaded active       running                      System Initialization
+systemd-logger.service                        loaded active       running                      systemd Logging Daemon
+udev-post.service                             loaded active       exited                       LSB: Moves the generated persistent udev rules to /etc/udev/rules.d
+udisks.service                                loaded active       running                      Disk Manager
+upowerd.service                               loaded active       running                      Power Manager
+wpa_supplicant.service                        loaded active       running                      Wi-Fi Security Service
+avahi-daemon.socket                           loaded active       listening                    Avahi mDNS/DNS-SD Stack Activation Socket
+cups.socket                                   loaded active       listening                    CUPS Printing Service Sockets
+dbus.socket                                   loaded active       running                      dbus.socket
+rpcbind.socket                                loaded active       listening                    RPC Portmapper Socket
+sshd.socket                                   loaded active       listening                    sshd.socket
+systemd-initctl.socket                        loaded active       listening                    systemd /dev/initctl Compatibility Socket
+systemd-logger.socket                         loaded active       running                      systemd Logging Socket
+systemd-shutdownd.socket                      loaded active       listening                    systemd Delayed Shutdown Socket
+dev-disk-by\x1...x1db22a\x1d870f1adf2732.swap loaded active       active                       /dev/disk/by-uuid/fd626ef7-34a4-4958-b22a-870f1adf2732
+basic.target                                  loaded active       active                       Basic System
+bluetooth.target                              loaded active       active                       Bluetooth
+dbus.target                                   loaded active       active                       D-Bus
+getty.target                                  loaded active       active                       Login Prompts
+graphical.target                              loaded active       active                       Graphical Interface
+local-fs.target                               loaded active       active                       Local File Systems
+multi-user.target                             loaded active       active                       Multi-User
+network.target                                loaded active       active                       Network
+remote-fs.target                              loaded active       active                       Remote File Systems
+sockets.target                                loaded active       active                       Sockets
+swap.target                                   loaded active       active                       Swap
+sysinit.target                                loaded active       active                       System Initialization
+
+LOAD   = Reflects whether the unit definition was properly loaded.
+ACTIVE = The high-level unit activation state, i.e. generalization of SUB.
+SUB    = The low-level unit activation state, values depend on unit type.
+JOB    = Pending job for the unit.
+
+221 units listed. Pass --all to see inactive units, too.
+[root@lambda] ~#
+
+(I have shortened the output above a little, and removed a few lines not relevant for this blog post.)
+
+Look at the **ACTIVE** column, which shows you the high-level state of a service (or in fact of any kind of unit systemd maintains, which can be more than just services, but we'll have a look on this in a later blog posting), whether it is active (i.e. running), inactive (i.e. not running) or in any other state. If you look closely you'll see one item in the list that is marked maintenance and highlighted in red. This informs you about a service that failed to run or otherwise encountered a problem. In this case this is ntpd. Now, let's find out what actually happened to ntpd, with the systemctl status command:
+
+[root@lambda] ~# **systemctl status ntpd**__.service__
+ntpd.service - Network Time Service
+	  Loaded: loaded (/etc/systemd/system/ntpd.service)
+	  **Active: maintenance**
+	    Main: 953 (code=exited, status=255)
+	  CGroup: name=systemd:/systemd-1/ntpd.service
+[root@lambda] ~#
+
+This shows us that NTP terminated during runtime (when it ran as **PID 953**), and tells us exactly the error condition: the process exited with an exit status of 255.
+
+In a later systemd version, we plan to hook this up to ABRT, as soon as this enhancement request is fixed. Then, if systemctl status shows you information about a service that crashed it will direct you right-away to the appropriate crash dump in ABRT.
+
+Summary: use systemctl and systemctl status as modern, more complete replacements for the traditional boot-up status messages of SysV services. systemctl status not only captures in more detail the error condition but also shows runtime errors in addition to start-up errors.
+
+That's it for this week, make sure to come back next week, for the next posting about systemd for administrators!
+
+posted at: 10:22 | path: /projects | permanent link to this entry | 40 comments
+Posted by bochecha at Mon Aug 23 11:20:20 2010
+Thanks, this serie of article will no doubt be very interesting. :)
+
+About this one, I don't really get the **LOAD, ACTIVE and SUB** columns.
+
+As I understood it, the first one indicates whether a unit **configuration** was loaded or not into systemd. But if it wasn't loaded, then it would not appear in the output of systemctl, right?
+
+You say that ACTIVE is a high-level generalization of SUB. In this case, why is that necessary? Isn't SUB already enough information?
+
+Maybe if you could give the list of the possible values for each columns then that would help me understand the differences. :)
+
+Or maybe just point to the appropriate documentation if that is all already documented somewhere, I must admit I haven't had the time yet to look at Systemd as closely as I wanted.
+
+Posted by Lennart at Mon Aug 23 11:35:34 2010
+bochecha: well, there are many reasons why a service might **show up as failed** to load in the systemctl output: for example, it was referenced as required dependency of another service, but we couldn't find neither a native service definition file nor a SysV init script for it. Or, there was a parsing failure while reading it. Or, because the file was incomplete. And that might even happen while a service is active, for example, because the user requested **a configuration file reload** from systemd after changing a service file, and a service that is already  running suddenly has an invalid configuration file. That effectively means that the LOAD and the ACTIVE state are mostly orthogonal(正交、互相垂直): you may have a running service where configuration loaded fine, you may have a stopped service where it loaded fine, but you may also have a running service where configuration failed to load.
+
+**LOAD和ACTIVE具有不同的功能，LOAD表明该service的configure file是否正常读取，而ACTIVE表明该serive是否在运行。一般来说LOAD失败时service也是failed，但是有可能正常运行的service在reload configration file时出错。**
+
+And yes, ACTIVE and SUB show you the same information, though ACTIVE in a more generalized form. While SUB has states that are __specific to each unit type__ (e.g. **"running", "exited", "dead" for services; "plugged" and "dead" for devices; or "mounted" and "dead" for mount points**), ACTIVE exposes the same high-level states for all units.
+
+ACTIVE较SUB表示的是一个更一般、抽象的状态，而SUB与具体的unit类型相关，表达的是更具体的信息。例如ACTIVE的状态是active但是SUB的内容可能是running或plugged或exited。
+
+We only distuingish __6 ACTIVE states__ (to list them: **active, reloading, inactive, maintenance, activating, deactivating**), which are mapped from the lower-level states, which might be many more. For example __services have 15 low-level states__: **dead, start-pre, start, start-post, running, exited, reload, stop, stop-sigterm, stop-sigkill, stop-post, final-sigterm, final-sigkill, maintenance, auto-restart.**
+
+Posted by John Drinkwater at Mon Aug 23 12:23:36 2010
+Why systemctl status ntpd.service and not systemctl status ntpd?
+Why does systemctl display names like getty@tty2.service and not as getty@tty2 ?
+
+Do we really need to have .mount, .service, etc on all our config files now?
+IMO, horrible to have file extensions, equally to have them as long as the file name.
+
+Posted by Lennart at Mon Aug 23 13:36:52 2010
+John, we support **different kinds of units**. We manage __sockets, mount points, services, devices, automount points, timers, paths, targets, swap files/devices and snapshots__ with the same tools, with the same commands. For example "dbus.service" and "dbus.socket" are both used by the D-Bus system, but can be controlled and introspected __independently__. To distuingish them, we hence write their full name everywhere, so that you explicitly state that you mean the D-Bus socket instead of the D-Bus service, or vice versa.
+
+Also, I actually find this one of the pretty things in this design: the unit names are actually __identical__ to the file names they are configured in.
+
+Posted by Shane Falco at Mon Aug 23 14:19:27 2010
+I'm with Mr. Drinkwater on this.  Extensions (especially long extensions) are one symptom of a bad design.  All this feels very rushed and hacked together.
+
+It looks like this core systemctl function won't display cleanly in a standard 80 character wide terminal?  Are we trying to change linux so much that we no longer care about those sorts of things?  It may be different for gnome developers, but unix admins I know have lots of windows open and usually they're 80 characters wide.
+
+Finally, why choose a name so close to another common utility?  systemctl?  Seriously?  When another core system utility called sysctl already exists?
+
+Posted by Lennart at Mon Aug 23 14:26:44 2010
+Shane, I am sorry but I guess we just have to agree to disagree to this. The points you raise are in the category "matter of taste" or even "bike shedding", and so I guess we should leave it as that.
+
+systemctl shortens the output dependening the terminal size. If you use a tiny terminal, the description string might even be suppressed entirely. The bigger your terminal/screen is, the more output we can stick on it. That should not surprise anybody. Or to put it in other words: we support 80ch terminals just fine, but if you use bigger termiansl we'll make use of it.
+
+Posted by Shane Falco at Mon Aug 23 14:49:26 2010
+Sounds reasonable and I appreciate the response.  It looks like you are taking your own personal experience (which is all anyone can ask) and creating something that you think is appropriate.  But I fear that you don't really see the bigger picture of unix admins out there...there are a lot of guys I work with who are junior/middle guys who just work for a paycheck.  They're __not linux geeks__.  I dare say they're the majority.  They could be doing AIX or Solaris or linux for all they care.  I think they're going to have trouble with systemd.  It just does too much and it's too baroque.  Too confusing.
+
+I finally, finally got them going with services/chkconfig and now this...
+
+Posted by Michael at Mon Aug 23 15:00:08 2010
+Just a quick question, can the description be translated ?
+I assume that this is not planned, as they are config file, not software, but as we are able to translate .desktop, it would be great to have some way of doing it cleanly.
+
+Posted by Lennart at Mon Aug 23 15:10:54 2010
+Shane, well, what makes you think that we haven't looked around ourselves? Also, we managed to get systemd accepted by Fedora, in particular FESCO. We managed to convince this technical committee that systemd is a good thing. Do you really want to say that Fedora as a whole is incapable of "seeing the big picture", but you are the only one who is? Maybe things are the other way round? Ever thought about that?
+
+Also, note that systemd actually brings Linux administration much closer to how many of these things are done on Solaris. Much of what we added is inspired by SMF, and other init systems. That means the administrators should enjoy how we make things on Linux work much more like the other big server operating systems.
+
+Posted by Lennart at Mon Aug 23 15:13:46 2010
+Michael: it currently isn't translated, but the plan is to copy very closely the mechanism how .desktop files are translated (our unit definition files also use an .ini inspired format), so that we can reuse existing tools for this. This hasn't been implemented yet however.
+
+Posted by Simon at Mon Aug 23 16:07:24 2010
+Shane Falco, you are being dishonest.
+
+Your concern is that this change would require you to learn new things and have to teach new things.
+
+The way you should rephrase your questions is:
+
+&#8220;Sorry for being off-topic; I am posting this on the For Admins post while my concern is really about "Does systemd offer so many nice things that justifies the change?". I would like to see the question answered: "What are the advantages of systemd that justify this big change? I did not search your previous posts on this subjest."&#8221;
+
+Posted by Diego at Mon Aug 23 16:21:50 2010
+What about gettext support?
+
+Posted by Lennart at Mon Aug 23 16:42:09 2010
+Diego: it's unlikely we'll use the gettext APIs inside of PID 1, simply because i18n data tends to be stored in /usr, and we try to avoid accesses to that, since some folks still have that one a seperate partition (even though it is crazy and misses the point). However, for the client tools this is differentely and w'll certainly reuse the framworks currently used by other projects, be it gettext or intltool, or the hacks to make .desktop files translatable.
+ure people would hate me if i'd start moving i18n data to /lib...
+
+Posted by Nagilum at Mon Aug 23 20:45:09 2010
+If ntpd.service would have emitted some error message while starting up, how would I display that using systemd?
+
+Posted by Lennart at Mon Aug 23 20:49:05 2010
+Nagilum: by checking the logs. The long term plan is to hook up "systemctl status" to the logs, so that you'll see the most recent log messages generated by a service next to the service. But until that happened we need to beef up syslog considerable, i.e. make it indexable and stuff like that.
+
+Posted by Denice at Tue Aug 24 00:43:45 2010
+I'm a little worried that anyone thinks Solaris' SMF is something worthy of copying.  I find it horribly over-engineered.  These days it is common to run virtual servers which do really only one thing (web server, or a mysql slave, or an ldap server).  I have a number of xen guests that list perhaps 15 'chkconfig-ed on' services:
+chkconfig --list|grep :on
+
+So from a system administrator's point of view, speaking of managing targeted servers and not multimedia desktops, I don't need anything complicated to manage runtime services.
+
+You might want to seriously think about writing a tutorial for a typical small server (apache only, for example - no graphics, no bluetooth, no atd, no iscsi, etc.), and then convince us that systemd provides any value.
+
+cheers, etc.
+
+Posted by Shane at Tue Aug 24 01:49:13 2010
+Denice said it better than I ever could.  As someone stuck with over a hundred Solaris 10 servers, I agree completely with her assessment.
+
+Here's a nice little commentary on Apple's launchd which I feel is just as appropriate for systemd:
+
+http://lowendmac.com/ed/winston/10kw/launchd.html
+
+It's monolithic, it's "over engineered", and it does too many things.  In a nutshell, it's anti-unix.
+
+Posted by Karellen at Tue Aug 24 14:02:45 2010
+@Shane:
+
+    [systemd] does too many things
+It manages the startup and lifetime of system processes. That's it.
+
+From the article you linked:
+    Merging periodically run jobs into the main system process doesn't make sense.
+
+Why not? "cron" and "at" manage the startup of periodic system processes. The only thing they do different from "init" is that they start the processes at a time other than bootup. Everything else is common between them. So why not de-duplicate the effort involved in starting, tracking and logging, and just allow "init" to start other processes at times other than boot?
+
+    Replacing a simple /etc/crontab text file with multiple, awkwardly named XML plist files scattered among no less than four different directories is taking two big steps toward complexity.
+
+There's no reason that systemd would be implemented that badly. In fact, I'm pretty sure that systemd reads existing "crontab" files just fine. So systemd doesn't require any changes there.
+
+    Starting infrequently used on-demand socket-based daemons from launchd seems like it could open the main system process to a potential denial of service attack. I have not explored this idea or researched to see if it has already been tried,
+
+Well, I haven't researched it, that looks like nothing more than FUD and making-shit-up to me.
+
+    One of the core principles of Unix programing is do one thing and do it well.
+
+Like having one and only one place to consistently manage the startup and monitoring of system processes? Oh yeah, that's totally anti-Unix-philosophy.
+
+Posted by Lennart at Tue Aug 24 19:37:50 2010
+Denice, __Linux is a scalabale operating system__. It is used on big irons to tiniest devices. With systemd we try to cover the whole bandwidth, and please understand that your specific use case is not the only one we need to cover.
+
+Shane, you are right, systemd is nothing like traditional Unix. And that is a good thing. Unix has been designed 41 years ago. You honestly believe that its design is perfect and flawless and 41 years after it was designed still should be followed in all detail? No, computers changed, and Unix never was perfect. It probably was a better design than most other operating systems, but this does not mean it is perfect and we should never depart from it. systemd is inspired by Unix, but also from what has been done on MacOS and even on the Windows world, and on Solaris. We didn't copy any of the existing services 1:1, we just let us inspire by their best features and translated them to Linux and added quite a bit of new stuff on top. And that's how it should be done. Unix is an inspiration, it is not the holy grail. Not 41y after it was designed.
+
+The fact that on traditional Unix the init system was seperate from cron, from at, from inetd, from the dbus service activator and from everything else meant that all of them reimplemented a big chunk of their code, i.e. what was involved with spawning processes. It was a useless code duplication, and all implementations sucked at it in one way or another. Also, you could not run the same thing from more than one of these systems without manually ensuring that things would happen race-freely and properly ordered. In systemd we unified all of this. We use the same codepaths for spawning processes, regardless if they are started via timers, via sockets, via busses, at boot-up, via devices and so on. This allows us to reduce the amount of code duplication, and provide the same awesome process babysitting to all triggers. And that is a big big advantage. If you look at the systemd source code you will notice that the remaining amount of code, for example for doing timer-based spawning is actually very very short, less than 500 lines (including comments and whitespace!). So overall, we simplify things drastically, we get rid of immense code duplication, and we still are a lot more powerful than what came before.
+
+So, in summary: just because we do things differently doesn't mean we do it worse.
+
+And if you tell me that systemd is not Unixy, then I can only agree, and I don't feel ashamed at all of that. Because my horizon is much further than just Unix.
+
+Posted by Lennart at Mon Jul 11 15:22:01 2011
+Rob, this would surprise me too if it was true. But... I actually wrote such a blog article:
+
+http://0pointer.de/blog/projects/systemd-for-admins-3.html

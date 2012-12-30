@@ -49,7 +49,7 @@ TYPE := { vlan | veth | vcan | dummy | ifb | macvlan | can | __bridge__ }
     link/ether c8:60:00:8a:db:e7 brd ff:ff:ff:ff:ff:ff
 
 [geekard@kb310 man]$ __sudo ip link add link eth0 name demo-bridge type bridge; ip link show__
-**#命令行中的link eth0其实不用加。**
+
 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN mode DEFAULT 
     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
 2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 576 qdisc pfifo_fast state __UP__ mode DEFAULT qlen 1000
@@ -148,6 +148,11 @@ rtt min/avg/max/mdev = 0.385/0.546/0.959/0.239 ms
 Password: 
 RTNETLINK answers: No such file or directory
 [geekard@kb310 ~]$ __sudo ip route add default via 192.168.1.1 dev demo-bridge__
+注意，添加路由的格式为：ip route add PREFIX via ADDRESS dev DEV
+其中PREFIX表示目标网络，如果为缺省路由则因为default。
+via ADDRESS是可选的，表示到到PREFIX目标网络需要经过ADDRESS表示的路由器，__ADDRESS不用前缀形式__。
+	[geekard@geekard rel]$ sudo ip route add default via 192.168.1.1/24 dev demo
+	Error: an inet address is expected rather than "192.168.1.1/24".
 [geekard@kb310 ~]$ __ip route show table all__
 **default via 192.168.1.1 dev demo-bridge **
 **default via 192.168.1.1 dev eth0  metric 202** 

@@ -36,3 +36,39 @@ unpack一个顺序容器类型时，左边变量的数目必须要与容器中�
 >>> print k,v
 d f
 >>> 
+
+In [9]: for k,v in 'dfdf':  //对于字符串的迭代，迭代其每次只返回__一个字符__，所以赋值给k,v时出错
+   ...:     print k,v
+   ...:     
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+<ipython-input-9-5ba17a6181e2> in <module>()
+----> 1 for k,v in 'dfdf':
+      2     print k,v
+      3 
+
+ValueError: need more than 1 value to unpack
+
+In [10]: k,v='ff'   __//对于可迭代对象，展开后的元素个数必须与等式左边的相等。__
+
+In [11]: print k,v
+**f f**
+In [13]: k,v='fff'
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+<ipython-input-13-0aecd2a10b05> in <module>()
+----> 1 k,v='fff'
+
+ValueError: too many values to unpack
+
+In [14]: 
+In [12]: 
+
+In [12]: for k,v in ['df',[1,2],(3,4)]: __//每次迭代器返回列表中的一个元素，每个元素都可以展开为2个变量。__
+    print k,v
+   ....:     
+d f
+1 2
+3 4
+
+In [13]:

@@ -1,0 +1,236 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-12-22T22:55:46+08:00
+
+====== sample3--PIC可重定位类型 ======
+Created Saturday 22 December 2012
+
+[geekard@geekard rel]$ cat rel.c
+#include <stdio.h>
+int  globalVar = 1;
+int  globalVarUninit;
+static int  globalVarStatic = 3;
+extern externVar;
+  
+extern void externFun(int);
+void Fun(void) {}
+
+int main(void) {
+  int autoVar = globalVar;
+  static int staticVar = 2;
+  globalVarUninit = externVar;
+  printf("%d\n",globalVarStatic);
+  externFun(staticVar);
+  Fun();
+}
+[geekard@geekard rel]$ gcc -c __-fPIC__ rel.c
+[geekard@geekard rel]$ readelf -r rel.o
+
+Relocation section '**.rel.text**' at offset 0x600 contains 10 entries:  **//对text section中的符号引用重定位**
+ Offset     Info    Type            Sym.Value  Sym. Name
+00000010  00001102 R_386_PC32        00000000   __x86.get_pc_thunk.bx //相对寻址重定位，这里没有使用PLT是因为该函数是文件内部定义的。
+00000016  0000120a R_386___GOTPC__       00000000   _GLOBAL_OFFSET_TABLE_  //用IP与GOT首地址的偏移量重定位代码中的值。
+0000001c  00000d03 R_386___GOT32__       00000000   globalVar //用var条目在GOT中的偏移量重定位代码中的值。
+00000028  00001303 R_386_GOT32       00000000   externVar
+00000030  00000e03 R_386_GOT32       00000004   globalVarUninit
+00000038  00000309 R_386___GOTOFF__      00000000   .data  //用__static符号的地址与GOT的偏移量__来重定位代码段中的值。
+00000042  00000609 R_386_GOTOFF      00000000   .rodata  //.rodata section中保存的是**字符串字面量**。
+0000004a  00001404 R_386___PLT32__       00000000   printf  //用printf条目在GOT PLT中的偏移量重定位代码中的值。
+00000050  00000309 R_386_GOTOFF      00000000   .data
+0000004f  00001504 R_386_PLT32       00000000   externFun
+00000054  00000f04 R_386_PLT32       00000000   Fun
+
+Relocation section '.rel.eh_frame' at offset 0x650 contains 3 entries:
+ Offset     Info    Type            Sym.Value  Sym. Name
+00000020  00000202 R_386_PC32        00000000   .text
+00000040  00000202 R_386_PC32        00000000   .text
+00000064  00000802 R_386_PC32        00000000   .text.__x86.get_pc_thu
+[geekard@geekard rel]$ objdump -t rel.o
+
+rel.o:     file format elf32-i386
+
+SYMBOL TABLE:
+00000000 l    df *ABS*  00000000 rel.c
+00000000 l    d  .text  00000000 .text   //.text section定义
+00000000 g     F __.text__  00000005 Fun   //.text section中的第一个函数(偏移量为0)，本文件内定义
+00000005 g     F .text  00000058 main //.text section中的第二个函数
+00000000 g     F .text.x86.get_pc_thunk.bx    00000000 .hidden x86.get_pc_thunk.bx
+00000000 l    d  .text.x86.get_pc_thunk.bx    00000000 .text.x86.get_pc_thunk.bx
+00000000 l    d  .data  00000000 .data  //.data section定义
+00000000 g     O .data  00000004 globalVar
+00000004 l     O .data  00000004 globalVarStatic
+00000008 l     O .data  00000004 __staticVar.1828__
+00000000 l    d  .rodata        00000000 .rodata
+00000000 l    d  .bss   00000000 .bss
+00000004       O __*COM*__  00000004 globalVarUninit
+00000000 l    d  .note.GNU-stack        00000000 .note.GNU-stack
+00000000 l    d  .eh_frame      00000000 .eh_frame
+00000000 l    d  .comment       00000000 .comment
+00000000 l    d  .group 00000000 .group
+00000000         __*UND*__  00000000 _GLOBAL_OFFSET_TABLE_
+00000000         *UND*  00000000 externVar
+00000000         *UND*  00000000 printf
+00000000         *UND*  00000000 externFun
+
+[geekard@geekard rel]$ gcc -S __-fPIC__ rel.c
+[geekard@geekard rel]$ cat rel.s
+        .file   "rel.c"
+
+        .globl  globalVar
+        .data
+        .align 4
+        .type   globalVar, @object
+        .size   globalVar, 4
+globalVar:
+        .long   1
+
+        .comm   globalVarUninit,4,4
+        .align 4
+
+        .type   globalVarStatic, @object
+        .size   globalVarStatic, 4
+globalVarStatic:
+        .long   3
+
+        .text
+        .globl  Fun
+        .type   Fun, @function
+Fun:
+.LFB0:  **//.LFB是Dwarf使用的一个标号，与.LFE相匹配。**
+        .cfi_startproc   //[[../CFI_for_gas.txt|cfi(call frame information)]]
+        pushl   %ebp
+        .cfi_def_cfa_offset 8
+        .cfi_offset 5, -8
+        movl    %esp, %ebp
+        .cfi_def_cfa_register 5
+        popl    %ebp
+        .cfi_restore 5
+        .cfi_def_cfa 4, 4
+        ret
+        .cfi_endproc
+.LFE0:
+        .size   Fun, .-Fun
+
+        .section        __.rodata__
+__.LC0:  //该标号没有使用.globl限定，所以符号表中没有包含。只在本文件内有效。__
+        .string "%d\n"
+
+        .text
+        .globl  main
+        .type   main, @function
+main:
+.LFB1:  //前面使用的是.LFB0, 所以这里是.LFB1
+        .cfi_startproc
+        pushl   %ebp
+        .cfi_def_cfa_offset 8
+        .cfi_offset 5, -8
+        movl    %esp, %ebp
+        .cfi_def_cfa_register 5
+        pushl   %ebx
+        andl    $-16, %esp
+        subl    $32, %esp
+        .cfi_offset 3, -12
+        call    ____x86.get_pc_thunk.bx  __**//获得IP的值，保存在ebx寄存器中**
+        addl    $___GLOBAL_OFFSET_TABLE___, %ebx  **//通过GOTPC重定位，获得GOT与当前IP的偏移量。最终获得GOT的首地址**
+        movl    __globalVar@GOT__(%ebx), %eax **//通过GOT32重定位，获得var@GOT的值，即var所在的GOT条目相对GOT的偏移量。**
+        movl    (%eax), %eax **//eax寄存器的值为var符号的实际地址，这样间接引用获得其实际值。**
+        movl    %eax, 28(%esp)
+
+        movl    externVar@GOT(%ebx), %eax
+        movl    (%eax), %edx
+        movl    globalVarUninit@GOT(%ebx), %eax
+        movl    %edx, (%eax)
+
+        movl    __globalVarStatic@GOTOFF__(%ebx), %eax __//GOTOFF类型的重定位__
+        movl    %eax, 4(%esp)
+        leal    __.LC0@GOTOFF__(%ebx), %eax
+        movl    %eax, (%esp)
+        call    __printf@PLT__
+
+        movl    __staticVar.1828@GOTOFF__(%ebx), %eax
+        movl    %eax, (%esp)
+        call    externFun@PLT
+
+        call    Fun@PLT
+
+        movl    -4(%ebp), %ebx
+        leave
+        .cfi_restore 5
+        .cfi_restore 3
+        .cfi_def_cfa 4, 4
+        ret
+        .cfi_endproc
+.LFE1:
+        .size   main, .-main
+
+
+        .data
+        .align 4
+        .type   staticVar.1828, @object
+        .size   staticVar.1828, 4
+staticVar.1828:       
+        .long   2
+
+        .section        .text.x86.get_pc_thunk.bx,"axG",@progbits,x86.get_pc_thunk.bx,comdat
+        .globl  __x86.get_pc_thunk.bx
+        .hidden __x86.get_pc_thunk.bx
+        .type   __x86.get_pc_thunk.bx, @function
+__x86.get_pc_thunk.bx:
+.LFB2:
+        .cfi_startproc
+        movl    (%esp), %ebx
+        ret
+        .cfi_endproc
+
+.LFE2:
+        .ident  "GCC: (GNU) 4.7.2"
+        .section        .note.GNU-stack,"",@progbits
+[geekard@geekard rel]$ 
+[geekard@geekard rel]$ objdump -d rel.o
+
+rel.o:     file format elf32-i386
+
+
+Disassembly of section .text:
+
+00000000 <Fun>:
+   0:   55                      push   %ebp
+   1:   89 e5                   mov    %esp,%ebp
+   3:   5d                      pop    %ebp
+   4:   c3                      ret    
+
+00000005 <main>:
+   5:   55                      push   %ebp
+   6:   89 e5                   mov    %esp,%ebp
+   8:   53                      push   %ebx
+   9:   83 e4 f0                and    $0xfffffff0,%esp
+   c:   83 ec 20                sub    $0x20,%esp
+   f:   e8 __fc ff ff ff__          call   10 <main+0xb> 
+  14:   81 c3 __02 00 00 00__       add    $0x2,%ebx //objdump反汇编后的代码中已经__看不到原始的重定位信息__。所以需要和重定位条目一起查看。
+  1a:   8b 83 __00 00 00 00__       mov    0x0(%ebx),%eax
+  20:   8b 00                   mov    (%eax),%eax
+  22:   89 44 24 1c             mov    %eax,0x1c(%esp)
+  26:   8b 83 __00 00 00 00__       mov    0x0(%ebx),%eax
+  2c:   8b 10                   mov    (%eax),%edx
+  2e:   8b 83 __00 00 00 00__       mov    0x0(%ebx),%eax
+  34:   89 10                   mov    %edx,(%eax)
+  36:   8b 83 __04 00 00 00__       mov    0x4(%ebx),%eax
+  3c:   89 44 24 04             mov    %eax,0x4(%esp)
+  40:   8d 83 __00 00 00 00__       lea    0x0(%ebx),%eax
+  46:   89 04 24                mov    %eax,(%esp)
+  49:   e8 __fc ff ff ff__          call   4a <main+0x45>
+  4e:   8b 83 __08 00 00 00__       mov    0x8(%ebx),%eax
+  54:   89 04 24                mov    %eax,(%esp)
+  57:   e8 __fc ff ff ff__          call   58 <main+0x53>
+  5c:   e8 __fc ff ff ff__          call   5d <main+0x58>
+  61:   8b 5d fc                mov    -0x4(%ebp),%ebx
+  64:   c9                      leave  
+  65:   c3                      ret 
+#上面黄色标记的位置需要链接器对其重定位。
+
+Disassembly of section .text.__x86.get_pc_thunk.bx:
+
+00000000 <__x86.get_pc_thunk.bx>:
+   0:   8b 1c 24                mov    (%esp),%ebx
+   3:   c3                      ret    
+[geekard@geekard rel]$

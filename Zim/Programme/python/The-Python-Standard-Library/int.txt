@@ -1,0 +1,38 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-12-02T10:31:10+08:00
+
+====== int ======
+Created Sunday 02 December 2012
+
+
+In [12]: lst = '123\n'   //如果字符串中包含__空字符(如空格, \t, \v, \f, \n, \r)等__，int(), float()等函数仍然有效。
+In [13]: lst
+Out[13]: '123\n'
+
+__In [14]: int(lst)__
+__Out[14]: 123__
+
+In [15]: lst = '123\n\t'
+
+In [16]: lst
+Out[16]: '123\n\t'
+
+In [18]: int(lst)
+Out[18]: 123
+
+
+In [19]: lst = '123\nstr'   //字符串中包含除了数字外的非空字符，转换时提示错误。
+
+In [20]: lst
+Out[20]: '123\nstr'
+
+In [21]: int(lst)
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+<ipython-input-21-7fdf78d62dad> in <module>()
+----> 1 int(lst)
+
+__ValueError:__ invalid literal for int() with **base 10**: '123\nstr'
+
+In [22]:

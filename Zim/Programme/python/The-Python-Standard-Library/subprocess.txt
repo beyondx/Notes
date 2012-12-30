@@ -39,13 +39,13 @@ __subprocess.STDOUT__
 
 [*] subprocess.__call__(**args**, *, stdin=None, stdout=None, stderr=None, shell=False)
     Run the command described by __args__.  __Wait __for command to complete, then return the **returncode** attribute.
-    适合非交互式进程，执行args指定的程序直到其结束，返回退出码，即使命令执行失败，也不产生异常。stdin,stdout,stderr一般不使用PIPE，因为调用进程一般不读这种非交互式进程的输出。stdin为None表示子进程的stdin将__继承__调用进程的描述符。
+适合非交互式进程，执行args指定的程序直到其结束，返回退出码，即使命令执行失败，也不产生异常。stdin,stdout,stderr一般不使用PIPE，因为调用进程一般不读这种非交互式进程的输出。stdin为None表示子进程的stdin将__继承__调用进程的描述符。
 
 The arguments shown above are merely the most common ones, described below in Frequently Used Arguments (hence the slightly odd notation in the abbreviated signature). The full function signature is the same as that of the __Popen__ constructor - this functions passes all supplied arguments directly through to that interface.
 
     Examples:
     >>>
-__#如果shell=False(默认)，则python调用os.execlp()来执行args，因此，如果args是字符串，则只能包含命令名；如果是序列，则可以包含命令参数(参数不支持shell的特性如文件名扩展等。)，而且每个元素一般包括一个参数(否则调用程序可能会产生解析错误)。__
+__#如果shell=False(默认)，则python调用os.exelp()来执行args，因此，如果args是字符串，则只能包含命令名；如果是序列，则可以包含命令参数(参数不支持shell的特性如文件名扩展等。)。__
     >>> subprocess.call(__["ls", "-l"]__)    
     0
 __#如果shell=True，则python调用system shell来执行args，调用形式为: execlp("/bin/sh", '-c', 'arg1', 'arg2', ....)因此，如果args是字符串，则其中可以包含命令参数，而且支持各种shell特性如文件名扩展、命令扩展等；如果args是序列，则其第一个元素为命令名，其它元素为被当作shell本身的参数。__
@@ -53,14 +53,14 @@ __#如果shell=True，则python调用system shell来执行args，调用形式为
     >>> subprocess.call("exit 1", shell=True) 
     1
 
-__总的来说__**：**如果shell=False, python使用os.execvp(...)来执行args，因此，如果args是一个string，则该string只能是命令名称, 如果要为命令附加参数，则只能使用序列类型;  如果shell=True，则python使用shell来执行行args，因此，args最好是一个string，该string可以包含命令名及其参数，如果使用序列，则从第二个元素开始作为shell本身的参数(而非命令的参数。)。
+__总的来说__**：**如果shell=False, python使用os.execvp(...)来执行args，因此，如果args是一个string，则该string__只能是__命令名称, 如果要为命令附加参数，则只能使用序列类型;  如果shell=True，则python使用shell来执行行args，因此，args最好是一个string，该string可以包含命令名及其参数，如果使用序列，则从第二个元素开始作为shell本身的参数(而非命令的参数。)。
 
 Invoking the system shell with shell=True can be **a security hazard** if combined with untrusted input. See the warning under Frequently Used Arguments for details.
 
 __Do not use stdout=PIPE or stderr=PIPE with this function__. As the pipes are not being read in the current process, the child process may block if it generates enough output to a pipe to fill up the OS pipe buffer.
 当使用stdout=PIPE时，如果子进程填满了管道而调用进程没有读该管道时__子进程就会被阻塞__。因此使用上面三个函数时一般不使用这个参数。
 
-The standard input and output channels for the process started by call() are__ bound to the parent’s input and output__. That means the calling programm cannot capture the output of the command. Use check_output() to capture the output for later processing.
+The standard input and output channels for the process started by call() are__ bound to the parent’s input and output__. That means the calling programm __cannot capture the output__ of the command. Use check_output() to capture the output for later processing.
 
 [*] subprocess.**check_call**(args, *, stdin=None, stdout=None, stderr=None, shell=False)
 和call类似，但是对返回值进行检查，如果非0则引发异常。
@@ -152,9 +152,10 @@ __class subprocess.Popen__(args, bufsize=0, **executable**=None, stdin=None, std
 
     Arguments are:
 
-* args should be a string, or a sequence of program arguments. The program to execute is normally the **first item** in the args sequence or the string if a string is given, but can be **explicitly set **by using the __executable__ argument. When executable is given, the first item in the args sequence is still treated by most programs as the** command name**, which can then be different from the actual executable name. On Unix, it becomes the** display name** for the executing program in utilities such as ps.
+* args should be a string, or a sequence of program arguments. The program to execute is normally the **first item** in the args sequence or the string(string作为命令名，不能有参数) if a string is given, but can be **explicitly set **by using the __executable__ argument. When executable is given, the first item in the args sequence is still treated by most programs as the** command name**, which can then be different from the actual executable name. On Unix, it becomes the** display name** for the executing program in utilities such as ps. 如果ecutable被设置，则其值将作为__实际执行__的命令名。args的第一个元素将作为命令的显示名称。
 
     On Unix, with shell=False (default): In this case, the __Popen class uses os.execvp()__ to execute the child program. args should **normally be a sequence.** If a string is specified for args, it will be used as the **name or path of the program **to execute; this will only work if the program is being given __no__ arguments.
+默认情况下shell=False，这样args通常为sequence，其第一个元素为待执行的命令，其它元素为命令参数。如果args为string，则其**只能为命令名或命令路径，不能带任何参数**。这时因为python使用os.execvp()来执行这个string。
 
     Note
 
@@ -172,22 +173,22 @@ __class subprocess.Popen__(args, bufsize=0, **executable**=None, stdin=None, std
     Note in particular that options (such as -input) and arguments (such as eggs.txt) that are separated by whitespace in the shell go in **separate list elements**, while arguments that need quoting or backslash escaping when used in the shell (such as filenames containing spaces or the echo command shown above) are single list elements.
 
     On Unix, with shell=True: __If args is a string, it specifies the command string to execute through the shell.__ This means that the string must be formatted exactly as it would be when typed at the shell prompt. This includes, for example, quoting or backslash escaping filenames with spaces in them. If args is a sequence, the first item specifies the command string, and any additional items will be treated as additional arguments __to the shell itself__. That is to say, Popen does the equivalent of:
-在shell=True的情况下，args最好是一个字符串。如果是序列，则从第二个元素开始是__作为shell本身的参数__，而非命令的参数。
+在shell=True的情况下，args**最好是一个字符串**。如果是序列，则从第二个元素开始是__作为shell本身的参数__，而非命令的参数。
    __ Popen(['/bin/sh', '-c', args[0], args[1], ...])__
 
     On Windows: the Popen class uses CreateProcess() to execute the child child program, which __operates on strings.__ If args is a sequence, it will be converted to a string in a manner described in Converting an argument sequence to a string on Windows.
 
 **总的来说：如果shell=False, python使用os.execvp(...)来执行args，因此，如果args是一个string，则该string只能是命令名称, 如果要为命令执行参数，则只能使用序列类型;  如果shell=True，则python使用shell来执行行args，因此，args最好是一个string，该string可以包含命令名及其参数，如果使用序列，则从第二个元素开始作为**__shell本身__**的参数(而非命令的参数。)。**
 
-* bufsize, if given, has the same meaning as the corresponding argument to the built-in open() function: **0 means **__unbuffered__**, 1 means**__ line buffered__**, any other positive value means use a buffer of (approximately) that size**. A negative bufsize means to use the system **default**, which usually means__ fully__ buffered. The** default value for bufsize is 0** (unbuffered).
-控制打开文件的缓冲方式。
+* bufsize, if given, has the same meaning as the corresponding argument to the built-in open() function: **0 means **__unbuffered__**, 1 means**__ line buffered__**, any other positive value means use a buffer of (approximately) that size**. A negative bufsize means to use the system **default**, which usually means__ fully__ buffered. The** default value for bufsize is 0** __(unbuffered)__.
+   控制打开文件的缓冲方式，默认为unbuffered。
 
     Note
     If you experience performance issues, it is recommended that you try to enable buffering by setting bufsize to either -1 or a large enough positive value (such as 4096).
 
-* The executable argument **specifies the program** to execute. It is very seldom needed: Usually, the program to execute is defined by the **args** argument. If shell=True, the executable argument specifies __which shell to use__. On Unix, the default shell is /bin/sh. On Windows, the default shell is specified by the COMSPEC environment variable. The only reason you would need to specify shell=True on Windows is where the command you wish to execute is actually built in to the shell, eg dir, copy. You don’t need shell=True to run a batch file, nor to run a console-based executable.
+* The executable argument **specifies the program** to execute. It is very seldom needed: Usually, the program to execute is defined by the **args** argument. If shell=True, the executable argument specifies __which shell to use__. On Unix, the default shell is **/bin/sh**. On Windows, the default shell is specified by the COMSPEC environment variable. The only reason you would need to specify shell=True on Windows is where the command you wish to execute is actually built in to the shell, eg dir, copy. You don’t need shell=True to run a batch file, nor to run a console-based executable.
 
-* stdin, stdout and stderr specify the __executed program’s __standard input, standard output and standard error file handles, respectively. Valid values are __PIPE, an existing file descriptor (a positive integer), an existing file object, and None__. PIPE indicates that a new pipe to the child should be created. With the **default settings of None**, no redirection will occur; the child’s file handles will be inherited from the parent. Additionally, stderr can be STDOUT, which indicates that the stderr data from the child process should be captured into the same file handle as for stdout.
+* stdin, stdout and stderr specify the __executed program’s __standard input, standard output and standard error file handles, respectively. Valid values are __PIPE, an existing file descriptor (a positive integer), an existing file object, and None__. PIPE indicates that a new pipe to the child should be created. With the **default settings of None**, no redirection will occur; the child’s file handles will be **inherited from the parent**. Additionally, stderr can be STDOUT, which indicates that the stderr data from the child process should be captured into the same file handle as for stdout.
 
 * If__ preexec_fn__ is set to a callable object, this object will be called in the child process just **before** the child is executed. (Unix only)
 
@@ -210,7 +211,8 @@ __class subprocess.Popen__(args, bufsize=0, **executable**=None, stdin=None, std
     Note
     This feature is only available if Python is built with universal newline support (the default). Also, the newlines attribute of the file objects stdout, stdin and stderr are not updated by the communicate() method.
 
-* If given, startupinfo will be a STARTUPINFO object, which is passed to the underlying __CreateProcess __function. creationflags, if given, can be CREATE_NEW_CONSOLE or CREATE_NEW_PROCESS_GROUP. (Windows only)
+* If given, startupinfo will be a STARTUPINFO object, which is passed to the underlying __CreateProcess __function.
+* creationflags, if given, can be CREATE_NEW_CONSOLE or CREATE_NEW_PROCESS_GROUP. (Windows only)？
 
 ==== 17.1.1.3. Exceptions ====
 
@@ -232,11 +234,11 @@ Popen()函数返回一个__Popen对象__。
 Instances of the Popen class have the following methods:
 
 **Popen.poll()**
-    Check if child process __has terminated__. Set and return returncode attribute.
+    Check if child process __has terminated__. Set and return **returncode** attribute.
 
 **Popen.wait()**
 
-    Wait for child process to terminate. Set and return returncode attribute.
+    Wait for child process to terminate. Set and return **returncode** attribute.
 
     Warning
     This will deadlock when using stdout=PIPE and/or stderr=PIPE and the child process generates enough output to a pipe such that it blocks waiting for the OS pipe buffer to accept more data. Use communicate() to avoid that.
@@ -247,7 +249,7 @@ __Popen.communicate__(input=None)
 
     communicate() returns __a tuple__ (stdoutdata, stderrdata).
 
-    Note that if you want to send data to the process’s stdin, you need to create the Popen object with__ stdin=PIPE__. Similarly, to get anything other than None in the result tuple, you need to give__ stdout=PIPE__ and/or stderr=PIPE too.
+    Note that if you want to send data to the process’s stdin, you need to create the Popen object with__ stdin=PIPE__. Similarly, to get anything other than None in the result tuple, you need to give__ stdout=PIPE__ and/or __stderr=PIPE__ too.
 
     Note
     The data read is buffered in memory, so do not use this method if the data size is large or unlimited.
@@ -262,7 +264,7 @@ __Popen.communicate__(input=None)
 
 **Popen.terminate()**
 
-    Stop the child. On Posix OSs the method sends SIGTERM to the child. On Windows the Win32 API function TerminateProcess() is called to stop the child.
+    Stop the child. On Posix OSs the method sends __SIGTERM__ to the child. On Windows the Win32 API function TerminateProcess() is called to stop the child.
 
 **Popen.kill()**
 
@@ -271,7 +273,7 @@ __Popen.communicate__(input=None)
 ===== The following attributes are also available: =====
 **Popen对象**具有下列属性：
 	Warning
-	Use communicate() rather than .stdin.write, .stdout.read or .stderr.read to avoid deadlocks due to any of the other OS pipe buffers filling up and blocking the child process.
+	Use communicate() rather than //.stdin.write, .stdout.read or .stderr.read// to avoid deadlocks due to any of the other OS pipe buffers filling up and blocking the child process.
 
 Popen.stdin  #对Popen调用stdin属性，将返回一个**写打开的文件对象**。
     If the stdin argument was PIPE, this attribute is **a file object** that provides input to the child process. Otherwise, it is__ None__.
@@ -287,7 +289,7 @@ Popen.__pid__
 
 Popen.__returncode__
 
-    The child return code, **set by poll() and wait()** (and indirectly by communicate()). A __None__ value indicates that the process hasn’t terminated yet.  A negative value -N indicates that the child was **terminated by signal N** (Unix only).
+    The child return code, **set by poll() and wait()** (and indirectly by communicate()). A __None__ value indicates that the process hasn’t terminated yet.  A negative value __-N__ indicates that the child was **terminated by signal N** (Unix only).
 
 
 ===== 17.1.3.1. Constants =====
@@ -314,7 +316,7 @@ subprocess.STARTF_USESHOWWINDOW
 
 subprocess.CREATE_NEW_CONSOLE
 
-    The new process ha**s a new console**, instead of inheriting its parent’s console (the default).
+    The new process ha**s a new console**, instead of inheriting its parent’s console __(the default)__.
     This flag is always set when Popen is created with shell=True.
 
 subprocess.CREATE_NEW_PROCESS_GROUP
@@ -345,12 +347,20 @@ output=`dmesg | grep hda`
 # becomes
 p1 = Popen(["dmesg"], __stdout=PIPE__)
 p2 = Popen(["grep", "hda"], stdin=__p1.stdout__, stdout=PIPE)   #p1是Popen对象，其stdout返回一个读打开的文件对象（因为p1的stdout为PIPE）。
-__p1.stdout__.close()  # Allow p1 to receive a SIGPIPE if p2 exits.
+__p1.stdout__.close()  # Allow p1 to receive a SIGPIPE if p2 exits，**关键！！！**
 output = __p2.communicate()__[0]   #communicate()返回一个__元组__，这里只取出第一个元素即子进程的标准输出。
 
 The p1.stdout.close() call after starting the p2 is __important in order__ for p1 to receive a SIGPIPE if p2 exits before p1.
+具体解释如下：stackoverflow.com/q/7391689
+	From Wikipedia, SIGPIPE is the signal sent to a process when it attempts to **write** to a pipe without a process connected to the other end.
+	
+	When you first create p1 using **stdout=PIPE**, there is one process connected to the pipe, which is __your Python process__, and you can read the output using p1.stdout.
+	最开始Popen()时，python解释器会连接到p1.stdout管道，这样在p2没有创建前，p1的cmd就可以执行了，输出将临时地放入管道中。
+	When you create p2 using stdin=p1.stdout there are now __two processes__ connected to the pipe p1.stdout.
+	
+	Generally when you are running processes in a pipeline you want **all processes** to end when any of the processes end. For this to happen automatically __you need to close p1.stdout so p2.stdin is the only process attached to that pipe__, this way if p2 ends and p1 writes additional data to stdout, it will receive a SIGPIPE since there are no longer any processes attached to that pipe.
 
-Alternatively, for trusted input, the shell’s own pipeline support may still be used directly:
+Alternatively, for **trusted input**, the shell’s own pipeline support may still be used directly:
 
     output=`dmesg | grep hda` # becomes output=__check_output__(“dmesg | grep hda”,__ shell=True__)
 
@@ -432,7 +442,7 @@ p = Popen("cmd", shell=True, bufsize=bufsize,
           stdin=PIPE, stdout=PIPE, __stderr=STDOUT__, close_fds=True)   #STDOUT标示，子进程的标准出错和__它的__标准输出__重定向到同一个__文件。
 (child_stdin, child_stdout_and_stderr) = (p.stdin, p.stdout)
 
-On Unix, os.popen2, os.popen3 and os.popen4 also accept __a sequence__ as the command to execute, in which case arguments will be passed directly to the program without shell intervention. This usage can be replaced as follows:
+On Unix, os.popen2, os.popen3 and os.popen4 also accept __a sequence__ as the command to execute, in which case arguments will be passed **directly to the program** without shell intervention. This usage can be replaced as follows:
 
 (child_stdin, child_stdout) = os.popen2(["/bin/ls", "-l"], mode,
                                         bufsize)
@@ -444,13 +454,13 @@ Return code handling translates as follows:
 
 pipe = os.popen("cmd", 'w')
 ...
-rc = pipe.close()
-if rc is not None and rc >> 8:
+rc = pipe.close()  //"cmd"进程读管道时收到EOF，程序一般将终止。
+if rc is not None and rc **>> 8**:
     print "There were some errors"
 ==>
 process = Popen("cmd", 'w', shell=True, stdin=PIPE)
 ...
-process.stdin.close()
+process.stdin.close() //**同样使'cmd'读到EOF**，而自动终止。
 if **process.wait()** != 0:
     print "There were some errors"
 
@@ -473,19 +483,19 @@ p = Popen(["mycmd", "myarg"], bufsize=bufsize,
 
 popen2.Popen3 and popen2.Popen4 basically work as subprocess.Popen, except that:
 
-    Popen raises an exception if the execution fails.
-    the capturestderr argument is replaced with the stderr argument.
-    stdin=PIPE and stdout=PIPE must be specified.
-    popen2 closes all file descriptors by default, but you have to specify close_fds=True with Popen.
+* Popen raises an exception if the execution fails.
+* the capturestderr argument is replaced with the stderr argument.
+* stdin=PIPE and stdout=PIPE must be specified.
+* popen2 closes all file descriptors by default, but you have to specify close_fds=True with Popen.
 
 ===== 17.1.5. Notes =====
 17.1.5.1. Converting an argument sequence to a string on Windows
 
 On Windows, an args sequence is converted to a string that can be parsed using the following rules (which correspond to the rules used by the MS C runtime):
 
-    Arguments are delimited by white space, which is either a space or a tab.
-    A string surrounded by double quotation marks is interpreted as a single argument, regardless of white space contained within. A quoted string can be embedded in an argument.
-    A double quotation mark preceded by a backslash is interpreted as a literal double quotation mark.
-    Backslashes are interpreted literally, unless they immediately precede a double quotation mark.
-    If backslashes immediately precede a double quotation mark, every pair of backslashes is interpreted as a literal backslash. If the number of backslashes is odd, the last backslash escapes the next double quotation mark as described in rule 3.
+* Arguments are delimited by white space, which is either a space or a tab.
+* A string surrounded by double quotation marks is interpreted as a single argument, regardless of white space contained within. A quoted string can be embedded in an argument.
+* A double quotation mark preceded by a backslash is interpreted as a literal double quotation mark.
+* Backslashes are interpreted literally, unless they immediately precede a double quotation mark.
+* If backslashes immediately precede a double quotation mark, every pair of backslashes is interpreted as a literal backslash. If the number of backslashes is odd, the last backslash escapes the next double quotation mark as described in rule 3.
 

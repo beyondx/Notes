@@ -1,0 +1,213 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-12-21T20:33:28+08:00
+
+====== elf 重定位 ======
+Created Friday 21 December 2012
+
+Relocation is the process of __associate the symbolic reference with symbolic definition.__ For example, when a program calls a function, the associate all instruction must transfor control to the **proper destination address.** In other words, relocatable files must  have information  for modifying their section content.
+
+Relocation table entry structer:
+{{./0.gif}}
+
+* **r_offset:** Holds the location at which the relocation apply. For a relocable file, the value is the byte offset from the beginning of the section to the storage unit affected by relocation. For an executable file or a share object file,  the value is the virtual address of units affected by relocation.
+* **r_info:** Holds both the __symbol table index__ with respect to which the relocation must be made, and __the type of relocation__. For example, a call instrution's relocation enry would hold the symbol index of the function. Relocation types are processor-sepcific. The following code shows how to manipulate the  values. 
+	#define ELF32_R_SYM(info) ((info)>>8)
+	#define ELF32_R_TYPE(info) ((info)&ff)
+	#define ELF32_R_INFO(s,t) (((s)<<8) + ((t)&0xff))
+	symbol: bits 32–8
+	type: bits 7–0
+**r_addend:** Holds a constand addend used to compute the value to be stored into the relocable field.
+
+===== Relocation Types:(SYSTEM V Architecture) =====
+The __link editor__ merge one or more relocable object files to form the output. It first disides how to combine and locate the input files  then update the symbol values, and finally preform the relocation. Relocations applied to excutable or shared object files are similar.
+
+link editor(ld)首先合并可重定位目标文件，然后解析其中的符号引用，并将符号的最终实际地址写入到符号表中，最后重定位。
+
+The relocation types specific which bits to change and how to caculate their values（下表真对的是x86而非x86_64）.
+{{./1.gif}}
+
+**R_386_32:**  Symbol’s value + addend.  In the following Fig, thre is  a relocation at the **0×7 bytes** offset into **.text** section. The linker alter the address of ‘b’ with S+A, S is symbold b’s new address after reset. A is the endian, here it is zero.
+**R_386_32是绝对寻址的重定位。将符号解析后的绝对实际地址填充到关联section的offset处。**
+{{./2.gif}}
+**R_386_PC32:** Symbol’s **value+Addend-Place**.  Because it is __Relative Near CALL__, the operand is the offset from the “next instruction” (EIP) to the called procedure, more infor is here.  **VALUE+EIP = Symbol.value, EIP = Place+4. So VALUE = Symbold.value – 4 – Place**.   S is ‘Symbol.vale’, ‘-4′ is the Addend.  P is the  new virtuall address of relocation entry computed by r_offset and other factors.
+R_386_PC32是相对寻址的重定位。S是符号表中符号解析后的实际地址，Place是调用该符号的指令地址，所以相对偏移量为 **VALUE = Symbold.value – 4 – Place**
+
+**R_386_GLOB_DAT:**  This type is used to __set a global offset table entry__ to the address of the specific symbol. It is used for global or external variable in PIC code . 将解析后的全局或外部符号的实际地址写入到对应的__GOT条目中__。
+
+**R_386_JMP_SLOT:** The linker editor creates this relocation type for dynamic linking. Its offset specify __the GOT entry that contain a PLT entry__. The dynamic linker use it to implement lazy linking.将解析后的外部函数实际入口地址写入到对应的GOT中的PLT条目类型中。
+
+R_386_GLOB_DAT and R_386_JMP_SLOT are only appear in executable file or shared library.
+
+__上面两种类型的重定位是由动态链接器解析符号后完成的，与代码里是否引用该符号无关(因为代码是间接地利用GOT，PLT来引用外部变量和符号的)。而且是对GOT中的符号value进行填充，与代码段无关。__
+
+**R_386_GOTOFF:**引用本文件内使用的static和rodata类型变量时使用的重定位类型。外部static变量和函数内static变量定义在.data section中，对它们的引用不通过GOT条目，而是其符号位置与GOT首地址的偏移量来实现的(同理，字符串字面量由于不能修改，一般保存在.rodata section中，对它们的引用也不是通过GOT条目)，即重定位值= S+A-GOT。示例如下：
+       //ebx事先保存的是GOT的首地址
+       movl    __globalVarStatic@GOTOFF__(%ebx), %eax __//globalVarStatic@GOTOFF的值为S+A-GOT，再加上GOT的正好为符号globalVarStatic的地址。__
+        movl    (%eax), 4(%esp)
+
+**R_386_GOT32：**代码中引用外部变量时，ld生成的重定位类型。动态链接器将G+A-P的值填充到代码中的重定位位置。所以CPU实际寻址时得到的地址为R_386_GOT32+P-A = G。
+**R_386_PLT32：**代码中引用外部函数时，ld生成的重定位类型。动态链接器将L+A-P的值填充到代码中的重定位位置。所以CPU实际寻址时得到的地址为R_386_PLT32+P-A = L。
+
+上面的G和L指的是__相应符号GOT条目距GOT首地址的偏移量。注意GOT32和PLT32一般和GOTPC一起使用，后者将GOT的首地址填充到代码段中的引用位置处。G+GOTPC=相应符号在GOT条目中的实际地址。__
+
+在代码中引用外部变量时，汇编器一般生成如下代码（x86系统，如果是x86_64则直接具有**rip寄存器**）：
+	call __i686.get_pc_thunk.cx  
+	addl $_GLOBAL_OFFSET_TABLE_, %ecx  //_GLOBAL_OFFSET_TABLE符号的值是__GOT表首地址距当前指令的偏移量__，它的重定位类型为R_386_GOTPC。现在ecx寄存器保存的是__GOT表的绝对地址__。
+	movl var@GOT(%ecx), %eax  //var@GOT是__var符号在GOT表中的偏移量__，所以var@GOT(%ecx)会通过GOT中的var条目取得__var符号的实际地址，并将其保存在eax寄存器中__。var@GOT的值是通过R_386_GOT32重定位的。
+	movl (%eax), %eax  //取得var符号引用的内存单元值，保存到eax寄存器中。
+__i686.get_pc_thunk.cx:  //该函数的目的是获取EIP的值。
+      mov (%esp),%ecx //此时的esp指向的内存单元保存的值时__函数返回后执行的指令地址，即紧接着call的addl指令地址__。
+      ret
+
+**R_386_GOTPC:** This type asembles R_386_PC32, except it use __the address of GOT__ in its caculation.  The symbol referenced in this relocation normally is **_GLOBAL_OFFSET_TABLE_(见上面的代码示例)** , which additionally instructs linker to build the GOT. It normally used in PIC’s  relocable files. See “ELF PIC Dessection“.
+
+Sample:
+	d.c
+	int var = 10;
+	void fun (void){
+	 var++;
+	 int a = var;
+	}
+	#gcc -S -o __d.s__ -fPIC d.c   //生成汇编代码，这样其中包含有__编译器生成的指导汇编器生成重定位条目的具体信息__。而通过objdump -d d.o看到的反汇编代码已经去掉了这些重定位信息。
+	#gcc -c -o d.o -fPIC d.c
+In d.s, d.c assembled with PIC option, there are  instructions to load the GOT address, shown in the following figure.
+{{./3.gif}}
+
+There will be a R_386_GOTPC relocation entry in d.o for __update the value of “$_GLOBAL_OFFSET_TABLE”__ to the offset from “addl” to “GOT”(addl指令的地址与GOT表首地址的差值即为_GLOBAL_OFFSET_TABLE符号的值。__该值的计算方法是由重定位类型决定的__), see the following figure（objdump -d的反汇编代码已经看不出原始的重定位信息）.  The relocation entry is at 0xd bytes offset from .text section, $_GLOBAL_OFFSET_TABLE resides there. The item’s initial value is ’0×2′. It is the endian A for caculating the address of ‘addl’.  During the relocation, the linker caculate the relocation entry’s P (position) by r_offset first. Thus P-2 is the address ‘addl’. why -2? because the opcode of ‘addl’ is 2 bytes long.  So  $_GLOBAL_OFFSET_TABLE = GOT-P+A.
+{{./4.gif}}
+
+**R_386_COPY:** The link editor creates this relocation type for dynamic linking. Its offset member refers to a location in a writable segement. The symbol table index specifies a symbol that should exists __both__ in the current object file and in a shared object. During execution, the dynamic linker __copies the data__ associated with the shared object’s symbol to location specified by the offset.
+
+Sample:
+
+	[root@www save]# cat 386copy.c
+	#include <stdio.h>
+	extern int a;
+	int main(void) {
+	printf(“%d\n”, a);
+	}
+	[root@www save]# cat b.c
+	int a = 10;
+	
+	#gcc -fPIC -share -o b.so b.c
+	#gcc -o 386copy 386copy.c ./b.so
+
+{{./5.gif}}
+Fig2 shows the variable a’s value from shared object to executable’s .bss section.
+
+===== Notation: =====
+S : The value of the symbol whose index resides in the relocation entry’s r_info.
+A: The addend used to caculate the value of the relocation field.
+P: The place, section offset or address, of the storage unit __being relocated__ (computed useing r_offset).__也就是计算后的值所替换的位置。__
+G: The __offset__ into the global offset table at which the address of relocation entry’s symbol will reside during execution.
+GOT: The address of the global offset table.
+L: The place, section offset or address, of PLT entry for a symbol.
+B: The __base address__ at which a shared object file has been loaded into the memory during execution.
+
+
+===== Relocation section: =====
+A relocation section(**而不是重定位条目的属性**) reference other two sections: __a symbol table and a section to modify__.  The section header’s sh_info and sh_link, specify these relationships. sh_link is the symbol table index, sh_info is the section link.
+
+Samples Code:
+
+	#include <stdio.h>
+	char a = ‘a’;
+	int  b = 10;
+	extern char c;
+	extern void fun();
+	void pp (void) { }
+	
+	int main(void) {
+	printf(“%d\n”, __b__);
+	int bb = __b__;  
+	char cc = __c__; //b和c都是绝对寻址
+	**pp**();  //相对寻址
+	fun();
+	}
+	
+# gcc -c -o test1 test.c  //生成的是可重定位的目标对象文件，__没有使用GOT和PLT__，所以和它们相关的重定位类型都没有使用。一般只使用了__R_386_PC32和R_386_32__两种类型。
+	[geekard@geekard rel]$ readelf -r rel.o
+	
+	Relocation section '.rel.text' at offset 0x478 contains 7 entries:
+	 Offset     Info    Type            Sym.Value  Sym. Name
+	0000000f  00000a01 __R_386_32__          00000004   b
+	0000001a  00000501 R_386_32          00000000   .rodata
+	0000001f  00000d02 R_386_PC32        00000000   printf
+	00000024  00000a01 R_386_32          00000004   b
+	0000002f  00000e01 R_386_32          00000000   c
+	00000038  00000b02 R_386_PC32        00000000   pp
+	0000003d  00000f02 __R_386_PC32__        00000000   fun
+
+	Relocation section '.rel.eh_frame' at offset 0x4b0 contains 2 entries:
+	 Offset     Info    Type            Sym.Value  Sym. Name
+	00000020  00000202 R_386_PC32        00000000   .text
+	00000040  00000202 R_386_PC32        00000000   .text
+	
+没有使用PIC技术时，对目标对象文件中全局变量符号引用地址的重定位是直接用实际地址替换(**R_386_32**)，对__内部和外部函数__的调用是相对调转(**R_386_PC32**)。
+	[geekard@geekard rel]$ readelf -s rel.o
+	
+	Symbol table '.symtab' contains 16 entries:
+	   Num:    Value  Size Type    Bind   Vis      Ndx Name
+	     0: 00000000     0 NOTYPE  LOCAL  DEFAULT  UND 
+	     1: 00000000     0 FILE    LOCAL  DEFAULT  ABS rel.c
+	     2: 00000000     0 SECTION LOCAL  DEFAULT    1 
+	     3: 00000000     0 SECTION LOCAL  DEFAULT    3 
+	     4: 00000000     0 SECTION LOCAL  DEFAULT    4 
+	     5: 00000000     0 SECTION LOCAL  DEFAULT    5 
+	     6: 00000000     0 SECTION LOCAL  DEFAULT    7 
+	     7: 00000000     0 SECTION LOCAL  DEFAULT    8 
+	     8: 00000000     0 SECTION LOCAL  DEFAULT    6 
+	     **9: 00000000     1 OBJECT  GLOBAL DEFAULT    3 a**
+	**    10: 00000004     4 OBJECT  GLOBAL DEFAULT    3 b**
+	**    11: 00000000     5 FUNC    GLOBAL DEFAULT    1 pp**
+	**    12: 00000005    62 FUNC    GLOBAL DEFAULT    1 main**
+	**    13: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND printf**
+	**    14: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND c**
+	**    15: 00000000     0 NOTYPE  GLOBAL DEFAULT  UND fun**
+	[geekard@geekard rel]$
+[geekard@geekard rel]$ gcc -c __-fPIC__ -o rel.o rel.c  #还是可重定位目标类型目标文件，但是符号的引用使用了__位置无关__技术，所以对全局变量和外部函数的引用使用了GOT和PLT。
+	[geekard@geekard rel]$ readelf -r rel.o
+	
+	Relocation section '.rel.text' at offset 0x594 contains 9 entries:
+	 Offset     Info    Type            Sym.Value  Sym. Name
+	00000010  00000f02 R_386_PC32        00000000   __x86.get_pc_thunk.bx
+	00000016  0000100a __R_386_GOTPC__       00000000   _GLOBAL_OFFSET_TABLE_
+	0000001c  00000c03 __R_386_GOT32__       00000004   b
+	00000028  00000509 R_386_GOTOFF      00000000   .rodata
+	00000030  00001104 R_386_PLT32       00000000   printf
+	00000036  00000c03 R_386_GOT32       00000004   b
+	00000042  00001203 R_386_GOT32       00000000   c
+	0000004e  00000d04 __R_386_PLT32__       00000000   pp
+	00000053  00001304 R_386_PLT32       00000000   fun
+	
+	Relocation section '.rel.eh_frame' at offset 0x5dc contains 3 entries:
+	 Offset     Info    Type            Sym.Value  Sym. Name
+	00000020  00000202 R_386_PC32        00000000   .text
+	00000040  00000202 R_386_PC32        00000000   .text
+	00000064  00000602 R_386_PC32        00000000   .text.__x86.get_pc_thu
+	[geekard@geekard rel]$ 
+使用了PIC技术后，所有符号的重定位使用__GOT和PLT。__
+
+Here is the details of how REL section associated with symbol table and the section to relocation.
+
+1. Show the ELF sections.
+{{./7.gif}}
+
+In fig1, the section ‘.rel.text’ is ‘REL’, the sections it is associated with are the first and the 9th section, ‘.text’ and ‘.symtab’.
+
+2. Show the relocation section entries:
+{{./8.gif}}
+In fig2, we can see there are two relocation entries for symbol ‘b’ because ‘b’ is referenced two times and the linker has to relocation it two times.
+
+3. What is the raw data of relocation table entry?
+{{./9.gif}}
+
+Fig3 shows the content of the first entry of relocation table.  r_offset is 0×10, that means the relocation entry is at the 0×10 of test1. the symbol table index is 0×09. we can see the 9th entry of symbol table is ‘b’ through Fig4;
+
+4. b’s offset if 4 byts offset from the start of data section and size is 4 bytes. Then the  linercaculate the address of b and modify  it’s address in .text section through relocation entry.
+{{./10.gif}}
+
+So, we get a simple flow of how linker do the relocation.  __first, get all relocation entries, then get all symbols associated with the relocation entries,  then caculate the address and modify the unist in the section assosicated with the relocation entries.__ The real relocation is more complex but main flow is like this.
+
+Sunday, September 12th, 2010 at 16:29

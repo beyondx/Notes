@@ -1,0 +1,250 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-12-25T10:31:03+08:00
+
+====== gdb frame ======
+Created Tuesday 25 December 2012
+
+char **friends = {"Tom", "John", "Pi", \0};
+等价于 char *friends[ ] = {"Tom", "John", "Pi", \0};
+等价于 char *friends[4] = {"Tom", "John", "Pi", \0};
+
+[geekard@geekard rel]$ gdb rel2
+GNU gdb (GDB) 7.5.1
+**(gdb) b greeting** 
+Breakpoint 1 at 0x8048432: file rel2.c, line 8.
+**(gdb) r**
+Starting program: /home/geekard/Code/elf/rel/rel2 
+warning: Could not load shared library symbols for linux-gate.so.1.
+Do you need "set solib-search-path" or "set sysroot"?
+3
+Breakpoint 1, greeting (name=0x80485c9 "geekard", age=23, friends=0xbffff944) at rel2.c:8
+8         printf("Hello, %s:\n", name);
+**(gdb) disassemble**   
+Dump of assembler code for function greeting:
+   0x0804842c <+0>:     push   %ebp
+   0x0804842d <+1>:     mov    %esp,%ebp
+   0x0804842f <+3>:     sub    $0x18,%esp    
+  上面这三条指令称为prologue，由gcc自动添加。break fuction会在执行完function的prologue后停止，这样
+=> 0x08048432 <+6>:     mov    0x8(%ebp),%eax
+   0x08048435 <+9>:     mov    %eax,0x4(%esp)
+   0x08048439 <+13>:    movl   $0x8048590,(%esp)
+   0x08048440 <+20>:    call   0x80482f0 <printf@plt>
+**(gdb) si  //多次执行si，直到输出如下字符串**
+0x080482f0 in printf@plt ()
+**(gdb) bt**
+#0  0x080482f0 in printf@plt ()
+#1  0x08048445 in greeting (name=0x80485c9 "geekard", age=23, friends=0xbffff944) at rel2.c:8
+#2  0x080484fd in main () at [[rel2.c:28]]
+**(gdb) info frame 2**
+Stack frame at 0xbffff970:
+ eip = 0x80484fd in main (rel2.c:28); saved eip 0xb7e28605
+ caller of frame at 0xbffff930
+ source language c.
+ Arglist at 0xbffff968, args: 
+ Locals at 0xbffff968, Previous frame's sp is 0xbffff970
+ Saved registers:
+  ebp at 0xbffff968, eip at 0xbffff96c
+**(gdb) info frame 1**
+Stack frame at 0xbffff930:
+ eip = 0x8048445 in greeting (rel2.c:8); saved eip 0x80484fd
+ called by frame at 0xbffff970, caller of frame at 0xbffff910
+ source language c.
+ Arglist at 0xbffff928, args: name=0x80485c9 "geekard", age=23, friends=0xbffff944
+ Locals at 0xbffff928, Previous frame's sp is 0xbffff930
+ Saved registers:
+  ebp at 0xbffff928, eip at 0xbffff92c
+**(gdb) info frame 0**
+Stack frame at 0xbffff910:
+ eip = 0x80482f0 in printf@plt; saved eip 0x8048445
+ called by frame at 0xbffff930
+ Arglist at 0xbffff908, args: 
+ Locals at 0xbffff908, Previous frame's sp is 0xbffff910
+ Saved registers:  //没有保存ebp, esi, edi, ebx寄存器的值。
+  eip at 0xbffff90c
+
+**(gdb) disassemble main**
+Dump of assembler code for function main:
+   0x0804848a <+0>:     push   %ebp
+   0x0804848b <+1>:     mov    %esp,%ebp
+   0x0804848d <+3>:     and    $0xfffffff0,%esp
+   0x08048490 <+6>:     sub    $0x30,%esp
+   0x08048493 <+9>:     mov    0x8049804,%eax
+   0x08048498 <+14>:    mov    %eax,0x2c(%esp)
+   0x0804849c <+18>:    movl   $0x80485c9,0x28(%esp)
+   0x080484a4 <+26>:    movl   $0x17,0x24(%esp)
+   0x080484ac <+34>:    movl   $0x80485d1,0x14(%esp)
+   0x080484b4 <+42>:    movl   $0x80485d5,0x18(%esp)
+   0x080484bc <+50>:    movl   $0x80485da,0x1c(%esp)
+   0x080484c4 <+58>:    movl   $0x0,0x20(%esp)
+   0x080484cc <+66>:    mov    0x8049808,%eax
+   0x080484d1 <+71>:    mov    %eax,0x4(%esp)
+   0x080484d5 <+75>:    movl   $0x80485dd,(%esp)
+   0x080484dc <+82>:    call   0x80482f0 <printf@plt>
+   0x080484e1 <+87>:    lea    0x14(%esp),%eax
+   0x080484e5 <+91>:    mov    %eax,0x8(%esp)
+   0x080484e9 <+95>:    mov    0x24(%esp),%eax
+   0x080484ed <+99>:    mov    %eax,0x4(%esp)
+   0x080484f1 <+103>:   mov    0x28(%esp),%eax
+   0x080484f5 <+107>:   mov    %eax,(%esp)
+   0x080484f8 <+110>:   call   __0x804842c__ <greeting>
+   __0x080484fd__ <+115>:   leave  
+   0x080484fe <+116>:   ret    
+End of assembler dump.
+**(gdb) disassemble greeting** 
+Dump of assembler code for function greeting:
+   0x0804842c <+0>:     push   %ebp
+   0x0804842d <+1>:     mov    %esp,%ebp
+   0x0804842f <+3>:     sub    $0x18,%esp
+   0x08048432 <+6>:     mov    0x8(%ebp),%eax
+   0x08048435 <+9>:     mov    %eax,0x4(%esp)
+   0x08048439 <+13>:    movl   $0x8048590,(%esp)
+   0x08048440 <+20>:    call   __0x80482f0__ <printf@plt>
+   __0x08048445__ <+25>:    mov    0xc(%ebp),%eax
+   0x08048448 <+28>:    mov    %eax,0x4(%esp)
+   0x0804844c <+32>:    movl   $0x804859c,(%esp)
+   0x08048453 <+39>:    call   0x80482f0 <printf@plt>
+   0x08048458 <+44>:    movl   $0x80485af,(%esp)
+   0x0804845f <+51>:    call   0x8048300 <puts@plt>
+   0x08048464 <+56>:    jmp    0x804847f <greeting+83>
+   0x08048466 <+58>:    mov    0x10(%ebp),%eax
+   0x08048469 <+61>:    mov    (%eax),%eax
+   0x0804846b <+63>:    mov    %eax,0x4(%esp)
+   0x0804846f <+67>:    movl   $0x80485c3,(%esp)
+   0x08048476 <+74>:    call   0x80482f0 <printf@plt>
+   0x0804847b <+79>:    addl   $0x4,0x10(%ebp)
+   0x0804847f <+83>:    mov    0x10(%ebp),%eax
+   0x08048482 <+86>:    mov    (%eax),%eax
+   0x08048484 <+88>:    test   %eax,%eax
+   0x08048486 <+90>:    jne    0x8048466 <greeting+58>
+   0x08048488 <+92>:    leave  
+   0x08048489 <+93>:    ret    
+End of assembler dump.
+**(gdb) x /8wx 0x80482f0**
+0x80482f0 <printf@plt>: 0x97ec25ff      0x00680804      0xe9000000      0xffffffe0
+0x8048300 <puts@plt>:   0x97f025ff      0x08680804      0xe9000000      0xffffffd0
+**(gdb) x /8wi 0x80482f0**
+   __0x80482f0__ <printf@plt>:      jmp    *__0x80497ec__
+   0x80482f6 <printf@plt+6>:    push   $0x0
+   0x80482fb <printf@plt+11>:   jmp    0x80482e0
+   0x8048300 <puts@plt>:        jmp    *0x80497f0
+   0x8048306 <puts@plt+6>:      push   $0x8
+   0x804830b <puts@plt+11>:     jmp    0x80482e0
+   0x8048310 <__gmon_start__@plt>:      jmp    *0x80497f4
+   0x8048316 <__gmon_start__@plt+6>:    push   $0x10
+**(gdb) x /wx 0x80497ec**
+0x80497ec <printf@got.plt>:     0xb7e5bed0
+**(gdb) si**
+0xb7e5bed0 in printf () from [[/usr/lib/libc.so.6]]
+**(gdb) disassemble *0x80497ec**
+Dump of assembler code for function __printf__:
+=> __0xb7e5bed0__ <+0>:     push   %ebx
+   0xb7e5bed1 <+1>:     sub    $0x18,%esp
+   0xb7e5bed4 <+4>:     call   0xb7f376d3 <__x86.get_pc_thunk.bx>
+   0xb7e5bed9 <+9>:     add    $0x159127,%ebx
+   0xb7e5bedf <+15>:    lea    0x24(%esp),%eax
+   0xb7e5bee3 <+19>:    mov    %eax,0x8(%esp)
+   0xb7e5bee7 <+23>:    mov    0x20(%esp),%eax
+   0xb7e5beeb <+27>:    mov    %eax,0x4(%esp)
+   0xb7e5beef <+31>:    mov    -0x68(%ebx),%eax
+   0xb7e5bef5 <+37>:    mov    (%eax),%eax
+   0xb7e5bef7 <+39>:    mov    %eax,(%esp)
+   0xb7e5befa <+42>:    call   0xb7e520f0 <vfprintf>
+   0xb7e5beff <+47>:    add    $0x18,%esp
+   0xb7e5bf02 <+50>:    pop    %ebx
+   0xb7e5bf03 <+51>:    ret    
+End of assembler dump.
+**(gdb) bt**
+#0  0xb7e5bed0 in printf () from /usr/lib/libc.so.6
+#1  0x08048445 in greeting (name=0x80485c9 "geekard", age=23, friends=0xbffff944) at rel2.c:8
+#2  0x080484fd in main () at rel2.c:28
+**(gdb) info f 0**
+Stack frame at 0xbffff910:
+ eip = 0xb7e5bed0 in printf; saved eip 0x8048445
+ called by frame at 0xbffff930
+ Arglist at 0xbffff908, args: 
+ Locals at 0xbffff908, Previous frame's sp is 0xbffff910
+ Saved registers:  
+  eip at 0xbffff90c    
+没有保存ebp, esi, edi, ebx等寄存器的值，所以它们的值与frame 1中的相等。在编译时如果指定-fomit-frame-pointer选项，则
+编译器为函数调用生成栈帧时不会圧入ebp寄存器的值，而且对arguments和auto variables的引用是通过esp进行的。这样可以将
+ebp寄存器节省出来，用作其它用途。但缺点是无法对函数调用进行frame backtrace（如果目标文件中有.eh_frame section则gdb可以
+从中提取出frame backtrace信息）。
+
+**(gdb) info registers** 
+eax            0x80485c9        134514121
+ecx            0x0      0
+edx            0x0      0
+ebx            0xb7fb5000       -1208266752  //继续保存的是frame 1中的值
+esp            0xbffff90c       0xbffff90c
+ebp            0xbffff928       0xbffff928   //继续保存的是frame 1中的值
+esi            0x0      0
+edi            0x0      0
+eip            0xb7e5bed0       0xb7e5bed0 <printf>
+eflags         0x200282 [ SF IF ID ]
+cs             0x73     115
+ss             0x7b     123
+ds             0x7b     123
+es             0x7b     123
+fs             0x0      0
+gs             0x33     51
+**(gdb) f 1 //切换frame到#1, 这样可以查看greeting函数的参数和自动变量值。**
+#1  0x08048445 in greeting (name=0x80485c9 "geekard", age=23, friends=0xbffff944) at rel2.c:8
+8         printf("Hello, %s:\n", name);
+**(gdb) info registers**   //打印frame 1的寄存器
+eax            0x80485c9        134514121
+ecx            0x0      0
+edx            0x0      0
+ebx            **0xb7fb5000**       -1208266752
+esp            0xbffff910       0xbffff910
+ebp            **0xbffff928**       0xbffff928
+esi            0x0      0
+edi            0x0      0
+eip            0x8048445        0x8048445 <greeting+25>
+eflags         0x200282 [ SF IF ID ]
+cs             0x73     115
+ss             0x7b     123
+ds             0x7b     123
+es             0x7b     123
+fs             0x0      0
+gs             0x33     51
+(gdb) 
+
+
+(gdb)
+**(gdb) info args**
+name = 0x80485c9 "geekard"
+age = 23
+friends = 0xbffff944
+**(gdb) ptype friends** 
+type = char **
+
+**(gdb) p friends** 
+$1 = (char **) 0xbffff944
+**(gdb) p *friends** 
+$6 = 0x80485d1 "Tom"
+**(gdb) p friends+1**
+$2 = (char **) 0xbffff948
+**(gdb) x /4wx friends** 
+0xbffff944:     0x080485d1      0x080485d5      0x080485da      0x00000000
+**(gdb) p *friends@4**
+$4 = {0x80485d1 "Tom", 0x80485d5 "John", 0x80485da "Pi", 0x0}
+
+**(gdb) p &friends** 
+$5 = (char ***) 0xbffff938
+
+(**gdb) x /4wx friends+1** 
+0xbffff948:     0x080485d5      0x080485da      0x00000000      0x00000017
+**(gdb) x /4wx &friends** 
+0xbffff938:     0xbffff944      0x08048552      0x00000001      0x080485d1
+**(gdb) p friends@4**
+$3 = {0xbffff944, 0x8048552 <__libc_csu_init+82>, 0x1, 0x80485d1}
+
+**(gdb) x /wx friends** 
+0xbffff944:     0x080485d1
+**(gdb) x /wx friends+1** 
+0xbffff948:     0x080485d5
+**(gdb) x /wx &friends** 
+0xbffff938:     0xbffff944
+**(gdb) x /wx *friends** 
+0x80485d1:      0x006d6f54

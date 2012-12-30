@@ -1,0 +1,15 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-12-23T13:11:25+08:00
+
+====== CFI for gas ======
+Created Sunday 23 December 2012
+
+Modern ABIs don't require frame pointers to be used in functions.
+Howerver missing FPs bring difficulties when doing a backtrace.
+One solutions is to provide Dwarf-2 CFI(call frame information) data
+for each such function. This can be easily done for example by GCC in
+its output, but isn't that easy to write by hand for pure assembler functions.
+
+With the help of these .cfi_* directives one can ass appropriate unwind info 
+into his asm source without too much trouble.

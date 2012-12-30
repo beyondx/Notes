@@ -1,0 +1,250 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-11-21T20:36:45+08:00
+
+====== systemd for Administrators, Part III ======
+Created Wednesday 21 November 2012
+
+
+レナート   Wunschkonzert, Ponyhof und Abenteuerspielplatz   ﻟﻴﻨﺎﺭﺕ
+
+Fri, 01 Oct 2010
+systemd for Administrators, Part III
+
+Here's the third installment of my ongoing series about systemd for administrators.
+
+===== How Do I Convert A SysV Init Script Into A systemd Service File? =====
+
+Traditionally, Unix and Linux services (daemons) are started via __SysV init scripts__. These are Bourne Shell scripts, usually residing in a directory such as __/etc/rc.d/init.d/__ which when called with one of a few standardized arguments (verbs) such as __start, stop or restart__ controls, i.e. starts, stops or restarts the service in question. For starts this usually involves invoking the daemon binary, which then forks a background process (more precisely daemonizes).
+
+Shell scripts tend to be slow, needlessly hard to read, very verbose and fragile. Although they are __immensly flexible__ (after all, they are just code) some things are very hard to do properly with shell scripts, such as ordering parallized execution, correctly supervising processes or just **configuring execution contexts** in all detail. systemd provides __compatibility__ with these shell scripts, but due to the shortcomings pointed out it is recommended to install native systemd service files for all daemons installed. Also, in contrast to SysV init scripts which have to be adjusted to the distribution systemd service files are compatible with any kind of distribution running systemd (which become more and more these days...). 
+
+What follows is a terse guide how to take a SysV init script and translate it into a native systemd service file. Ideally, upstream projects should ship and install systemd service files in their tarballs. If you have successfully converted a SysV script according to the guidelines it might hence be a good idea to submit the file as patch to upstream. How to prepare a patch like that will be discussed in a later installment, suffice to say at this point that the daemon(7) manual page shipping with systemd contains a lot of useful information regarding this.
+
+So, let's jump right in. As an example we'll convert the init script of the **ABRT** daemon into a systemd service file. ABRT is a standard component of every Fedora install, and is an acronym for Automatic Bug Reporting Tool, which pretty much describes what it does, i.e. it is a service for collecting crash dumps. Its SysV script I have uploaded here.
+
+The first step when converting such a script is to read it (surprise surprise!) and distill the useful information from the usually pretty long script. In almost all cases the script consists of mostly boilerplate code that is identical or at least very similar in all init scripts, and usually copied and pasted from one to the other. So, let's extract the interesting information from the script linked above:
+
+* A description string for the service is "Daemon to detect crashing apps". As it turns out, the header comments include a redundant number of description strings, some of them describing less the actual service but the init script to start it. systemd services include a description too, and it should describe the service and not the service file.
+* The __LSB header__[1] contains dependency information. systemd due to its design around socket-based activation usually needs __no__ (or very little) manually configured dependencies. (For details regarding socket activation see the original announcement blog post.) In this case the dependency on $syslog (which encodes that abrtd requires a syslog daemon), is the only valuable information. While the header lists another dependency ($local_fs) this one is redundant with systemd as normal system services are always started with all local file systems available.
+* The LSB header suggests that this service should be started in runlevels 3 (multi-user) and 5 (graphical).
+* The daemon binary is /usr/sbin/abrtd
+
+And that's already it. The entire remaining content of this 115-line shell script is simply boilerplate or otherwise redundant code: code that deals with synchronizing and serializing startup (i.e. the code regarding lock files) or that outputs status messages (i.e. the code calling echo), or simply parsing of the verbs (i.e. the big case block).
+
+From the information extracted above we can now write our systemd service file:
+
+**[Unit]**
+**Description=Daemon to detect crashing apps**
+**After=syslog.target**
+
+**[Service]**
+**ExecStart=/usr/sbin/abrtd**
+**Type=forking**
+
+**[Install]**
+**WantedBy=multi-user.target**
+
+A little explanation of the contents of this file: The [Unit] section contains generic information about the service. systemd not only manages system services, but also devices, mount points, timer, and other components of the system. The generic term for all these objects in systemd is a unit, and the [Unit] section encodes information about it that might be applicable not only to services but also in to the other unit types systemd maintains. In this case we set the following unit settings: we set the description string and configure that the daemon shall be **started after** Syslog[2], similar to what is encoded in the LSB header of the original init script. For this Syslog dependency we create a dependency of type __After=__ on a systemd unit syslog.target. The latter is **a special target unit** in systemd and is the standardized name to pull in a syslog implementation. For more information about these standardized names see the systemd.special(7). Note that a dependency of type After= only encodes the suggested ordering, but does not actually cause syslog to be started when abrtd is -- and this is exactly what we want, since abrtd actually works fine even without syslog being around. However, if both are started (and usually they are) then the order in which they are is controlled with this dependency.
+
+The next section is [Service] which encodes information about the service itself. It contains all those settings that apply only to services, and not the other kinds of units systemd maintains (mount points, devices, timers, ...). Two settings are used here: __ExecStart=__ takes the path to the binary to execute when the service shall be started up. And with __Type=__ we configure **how the service notifies the init system that it finished starting up.** Since traditional Unix daemons do this by returning to the parent process after having forked off and initialized the background daemon we set the type to forking here. That tells systemd to wait until the start-up binary returns and then consider the processes still running afterwards the daemon processes.
+
+The final section is [Install]. It encodes information about how the suggested installation should look like, i.e. under which circumstances and by which triggers the service shall be started. In this case we simply say that __this service shall be started when the multi-user.target unit is activated__. This is a special unit (see above) that basically takes the role of the classic SysV Runlevel 3[3]. The setting WantedBy= has little effect on the daemon during runtime. It is only read by the systemctl enable command, which is the recommended way to enable a service in systemd. This command will simply ensure that our little service gets automatically activated as soon as multi-user.target is requested, which it is on all normal boots[4].
+
+And that's it. Now we already have a minimal working systemd service file. To test it we copy it to /etc/systemd/system/abrtd.service and invoke systemctl daemon-reload. This will make systemd take notice of it, and now we can start the service with it: systemctl start abrtd.service. We can verify the status via systemctl status abrtd.service. And we can stop it again via systemctl stop abrtd.service. Finally, we can enable it, so that it is activated by default on future boots with systemctl enable abrtd.service.
+
+The service file above, while sufficient and basically a 1:1 translation (feature- and otherwise) of the SysV init script still has room for improvement. Here it is a little bit updated:
+
+[Unit]
+Description=ABRT Automated Bug Reporting Tool
+After=syslog.target
+
+[Service]
+Type=dbus
+BusName=com.redhat.abrt
+ExecStart=/usr/sbin/abrtd -d -s
+
+[Install]
+WantedBy=multi-user.target
+
+So, what did we change? Two things: we improved the description string a bit. More importantly however, we changed the type of the service to dbus and configured the D-Bus bus name of the service. Why did we do this? As mentioned classic SysV services daemonize after startup, which usually involves double forking and detaching from any terminal. While this is useful and necessary when daemons are invoked via a script, this is unnecessary (and slow) as well as counterproductive when a proper process babysitter such as systemd is used. The reason for that is that the forked off daemon process usually has little relation to the original process started by systemd (after all the daemonizing scheme's whole idea is to remove this relation), and hence it is difficult for systemd to figure out after the fork is finished which process belonging to the service is actually the main process and which processes might just be auxiliary. But that information is crucial to implement advanced babysitting, i.e. supervising the process, automatic respawning on abnormal termination, collectig crash and exit code information and suchlike. In order to make it easier for systemd to figure out the main process of the daemon we changed the service type to dbus. The semantics of this service type are appropriate for all services that take a name on the D-Bus system bus as last step of their initialization[5]. ABRT is one of those. With this setting systemd will spawn the ABRT process, which will no longer fork (this is configured via the -d -s switches to the daemon), and systemd will consider the service fully started up as soon as com.redhat.abrt appears on the bus. This way the process spawned by systemd is the main process of the daemon, systemd has a reliable way to figure out when the daemon is fully started up and systemd can easily supervise it.
+
+And that's all there is to it. We have a simple systemd service file now that encodes in 10 lines more information than the original SysV init script encoded in 115. And even now there's a lot of room left for further improvement utilizing more features systemd offers. For example, we could set Restart=restart-always to tell systemd to automatically restart this service when it dies. Or, we could use OOMScoreAdjust=-500 to ask the kernel to please leave this process around when the OOM killer wreaks havoc. Or, we could use CPUSchedulingPolicy=idle to ensure that abrtd processes crash dumps in background only, always allowing the kernel to give preference to whatever else might be running and needing CPU time.
+
+For more information about the configuration options mentioned here, see the respective man pages systemd.unit(5), systemd.service(5), systemd.exec(5). Or, browse all of systemd's man pages.
+
+Of course, not all SysV scripts are as easy to convert as this one. But gladly, as it turns out the vast majority actually are.
+
+That's it for today, come back soon for the next installment in our series.
+
+Footnotes
+
+[1] The LSB header of init scripts is a convention of including meta data about the service in comment blocks at the top of SysV init scripts and is defined by the Linux Standard Base. This was intended to standardize init scripts between distributions. While most distributions have adopted this scheme, the handling of the headers varies greatly between the distributions, and in fact still makes it necessary to adjust init scripts for every distribution. As such the LSB spec never kept the promise it made.
+
+[2] Strictly speaking, this dependency does not even have to be encoded here, as it is redundant in a system where the Syslog daemon is socket activatable. Modern syslog systems (for example rsyslog v5) have been patched upstream to be socket-activatable. If such a init system is used configuration of the After=syslog.target dependency is redundant and implicit. However, to maintain compatibility with syslog services that have not been updated we include this dependency here.
+
+[3] At least how it used to be defined on Fedora.
+
+[4] Note that in systemd the graphical bootup (graphical.target, taking the role of SysV runlevel 5) is an implicit superset of the console-only bootup (multi-user.target, i.e. like runlevel 3). That means hooking a service into the latter will also hook it into the former.
+
+[5] Actually the majority of services of the default Fedora install now take a name on the bus after startup.
+
+posted at: 04:42 | path: /projects | permanent link to this entry | 19 comments
+Posted by Anonymous at Fri Oct 1 06:58:25 2010
+Ideally, couldn't you configure ABRT to only run when core files show up in a given directory, or when something requests its dbus service?
+
+Posted by drago01 at Fri Oct 1 10:52:20 2010
+CPUSchedulingPolicy=idle ... is there the same thing for IO i.e IOSchedulingPolicy=idle ?
+
+In most cases I couldn't care less about CPU on todays multicore machines but IO is still a very limited resource (when not running an SSD).
+
+The kernel actually allows setting IO priorities (when using the CFQ scheduler).
+
+Posted by Lennart at Fri Oct 1 13:04:51 2010
+Anonymous: While this would definitely be desirable AFAICS abrt doesn't support this scheme, since it needs to be running when the first crash dump is collected.
+
+drag01: There's IOSchedulingClass=idle for you.
+
+Posted by John Drinkwater at Fri Oct 1 13:34:29 2010
+Restart=restart-always
+Again, why have this redundancy if you are starting a design from scratch?
+Restart=always|once|on-success
+
+CPUSchedulingPolicy=idle
+IOSchedulingClass=idle
+Why is one a class, and another a policy? People will mistype these.
+
+This is not bikeshedding, this is a request to stop making everything long-winded when it does not need to be so. If systemd is to be around for the next few decades, and you have time to refine it before the next Fedora release, please do so.
+
+Posted by Lennart at Fri Oct 1 13:55:07 2010
+John, regarding Restart= you have a point. And I fixed that now.
+
+Regarding the Class vs. Policy thing: that's how the kernel calls these things, blame the kernel folks for that. I think it would be a very bad idea to introduce deviating terminology here where the kernel fucked up.
+
+Posted by Milan Bouchet-Valat at Fri Oct 1 15:00:38 2010
+Glad to see you have an easy to parse Description field! But while you're at it, could you consider providing translated descriptions for configuration tools?
+
+Recently, Ubuntu had a GSoC about writing a new config tool for Upstart. One of the issues was that there's no way to get a localized translation from Upstart jobs or SysV scripts, let alone an icon! It would be great if you tackled this issue in Systemd, e.g. with a standard .desktop-like file that services should ship.
+
+
+The other part of the work Jacob Peddicord did in his GSoC is more remote from Systemd, but might be interesting. He has a whole project of describing configuration files associated with a service:
+http://jacob.peddicord.net/gsoc2010/
+http://people.ubuntu.com/~jpeddicord/SLS/0.8/sls-format-0.8.html
+
+I guess it can be good you know it exists...
+
+Posted by Lennart at Fri Oct 1 15:11:55 2010
+Milan: the longer term plan is to support translations for the descriptions the same way as .desktop files have them. Right now we don't do this, but this is definitely the plan. I am also open to adding an Icon setting, though I am a bit concerned that if we add and Icon, then the next thing asked for is a Vendor ID and so on and so on.
+
+Posted by j at Fri Oct 1 18:35:14 2010
+verbosity is redundant (and confusing) for a unix system tool. Since Io scheduling classes are linux-specific, it can be written like that:
+
+CPUSchedulingPolicy ->  SchedLevel
+IOSchedulingClass -> IOSchedLevel
+
+BTW is systemd portable to all Unix or it needs linux kernel for some reason?
+
+Posted by Lennart at Fri Oct 1 18:47:31 2010
+j, calling the same stuff in userspace differently than in kernelspace, and calling the same stuff in the chrt tool differently than in systemd is a very bad idea.
+
+systemd is strictly Linux specific. It is not portable to other Unixes and we do not care about portability to them. This allows us to make use of Linux features and is one of the reasons why systemd is so much more powerful than any other init system around.
+
+Posted by Grahame at Fri Oct 1 19:03:30 2010
+At the moment if I'm having a problem with a daemon failing to start I might just hack the init script, chuck strace in, and restart it. It'd be great if you could show how you might shim a failing daemon, particularly when debugging 'fails on reboot' issues (eg. starts fine later.)
+
+Posted by Anonymous at Fri Oct 1 22:10:11 2010
+I'm wondering about a services that get autostarted via D-Bus. D-Bus starts them itself, so unless I'm wrong they'll end up in the D-Bus service cgroup, not in their own cgroups. Yet I want them to be controllable as services itself. Is this possible to achieve?
+
+Posted by Michael at Fri Oct 1 23:21:36 2010
+@Anonymous:
+
+This is one of systemd's great features:
+Starting with dbus 1.4.0, dbus-daemon can hand over starting of system services to systemd, where you have all those possibilites to monitor and confine the service (in it's own cgroup)
+
+All you need to do is to add a
+SystemdService=foo.service
+line to the D-Bus service file, create a foo.service file for systemd and systemd will automatically start the service defined in foo.service.
+
+Posted by Andreas at Sat Oct 2 00:49:51 2010
+I agree with those complaining about names like CPUSchedulingPolicy but as Lennart said that is hardly the fault of systemd. Not really much that can be done about it.
+
+This is post is the part I like the most about systemd. No more boilerplate bash and no horrible XML like the launchd plists or overly verbose XML like SMF. Now there might be other good init systems but this is the first one I have seen where it is easy to just read the job configurations.
+
+Like the use of sections too in the files so when I read them I can mostly ignore sections like [Install].
+
+Posted by codebeard at Sat Oct 2 04:36:12 2010
+@Grahame
+
+I assume that you can do something like:
+ExecStart=/usr/bin/strace -f -o /root/abrtd.strace /usr/sbin/abrtd -d -s
+
+But perhaps Lennart has another way in mind to do this?
+
+Posted by John Drinkwater at Sat Oct 2 14:24:51 2010
+Lennart, thanks. Apologies if my comment came over a little stronger than I intended.
+I notice some variables for scheduling have different ranges, is this again a kernel issue? Maybe I should go bang some heads there..
+
+Posted by Dag Wieers at Mon Nov 22 17:58:46 2010
+Lennart,
+
+Since the moment I read your first systemd announcement I am excited about this new development. It's one of those things you wonder why that wasn't done decades ago ;-)
+
+However, I see one thing that I liked about the sysv scripts, that is not possible. The importance of the original sysv scripts is that they are written in bash and so offers a lot of flexibility to system administrators. Flexibility comes with responsibility :-) However, where in the past sysv scripts did more than simply start/stop/restart/reload, some scripts allowed to check configuration syntax (eg. apache), initialize something (eg. sshd), etc...
+
+There is an advantage in keeping those actions as part of the systemd tools in my opinion. Even if they are simply passing the action through to a daemon-specific configuration tool (eg. apachectl), which could become a standard. This is exactly why I liked the design of "op" so much (compared to sudo). It provided system administrators (and users) with a single interface to actions using a clean syntax.
+
+While reading the post and the documentation I couldn't find whether "custom actions" would be retained in your design. If not, what would be the recommended alternative ?
+
+Posted by Lennart at Mon Nov 22 19:13:05 2010
+Grahame: codebears is right. You can easily prefix binary paths with strace. Just copy the service file from /lib/systemd/system to /etc/systemd/system and edit the ExecStart= line, and done.
+
+John: yes, we mostly expose the kernel stuff 1:1.
+
+Dag: we do not support custom actions, since their set of parameters and what they return is completely free-form it would be a bit weird to pass that through D-Bus. For example, if something is interactive, how would you pass that through D-Bus. If people want additional control interfaces for their tools, then they should create them outside of systemd, for example by creating a seperate <something>ctl tool, such as apachectl. I mean, I think it makes sense to expose new "verbs" in systemd iff these verbs make sense for everybody the same way as "start" and "stop" and similar apply for every service the same way. However, something like "apachectl graceful" is in all its meaning highly specific to Apache, and hence trying to abstract that in systemd must fail, since it's nothing that really could be abstracted nicely. SMF allows definition of additional verbs for each service, but I am not convinced this is really a good idea.
+
+Posted by anonymous at Thu Jul 14 06:26:29 2011
+bit confuse with:
+
+To test it we copy it to /etc/systemd/system/
+
+in my f15 installation can not find *.service file but i find in /lib/systemd/system
+
+where .service file actually resident?
+
+Posted by dave at Mon Feb 27 23:49:34 2012
+Hi
+
+I was having problems with my shutdown services not running as expected.  I traced the issue to the use of the '--force' flag in the halt, poweroff and reboot services.  Here's more about the issue and how to resolve: -
+
+http://www.practicalclouds.com/content/blog/1/dave-mccormick/2012-02-27/why-do-my-systemd-shutdown-scripts-not-run
+
+regards
+
+
+Dave
+
+Leave a Comment:
+
+Your Name:
+
+
+Your E-mail (optional):
+
+
+Comment:
+
+
+As a protection against comment spam, please type the following number into the field on the right:
+Secret Number Image
+
+Please note that this is neither a support forum nor a bug tracker! Support questions or bug reports posted here will be ignored and not responded to!
+
+It should be obvious but in case it isn't: the opinions reflected here are my own. They are not the views of my employer, or Ronald McDonald, or anyone else.
+
+Please note that I take the liberty to delete any comments posted here that I deem inappropriate, off-topic, or insulting. And I excercise this liberty quite agressively. So yes, if you comment here, I might censor you. If you don't want to be censored you are welcome to comment on your own blog instead.
+Lennart's Blog | Lennart's Homepage | Lennart's Photos | Impressum/Imprint
+Lennart Poettering <mzoybt (at) 0pointer (dot) net>
+Syndicated on Planet GNOME, Planet Fedora, planet.freedesktop.org, Planet Debian Upstream. feed RSS 0.91, RSS 2.0
+Archives: 2005, 2006, 2007, 2008, 2009, 2010, 2011
+
+Valid XHTML 1.0 Strict!   Valid CSS!

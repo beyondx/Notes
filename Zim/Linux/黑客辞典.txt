@@ -8,3 +8,7 @@ Created Friday 02 November 2012
 grub：  gfx = graphics, 两者的读音差不多。
 VESA = Video Electronics Standards Association
 VBE = VESA BIOS Extensions
+evdev = event device: A componet of the linux kernel for handling input(from keyboards, mice, joysticks, etc.) 
+   and a closely related input driver fo the X.Org server.The kernel componet is glue-code which translates input
+   events from peripheral-specific drivers into a generic structure which the input driver can easily translate into X11
+   events.

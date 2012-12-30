@@ -1,0 +1,82 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-12-25T21:45:29+08:00
+
+====== gdb pointer ======
+Created Tuesday 25 December 2012
+[geekard@geekard elf]$ **cat array.c**
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void)
+{
+   int ia[3] = {1,2,3};
+   char *cpa[3] = {"Tom", "John", NULL};
+   char *cpa2[] = {"Tom", "John", NULL};
+   char **cpa3 = {"Tom", "John", NULL};
+}
+[geekard@geekard elf]$ **gcc -g array.c -o array**
+array.c: In function ‘main’:
+array.c:9:4: warning: initialization from incompatible pointer type [enabled by default]
+array.c:9:4: warning: (near initialization for ‘cpa3’) [enabled by default]
+array.c:9:4: warning: excess elements in scalar initializer [enabled by default]
+array.c:9:4: warning: (near initialization for ‘cpa3’) [enabled by default]
+array.c:9:4: warning: excess elements in scalar initializer [enabled by default]
+array.c:9:4: warning: (near initialization for ‘cpa3’) [enabled by default]
+[geekard@geekard elf]$ **gdb array**
+GNU gdb (GDB) 7.5.1
+。。。。。
+**(gdb) list main**
+1       #include <stdio.h>
+2       #include <stdlib.h>
+3
+4       int main(void)
+5       {
+6          int ia[3] = {1,2,3};  
+7          char *cpa[3] = {"Tom", "John", NULL};
+8          char *cpa2[] = {"Tom", "John", NULL};  //ia, cpa, cpa2为数组首地址的引用名称，而非变量，不占用
+9          char **cpa3 = {"Tom", "John", NULL};
+10      }
+**(gdb) b 10**
+Breakpoint 1 at 0x8048418: file array.c, line 10.
+**(gdb) r**
+Starting program: /home/geekard/Code/elf/array 
+warning: Could not load shared library symbols for linux-gate.so.1.
+Do you need "set solib-search-path" or "set sysroot"?
+
+Breakpoint 1, main () at array.c:10
+10      }
+**(gdb) disassemble main**
+Dump of assembler code for function main:
+   0x080483cc <+0>:     push   %ebp
+   0x080483cd <+1>:     mov    %esp,%ebp
+   0x080483cf <+3>:     sub    $0x30,%esp
+   0x080483d2 <+6>:     movl   $0x1,-0x10(%ebp)
+   0x080483d9 <+13>:    movl   $0x2,-0xc(%ebp)
+   0x080483e0 <+20>:    movl   $0x3,-0x8(%ebp)
+   0x080483e7 <+27>:    movl   $0x80484b0,-0x1c(%ebp)
+   0x080483ee <+34>:    movl   $0x80484b4,-0x18(%ebp)
+   0x080483f5 <+41>:    movl   $0x0,-0x14(%ebp)
+   0x080483fc <+48>:    movl   $0x80484b0,-0x28(%ebp)
+   0x08048403 <+55>:    movl   $0x80484b4,-0x24(%ebp)
+   0x0804840a <+62>:    movl   $0x0,-0x20(%ebp)
+   0x08048411 <+69>:    movl   $0x80484b0,-0x4(%ebp)
+=> 0x08048418 <+76>:    leave  
+   0x08048419 <+77>:    ret    
+End of assembler dump.
+**(gdb) bt**
+#0  main () at array.c:10
+**(gdb) info f 0**
+Stack frame at 0xbffff980:
+ eip = 0x8048418 in main (array.c:10); saved eip 0xb7e28605
+ source language c.
+ Arglist at 0xbffff978, args: 
+ Locals at 0xbffff978, Previous frame's sp is 0xbffff980
+ Saved registers:
+  ebp at 0xbffff978, eip at 0xbffff97c
+**(gdb) info locals** 
+ia = {1, 2, 3}
+cpa = {0x80484b0 "Tom", 0x80484b4 "John", 0x0}
+cpa2 = {0x80484b0 "Tom", 0x80484b4 "John", 0x0}
+__cpa3 = 0x80484b0__
+//可见ia, cpa, cpa2为数组名称，而cpa3为一指针变量，其值为0x80484b0。 

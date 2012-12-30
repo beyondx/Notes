@@ -1,0 +1,125 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-12-16T17:34:49+08:00
+
+====== ld-linux调试信息 ======
+Created Sunday 16 December 2012
+启用动态连接器调试信息输出的方法是定义变量LD_DEBUG=all
+
+**[geekard@geekard hello]$ cat hello.c** 
+#include <stdio.h>
+#include <stdlib.h>
+
+int glb_init = 1;
+int glb_uninit;
+
+int main(void)
+{
+  char *str = "Just a test string!";
+  printf("The test string is:\"%s\"\n", str);
+  printf("glb_init:%d, glb_uninit:%d\n", glb_init, glb_uninit);
+  pause();  **//暂停进程，这样可以查看其内存映射情况。**
+  exit(0);
+}
+[geekard@geekard hello]$ __strace -e trace=mmap2,mprotect,munmap,open,close -ELD_DEBUG=all ./hello &>log__
+^Z
+[1]+  Stopped                 strace -e trace=mmap2,mprotect,munmap,open,close -ELD_DEBUG=all ./hello &>log
+#上面的log文件中包含有strace的输出和hello的ld-linux.so的DEBUG信息。
+
+**#4727为hello的进程号，下面命令从log中提取ld-linux.so的DEBUG信息**
+**[geekard@geekard hello]$ cat log|grep 4727>log.ld  **
+
+#**下面命令从log中提取hello的系统调用信息**
+**[geekard@geekard hello]$ cat log |sed '/4727/d' >log.strace**
+ MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0xb77b8000
+
+**[geekard@geekard hello]$ readelf -l /lib/libc.so.6** 
+Elf file type is DYN (Shared object file)
+Entry point __0x19760__
+There are __10__ program headers, starting at offset 52
+
+Program Headers:
+  Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
+  PHDR           0x000034 0x00000034 0x00000034 0x00140 0x00140 R E 0x4
+  INTERP         0x16b7e8 0x0016b7e8 0x0016b7e8 0x00017 0x00017 R   0x1
+      [Requesting program interpreter: [[/usr/lib/ld-linux.so.2]]]
+#第一个LOAD为RE，其大小为1718236B(0x1a37dc)，需要4KB对齐，所以实际需要空间1720320B，这会传给mmap2函数。
+  **LOAD**           __0x000000__ 0x00000000 0x00000000 __0x1a37dc__ 0x1a37dc R E 0x1000 
+  **LOAD**           0x1a41dc 0x001a41dc 0x001a41dc 0x02ce0 __0x058e8__ RW  0x1000
+  DYNAMIC        __0x1a5d9c__ 0x001a5d9c 0x001a5d9c 0x000f8 0x000f8 RW  0x4
+  NOTE           0x000174 0x00000174 0x00000174 0x00044 0x00044 R   0x4
+  TLS            0x1a41dc 0x001a41dc 0x001a41dc 0x00008 0x00040 R   0x4
+  GNU_EH_FRAME   0x16b800 0x0016b800 0x0016b800 0x07454 0x07454 R   0x4
+  GNU_STACK      0x000000 0x00000000 0x00000000 0x00000 0x00000 RW  0x4
+  **GNU_RELRO**      0x1a41dc 0x001a41dc 0x001a41dc 0x01e24 0x01e24 R   0x1
+
+ Section to Segment mapping:
+  Segment Sections...
+   00     
+   01     .interp 
+   02     .note.gnu.build-id .note.ABI-tag .gnu.hash .dynsym .dynstr .gnu.version .gnu.version_d .gnu.version_r .rel.dyn .rel.plt .plt .text __libc_freeres_fn __libc_thread_freeres_fn .rodata .interp .eh_frame_hdr .eh_frame .gcc_except_table .hash 
+   03     .tdata .init_array __libc_subfreeres __libc_atexit __libc_thread_subfreeres .data.rel.ro .dynamic .got .got.plt .data .bss 
+   04     .dynamic 
+   05     .note.gnu.build-id .note.ABI-tag 
+   06     .tdata .tbss 
+   07     .eh_frame_hdr 
+   08     
+   09     .tdata .init_array __libc_subfreeres __libc_atexit __libc_thread_subfreeres .data.rel.ro .dynamic .got 
+可以看出libc.so.6中的__虚拟地址从0开始__。
+
+**[geekard@geekard hello]$ pmap $(pgrep hello) |nl  #查看hello进程的地址映射情况**
+     1  4727:   ./hello
+     2  08048000      4K r-x--  /home/geekard/Code/hello/hello
+     3  08049000      4K rw---  /home/geekard/Code/hello/hello
+     4  __b75eb000__      4K rw---    [ anon ]   //libc的保护区域
+//0xb75ec000为ld-linux.so映射libc到a.out进程地址空间时的__随机base地址(见后文log文件)__。
+     5  __b75ec000__   1680K r-x--  /usr/lib/libc-2.16.so
+     6  __b7790000__      8K r----  /usr/lib/libc-2.16.so
+     7  b7792000      4K rw---  /usr/lib/libc-2.16.so
+     8  __b7793000__     12K rw---    [ anon ]
+     9  b77b8000      **8K** rw---    [ anon ]  //包含有第一次调用mmap2()分配的匿名内存块。
+    10  b77ba000      4K r-x--    [ anon ]  //ld的保护区域
+    11  b77bb000    128K r-x--  /usr/lib/ld-2.16.so
+    12  b77db000      4K r----  /usr/lib/ld-2.16.so
+    13  b77dc000      4K rw---  /usr/lib/ld-2.16.so
+    14  __bff8b000__    132K rw---    [ stack ]
+    15   total     1996K
+
+**[geekard@geekard hello]$ cat log  //查看strace打印出的系统调用和ld-linux.so打印的DEBUG信息。**
+//匿名映射，mmap2的第一个参数为NULL，所以内核会随机地选择一个地址，这里为 **0xb77b9000。**
+//匿名映射的虚拟地址空间为**0xb77b9000～0xb77ba000。包含在pmap打印的第9行中。**
+mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|**MAP_ANONYMOUS**, -1, 0) = **0xb77b9000**
+open("/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
+//文件映射，内核随机选择一个起始地址，这里为**0xb7796000**
+mmap2(**NULL**, 139868, PROT_READ, MAP_PRIVATE, 3, 0) = **0xb7796000**
+      4727:
+      4727:     file=libc.so.6 [0];  needed by ./hello [0]
+      4727:     find library=libc.so.6 [0]; searching
+      4727:      search cache=/etc/ld.so.cache
+//关闭了ld.so.cache，所以**其映射的内存区域将删除**。
+close(3)                                = 0
+      4727:       trying file=/usr/lib/libc.so.6
+open("/usr/lib/libc.so.6", O_RDONLY|O_CLOEXEC) = 3
+//文件映射，内核随机选择一个起始地址，这里为 __0xb75ec000。这里映射的是第一个LOAD segment__
+mmap2(**NULL**, 1743556, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = __0xb75ec000__
+
+//这里映射的是第二个LOAD segment
+mmap2(**0xb7790000,** 12288, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, **0x1a4**) = 0xb7790000 
+
+mmap2(**0xb7793000**, 10948, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|**MAP_ANONYMOUS**, -1, 0) = 0xb7793000
+close(3)                                = 0
+      4727:
+      4727:     file=libc.so.6 [0];  generating link map
+
+      4727:       dynamic: __0xb7791d9c__  base: __0xb75ec000__   size: 0x001a9ac4
+      4727:         entry: 0xb7605760  phdr: 0xb75ec034  phnum:         10
+      4727:
+      4727:     checking for version `GLIBC_2.0' in file /usr/lib/libc.so.6 [0] required by file ./hello [0]
+      4727:     checking for version `GLIBC_2.3' in file /lib/ld-linux.so.2 [0] required by file /usr/lib/libc.so.6 [0]
+      4727:     checking for version `GLIBC_PRIVATE' in file /lib/ld-linux.so.2 [0] required by file /usr/lib/libc.so.6 [0]
+      4727:     checking for version `GLIBC_2.1' in file /lib/ld-linux.so.2 [0] required by file /usr/lib/libc.so.6 [0]
+mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = **0xb75eb000**
+mprotect(0xb7790000, 8192, PROT_READ)   = 0
+mprotect(0xb77db000, 4096, PROT_READ)   = 0
+munmap(0xb7796000, 139868)              = 0
+mmap2(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = **0xb77b8000**

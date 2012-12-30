@@ -1,0 +1,38 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-12-23T16:02:09+08:00
+
+====== Introduction to PIC ======
+Created Sunday 23 December 2012
+http://www.gentoo.org/proj/en/hardened/pic-guide.xml
+
+PIC code radically differs from conventional code in the way it calls functions and operates on data variables.
+It will access these functions and data __through an indirection table__, the "Global Offset Table" (GOT), by software convention accessible using the reserved name "**_GLOBAL_OFFSET_TABLE_**".
+
+The exact mechanism used for this is hardware architecture dependent, but usually __a special machine register__ is reserved for setting up the location of the GOT when entering a function.
+
+The rationale behind this indirect addressing is to generate code that can be __independently accessed__ of the actual load address.  例如共享库的目标代码在内存中只加载一次，但是可以映射到多个进程中。
+
+In a true PIC library **without** relocations in the __text segment__, only the symbols exported in the __"Global Offset Table"__ need updating at run-time depending on the current load address of the various shared libraries in the address space of the running process. 使用PIC技术的共享库，在动态链接(映射)到某个进程的地址空间中时，其text section不需要重定位(更改)，只需要对
+GOT表中的符号进行重定位即可。而GOT位于.data section中。
+
+Likewise, procedure calls to globally defined functions are redirected through the __"Procedure Linkage Table" (PLT)__ residing in the data segment of the core image. Again, this is done to avoid run-time modifications to the text segment.
+其实PLT位于.text section之中，是只读和可执行的，它会使用GOT中的函数符号条目。
+
+The __linker-editor__ allocates the Global Offset Table and Procedure Linkage Table when combining PIC object files into an image suitable for mapping into the process address space. It also collects all symbols that may be needed by the run-time link-editor and stores these along with the image's text and data bits. Another reserved symbol, **_DYNAMIC** is used to indicate the presence of the run-time linker structures. Whenever _DYNAMIC is relocated to 0, there is no need to invoke the run-time link- editor. If this symbol is non-zero, it points at a data structure from which the location of the necessary relocation- and symbol information can be derived. This is most notably used by the start-up module, **crt0, crt1S** and more recently **Scrt1**. The _DYNAMIC structure is conventionally located at the start of the data segment of the image to which it pertains.
+
+On most architectures, when you compile source code to object code, you __need to specify__ whether the object code should be position independent or not. There are occasional architectures which don't make the distinction, usually because all object code is position independent by virtue of the __Application Binary Interface (ABI),__ or less often because the load address of the object is fixed at compile time, which implies that shared libraries are not supported by such a platform. If an object is compiled as position independent code (PIC), then the operating system can load the object __at any address__ in preparation for execution. This involves a time overhead, in replacing direct address references with relative addresses at compile time, and a space overhead, in maintaining information to help the runtime loader fill in the unresolved addresses at runtime.
+
+Consequently, PIC objects are usually slightly larger and slower at runtime than the equivalent non-PIC object. The advantage of sharing library code on disk and in memory outweigh these problems as soon as the PIC object code in shared libraries is reused.
+
+PIC compilation is exactly what is required for objects which will become __part of__ a shared library. Consequently, __libtool__ builds PIC objects for use in shared libraries and non-PIC objects for use in static libraries. Whenever libtool instructs the compiler to generate a PIC object, it also defines the preprocessor symbol, `PIC', so that assembly code can be aware of whether it will reside in a PIC object or not.
+
+Typically, as libtool is compiling sources, it will generate a `.lo' object, as PIC, and a `.o' object, as non-PIC, and then it will use the appropriate one of the pair when linking executables and libraries of various sorts. On architectures where there is no distinction, the `.lo' file is just a soft link to the `.o' file.
+
+In practice, you can link PIC objects into a static archive for a small overhead in execution and load speed, and often you can similarly link non-PIC objects into shared archives.
+
+When you use position-independent code, relocatable references are generated as an indirection that use data in the shared object's data segment. The text segment code remains read-only, and all relocation updates are applied to corresponding entries within the data segment.
+
+If a shared object is built from code that is not position-independent, the text segment will usually require a large number of relocations to be performed at runtime. Although the runtime linker is equipped to handle this, the system overhead this creates can cause serious performance degradation.
+
+You can identify a shared object that requires relocations against its text segment using tools such as 'readelf -d foo' and inspect the output for any TEXTREL entry. The value of the TEXTREL entry is irrelevant. Its presence in a shared object indicates that text relocations exist.

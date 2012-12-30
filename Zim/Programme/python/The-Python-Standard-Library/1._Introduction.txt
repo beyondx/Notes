@@ -1,0 +1,22 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-12-02T16:34:03+08:00
+
+====== 1. Introduction ======
+Created Sunday 02 December 2012
+
+===== 1. Introduction =====
+The “Python library” contains several different kinds of components.
+
+It contains __data types__ that would normally be considered part of the “core” of a language, such as **numbers and lists**. For these types, the Python language core defines the form of **literals** and places some constraints on their semantics, but does **not fully define** the semantics. (On the other hand, the language core does define syntactic properties like the spelling and priorities of operators.)
+
+The library also contains __built-in functions and exceptions__ — objects that can be used by all Python code //without the need of an import statement//. Some of these are defined by the core language, but many are not essential for the core semantics and are only described here.
+
+The bulk of the __library__, however, consists of a collection of modules. There are many ways to dissect this collection. Some modules are written in C and __built in__** to the Python interpreter**; others are written in Python and imported in source form. 
+
+Some modules provide interfaces that are highly specific to Python, like printing a stack trace; some provide interfaces that are specific to particular operating systems, such as access to specific hardware; others provide interfaces that are specific to a particular application domain, like the World Wide Web. Some modules are available in all versions and ports of Python; others are only available when the underlying system supports or requires them; yet others are available only when a particular configuration option was chosen at the time when Python was compiled and installed.
+
+This manual is organized **“from the inside out:”** it first describes the built-in data types, then the built-in functions and exceptions, and finally the modules, grouped in chapters of related modules. The ordering of the chapters as well as the ordering of the modules within each chapter is roughly from most relevant to least important.
+
+
+Let the show begin!

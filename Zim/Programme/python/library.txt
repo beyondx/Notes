@@ -1,7 +1,0 @@
-Content-Type: text/x-zim-wiki
-Wiki-Format: zim 0.4
-Creation-Date: 2012-01-05T15:16:40+08:00
-
-====== library ======
-Created Thursday 05 January 2012
-

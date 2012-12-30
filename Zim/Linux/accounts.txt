@@ -1,0 +1,11 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2011-12-02T14:03:59+08:00
+
+====== accounts ======
+Created Friday 02 December 2011
+
+kb310小熊
+ip: 192.168.1.113
+port: 222
+username: geekard

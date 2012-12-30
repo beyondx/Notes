@@ -13,7 +13,7 @@ class dict(object)
  |      (key, value) pairs
  |  dict(iterable) -> new dictionary initialized as if via:
  |      d = {}
- |      for **k, v** in iterable:    #迭代器对象每次返回的元素必须是一个容器类型，__容器中元素的个数为2__.**如[a,b], "ab",(a,b)**
+ |      for **k, v** in iterable:    #迭代器对象每次返回的元素必须是一个容器类型，__容器中元素的个数为2__.**如[a,b], **~~"ab"~~**,(a,b)**
  |          d[k] = v
  |  dict(__**kwargs)__ -> new dictionary initialized with the name=value pairs
  |      in the keyword argument list.  For example:  dict(one=1, two=2)

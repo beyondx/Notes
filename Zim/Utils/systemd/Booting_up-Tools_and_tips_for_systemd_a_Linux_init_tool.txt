@@ -1,0 +1,167 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-11-20T20:10:35+08:00
+
+====== Booting up-Tools and tips for systemd a Linux init tool ======
+Created Tuesday 20 November 2012
+http://www.h-online.com/open/features/Booting-up-Tools-and-tips-for-systemd-1570630.html
+
+ 15 May 2012, 10:00
+
+Booting up: Tools and tips for systemd, a Linux init tool
+by Lennart Poettering, Kay Sievers, Thorsten Leemhuis
+
+These days, Fedora, openSUSE, Mandriva and a few other distributions use the **systemd init tool** for system starts. It includes its own tools for configuration and diagnosis, and the tricks it needs when the system doesn't start are different from sysvinit's.
+
+The following article about systemd was first published in the German magazine c't 13/11 and has been updated in various places before appearing in The H Open. An article from the same issue of c't on systemd's ideas, approach and functionality was also recently published on The H Open.
+
+The systemd init tool, just over two years old, is already the default in some distributions; a few more include it as an alternative to **upstart** and the outdated **sysvinit**. Thanks to __compatibility features__, some of the commands and tricks familiar from distributions with sysvinit and upstart work with systemd too. To really take advantage of the much newer init system's capabilities, however, administrators should get to know systemd's tools and parameters as well.
+
+The main tool for interacting with systemd is **systemctl**, a command-line program. The tool requires root privileges to make changes to the configuration or to restart background services, but even non-root users can use some diagnostic requests. If you launch the program without any parameters, you will see a list of the "units" that execute tasks when the system is started, including mounting and checking disks, starting background services and configuring hardware.
+
+For a standard Fedora 15 installation, systemctl lists around 160 active units, divided into ten types. __Service units__ are one of the most important types of units as they take care of background services, which a sysvinit distribution typically starts using init scripts. __Mount and automount units__ mount filesystems. __Socket units__ create sockets and, as soon as a socket is accessed, indirectly start another unit using dependencies. You can use a parameter to tell systemctl to only list certain types of unit, for example all service units:
+
+		**systemctl --type=service**
+
+Systemctl automatically forwards its task to less; you can use the arrow keys to scroll not just up and down but also to the right, since more information is occasionally "hidden" there.
+
+To boot a system, systemd uses units, which are divided into types that systemctl can list separately. The first column in the list tells you the name of the unit; the second column, whether systemd was able to **load the unit definition**. The third column says whether the unit is active. If you include the -a parameter, the program only displays **inactive units** – that is, units that are installed but not used during boot-up; the same applies to unit files that the init system wasn't able to load, most likely because of an error in the unit file.
+
+The fourth column gives the current status: "exited" means that the process **completed without any errors**. This is the case for, say, services that don't continue in the background after they've been launched – for example, the service unit that, for compatibility reasons, executes the /etc/rc.d/rc.local file, familiar from sysvinit, at system start. "Running" is for services that are running in the background, such as cron, dbus, sshd and udev.
+
+The sixth column describes the unit. Units labelled "LSB" or "SYSV" have been automatically created by systemd to take care of traditional init scripts.
+
+Services that could not be started or that crashed later are marked as "failed" in the fifth column, in red, if the console can display colours. You can find out when the crash happened and which error code the program provided when it ended using commands such as:
+
+		systemctl status ntpd.service
+
+Systemctl's status command provides a time and error code for crashed services Zoom For a newly installed Fedora 15, systemctl lists about 60 service units, including the login processes for the text consoles (agetty), since – unlike sysvinit – systemd uses service units to manage these like a normal background service.
+
+Next: Unit files and targets 
+
+===== Working with units =====
+
+The system configuration files for creating units are in **/lib/systemd/system/**, but a file with the same name in **/etc/systemd/system** will take priority.
+
+Unit definitions are usually much shorter than the classic sysvinit scripts. For example, a unit file for the service for synchronising network time via NTP is just a few lines long:
+
+[Unit]
+Description=Network Time Service
+
+[Service]
+ExecStart=/usr/bin/ntpd -n -u ntp:ntp -g
+
+[Install]
+WantedBy=multi-user.target
+
+All unit files include a section, starting with __[Unit]__, with general settings and a short description. The __[Service]__ section has service-specific tasks – for NTP, just the command-line to launch the service. If a specific command is required to end the program, you can set it using **ExecStop=**. This step is unnecessary for the NTP daemon, since, following Unix tradition, it can be ended with a simple "SIGTERM" signal, which tells systemd to end if no other command has been specified.
+
+The **[Install]** section contains instructions for systemd to interpret during (de-)installation; the entry in the NTP example means that the time should be synchronised when the "Multi-User" target is activated.
+
+===== Targets =====
+**The concept of "targets" units is similar to that of sysvinit's runlevels;** indeed, for compatibility, systemd even understands runlevel names for equivalent targets. In Fedora 15, you can therefore enter the familiar single as a parameter in the kernel's boot-loader; systemd then activates **rescue.target**, which provides a minimal interface comparable to single-user mode.
+
+Along the same lines, 3 can be used to activate a multi-user mode – that is, to fully start the system without using the graphical login interface. In systemd, this mode is represented by the **multi-user.target uni**t, which can be set as the standard with this link:
+
+ln -sf /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
+
+If, at a later point, you do want the graphical login interface to be a standard part of boot-up, you can set **graphical.target** as the standard target in the same way; this is the equivalent of runlevel 5 in older versions of Fedora and openSUSE. As an alternative to the old runlevels, you can also give the kernel the names of the target units to be started:
+
+	__systemd.unit=multi-user.target__
+
+**To activate a different target unit during operation**, you can use systemctl's isolate command, which requires root privileges:
+
+systemctl isolate rescue.target
+
+The change to the rescue target is interesting for administration tasks, since systemd now ends all user logins and background services so that only system services run, such as the one monitoring logical volumes (lvm2-monitor). Sometimes, even these services need to be ended for rebuilds; you can then use **emergency.target** to go to emergency mode, where only the process for the input prompt runs, along with the kernel threads.
+
+===== Wants and needs =====
+Systemctl's show command delivers some internal information on running units and the tasks they execute, as well as information about which units systemd calls on to enable the multi-user target:
+
+	**systemctl show -p Wants multi-user.target**
+
+Other targets can also be in the output, such as **basic.target** in multi-user.target. In turn, the former depends on **sysinit.target**, which requires **local-fs.target**. These three targets take care of the system's basic configuration, including mounting filesystems and starting udev. To specify dependency on the basic target, the unit configuration file multi-user.target contains the following statements:
+
+Requires=basic.target
+After=basic.target
+
+With After in addition to Requires, systemd knows that it must __not only enable the target but also wait for that target__ to completely start.
+
+__Wants is a weaker alternative to Requires__. Systemd enables these units as well, but continues starting the system even if one of them doesn't start. This kind of dependency can also be specified with links to unit files in directories consisting of the unit file's path and name and a .wants in order to determine which units are retrieved when a target is accessed.__(也就是说，这种依赖关系可以通过在unit name +.wants目录中建立被依赖unit的link方式创建。)__ You can use ls or systemctl's show command:
+
+ls /*/systemd/system/multi-user.target.wants/
+systemctl show -p Wants multi-user.target
+
+===== Shutting down =====
+
+If you want to deactivate the NTPD service unit so the system time is not synchronised via NTP upon boot-up, you can use the following style of command:
+
+	systemctl disable ntpd.service
+
+Here, systemctl is simply removing the link to the service unit file **in the Wants directories**; it creates a link when a service is activated with **enable**. Both steps can also be done manually in order to (de)activate units without using systemctl.
+
+__也就是说，systemctl disable ntpd.service会将该unit file 的链接从/etc/systemd/system/multi-user.targets.wants目录中删除。__
+__systemctl enable ntpd.service会将该unit file的链接建立在上面的目录中。__
+
+If a service is started by a traditional init script rather than a unit, __systemctl forwards the activation request to the chkconfig program__. With Fedora 15, for example, this can occur when you install Apache and activate it using systemctl. In turn, chkconfig can also delegate tasks to systemctl in Fedora 15 – but only some, so you're better off not using it at all or only with caution.
+
+The (de)activation of a service takes effect the next time it is started or when the system is shut down; the following command starts a service immediately:
+
+	systemctl start ntpd.service
+
+For sysvinit distributions, the equivalent to this command is **service ntpd start**. A systemctl command with the **stop** parameter instead of start ends the service. With the **status** command, systemctl delivers information about the unit, including its current status and the name of the file that specifies it. The program also says whether the service is currently running and, if so, for how long it has been running as well as which processes belong to it, with the main process explicitly displayed.
+
+Group affiliation can be used to determine which service a process belongs to. It is quite easy to find out which service started which processes by looking at the control groups created by systemd. The command __systemd-cgls__ displays the cgroup hierarchy created by systemd; alternatively, ps shows group affiliation:
+
+ps xaw -eo pid,args,cgroup
+
+Next: Fixing problems 
+
+===== Stopped at the starting line =====
+
+If there are problems during boot-up that systemd seems to be directly or indirectly involved in, start the kernel with the following parameters:
+
+	**systemd.log_target=kmsg systemd.log_level=debug**
+
+Systemd recognises the parameters and provides extensive troubleshooting information on the console. At the same time, the information is saved for later analysis in the kernel notification buffer created by dmesg.
+
+The "systemd-cgls" tool can display the control groups and the processes belonging to them.
+
+The command line programs __poweroff, halt and reboot are part of systemd,__ but the system can also be shut down or restarted using systemctl commands, which are the same. The system can also be restarted this way:
+
+	systemctl kexec
+
+After all services have been stopped, systemd tells the running kernel to directly start a previously configured Linux kernel, which allows for fast restarts, since it bypasses BIOS and boot-loader. If no kexec kernel is configured, systemd executes a normal restart.
+
+===== Deep down =====
+For standard administration tasks, you will usually only come into contact with **service and target units**; the others are primarily important for deeper systemd functions or, during boot-up, take care of everything that __distribution-specific scripts__ took care of in sysvinit and upstart distributions. These tasks include mounting the filesystems specified in /etc/fstab, activating the swap space and occasionally cleaning up directories for temporary files.
+
+For some of these tasks, systemd has an **automount** function that can create pseudo mount points for filesystems configured in /etc/fstab; they are not really mounted until they are first accessed. Adding **comment=systemd.automount** in /etc/fstab changes any mount point into an automount point, which can speed up the boot-up process and be interesting for access to network shares, since the WLAN connection is not created until the user uses NetworkManager.
+
+===== Looking for answers =====
+Systemctl can be used to tell systemd to **send a signal without knowing the service's process ID**. For example, the following command puts rsyslogd in debug mode, which is ended when you enter the command a second time.
+
+**systemctl kill** --signal=USR1 rsyslogd.service
+
+If you don't specify which signal to send, systemctl sends a normal term signal, which ends all processes belonging to a service.
+
+Systemd includes a program that __visualises the boot processes__; the dark red areas signal services' start phases .The command systemd-analyze tells you how long the system took to boot and how much of that time was due to the kernel, initramfs and the systemd-controlled configuring of the userland. If you want to look more closely into the latter factor, use **systemd-analyze blame** to get individual units' start times. For more detailed information on the boot process, the program can create an SVG file that visualises the units' starts:
+
+__systemd-analyze plot > plot.svg__
+
+Sometimes, this can be used to track down units that excessively prolong boot-up. The seventh part of the "Systemd for Administrators" blog series has a few tips on correctly interpreting these results. The series, with twelve sections at the moment, also includes many other tips and notes on using systemd:
+
+* Verifying Bootup
+* Which Service Owns Which Processes?
+* How Do I Convert A SysV Init Script Into A systemd Service File?
+* Killing Services
+* The Three Levels of "Off"
+* Changing Roots
+* The Blame Game
+* The New Configuration Files
+* On /etc/sysconfig and /etc/default
+* Instantiated Services
+* Converting inetd Services
+* Securing Your Services
+
+Lennart Poettering's homepage also has many other articles with more background information on the init system. In addition, Poettering recently listed some of the changes made to systemd in the last year and a half in his third "Systemd Status Update".
