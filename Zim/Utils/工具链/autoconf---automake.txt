@@ -24,7 +24,6 @@ http://www.ibm.com/developerworks/cn/linux/l-makefile/
 
 
 假设src是我们源文件目录，include目录存放其他库的头文件，lib目录存放用到的库文件，然后开始按模块存放，每个模块都有一个对应的目录，模块下再分子模块，如apple、orange。每个子目录下又分core，include，shell三个目录，其中core和shell目录存放.c文件，include的存放.h文件，其他类似。
-样例程序功能：基于多线程的数据读写保护（联系作者获取整个autoconf和automake生成的Makefile工程和源码，E-mail：normalnotebook@126.com）。
 
 ===== 工具简介 =====
 
@@ -53,10 +52,10 @@ flat类型是最简单的，deep类型是最复杂的。不难看出，我们的
 
 首先进入 project 目录，在该目录下运行一系列命令，创建和修改几个文件，就可以生成符合**该平台**的Makefile文件，操作过程如下：
 1) 运行autoscan命令
-2) 将configure.scan 文件重命名为configure.in，并修改configure.in文件
+2) 将configure.scan 文件重命名为configure.in(新版本的autoscan使用的是.__ac__扩展名)，并修改configure.in(或.ac)文件
 3) 在**project目录**下新建Makefile.am文件，并在**core和shell**目录下也新建makefile.am文件
 4) 在project目录下新建NEWS、 README、 ChangeLog 、AUTHORS文件
-5) 将/usr/share/automake-1.X/目录下的depcomp和complie文件拷贝到本目录下
+5) 将/usr/share/automake-1.X/目录下的**depcomp**和**complie**文件拷贝到本目录下。depcomp脚本用于automake自动解决依赖关系（其实是通过调用GCC来编译程序，然后将结果反馈给automake，用于产生依赖。）。
 6) 运行aclocal命令
 7) 运行autoconf命令
 8) 运行automake -a命令
@@ -64,19 +63,20 @@ flat类型是最简单的，deep类型是最复杂的。不难看出，我们的
 
 可以通过图2看出产生Makefile的流程，如图所示：
 
-图 2生成Makefile流程图
+
 {{./2.gif}}
+图 2生成Makefile流程图
 
 
 ===== Configure.in的八股文(整个工程只需一个该文件) =====
 
-当我们利用autoscan工具生成confiugre.scan文件时，我们需要将confiugre.scan重命名为confiugre.in文件。confiugre.in调用__一系列autoconf宏__来测试程序需要的或用到的__特性__是否存在以及这些特性的功能。
+当我们利用autoscan工具生成confiugre.scan文件时，我们需要将confiugre.scan重命名为confiugre.in(或.ac)文件。confiugre.in调用__一系列autoconf宏__来测试程序需要的或用到的__特性__是否存在以及这些特性的功能。
 
 下面我们就来目睹一下confiugre.scan的庐山真面目：
 
 # Process this file with autoconf to produce a **configure script**.
 AC_PREREQ(2.59)
-**AC_INIT**(FULL-PACKAGE-NAME, VERSION, BUG-REPORT-ADDRESS)
+**AC_INIT**(FULL-PACKAGE-N AME, VERSION, BUG-REPORT-ADDRESS)
 AC_CONFIG_SRCDIR([config.h.in])
 **AC_CONFIG_HEADER**([config.h])
 # Checks for programs.
@@ -88,7 +88,8 @@ AC_CHECK_LIB([pthread], [main])   #main为在库pthread中检查的函数名。
 # Checks for typedefs, structures, and compiler characteristics.
 # Checks for library functions.
 **AC_OUTPUT**
-#上述所有的[]中的内容需要自定义。
+#上述所有的[ ]中的内容需要自定义。
+autoconf和automake 一般__不向后兼容__，例如autoconfig v1.9的configure.ac文件不一定适用于autoconfig v2.2
 
 每个configure.scan文件都是以AC_INIT开头，以AC_OUTPUT结束。我们不难从文件中看出confiugre.in文件的一般布局：
 
@@ -110,7 +111,6 @@ AC_OUTPUT
 $mv configure.scan configure.in
 $vim configure.in
 
-
 修改后的结果如下：
 
 		
@@ -119,16 +119,18 @@ $vim configure.in
 
 AC_PREREQ(2.59)
 AC_INIT(test, 1.0, normalnotebook@126.com)
-**AM_INIT_AUTOMAKE**(test,1.0)
+**AM_INIT_AUTOMAKE**(test,1.0)  //如果生成makefile，则该宏是必须的。
 AC_CONFIG_**SRCDIR**([src/ModuleA/apple/core/test.c])
 AM_CONFIG_HEADER(config.h)
 
 # Checks for programs.
 AC_PROG_CC
+AC_PROG___RANLIB__
+
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-lpthread':
 AC_CHECK_LIB([pthread], [**pthread_rwlock_init**])  #库中的函数名称
-AC_PROG___RANLIB__
+
 # Checks for header files.
 # Checks for typedefs, structures, and compiler characteristics.
 # Checks for library functions.
@@ -137,15 +139,13 @@ AC_PROG___RANLIB__
 		src/ModuleA/apple/core/Makefile
 		src/ModuleA/apple/shell/Makefile
 		])  #列出项目中所有需要被configure脚本替换的makefile.in的位置。
-		
+
 注意：在新版本的autoconf工具中，AC_OUTPUT(files...)的用法已经过时了，推荐的用法是
 [Macro] AC_OUTPUT ([file]. . . , [extra-cmds], [init-cmds])
-The use of AC_OUTPUT with arguments is deprecated. This obsoleted interface is
-equivalent to:
-__AC_CONFIG_FILES(file...)__
-AC_CONFIG_COMMANDS([default],
-extra-cmds, init-cmds)
-AC_OUTPUT
+The use of AC_OUTPUT with arguments is deprecated. This obsoleted interface is equivalent to:
+	__AC_CONFIG_FILES(file...)__
+	AC_CONFIG_COMMANDS([default], extra-cmds, init-cmds)
+	AC_OUTPUT  //用于指示生成config.status，由它负责替换(生成)AC_CONFIG_FILES中指定的文件。
 
 其中要将AC_CONFIG_HEADER([config.h])修改为：AM_CONFIG_HEADER(**config.h**), 并加入AM_INIT_AUTOMAKE(test,1.0)。由于我们的测试程序是基于多线程的程序，所以要加入AC_PROG_RANLIB，不然运行automake命令时会出错。在AC_OUTPUT输入要创建的Makefile文件名。
 
@@ -157,56 +157,49 @@ AC_OUTPUT
 
 Autoconf提供了很多__内置宏来做相关的检测__，限于篇幅关系，我们在这里对其他宏不做详细的解释，具体请参看参考文献1和参考文献2，也可参看autoconf信息页。
 
+autconf工具生成的configure脚本，会检查系统的特性，然后将结果反馈到makefile中，这是通过替换makefile.am中的相关变量值达到的。
 
 ===== 实战Makefile.am =====
-
 Makefile.am是一种**比Makefile更高层次的规则，其内容是一些变量定义，采用的是makefile的语法格式，所起其中也可以包含makefile指令**。只需指定要__生成什么__目标，它由__哪些源文件__生成，要__安装到__什么目录等构成。
 
-表一列出了可执行文件、静态库、头文件和数据文件，四种书写Makefile.am文件个一般格式。
+表一 列出了可执行文件、静态库、头文件和数据文件，四种书写Makefile.am文件个一般格式:
 
-表 1Makefile.am一般格式
 {{./4.gif}}
+表 1Makefile.am一般格式
+注意：上面的include_FEADERS中的include是可变部分(见后文示例)，会被安装到系统的头文件目录中。
 
 对于可执行文件和静态库类型，如果只想编译，不想安装到系统中，可以用**noinst_PROGRAMS**代替bin_PROGRAMS，**noinst_LIBRARIES**代替lib_LIBRARIES。
 
 Makefile.am还提供了一些**全局变量**供所有的目标体使用：
-
-表 2 Makefile.am中可用的全局变量
 {{./5.gif}}
+表 2 Makefile.am中可用的全局变量
 
 在Makefile.am中__尽量使用相对路径__，系统预定义了两个基本路径：
-
-表 3Makefile.am中可用的路径变量
 {{./6.gif}}
+表 3Makefile.am中可用的路径变量
 
 在上文中我们提到过安装路径，automake设置了默认的安装路径：
 
 1) 标准安装路径
-
 默认安装路径为：$(prefix) = /usr/local，可以通过./configure **--prefix**=<new_path>的方法来覆盖。
 其它的预定义目录还包括：bindir = $(prefix)/bin, libdir = $(prefix)/lib, **datadir** = $(prefix)/share, **sysconfdir** = $(prefix)/etc等等。
 
 2) 定义一个新的安装路径
-
 比如test, 可定义testdir = $(prefix)/test, 然后test_DATA =test1 test2，则test1，test2会作为数据文件安装到$(prefix)/test目录下。
 
 我们首先需要在工程//顶层目录//下（即project/）创建一个Makefile.am来指明包含的子目录：
 
-__SUBDIRS__=src/lib src/ModuleA/apple/shell  src/ModuleA/apple/core 
+__SUBDIRS__=src/lib src/ModuleA/apple/shell src/ModuleA/apple/core 
 **CURRENTPATH**=$(shell /bin/pwd)   #makefile.am采用的是makefile语法
 **INCLUDES=**-I$(CURRENTPATH)/src/include -I$(CURRENTPATH)/src/ModuleA/apple/include 
 **export **INCLUDES
 
-SUBDIRS指出了子目录中包含makefile.am。
-
-由于每个源文件都会用到相同的头文件，所以我们在最顶层的Makefile.am中包含了编译源文件时所用到的头文件，并导出，见蓝色部分代码。
+SUBDIRS指出了子目录中包含makefile.am。由于每个源文件都会用到相同的头文件，所以我们在最顶层的Makefile.am中包含了编译源文件时所用到的头文件，并导出.
 
 我们将lib目录下的swap.c文件编译成libswap.a文件，被apple/shell/apple.c文件调用，那么lib目录下的Makefile.am如下所示：
-
 **noinst**_LIBRARIES=__libswap.a__
 libswap_a_SOURCES=swap.c
 INCLUDES=__-I$(top_srcdir)__/src/includ
-
 
 细心的读者可能就会问：怎么表1中给出的是bin_LIBRARIES，而这里是noinst_LIBRARIES？这是因为如果只想编译，而不想安装到系统中，就用noinst_LIBRARIES代替bin_LIBRARIES，对于可执行文件就用noinst_PROGRAMS代替bin_PROGRAMS。对于安装的情况，库将会安装到$(prefix)/lib目录下，可执行文件将会安装到${prefix}/bin。如果想安装该库，则Makefile.am示例如下：
 
@@ -218,7 +211,7 @@ INCLUDES=-I$(top_srcdir)/src/include
 
 最后两行的意思是将swap.h安装到${prefix}/include /swap目录下。
 
-接下来，对于**可执行文件类型**的情况，我们将讨论如何写Makefile.am？对于编译apple/core目录下的文件，我们写成的Makefile.am如下所示：
+接下来，对于**可执行文件类型**的情况，我们将讨论如何写Makefile.am。对于编译apple/core目录下的文件，我们写成的Makefile.am如下所示：
 
 noinst_PROGRAMS=test
 test_SOURCES=test.c 
@@ -229,14 +222,13 @@ DEFS+=-D_GNU_SOURCE
 
 DEFS变量继承自autoconf，其内容会传给编译器，作为编译标志。
 
-由于我们的test.c文件在**链接时**，需要apple.o和libswap.a文件，所以我们需要在test_LDADD中包含这两个文件。对于Linux下的信号量/读写锁文件进行编译，需要在编译选项中指明-D_GNU_SOURCE，所以在test_LDFLAGS中指明。而test_LDFLAGS只是链接时的选项，**编译时同样需要指明该选项**，所以需要__DEFS来指明编译选项__，由于DEFS**已经有初始值**，所以这里用+=的形式指明。从这里可以看出，Makefile.am中的语法与Makefile的语法一致，也可以采用条件表达式。如果你的程序还包含其他的库，除了用AC_CHECK_LIB宏来指明外，还可以用LIBS来指明。
+由于我们的test.c文件在**链接时**，需要apple.o和libswap.a文件，所以我们需要在test_LDADD中包含这两个文件。对于Linux下的信号量/读写锁文件进行编译，需要在编译选项中指明-D_GNU_SOURCE，所以在test_LDFLAGS中指明。而test_LDFLAGS只是链接时的选项，**编译时同样需要指明该选项**，所以需要__DEFS来指明编译选项__，由于DEFS**已经有初始值**，所以这里用__+=__的形式指明。从这里可以看出，Makefile.am中的语法与Makefile的语法一致，也可以采用条件表达式。如果你的程序还包含其他的库，除了用AC_CHECK_LIB宏来指明外，还可以用LIBS来指明。
 
 如果你只想编译某一个文件，那么Makefile.am如何写呢？这个文件也很简单，写法跟可执行文件的差不多，如下例所示：
 
 noinst_PROGRAMS=apple
 apple_SOURCES=apple.c
 DEFS+=-D_GNU_SOURCE
-
 
 我们这里只是欺骗automake，假装要生成apple文件，让它为我们**生成依赖关系和执行命令**。所以当你运行完automake命令后，然后修改apple/shell/下的**Makefile.in**文件，直接将LINK语句删除，即：
 
@@ -245,8 +237,6 @@ clean-noinstPROGRAMS:
 	-test -z "$(noinst_PROGRAMS)" || rm -f $(noinst_PROGRAMS)
 apple$(EXEEXT): $(apple_OBJECTS) $(apple_DEPENDENCIES) 
 	@rm -f apple$(EXEEXT)
-#$(LINK) $(apple_LDFLAGS) $(apple_OBJECTS) $(apple_LDADD) $(LIBS)
-…….
-
+#$(LINK) $(apple_LDFLAGS) $(apple_OBJECTS) $(apple_LDADD) __$(LIBS)__
 
 通过上述处理，就可以达到我们的目的。从图1中不难看出为什么要修改Makefile.in的原因，而不是修改其他的文件。

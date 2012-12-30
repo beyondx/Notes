@@ -7,35 +7,33 @@ Created Thursday 14 June 2012
 http://lyanry.itpub.net/
 
 **Autoconf是什么？**
-
 一 位物理学家、一位工程师和一位计算机科学家，三个人在讨论上帝是个什么样的人。物理学家说：“它老人家肯定是物理学家，因为在创世之初，上帝制造了光；你 们是知道的，麦克斯韦方程，电磁波的波粒二相性，相对论……“。工程师不干了：“它老人家肯定是一位工程师，因为在创造光之前，它把混沌分成了陆地和水； 开展了一项浩大的工程来处理泥浆，并从液体中分离出固体……“这时，只听得计算机科学家大吼：“呔！你所谓的‘混沌’是从哪里来的呢，呀？”
 
 实际上，如果你从事__跨平台软件开发__工作，你就会发现不同系统之间存在众多微妙或巨大的差异，这使得程序顺利地通过编译困难重重，因为不同的系统仅接受适合自身的程序代码。而要向不同的系统提供相应的程序代码，是很难实现的事情，因此__POSIX出现__了，它好像一个理想中的系统，__程序员们为该系统编程__，然后使用 一个工具伪装为履行POSIX标准的用户机器，这样就能保证最终的源代码可以在不同平台（符合POSIX标准的）上编译。这个工具就是Autoconf （即本文开头那个计算机科学家所谓的‘混沌’）。
 
 Autoconf 的任务就是帮助软件开发人员研究用户所用的系统，分析其是否符合POSIX标准，并提供相应解决方法。显然，要检测用户的机器，就需要运行一个检查器。因 为这个检查器的任务是去发现系统缺陷的，所以它必须具备绝对的跨平台运行能力。Bourne shell是最合适的一种语言，可以__用它来写configure作为检查器__。不过，Bourne shell不具备函数编程功能，用它来写较为复杂的检查器，就像用汇编语言编程一样困难。这样，类似于高级语言及其编译器被发明出来取代汇编语言那样， David J.MacKenzie发明了Autoconf语言及autoconf程序来替代普通的用Bourne shell写的检查器程序了。
 
-**Autoconf初步(1)**
+**autoconf软件包安装的工具**
+	autoconf, autoheader, autom4te, autoreconf, autoscan, autoupdate 和 ifnames
 
-__Autoconf 仅仅是一个基于M4开发的库，提供了一套宏语言，用于检测库、程序等是否存在__。因为M4过于低等且Autoconf目的在于生成Bourne shell脚本，因此其高于M4。将Autoconf代码扩展为Bourne shell脚本很简单，可以使用“autom4te --language=autoconf“，也可以直接使用”autoconf“命令。autom4te和autoconf来自于[[../autoconf软件包.txt|autoconf软件包]]。
+**Autoconf初步(1)**
+__Autoconf 仅仅是一个基于M4开发的库，提供了一套宏语言，用于检测库、程序等是否存在__。因为M4过于低等且Autoconf目的在于生成Bourne shell脚本，因此其高于M4。
+
+将Autoconf代码扩展为Bourne shell脚本很简单，可以使用“autom4te --language=autoconf“，也可以直接使用”autoconf“命令。autom4te和autoconf来自于autoconf软件包。
 
 所有Autoconf脚本都要由__AC_INIT宏__开始：
-
  //AC_INIT宏//
-
     AC_INIT(package, version, [bug-report-address])
 
 AC_INIT的参数列表中，package为预编译的软件包名，version表示其版本号。bug-report-address是可选参数，它通常是一个Email地址，用于用户向该Email地址发送bug报告。
 
 下面是一份最简单的Autoconf脚本：
-
 //auditor.ac//
-
     AC_INIT(Auditor, 1.0)
 
 下面使用autoconf工具，将auditor.ac脚本转换为Bourne shell脚本：
 
 //Autoconf脚本的转换与使用//
-
     $ autom4te //-l autoconf -o auditor a//uditor.ac #或autoconf -o auditor auditor.ac
     $ ./auditor #在shell中执行生成的auditor脚本
     $ ./auditor --version
@@ -48,14 +46,13 @@ AC_INIT的参数列表中，package为预编译的软件包名，version表示�
 
 许多软件是用C语言开发的，因此需要C编译器；__AC_PROG_CC宏__可以检测系统中是否存在C编译器。下面将auditor.ac修改为：
 
-//[code4]auditor.ac//
-
+//auditor.ac//
     AC_INIT(Auditor, 1.0)
     AC_PROG_CC
 
 将修改后的auditor.ac转换为Boune shell脚本后并执行，如下：
 
-//[code5]auditor.ac//
+//auditor.ac//
 
     $autoconf -o auditor auditor.ac
     $ ./auditor
@@ -69,47 +66,40 @@ AC_INIT的参数列表中，package为预编译的软件包名，version表示�
     checking whether gcc accepts -g... yes
     checking for gcc option to accept ANSI C... none needed
 
-如何对AC_PROG_CC的运行结果加以利用呢？在Autoconf的工作流程中，AC_PROG_CC总是在Autoconf基于一些模板文件生成新文件之前运行。譬如，一旦对你的系统完成了全面检查，__Autoconf会根据对系统的检查结果将所有的'Makefile.in’模板转化为 ‘Makefile‘文件__。这个过程叫做软件包的‘configuring‘，传统的做法是由Autoconf根据‘configure.ac‘生成 configure脚本来实现的。
+如何对AC_PROG_CC的运行结果加以利用呢？
+autoconf将用M4语言编写的config.ac文件展开为一shell脚本，默认名称为__configure__。configure是一个标准的bash脚本，不依赖于autoconf和M4。执行configure脚本时，它会执行系统特性检查，该检查内容和结果会记录在__config.log__文件中。configure脚本最后会生成config.status脚本，接着执行它。config.status脚本将configure检查到的系统特性写入到一些环境变量中，然后读取各makefile.am模板文件(由config.ac中的AC_CONFIG_FILES宏指定)，替换其中的变量值，最终生成各个makefile。
 
 **Autoconf初步(2)**
-
 将auditor脚本变为系统编译环境配置脚本仅需要两个宏调用：
 
-//[code1]AC_CONFIG_FILES宏//
-
+//AC_CONFIG_FILES宏//
     AC_CONFIG_FILES(file……, [command])    
 
-在AC_CONFIG_FILES宏中列出需要生成（替换）的文件是一个推荐的做法，AC_OUTPUT不需要参数，只用于指示生成config.status脚本，该脚本__实际负责__替换文件
-中的变量引用。
+在AC_CONFIG_FILES宏中的file部分用于指定需要生成的文件及其路径名(如/tmp/src/demo/Makefile)，同时该目录中需要有一个同名的且后缀名为.in的模板文件如/tmp/src/demo/Makefile.in, 而该Makefile.in文件是由automake工具根据Makefile.am文件生成的。
 
-‘file’ 参数指要创建的文件，该文件复制于一份输入文件（默认为‘file.in’），并替换掉输出变量值。‘file’就是一份输出文件，称之为__系统编译环境配置文件__更准确一些。譬如，若‘FOO’是一个输出变量，而它的值为‘Bar’，那么在文件‘file.in’中出现的所有‘__@FOO@’__，在输出文件中都 会被替换为‘Bar’。
+Makefile.am文件和autoconf.ac文件一样都是由程序员自己书写的，编写autoconf.ac文件使用的是预定义的用于系统特性检查M4宏；而编写Makefile.am文件时使用的是类似于makefile语法，但是相对高级。AC_OUTPUT不需要参数，只用于指示生成config.status脚本，该脚本__实际负责__替换模板文件中的变量引用。譬如，若‘FOO’是一个输出变量，而它的值为‘Bar’，那么在文件‘file.in’中出现的所有‘__@FOO@’__，在输出文件中都 会被替换为‘Bar’。
 
 可选参数‘command’表示如果有必要，一旦文件创建完毕，也可以运行一些shell命令的。
 
-//[code2]AC_OUTPUT//
-
+//AC_OUTPUT//
     AC_OUTPUT
 
 这个宏用于完成所有输出（创建系统编译环境配置文件，输出头文件等等）。
 
 下面对这两个宏的应用作简单演示：
 
-//[code3]输入文件which-cc.in//
-
+//输入模板文件which-cc.in//
     #! @SHELL@
     echo "cc is @CC@"
 
-//[code4]Autoconf configure//
+//Autoconf configure//
 
     AC_INIT(Sample, 1.0)
     AC_PROG_CC
-    AC_CONFIG_FILE([which-cc],[chmod +x which-cc])
+    AC_CONFIG_FILE([**which-cc**],[chmod +x which-cc])
     AC_OUTPUT
 
 configure脚本生成及其运行结果如下：
-
-//[code5]configure脚本生成及其运行结果//
-
     $ autoconf
     $ ls
     autom4te.cache configure __configure.ac__ configure.ac~ __which-cc.in__
@@ -123,7 +113,7 @@ configure脚本生成及其运行结果如下：
     checking whether we are using the GNU C compiler... yes
     checking whether gcc accepts -g... yes
     checking for gcc option to accept ANSI C... none needed
-    configure: creating //./config.status//
+    configure: creating **./config.status**
     __config.status:__ creating which-cc
     $ cat which-cc
     #! /bin/sh
@@ -132,30 +122,28 @@ configure脚本生成及其运行结果如下：
 可能你会纳闷configure脚本运行时生成了一个config.status文件，这是个什么东东呢？事实上，__configure仅仅是一个检查器：它本身不执行任何配置行为，它所创建的config.status会进行配置工作。__
 
 **Autoconf初步(3)**
+对configure.ac脚本的处理，输出的不仅仅有系统编译环境配置文件（即makefile），__也可以向C程序提供检查结果，表现为输出一个头文件__，其所提供的信息通常是简单的__编译预处理宏定义列表__。
 
-对configure.ac脚本的处理，输出的不仅仅有系统编译环境配置文件，__也可以向C程序提供检查结果，表现为输出一个头文件__，其所提供的信息通常是简单的__编译预处理宏定义列表__。
-
-[code1]**AC_CONFIG_HEADERS**
-
+**AC_CONFIG_HEADERS**
     AC_CONFIG_HEADERS(file……, [command])
 
-和配置脚本文件的输出一样，输出的头文件也要从一份模板文件中复制内容，__这份模板文件中定义了CPP输出符号__。对于输出的头文件，比较传统的命名是 config.h，其模板文件名模认为config.h.in。对于一些操作系统，可能模板文件名中两个句点的文件命名方式不被支持，可以采用 config.hin或config_h.in来代替，然后在AC_CONFIG_HEADERS标明config.h与该模板文件的依赖关系即可，如： AC_CONFIG_HEADERS(config.h:config.hin)。
+和配置脚本文件的输出一样，输出的头文件也要从一份模板文件中复制内容，__这份模板文件中定义了将向CPP输出的符号__。对于输出的头文件，比较传统的命名是 **config.h**，其模板文件名模认为__config.h.in__。对于一些操作系统，可能模板文件名中两个句点的文件命名方式不被支持，可以采用 config.hin或config_h.in来代替，然后在AC_CONFIG_HEADERS标明config.h与该模板文件的依赖关系即可，如： AC_CONFIG_HEADERS(config.h:config.hin)。
 
 AC_CONFIG_HEADERS中的命令行参数表示如果有必要，可以调用一些shell命令。
 
-通常在‘configure.ac’中对软件包的名称和版本作出声明，虽然如此，还需要为__软件包的命令行选项__‘--help‘提供有关软件包名称及版本号确切的应答，__主程序__就必须知道当前软件包的名称及其版本号(编程时是不知道的，因为这个是可配置的变量)，这个可以由配置脚本生成config.h文件来实现：
+通常在‘configure.ac’中对软件包的名称和版本作出声明，虽然如此，还需要为__软件包中的主程序命令行选项__‘--help‘提供有关软件包名称及版本号确切的应答，__主程序代码__就必须知道当前软件包的名称及其版本号，但是__在编写主程序代码__时是不知道的，因为这个是可配置的变量。为了解决这个问题，开发者可以提供一个header.h.in__模板文件__，其中包含了多个类似于
+	#undef PACKAGE_BUGREPORT
+的编译预处理命令，然后在主程序中include这个**与模板文件对应的头文件如header.h**。在编译配置代码的时候，由配置脚本(configure->config.status)负责根据收集到的系统和用户信息，修改header.h.in文件中的相应定义，最后生成主程序中引用的header.h文件。
 
 为生成这样的头文件，对上回书中的configure.ac文件再度修改，如下：
-
-[code2]configure.ac
+configure.ac
 
     AC_INIT(Audit, 1.1, lyanry@gmail.com)
-    AC_CONFIG_HEADERS(config.h)
+    __AC_CONFIG_HEADERS(config.h)__
     AC_OUTPUT
 
 下面是__config.h文件的模板config.h.in__:
-
-[code3]config.h.in
+config.h.in
 
     /*定义bug报告发送地址*/
     #undef PACKAGE_BUGREPORT
@@ -168,14 +156,16 @@ AC_CONFIG_HEADERS中的命令行参数表示如果有必要，可以调用一些
     /*定义软件包版本号*/
     #undef PACKAGE_VERSION
 
+模板文件中的符号定义为#undef，这是因为当配置脚本没有检查到相应的符号配置值时不会修改相应的预处理定义。
+
 下面对configure.ac进行处理，生成configure脚本，//运行configure脚本即可生成config.h文件(前提是config.h.in中的变量名称必须是autoconf可识别的)//：
 
-    [code4]生从configure及其运行结果
+    从configure及其运行结果：
 
     [lyanry@lyanry sample]$ autoconf
     [lyanry@lyanry sample]$ ./configure
     configure: creating ./config.status
-    config.status: creating config.h
+    config.status: creating **config.h**
     [lyanry@lyanry sample]$ cat config.h
     /* config.h. Generated by configure. */
     /*定义bug报告发送地址*/
@@ -190,13 +180,9 @@ AC_CONFIG_HEADERS中的命令行参数表示如果有必要，可以调用一些
     #define PACKAGE_VERSION "1.0"
 
 **Autoconf初步(4)**
+上 一节，编译环境配置头文件模板config.h.in文件是手动编辑的，实际上它__可以很容易地由‘configure.ac’文件导出__，这通过检索__所有__已定义的预处理符号，并在其前冠以‘#undef’，然后再自动粘贴相应的标准注释，最后输出‘config.h.in’。用于完成这一过程的工具是 __autoheader__。configure.ac中定义的一些宏用于检查系统环境，它会将检查到的结果（库是否存在，版本号，软件路径及名称）写入到一些__特定的变量__中，这些变量可以被makefile.in引用，也可以__被源代码作为条件编译的参数__使用(常见的做法是将所有的这些变量以宏定义的形式写入到config.h文件中，然后__源程序include该头文件即可__)。
 
-上 一节，编译环境配置头文件模板config.h.in文件是手动编辑的，实际上它__可以很容易地由‘configure.ac’文件导出__，这通过检索所有已定义的预处理符号，并在其前冠以‘#undef’，然后再自动粘贴相应的标准注释，最后输出‘config.h.in’。用于完成这一过程的工具是 __autoheader__。configure.ac中定义的一些宏用于检查系统环境，它会将检查到的结果（库是否存在，版本号，软件路径及名称）写入到一些__特定的变量__中，这些变量可以被makefile.in引用，也可以被源代码作为条件编译的参数使用(常见的做法是将所有的这些变量以宏定义的形式写入到config.h文件中，然后__源程序include该头文件即可__)。
-
-
-
-[code1]autoheader用法
-
+autoheader用法
     $ rm config.h.in
     $ autoheader
     $ cat config.h.in
@@ -217,9 +203,9 @@ AC_CONFIG_HEADERS中的命令行参数表示如果有必要，可以调用一些
     /* Define to the version of this package. */
     #undef PACKAGE_VERSION
 
-本文虽然在讲述Autoconf的初步应用，但依然需要运行两个程序，它们必须按次序运行？（并非如此）。我要在什么时机运行它们？（事实上，每次 'configure.ac'或其依赖文件发生更改之时都要运行这两个程序）。还有没有其他程序也像这样？（当然，automake， libtoolize，gettextize，aclocal……都这般运行）它们的运行次序是否也任意？（是的，本质上皆如此）。实际上，本文与其是讲Autoconf的初步使用，不如说是讲述autoreconf的初步使用：后者囊括了Autoconf中的各类工具，知道在什么情况下运行相应程序。我鼓励你__忘掉autoconf、automake等工具，仅使用autoreconf即可__，如下：
+本文虽然在讲述Autoconf的初步应用，但依然需要运行两个程序，它们必须按次序运行？（并非如此）。我要在什么时机运行它们？（事实上，每次 'configure.ac'或其依赖文件发生更改之时都要运行这两个程序）。还有没有其他程序也像这样？（当然，automake， libtoolize，gettextize，aclocal……都这般运行）它们的运行次序是否也任意？（是的，本质上皆如此）。实际上，本文与其是讲Autoconf的初步使用，不如说是讲述autoreconf的初步使用：后者囊括了Autoconf中的各类工具，知道在什么情况下运行相应程序。我鼓励你__忘掉autoconf、automake等工具，仅使用autoreconf即可__，如下：[[实例:autoreconf]]
 
-[code2]autoreconf用法
+autoreconf用法
 
     [lyanry@lyanry sample]$ ls
     configure.ac

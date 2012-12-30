@@ -1,0 +1,14 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-12-30T17:09:48+08:00
+
+====== foo.c ======
+Created Sunday 30 December 2012
+
+int externVar = 1;
+int static staticVarStatic  = 2;
+
+int add(int a, int b)
+{ 
+  return a + b;
+}

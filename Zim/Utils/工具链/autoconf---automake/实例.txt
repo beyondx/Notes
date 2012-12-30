@@ -1,0 +1,271 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-12-30T16:56:06+08:00
+
+====== 实例 ======
+Created Sunday 30 December 2012
+
+[geekard@geekard demo]$ ls  #两文件的代码见附件
+demo.c  foo.c
+[geekard@geekard demo]$ __aclocal__** //aclocal为configure.ac中使用的M4宏提供定义**
+aclocal: error: 'configure.ac' is required
+[geekard@geekard demo]$ __autoscan__ 
+[geekard@geekard demo]$ ls
+autoscan.log  __configure.scan__  demo.c  foo.c
+[geekard@geekard demo]$ mv configure.scan __configure.ac__
+[geekard@geekard demo]$ vim configure.ac  **//修改configur.ac文件**
+[geekard@geekard demo]$ cat configure.ac 
+#                                               -*- Autoconf -*-
+# Process this file with autoconf to produce a configure script.
+
+AC_PREREQ([2.69])
+AC_INIT([demo], [0.1], [geekard@qq.com])
+AC_CONFIG_SRCDIR([.])
+AM_INIT_AUTOMAKE(demo，0.1)
+AC_CONFIG_HEADERS([config.h])
+
+# Checks for programs.
+AC_PROG_CC
+
+# Checks for libraries.
+
+# Checks for header files.
+AC_CHECK_HEADERS([stdlib.h])
+
+# Checks for typedefs, structures, and compiler characteristics.
+
+# Checks for library functions.
+AC_CONFIG_FILES([Makefile])
+AC_OUTPUT
+[geekard@geekard demo]$ __autoheader__  **//在执行该命令前需要先编写configure.ac文件**
+[geekard@geekard demo]$ ls
+autoscan.log  __config.h.in__  configure.ac  demo.c  foo.c  
+[geekard@geekard demo]$ cat config.h.in 
+/* config.h.in.  Generated from configure.ac by autoheader.  */
+
+/* Define to 1 if you have the <inttypes.h> header file. */
+#undef HAVE_INTTYPES_H
+
+/* Define to 1 if you have the <memory.h> header file. */
+#undef HAVE_MEMORY_H
+
+/* Define to 1 if you have the <stdint.h> header file. */
+#undef HAVE_STDINT_H
+
+/* Define to 1 if you have the <stdlib.h> header file. */
+#undef HAVE_STDLIB_H
+
+/* Define to 1 if you have the <strings.h> header file. */
+#undef HAVE_STRINGS_H
+
+/* Define to 1 if you have the <string.h> header file. */
+#undef HAVE_STRING_H
+
+/* Define to 1 if you have the <sys/stat.h> header file. */
+#undef HAVE_SYS_STAT_H
+
+/* Define to 1 if you have the <sys/types.h> header file. */
+#undef HAVE_SYS_TYPES_H
+
+/* Define to 1 if you have the <unistd.h> header file. */
+#undef HAVE_UNISTD_H
+
+/* Name of package */
+#undef PACKAGE
+
+/* Define to the address where bug reports for this package should be sent. */
+#undef PACKAGE_BUGREPORT
+
+/* Define to the full name of this package. */
+#undef PACKAGE_NAME
+
+/* Define to the full name and version of this package. */
+#undef PACKAGE_STRING
+
+/* Define to the one symbol short name of this package. */
+#undef PACKAGE_TARNAME
+
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
+
+/* Define to the version of this package. */
+#undef PACKAGE_VERSION
+
+/* Define to 1 if you have the ANSI C header files. */
+#undef STDC_HEADERS
+
+/* Version number of package */
+#undef VERSION
+[geekard@geekard demo]$ cat __Makefile.am__ 
+bin_PROGRAMS = demo  //生成的可执行程序名称
+demo_SOURCES = demo.c foo.c //可执行程序依赖的源文件
+[geekard@geekard demo]$ __aclocal   //在执行automake和autoconf前需要先执行aclocal，该命令为configure.ac文件中使用的M4宏提供定义。__
+[geekard@geekard demo]$ ls 
+__aclocal.m4  autom4te.cache__  autoscan.log  configure.ac  demo.c  foo.c  Makefile.am
+[geekard@geekard demo]$ __automake  //在执行automake前必须定义configure.ac和Makefile.am文件__
+configure.ac:7: warning: AM_INIT_AUTOMAKE: two- and three-arguments forms are deprecated.  For more info, see:
+configure.ac:7: http://www.gnu.org/software/automake/manual/automake.html#Modernize-AM_INIT_AUTOMAKE-invocation
+configure.ac:7: error: required file './install-sh' not found
+configure.ac:7:   'automake --add-missing' can install 'install-sh'
+configure.ac:7: error: required file './missing' not found
+configure.ac:7:   'automake --add-missing' can install 'missing'
+Makefile.am: error: required file './INSTALL' not found
+Makefile.am:   'automake --add-missing' can install 'INSTALL'
+Makefile.am: error: required file './NEWS' not found
+Makefile.am: error: required file './README' not found
+Makefile.am: error: required file './AUTHORS' not found
+Makefile.am: error: required file './ChangeLog' not found
+Makefile.am: error: required file './COPYING' not found
+Makefile.am:   'automake --add-missing' can install 'COPYING'
+Makefile.am: error: required file './depcomp' not found
+Makefile.am:   'automake --add-missing' can install 'depcomp'
+[geekard@geekard demo]$ __automake --add-missing__
+configure.ac:7: warning: AM_INIT_AUTOMAKE: two- and three-arguments forms are deprecated.  For more info, see:
+configure.ac:7: http://www.gnu.org/software/automake/manual/automake.html#Modernize-AM_INIT_AUTOMAKE-invocation
+configure.ac:7: installing './install-sh'
+configure.ac:7: installing './missing'
+Makefile.am: installing './INSTALL'
+Makefile.am: error: required file './NEWS' not found
+Makefile.am: error: required file './README' not found
+Makefile.am: error: required file './AUTHORS' not found
+Makefile.am: error: required file './ChangeLog' not found
+Makefile.am: installing './COPYING' using GNU General Public License v3 file
+Makefile.am:     Consider adding the COPYING file to the version control system
+Makefile.am:     for your code, to avoid questions about which license your project uses
+Makefile.am: installing './depcomp'
+[geekard@geekard demo]$ __touch NEWS README AUTHORS ChangeLog__
+[geekard@geekard demo]$ **automake** 
+configure.ac:7: warning: AM_INIT_AUTOMAKE: two- and three-arguments forms are deprecated.  For more info, see:
+configure.ac:7: http://www.gnu.org/software/automake/manual/automake.html#Modernize-AM_INIT_AUTOMAKE-invocation
+[geekard@geekard demo]$ ls 
+aclocal.m4  autom4te.cache  ChangeLog  config.h.in   COPYING  depcomp  INSTALL     Makefile.am  missing  README
+AUTHORS     autoscan.log    ChangLog   configure.ac  demo.c   foo.c    install-sh  __Makefile.in__  NEWS
+[geekard@geekard demo]$ __autoconf__  //**最后一步执行autoconf命令，如果先于automake执行则会提示**
+		**configure.ac:7: error: possibly undefined macro: AM_INIT_AUTOMAKE**
+		**      If this token and others are legitimate, please use m4_pattern_allow.**
+		**      See the Autoconf documentation.**
+[geekard@geekard demo]$ ls
+aclocal.m4  autom4te.cache  ChangeLog  config.h.in  configure.ac  demo.c   foo.c    install-sh   Makefile.in  NEWS
+AUTHORS     autoscan.log    ChangLog   __configure__    COPYING       depcomp  INSTALL  Makefile.am  missing      README
+[geekard@geekard demo]$ **./configure** 
+checking for a BSD-compatible install... /usr/bin/install -c
+checking whether build environment is sane... yes
+checking for a thread-safe mkdir -p... /usr/bin/mkdir -p
+checking for gawk... gawk
+checking whether make sets $(MAKE)... yes
+checking for gcc... gcc
+checking whether the C compiler works... yes
+checking for C compiler default output file name... a.out
+checking for suffix of executables... 
+checking whether we are cross compiling... no
+checking for suffix of object files... o
+checking whether we are using the GNU C compiler... yes
+checking whether gcc accepts -g... yes
+checking for gcc option to accept ISO C89... none needed
+checking for style of include used by make... GNU
+checking dependency style of gcc... gcc3
+checking how to run the C preprocessor... gcc -E
+checking for grep that handles long lines and -e... /usr/bin/grep
+checking for egrep... /usr/bin/grep -E
+checking for ANSI C header files... yes
+checking for sys/types.h... yes
+checking for sys/stat.h... yes
+checking for stdlib.h... yes
+checking for string.h... yes
+checking for memory.h... yes
+checking for strings.h... yes
+checking for inttypes.h... yes
+checking for stdint.h... yes
+checking for unistd.h... yes
+checking for stdlib.h... (cached) yes
+checking that generated files are newer than configure... done
+configure: creating __./config.status__
+**config.status:** creating __Makefile__
+config.status: creating __config.h__
+config.status: executing __depfiles__ commands
+[geekard@geekard demo]$ **make**
+CDPATH="${ZSH_VERSION+.}:" && cd . && /bin/sh /home/geekard/Code/elf/demo/missing --run aclocal-1.12 
+ cd . && /bin/sh /home/geekard/Code/elf/demo/missing --run automake-1.12 --gnu
+configure.ac:7: warning: AM_INIT_AUTOMAKE: two- and three-arguments forms are deprecated.  For more info, see:
+configure.ac:7: http://www.gnu.org/software/automake/manual/automake.html#Modernize-AM_INIT_AUTOMAKE-invocation
+CDPATH="${ZSH_VERSION+.}:" && cd . && /bin/sh /home/geekard/Code/elf/demo/missing --run autoconf
+**/bin/sh ./config.status --recheck**
+running CONFIG_SHELL=/bin/sh /bin/sh ./configure --no-create --no-recursion
+checking for a BSD-compatible install... /usr/bin/install -c
+checking whether build environment is sane... yes
+checking for a thread-safe mkdir -p... /usr/bin/mkdir -p
+checking for gawk... gawk
+checking whether make sets $(MAKE)... yes
+checking for gcc... gcc
+checking whether the C compiler works... yes
+checking for C compiler default output file name... a.out
+checking for suffix of executables... 
+checking whether we are cross compiling... no
+checking for suffix of object files... o
+checking whether we are using the GNU C compiler... yes
+checking whether gcc accepts -g... yes
+checking for gcc option to accept ISO C89... none needed
+checking for style of include used by make... GNU
+checking dependency style of gcc... gcc3
+checking how to run the C preprocessor... gcc -E
+checking for grep that handles long lines and -e... /usr/bin/grep
+checking for egrep... /usr/bin/grep -E
+checking for ANSI C header files... yes
+checking for sys/types.h... yes
+checking for sys/stat.h... yes
+checking for stdlib.h... yes
+checking for string.h... yes
+checking for memory.h... yes
+checking for strings.h... yes
+checking for inttypes.h... yes
+checking for stdint.h... yes
+checking for unistd.h... yes
+checking for stdlib.h... (cached) yes
+checking that generated files are newer than configure... done
+configure: creating ./config.status
+ /bin/sh ./config.status
+config.status: creating Makefile
+config.status: creating config.h
+config.status: config.h is unchanged
+config.status: executing depfiles commands
+(CDPATH="${ZSH_VERSION+.}:" && cd . && /bin/sh /home/geekard/Code/elf/demo/missing --run autoheader)
+rm -f stamp-h1
+touch config.h.in
+cd . && /bin/sh ./config.status config.h
+config.status: creating config.h
+config.status: config.h is unchanged
+**make  all-am**
+make[1]: Entering directory `/home/geekard/Code/elf/demo'
+gcc -DHAVE_CONFIG_H -I.     -g -O2 -MT demo.o __-MD -MP -MF .deps/demo.Tpo__ -c -o demo.o demo.c
+demo.c: In function ‘greeting’:
+demo.c:24:3: warning: initialization from incompatible pointer type [enabled by default]
+demo.c:24:3: warning: (near initialization for ‘pp’) [enabled by default]
+demo.c:24:3: warning: excess elements in scalar initializer [enabled by default]
+demo.c:24:3: warning: (near initialization for ‘pp’) [enabled by default]
+demo.c:24:3: warning: excess elements in scalar initializer [enabled by default]
+demo.c:24:3: warning: (near initialization for ‘pp’) [enabled by default]
+demo.c:24:3: warning: excess elements in scalar initializer [enabled by default]
+demo.c:24:3: warning: (near initialization for ‘pp’) [enabled by default]
+mv -f .deps/demo.Tpo .deps/demo.Po
+gcc -DHAVE_CONFIG_H -I.     -g -O2 **-MT foo.o -MD -MP -MF .deps/foo.Tpo** -c -o foo.o foo.c
+mv -f .deps/foo.Tpo .deps/foo.Po
+gcc  -g -O2   -o demo demo.o foo.o  
+make[1]: Leaving directory `/home/geekard/Code/elf/demo'
+
+**#上面的-MD -MP -MF ./deps/demo.Tpo定义了demo程序的依赖文件。**
+[geekard@geekard demo]$ ls  
+aclocal.m4      autoscan.log  config.h     config.status  COPYING  demo.o   foo.o       Makefile     missing  stamp-h1
+AUTHORS         ChangeLog     config.h.in  configure      __demo__     depcomp  INSTALL     Makefile.am  NEWS
+autom4te.cache  ChangLog      config.log   configure.ac   demo.c   foo.c    install-sh  Makefile.in  README
+[geekard@geekard demo]$ ./demo 
+In main:
+        The globalVarStatic is:3
+In greeting:
+        Hello, geekard:
+        Yourt age is:23.
+        Yourt friends are:
+                Tom
+                John
+                Pi
+Goodbye from greeting.
+[geekard@geekard demo]$ 

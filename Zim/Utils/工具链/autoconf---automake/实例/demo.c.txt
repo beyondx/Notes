@@ -1,0 +1,67 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-12-30T17:09:44+08:00
+
+====== demo.c ======
+Created Sunday 30 December 2012
+
+#include <stdio.h>
+#include <stdlib.h>
+
+//已初始化全局变量，保存在.data section中。
+int  globalVar = 1;
+//未初始化全局变量，当生成可重定位obj文件时，位于COMMON section中。
+int  globalVarUninit;
+
+//对于static类型的变量和函数的引用，使用GOTOFF类型重定位。
+static int  globalVarStatic = 3;
+
+extern int externVar;
+//对于外部函数的调用，使用PLT形式重定位。
+extern int add(int, int);
+
+void greeting(char *name, int age, char** friends)
+{
+
+  int a = 23;
+  char *nm = "zhangjun";
+  //ap为数组名称，本身不占用内存单元
+  char *ap[] = {"Tom", "John", "Pi", NULL};
+  //pp为指针变量，指向一块保存有三个字符指针的内存单元(位于greeting的栈中)
+  char **pp = {"Tom", "John", "Pi", NULL};
+
+  if (name == NULL)
+     name = nm;
+  if (age == 0)
+     age = a;
+  if (friends == NULL)
+     friends = pp;
+
+  printf("In greeting:\n");
+  printf("\tHello, %s:\n", name);
+  printf("\tYourt age is:%d.\n", age);
+  printf("\tYourt friends are:\n");
+  while (*friends != NULL) {
+    printf("\t\t%s\n", *friends);
+    friends += 1;
+  }
+
+ printf("Goodbye from greeting.\n");
+}
+
+int main(int argc, char *argv[])
+{
+  int autoVar = globalVar;
+  static int staticVar = 2;
+  int i = externVar;
+
+  char *name = "geekard";
+  int age = 23;
+  //friends为数组名称.
+  char *friends[] = {"Tom", "John", "Pi", NULL};
+
+  printf("In main:\n");
+  printf("\tThe globalVarStatic is:%d\n",globalVarStatic);
+  greeting(name, age, friends);
+  add(2, 3);
+}

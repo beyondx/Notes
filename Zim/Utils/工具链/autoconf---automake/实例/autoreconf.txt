@@ -1,0 +1,53 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-12-30T17:40:36+08:00
+
+====== autoreconf ======
+Created Sunday 30 December 2012
+利用autoreconf工具，会自动生成相关的文件。
+
+[geekard@geekard demo]$ ls
+**configure.ac  demo.c  foo.c  Makefile.am**
+
+[geekard@geekard demo]$ **autoreconf** 
+configure.ac:7: warning: AM_INIT_AUTOMAKE: two- and three-arguments forms are deprecated.  For more info, see:
+configure.ac:7: http://www.gnu.org/software/automake/manual/automake.html#Modernize-AM_INIT_AUTOMAKE-invocation
+configure.ac:7: error: required file './install-sh' not found
+configure.ac:7:   'automake --add-missing' can install 'install-sh'
+configure.ac:7: error: required file './missing' not found
+configure.ac:7:   'automake --add-missing' can install 'missing'
+Makefile.am: error: required file './INSTALL' not found
+Makefile.am:   'automake --add-missing' can install 'INSTALL'
+Makefile.am: error: required file './NEWS' not found
+Makefile.am: error: required file './README' not found
+Makefile.am: error: required file './AUTHORS' not found
+Makefile.am: error: required file './ChangeLog' not found
+Makefile.am: error: required file './COPYING' not found
+Makefile.am:   'automake --add-missing' can install 'COPYING'
+Makefile.am: error: required file './depcomp' not found
+Makefile.am:   'automake --add-missing' can install 'depcomp'
+autoreconf: **automake** failed with exit status: 1
+**[geekard@geekard demo]$ ls   //可见自动调用了aclocal命令**
+aclocal.m4  autom4te.cache  config.h.in  configure  configure.ac  demo.c  foo.c  Makefile.am
+[geekard@geekard demo]$ __automake --add-missing__
+configure.ac:7: warning: AM_INIT_AUTOMAKE: two- and three-arguments forms are deprecated.  For more info, see:
+configure.ac:7: http://www.gnu.org/software/automake/manual/automake.html#Modernize-AM_INIT_AUTOMAKE-invocation
+configure.ac:7: installing './install-sh'
+configure.ac:7: installing './missing'
+Makefile.am: installing './INSTALL'
+Makefile.am: error: required file './NEWS' not found
+Makefile.am: error: required file './README' not found
+Makefile.am: error: required file './AUTHORS' not found
+Makefile.am: error: required file './ChangeLog' not found
+Makefile.am: installing './COPYING' using GNU General Public License v3 file
+Makefile.am:     Consider adding the COPYING file to the version control system
+Makefile.am:     for your code, to avoid questions about which license your project uses
+Makefile.am: installing './depcomp'
+[geekard@geekard demo]$ __touch NEWS README AUTHORS ChangeLog__
+[geekard@geekard demo]$ __autoreconf__ 
+configure.ac:7: warning: AM_INIT_AUTOMAKE: two- and three-arguments forms are deprecated.  For more info, see:
+configure.ac:7: http://www.gnu.org/software/automake/manual/automake.html#Modernize-AM_INIT_AUTOMAKE-invocation
+[geekard@geekard demo]$ ls  **//可见自动调用了automake和autoconf**
+aclocal.m4  autom4te.cache  config.h.in  configure.ac  demo.c   foo.c    install-sh   Makefile.in  NEWS
+AUTHORS     ChangeLog       __configure__    COPYING       depcomp  INSTALL  Makefile.am  missing      README
+[geekard@geekard demo]$ 
