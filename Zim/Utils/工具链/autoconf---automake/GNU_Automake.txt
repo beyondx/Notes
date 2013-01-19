@@ -5,33 +5,6 @@ Creation-Date: 2012-06-14T10:05:55+08:00
 ====== GNU Automake ======
 Created Thursday 14 June 2012
 
-GNU Automake
-For version 1.3, 3 April 1998
-David MacKenzie and Tom Tromey
-
-@dircategory GNU admin @direntry * automake: (automake). Making Makefile.in's
-@dircategory Individual utilities @direntry * aclocal: (automake)Invoking aclocal. Generating aclocal.m4
-Copyright (C) 1995, 96 Free Software Foundation, Inc.
-
-这是GNU Automake文档的第一版，
-并且是针对GNU Automake 1.3的。
-
-自由软件基金会出版
-59 Temple Place - Suite 330,
-Boston, MA 02111-1307 USA
-
-Permission is granted to make and distribute verbatim copies of this manual provided the copyright notice and this permission notice are preserved on all copies.
-
-Permission is granted to copy and distribute modified versions of this manual under the conditions for verbatim copying, provided that the entire resulting derived work is distributed under the terms of a permission notice identical to this one.
-
-Permission is granted to copy and distribute translations of this manual into another language, under the above conditions for modified versions, except that this permission notice may be stated in a translation approved by the Free Software Foundation.
-
-只要版权声明和本许可声明保留在所有副本中，您就被授权制作和发行本手册的 原文副本。
-只要整个最终派生工作按照与本手册相同的许可声明发行，您就被授权按照与 发行原文相同的条件复制和发行本手册的修改版本。
-除了本许可声明应该使用由基金会批准的译文之外，您被授权按照与上述修改 版本相同的条件复制和发行本手册的其它语言的译文。
-本文档由王立翻译。 1999.12.17
-译者在此声明：不对任何由译文错误或者对译文的误解承担任何责任。
-
 ===== 介绍 =====
 
 __Automake是一个从文件`Makefile.am'自动生成`Makefile.in' 的工具__。每个`Makefile.am'基本上是__一系列make的宏定义__ （make规则也会偶尔出现）。生成的`Makefile.in's服从GNU Makefile标准。
@@ -60,13 +33,14 @@ Automake不能识别GNU对make的扩展。在`Makefile.am'中使用这些扩展�
 
 Automake试图明智地把注释和相邻的目标（或者变量定义）关联起来。
 
-在`Makefile.am'中定义的目标通常覆盖了所有由automake 自动生成的拥有相似名字的目标。虽然Automake提供了这一功能，但最好避免使用它， 因为有些时候生成的规则将是十分特别的。
+在`Makefile.am'中定义的目标通常__覆盖了__所有由automake 自动生成的拥有相似名字的目标。虽然Automake提供了这一功能，但最好避免使用它， 因为有些时候生成的规则将是十分特别的。
 
-类似地，__在`Makefile.am'中定义的变量将覆盖任何通常由automake 创建的变量定义__。该功能比覆盖目标定义的功能要常用得多。需要警告的是许多由 automake生成的变量都被认为是内部使用的，并且它们的名字可能在未来 的版本中改变。
+类似地，__在`Makefile.am'中定义的变量将覆盖任何通常由automake 创建的变量定义__。该功能比覆盖目标定义的功能要常用得多。需要警告的是许多由 automake生成的变量都被认为是内部使用的，并且它们的名字可能在未来的版本中改变。
 
 在检验变量定义的时候，Automake将递归地检验定义中的变量引用。例如，如果Automake 在如下片断中搜索`foo_SOURCES'的内容。
 
-xs = a.c b.c foo_SOURCES = c.c $(xs)
+xs = a.c b.c 
+foo_SOURCES = c.c $(xs)
 
 它将把文件`a.c'、 `b.c'和 `c.c'作为`foo_SOURCES' 的内容。
 
@@ -80,7 +54,7 @@ Automake还允许给出不被复制到输出中的注释；所有以`##'开头�
 
 automake支持三种目录层次： “flat”、“shallow”和“deep”。
 
-* 一个flat（平）包指的是__所有文件__都在一个目录中的包。为这类包提供的`Makefile.am' 缺少宏SUBDIRS。这类包的一个例子是termutils。
+* 一个flat（平）包指的是__所有文件__都在一个目录中的包。为这类包提供的`Makefile.am' 缺少__宏SUBDIRS__。这类包的一个例子是termutils。
 * 一个deep（深）包指的是所有的源代码都被储存在子目录中的包；顶层目录主要包含配置信息。GNU cpio 是这类包的一个很好的例子，GNU tar也是。deep包的顶层`Makefile.am'将包括宏SUBDIRS，但没有定义需要创建的对象的宏(**所有的对象如可执行程序和库文件都是在SUBDIRS中的makefle.am中定义的**)。
 * 一个shallow（浅）包指的是主要的源代码储存在顶层目录中，而各个部分（典型的是库）则储存在子目录中的包。Automake本身就是这类包（GNU make也是如此，它现在已经不使用automake）。这样顶层的makefile.am既包括SUBDIRS宏，__也包括__创建对象的宏定义（使用的是顶层目录的源代码）。
 
@@ -115,7 +89,7 @@ EXTRA_PROGRAMS = mt rmt
 bin_PROGRAMS = cpio pax 
 sbin_PROGRAMS = @PROGRAMS@
 
-定义没有前缀的主变量（比如说PROGRAMS）是错误的。
+定义没有__前缀__的主变量（比如说PROGRAMS）是错误的。
 
 在构造变量名的时候，通常省略后缀`dir'；因此我们使用 `bin_PROGRAMS'而不是`bindir_PROGRAMS'.
 

@@ -91,6 +91,7 @@ Libtool 库可以是一个静态链接库，可以是一个动态链接库，也
  } 
 
 这个文件实现了一个函数 compress_file()，它接收一个文件名作为参数，然后对文件进行压缩，生成一个 .z结尾的压缩文件。在这个文件中使用了 compress()函数，这个函数是有由 libz 提供的。
+
 从源文件建立 Libtool 库需要经过两个步骤，先建立 Libtool 对象文件，再建立 Libtool 库。
 
 ===== 建立 Libtool 对象文件 =====
@@ -103,8 +104,7 @@ Libtool 库可以是一个静态链接库，可以是一个动态链接库，也
  $ libtool --mode=compile gcc -c foo.c 
 
 可以看到，**使用 Libtool 只需要将“传统”的命令 (gcc -c foo.c) 作为参数传递给 Libtool 即可**。
-在上面的命令中，libtool 使用 compile模式 (--mode=compile 选项 )，这是建立对象文件的模式，Libtool 还有其它的模式，后面将介绍。
-上面的命令输出如下 :
+在上面的命令中，libtool 使用 compile模式 (--mode=compile 选项 )，这是建立对象文件的模式，Libtool 还有其它的模式，后面将介绍。上面的命令输出如下 :
 
  mkdir .libs 
  gcc -c compress.c  -fPIC -DPIC -o __.libs__/compress.o 
@@ -138,7 +138,7 @@ gcc -shared  .libs/compress.o  **-lz**  -Wl,-soname  -Wl,libcompress.so.0
 
 可以看到，Libtool 自动的插入了**建立动态链接库需要的编译选项** -shared。并且，它也建立了**静态链接库** .libs/libcompress.a，后面我们将会介绍如何控制 Libtool 只建立需要的库。
 你可能会奇怪为什么建立的动态链接库有 .0 和 .0.0.0 这样的后缀，这里先不用理会它，后面在介绍 **Libtool 库版本信息**时将会解释这点。
-值得注意的是，Libtool 希望以后系统程序在链接时使用 libcompress.la 文件而不是直接使用 libcompress.a 和 libcompress.so 文件，如果你这样做，虽然可以，但会破坏 Libtool 库的可移植性。
+值得注意的是，Libtool 希望__以后系统程序在链接时使用 libcompress.la 文件__而不是直接使用 libcompress.a 和 libcompress.so 文件，如果你这样做，虽然可以，但会破坏 Libtool 库的可移植性。
 
 ===== 安装 Libtool 库 =====
 如果打算发布建立好的 Libtool 库，可以使用下面的命令安装它 :
@@ -162,8 +162,7 @@ gcc -shared  .libs/compress.o  **-lz**  -Wl,-soname  -Wl,libcompress.so.0
  ranlib /tmp/libcompress.a 
  ... 
 
-可以看到它安装了真实的动态链接库和静态链接库，**同时也安装了 Libtool 库文件 libcompress.la**，这个文件可以被后续的 Libtool 命令使用。
-在安装完成之后，可能还需要做一些配置才能正确使用，Libtool 的 finish 模式可以在这方面给我们一些提示 :
+可以看到它安装了真实的动态链接库和静态链接库，**同时也安装了 Libtool 库文件 libcompress.la**，这个文件可以被后续的 Libtool 命令使用。在安装完成之后，可能还需要做一些配置才能正确使用，Libtool 的 finish 模式可以在这方面给我们一些提示 :
 
  $ libtool -n --mode=finish /tmp 
 

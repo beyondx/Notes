@@ -1,0 +1,127 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2012-12-31T19:53:42+08:00
+
+====== 使用GNU Autotools自動編譯項目 ======
+Created Monday 31 December 2012
+
+http://www.cnblogs.com/crazyhack/archive/2011/12/17/2291410.html
+為了駕馭GNU Autotools這頭猛獸，我們先來驗明它的真身:
+{{./1.png}}
+圖中橢圓形狀的就是gnu autotools里的主要工具了，包括１autoscan２aclocal３autoheader４automake５autoconf等.而方形形狀只有Makefile.am和configure.ac是需要我們寫的，别的方框里除了Makefile是最終的配置文件，其它都是中間文件。(Makefile文件是由６configure生成的)
+整體流程紀錄如下:
+
+    0.添加src目錄,將項目源碼放入該目錄中
+
+    1.進入項目根目錄執行命令,以生成configure.scan文件:
+
+        autoscan
+
+    2.修改configure.scan文件為configure.ac文件,編輯configure.ac文件:
+
+        mv configure.scan configure.ac
+
+        vim configure.ac
+
+    3.編輯根目錄下的Makefile.am文件
+
+        vim Makefile.am
+
+    4.建立autogen.sh文件,將aclocal、autoheader、automake、autoconf等命令添加到腳本中。
+
+    5.在根目錄執行
+
+        ./autogen.sh
+
+    6.用[./configure](執行後生成Makefile文件 )、[make]、[sudo make install]安裝並運行執行檔.
+
+    PS:其中0~5為開發人員執行的步驟，6為測試人員和用戶執行的步驟。
+
+0.在項目根目錄建立src文件夾，內容如下:
+
+image
+1.在項目根目錄運行autoscan命令:
+
+image
+
+可以看到生成了autoscan.log，autom4te.cache目錄以及我們需要的configure.scan文件
+2.修改configure.scan文件為configure.ac，執行:
+
+mv configure.scan configure.ac
+
+vim configure.ac
+
+為了方便，我已經事先寫好了configure.ac文件，使用vimdiff命令對比一下修改的部分:
+
+image
+
+修改的部分一目了然:)
+3.在根目錄添加Makefile.am文件:
+
+vim Makefile.am
+
+image
+
+其中，bin_PROGRAMS後面是需要生成的執行文件，如有多個，可以用空格隔開，而xxx_SOURCES後面的就是編譯時需要的源文件了，直接指定源碼在src目錄中，這樣configure.ac的AC_CONFIG_FILES參數就可以寫成AC_CONFIG_FILES([Makefile])了，而不需要在參數中添加更多目錄下的Makefile。否則就要寫成:
+
+image
+4.建立autogen.sh文件，添加我們需要後續執行的命令aclocal、autoheader、automake、autocon:
+
+vim autogen.sh
+
+image
+
+下面解釋一下各命令:
+
+1)aclocal:根據configure.ac的定義，將需要使用的m4宏定義複製到aclocal.m4裡面。缺省時，搜索m4宏是從autoconf的安裝目錄和系統的aclocal目錄。
+
+2)autoheader:負責生成config.h.in文件，這裡面的C語言宏定義通過解析configure.ac生成。
+
+3)automake:處理Makefile.am，從而生成Makefile.in。automake提供了三個軟件等級:foreign、gnu和gnits。默認等級是gnu，這裡我們使用foreign等級，它只檢測必須的文件。在執行時使用—add-missing選項可以讓automake自動添加(默認採用符號連結)，如加上—copy選項可以使用複製方式，本例中，automake的命令如下:
+
+automake –foreign –add-missing –copy
+
+4)autoconf:生成configure文件，configure是一個shell script,可以自動設定原始程式以符合不同平台上Unix系統的特性，並且根據系統參數及環境產生合適的Makefile文件或C的頭文件，讓源代碼可以在這些不同的平台上被編譯出來。 
+5.退回根目錄,在終端執行
+
+./autogen.sh
+
+PS:如果看到下面的提示是正常的，因為我們的項目只是用於測試，所以不要求按照GNU的標準來添加所有需要的文件
+
+Makefile.am: required file `./NEWS' not found
+Makefile.am: required file `./README' not found
+Makefile.am: required file `./AUTHORS' not found
+Makefile.am: required file `./ChangeLog' not found
+6.用三部曲生成需要的執行檔:
+
+1)./configure:
+
+image
+
+image
+
+看到Makefile文件就說明配置項目成功了
+
+2)make:
+
+image
+
+出現很多錯誤不要管它，因為我只在testgenfilemap.c中輸入了打印hello world!的源碼,再用tree命令可以看到生成了testgenfilemap.o文件和二進制文件testgenfilemap
+
+image
+
+再輸入./testgenfilemap呢?
+
+image
+
+哈哈,恭喜你,成功了!
+
+3)如果需要安裝到系統目錄，請運行sudo make install
+
+參考文章:
+
+1.http://www.ibm.com/developerworks/cn/linux/l-makefile/
+
+2.http://tetralet.luna.com.tw/index.php?op=ViewArticle&articleId=200&blogId=1 
+
+3.http://blog.csdn.net/zhbaoq/article/details/750199

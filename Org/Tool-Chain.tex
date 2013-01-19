@@ -1,0 +1,42 @@
+% Created 2013-01-07 Mon 12:24
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{fixltx2e}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{float}
+\usepackage{wrapfig}
+\usepackage{soul}
+\usepackage{textcomp}
+\usepackage{marvosym}
+\usepackage{wasysym}
+\usepackage{latexsym}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\tolerance=1000
+\providecommand{\alert}[1]{\textbf{#1}}
+
+\title{Tool-Chain}
+\author{}
+\date{\today}
+\hypersetup{
+  pdfkeywords={},
+  pdfsubject={},
+  pdfcreator={Emacs Org-mode version 7.8.11}}
+
+\begin{document}
+
+\maketitle
+
+\setcounter{tocdepth}{3}
+\tableofcontents
+\vspace*{1cm}
+\section{GCC 与 Glibc的关系}
+\label{sec-1}
+
+  GCC与Glibc是相互依赖的关系：部分链接的GCC在加载时需要Glibc提供的目标对象符号。
+  GCC运行时库文件也需要Glibc提供的符号。同时Glibc提供的crt1.o,crti.o,crtn.o等也
+  依赖GCC的crtbegin.o, crtend.o等提供的符号。
+
+\end{document}

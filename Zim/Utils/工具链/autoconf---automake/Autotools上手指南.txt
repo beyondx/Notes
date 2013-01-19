@@ -10,37 +10,11 @@ ccmx 于 2011年 一月 7日 发表 | 最后修改于 2011年 一月 10日
 
 要想弄懂Autotools并使用它，必须先要了解一下M4这个怪物。那么何为M4呢，M4的名称取自Macro（M后面跟4个字母…）。它和C预处理器里的宏是一个概念（其实，M4和C预处理器都K&R操刀设计的！！），用来处理文本替换。也就是说，M4是bash里的预处理器。
 
-取自维基的例子：	
-divert(-1)
-This `divert' discards this text. Note that I had to quote the `divert'
-in the comment so it wouldn't get undiverted.
-This starts the count at ONE as the incr is a preincrement.
-define(`H2_COUNT', 0)
-The define H2_COUNT is redefined every time the H2 macro is used.
-The dnl deletes everything on the line after it in the output (ie this bit)
-define(`H2', `define(`H2_COUNT', incr(H2_COUNT))'dnl
-`<h2>H2_COUNT. $1</h2>')
-divert(0)dnl diversion to 0 means back to normal dnl removes this line.
-H2(First Section)
-H2(Second Section)
-H2(Conclusion)
-
-这段M4宏用m4处理输出的结果就是：
-
-<h2>1. First Section</h2>
-<h2>2. Second Section</h2>
-<h2>3. Conclusion</h2>
-
 简单说下：
-
 1.M4的语法跟C里面宏的语法差不多，都很像函数，名字加括号。
 2.M4里的参数即使声明了也是可以忽略的，如果一个宏一个参数都不加的话，括号都可以忽略。
 
-懂了吧。就当你懂了。
-
-autoconf就是基于M4这个工具来生成configure脚本的。
-
-我们来看一个最简单的autoconf输入，将下面代码存为configure.ac：
+autoconf就是基于M4这个工具来生成configure脚本的。我们来看一个最简单的autoconf输入，将下面代码存为configure.ac：
 	
 AC_INIT([test], [1.0])
 AC_CONFIG_FILES([Makefile])
@@ -54,8 +28,6 @@ all: @PACKAGE_NAME@_bin
     gcc -o @PACKAGE_NAME@_bin test.c
 
 好，下面执行命令：
-
-	
 $ autoconf
 $ ./configure
 
@@ -67,9 +39,9 @@ test_bin: test.c
 
 中间发生了什么？停我慢慢道来。
 
-首先，autoconf读取configure.ac里的宏，并__调用M4处理这些宏__，做些检查，如果你很感兴趣，这些宏的实现可以在__/usr/share/autoconf/autoconf__/*.m4里找到这些宏的定义（看了不要发疯）。检查完会生成两个文件：configure。执行configure脚本生成__config.status和config.log__。config.log里面是执行的记录，config.status是下一步执行的__脚本__，用来生成Makefile，configure生成完这个脚本会自动调用的。
+首先，autoconf读取configure.ac里的宏，__并调用M4处理这些宏__，做些检查，如果你很感兴趣，这些宏的实现可以在__/usr/share/autoconf/autoconf/*.m4__里找到这些宏的定义（看了不要发疯）。检查完会生成两个文件：configure。执行configure脚本生成__config.status和config.log__。config.log里面是执行的记录，config.status是下一步执行的__脚本__，用来生成Makefile，configure生成完这个脚本会自动调用的。
 
-那Makefile.in又是什么呢？那是第二个宏AC_CONFIG_FILES([Makefile])执行时的默认输入。__方括号是用来表示参数的__。就像上面的‘`’一样。Makefile.in就是一个模板，用来生成Makefile。执行configure脚本时（实际上是config.status脚本），里面的%变量%会被替换成相应的内容。有哪些变量？看看config.log就知道了。
+那Makefile.in又是什么呢？那是第二个宏AC_CONFIG_FILES([Makefile])执行时的默认输入。__方括号是用来表示参数的__。就像上面的‘`’一样。Makefile.in就是一个模板，用来生成Makefile。执行configure脚本时（实际上是config.status脚本），里面的__@变量@__会被替换成相应的内容。有哪些变量？看看config.log就知道了。
 
 前面说了autotools的基本原理：将configure.ac里的宏展开，运行，生成Makefile。其实，对于大多数项目来说，configure.ac里的内容基本框架都差不多。既然都差不多那么有没有什么工具可以帮我们做这些基本的事情呢？别忘了你在linux下，有！
 
@@ -83,7 +55,6 @@ test
     └── server.c
 
 在test目录下运行autoscan看看。是不是生成了如下的configure.scan呢（autoscan.log被我们无情的忽略了）：
-
 	
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
@@ -102,7 +73,7 @@ AC_PROG_CC
 **AC_CHECK_HEADERS**([netinet/in.h stdlib.h strings.h sys/socket.h unistd.h])
  
 # Checks for typedefs, structures, and compiler characteristics.
-**AC_TYPE_PID_T**
+AC_TYPE_PID_T
  
 # Checks for library functions.
 AC_FUNC_FORK
@@ -117,9 +88,7 @@ AC_CHECK_FUNCS([bzero socket])
 我们解释一下这个文件里的一些宏。
 
 首先是，AC_PREREQ([2.68])，这个宏用来检查你__机器上的autoconf版本__的。这里是我机器上的版本号2.68。
-
 然后AC_INIT宏，这里你要将里面的内容改改，里面的提示你懂的。我们改成下面这样：
-
 AC_INIT([test], [0.1], [dccmx@test.com])
 
 紧跟着是AC_CONFIG_SRCDIR([src/server.c])，__这是autoconf用来定位自己的所在目录的宏，里面的内容是所在目录下的任意一个文件就可以了__，你可以改成一个更能代表你项目的文件（这样不会更其他项目冲突），也可以不动。
@@ -165,8 +134,6 @@ config.h.in呢？我们写一个吧，从上面autoscan生成的configure.ac来�
 
 看，所有存在的头文件都被define成了1，__不存在的被注释掉__。好吧，在你的程序里尽情的include吧，生活真美好。现在可以make生成可执行文件了。test_client和test_server是不是如愿生成了呢？应该是的！
 
-现在我们项目中仍然有两个.in文件要我们自己写：config.h.in和Makefile.in，关于这两个文件的工具，我们后面再谈。
-
 前面提到，config.h.in和Makefile.in还要手写，现在我们就来看看，Autotools里有那些工具帮助我们完成这些体力活。
 首先是config.h.in。这个非常简单，弄好configure.ac后，直接在项目根目录运行下面命令
 
@@ -174,8 +141,8 @@ __autoheader__
 
 看看，是不是生成了config.h.in了，看看内容。真轻松啊，__autoheader工具分析了configure.ac里面所有要检查的东西，然后生成了相应的宏__，好了，可以用了。
 
-Makefile.in的生成就比较复杂了，毕竟Makefile是个复杂的东东。
-我坦白，要自动生成Makefile.in以便让configure自动生成Makefile你必须再手动写个Makefile.am文件（这就是灵活的代价和unix的哲学）。
+Makefile.in的生成就比较复杂了，毕竟Makefile是个复杂的东东。我坦白，要自动生成Makefile.in以便让configure自动生成Makefile你必须再手动写个Makefile.am文件（这就是灵活的代价和unix的哲学）。
+
 所谓Makefile.am其实就是__automake用来生成Makefile.in的模板__，里面就像一般的Makefile，只不过加了一些automake宏。
 回顾前面的目录结构，我们需要在根目录和所有源码目录添加Makefile.am文件，如下：
 	
@@ -189,31 +156,25 @@ test
     └── server.c
 
 先来看根目录下的Makefile.am文件：
-
 SUBDIRS = src
 
 灰常简单！
 再看src目录下的Makefile.am文件：
-
 	
 bin_PROGRAMS = client server
- 
 client_SOURCES = client.c
- 
 server_SOURCES = server.c
 
-同样灰常简单，这个文件，不解释，你懂的。现在应该淡定些了。
-好，现在我们还需要建一些文件AUTHORS、COPYING、NEWS、ChangeLog和README，这些文件都是gnu项目的标准文件，automake会检查这些文件的。所以，如果不想要的话先建个空文件搪塞一下吧，如果实在受不了也可以用__–foreign__参数来禁止这个检查。
+同样灰常简单，这个文件，不解释，你懂的。现在应该淡定些了。好，现在我们还需要建一些文件AUTHORS、COPYING、NEWS、ChangeLog和README，这些文件都是gnu项目的标准文件，automake会检查这些文件的。所以，如果不想要的话先建个空文件搪塞一下吧，如果实在受不了也可以用__–foreign__参数来禁止这个检查。
 
 最后一步，__在configure.ac里面加上automake支持的宏__
 
-	
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
  
 AC_PREREQ([2.68])
 AC_INIT([test], [1.0], [test@dccmx.com])
-AM_INIT_AUTOMAKE
+**AM_INIT_AUTOMAKE**
 AC_CONFIG_SRCDIR([src/server.c])
 AC_CONFIG_HEADERS([config.h])
  
@@ -233,7 +194,7 @@ AC_FUNC_FORK
 AC_FUNC_MALLOC
 AC_CHECK_FUNCS([bzero socket])
  
-AC_CONFIG_FILES([Makefile src/Makefile])
+**AC_CONFIG_FILES([Makefile src/Makefile])**
 AC_OUTPUT
 
 看到了，我们现在初始化部分__加了AM_INIT_AUTOMAKE 来初始化automake__，在最后又改了AC_CONFIG_FILES([Makefile src/Makefile]) ，来吧src目录下的Makefile也加入管理。
@@ -247,19 +208,21 @@ dccmx@~/projects/console/test$ automake –a –c
 dccmx@~/projects/console/test$ make
 
 神清气爽啊。在src目录里生成两个二进制文件了。make distclean看看？一切恢复如初！make dist看看，自动打包发布。生活真是美好啊。
+
 等等，第一个命令是干什么的呢，这个命令是用来生成automake依赖的宏的，供autoconf调用（因为automake其实不是autoconf的一部分，只相当于插件）。automake后面的两个参数又是干什么的呢？因为automake生成的__Makefile需要一些外部脚本辅助__，而项目里是没有的，所以-a就是把这些文件__自动添加__就来，-c就是指定用__复制的方式添加__，否则是符号链接。
 
 有了前面几篇文章介绍的几招，基本的构建系统就算完成了。开始离专业水平还有一定距离。我们现在看看一些后续的方法，让我们的构建脚本更加专业。
 
 1.设置库依赖和预处理宏：
 
-设置依赖库和宏的方法很简单，只要维护gcc的参数就ok了。这些参数在Makefile.am里面维护。
+设置依赖库和宏的方法很简单，只要维护__gcc的参数__就ok了。这些参数在**Makefile.am**里面维护。
 
 先在configure.ac里面加上相关的宏：__AM_PROG_CC_C_O__。
 
 要添加预处理宏的话（比如_GNU_SOURCE宏）只要在Makefile.am里面添加__xxx_CFLAGS__ = -D_GNU_SOURCE。好了。重新configure吧。
 
 依赖的库呢？你猜对了，在Makefile.am里面添加__xxx_LDFLAGS__ = -lssl -lidn -lz就ok了。生活。。。真美好！
+[[autoconf---automake]]
 
 2.检查目标系统上的库：
 

@@ -6,10 +6,9 @@ Creation-Date: 2012-06-13T14:56:25+08:00
 Created Wednesday 13 June 2012
 http://blog.csdn.net/larntin2002/article/details/1821430
 
-libtool常见于autoconf/automake，单独用的例子很少，所以我想仔细研究一下，为将来兄弟们看起来方便。
- 
+libtool常见于autoconf/automake，单独用的例子很少
 
-==== 一。libtool的作用 ====
+==== 一 libtool的作用 ====
 offer a standard procedure for __creating__ shared libraries on different platforms
 libtool 是一个通用库支持__脚本__，将创建动态库的复杂性隐藏在统一、可移植的接口中，也就是说，你可以通过如下所示的标准方法，在不同平台上创建并调用动态库，我们可以认为libtool是gcc的一个抽象，也就是说，它包装了gcc或者其他的任何编译器，用户无需知道细节，只要告诉libtool说我需要要编译哪些库即可，并且，它只与libtool文件打交道，例如lo、la为后缀的文件。
  
@@ -63,7 +62,7 @@ libtool --mode=install install -c libhello.la /usr/local/lib/libhello.la
         /lib/ld-linux.so.2 (0x40000000)
  
 
-===== 5.install executable file       =====
+===== 5.install executable file =====
 #libtool --mode=install cp hello /usr/local/bin/hello
 安装可执行程序。
  

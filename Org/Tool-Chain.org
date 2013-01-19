@@ -1,4 +1,1 @@
-* GCC 与 Glibc的关系
-  GCC与Glibc是相互依赖的关系：部分链接的GCC在加载时需要Glibc提供的目标对象符号。
-  GCC运行时库文件也需要Glibc提供的符号。同时Glibc提供的crt1.o,crti.o,crtn.o等也
-  依赖GCC的crtbegin.o, crtend.o等提供的符号。
+

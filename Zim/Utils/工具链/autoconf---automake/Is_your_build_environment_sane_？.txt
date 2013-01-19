@@ -7,7 +7,6 @@ Created Thursday 14 June 2012
 http://railsmonkey.net/2010/05/is-your-build-environment-sane/
 
 Is your build environment ‘sane’…?
-
 By Matthew Savage
 
 I’ve been testing a Varnish reverse-proxy/cache setup this weekend to try to resolve the ’80%’ of the problems I’ve been dealing with across our websites.

@@ -33,10 +33,6 @@ Other formats
 
     The widespread use of these configure scripts made building software from the sources easier. This document discusses the software packages used to generate the configure script and other associated files.
 
-    This document is aimed at developers intending to develop Free Software or already maintaining Free Software packages.
-
-    We assume the reader is already familiar with Makefiles. 
-
 ===== 2. Who's who =====
 
     The software packages we are dealing directly with here are: **GNU autoconf, GNU automake and GNU autoheader**. Indirectly, we are dealing with the **m4** macro processor, **make** (either GNU or BSD)，**aclocal **and **libtool**. We talk about GNU libtool too.
@@ -154,7 +150,7 @@ You should see an output like this
     galadriel:~/autotut-ex1$
 
 
-* configure.in是autoconf的输入文件，autoconf展开其中的宏引用，然后输出到configure脚本文件中。
+* configure.in是autoconf的输入文件，autoconf展开其中的宏引用，然后输出到configure脚本文件中，同时它也是个bash脚本。
 * configure.in中引用的宏定义一般是由aclocal扫描该文件后从系统宏库中提取出来，然后写入到源代码目录中的aclocal.m4文件中的。
 * makefile.in是configure脚本的输入文件，configure脚本根据__配置参数和系统环境检查结果替换__makefile.in文件中包含在两@间的变量，然后输出到makefile文件中。
 * configure脚本检查哪些项目(头文件、库文件及其中函数等)，读取和替换哪些makefile.in等是由configure.in中的各种宏决定的。
@@ -169,9 +165,10 @@ You should see an output like this
 
     The configure.in file is processed by the __m4 macro processor__, but aside from the m4 macros, __it is a Bourne shell script__. Thus you can use if...then...fi, and constructs from Bourne shells. You can have some reference on shell programming by reading the bash or sh man pages (depending on the operating system you are on).
 
-    IMPORTANT! The square brackets have special meaning to the m4 processor, so if you want to use the test (see test (1)) command you must spell it out as **test** instead of using the Bourne shell [...] abbreviation.
+    IMPORTANT! The __square brackets__ have special meaning to the m4 processor, so if you want to use the test (see test (1)) command you must spell it out as **test** instead of using the Bourne shell [...] abbreviation.
 
 configure.in是一个文本文件，它__会被M4宏处理器和shell读取执行__，因此其中可以包含M4能够识别并展看的__以AC_或AM_开头的宏函数__，也可以包含shell脚本语法内容。
+
 注意：configure.in中的__方括号对于M4而言有特殊含义__，因此不在具有shell脚本中的测试功能，如果要使用shell的判断功能，可以使用test命令。
 
     Also, **the shell variables** defined and modified within configure.in are NOT substituted automatically in the AC_OUTPUT files. You must explicitly call __AC_SUBST__ (as done with the VERSION variable in the first example) to request the substitution. However, when an internal autoconf macro says "sets variable NAME", it sets and AC_SUBSTs it, thus you must only worry about variables set on your own.
@@ -188,7 +185,8 @@ configure.in是一个文本文件，它__会被M4宏处理器和shell读取执�
 	      this is parameter 3 which spans
 	       along several lines. Now you
 	       know why square brackets cannot
-	       be used for the 'test' command.])  //M4宏的参数//如果以方括号开头，则可以分布在多个行中//。
+	       be used for the 'test' command.])  
+//M4宏的参数//如果以方括号开头，则可以分布在多个行中。
 
     Conventionally , all macros provided by //autoconf// start with __AC___. As we shall see later, //automake//'s macros start with __AM___.
 
@@ -198,15 +196,15 @@ configure.in是一个文本文件，它__会被M4宏处理器和shell读取执�
 
     **Macro Prototype 	Comments**
     AC_INIT(sourcefile) 	Initializes autoconf, should be __the first macro__ called in configure.in(第一个宏函数调用，但是在其前面**可以有变量定义**。).    sourcefile is the name (relative to //current// directory) of a source file from your code.
-    AC_PROG_CC 		Determines a C compiler to use, sets the __CC__ variable. If this is GCC, set the __GCC__ variable to 'yes', otherwise 'no'. Initializes the __CFLAGS__ variable if it hasn't been set already (to override CFLAGS, do it in configure.in __BEFORE__ calling this macro) 如果CFLAGS变量没有定义，则该宏会初始化它为默认值。CLFAGS的定义可以来自本文将，也可来自命令行参数。
-    AC_PROG_CXX 		Determines a C++ compiler to use, sets the __CXX__ variable. If this is the GNU C++ compiler, set __GXX__ to 'yes', otherwise 'no'. Initializes the __CXXFLAGS__ variable if it hasn't been set already (to override CXXFLAGS, do it in configure.in BEFORE calling this macro)
+    AC_PROG_CC 		Determines a C compiler to use, sets the __CC__ variable. If this is GCC, set the __GCC__ variable to 'yes', otherwise 'no'. Initializes the __CFLAGS__ variable if it hasn't been set already (to override CFLAGS, do it in configure.ac __BEFORE__ calling this macro) 如果CFLAGS变量没有定义，则该宏会初始化它为默认值。CLFAGS的定义可以来自本文件，也可来自命令行参数。
+    AC_PROG_CXX 		Determines a C++ compiler to use, sets the __CXX__ variable. If this is the GNU C++ compiler, set __GXX__ to 'yes', otherwise 'no'. Initializes the __CXXFLAGS__ variable if it hasn't been set already (to override CXXFLAGS, do it in configure.ac BEFORE calling this macro)
     AC_LANG_C 		Tests the C compiler   //**测试C编译器能否正常工作**
     AC_LANG_CPLUSPLUS 	Tests the C++ compiler
     AC_PROG_INSTALL 	Set variable __INSTALL__ to the path of a BSD-compatible //install program// (see install (1)). If not found, set it to 'dir/install-sh -c' , looking in the directories specified to __AC_CONFIG_AUX_DIR__. Also sets __INSTALL_SCRIPT__ and __INSTALL_PROGRAM__ to $(INSTALL), and __INSTALL_DATA__ to '$(INSTALL) -m 644'. You must provide __a install-sh file__ in the current directory (unless you use AC_CONFIG_AUX_DIR -- the common practice is to provide a install-sh file) else autoconf will refuse to run. //install-sh为安装该程序的系统提供一个**install程序的候选版本**。
     AC_PATH_X 		Try to locate the **X window system**'s includes and libraries, and sets the variables __x_includes__ and __x_libraries__ to their locations.
     AC_PATH_XTRA 		Like the previous, but adds the required include flags to __X_CFLAGS__ and required linking flags to __X_LIBS__.
     
-    AC_PATH_PROG(a,b[,c[,d]])
+    AC_PATH_PROG(a,b[,c[,d]])   //在系统路径PATH中查找prog-to-check程序是否存在
     a=variable-name
     b=prog-to-check
     c=value-if-not-found
@@ -214,23 +212,23 @@ configure.in是一个文本文件，它__会被M4宏处理器和shell读取执�
 
     AC_PROG_MAKE_SET 	If make predefines the variable MAKE, define output variable __SET_MAKE__ to be empty. Otherwise, define SET_MAKE to contain `MAKE=make'. 如果是多级编译，则MAKE环境变量必须要检查。
 
-    AC_OUTPUT(files [,a[,b]]) 	Create output files. __Perform substitutions on files__, which contains a list of files separated by **spaces**. (is writes, say, Makefile, from a Makefile__.in__ file, spec from spec__.in__, and so on. **The name given here is without the .in suffix.** The other 2 parameters are seldom used, consult the autoconf docs if needed. If AC_CONFIG_HEADER, AC_LINK_FILES or AC_CONFIG_SUBDIRS were called, the files named as their arguments are created too.
+    AC_OUTPUT(files [,a[,b]]) 	Create output files. __Perform substitutions on files__, which contains a list of files separated by **spaces**. (is writes, say, Makefile, from a Makefile__.in__ file, spec from spec__.in__, and so on. **The name given here is without the .in suffix.** The other 2 parameters are seldom used, consult the autoconf docs if needed. If __AC_CONFIG_HEADER__, __AC_LINK_FILES__ or __AC_CONFIG_SUBDIRS__ were called, the files named as their arguments are created too.
 
 该宏一般位于configure.in的最后，指明了替换其中的变量引用后生成的文件filename(可能带路径)，同时也指出了需要替换的模板文件filename.in，读入和输出都是由//将要生成的configure脚本//完成。
 
-    AC_CONFIG_HEADER(files) 	Make AC_OUTPUT create the headers listed in the files list (space-separated). Replaces @DEFS@ in generated files with -DHAVE_CONFIG_H. The usual name for the header is **config.h** (created from **config.h.in**. The __autoheader__ generates config.h.in files automatically for you (it is documented in the next sections).
+    AC_CONFIG_HEADER(files) 	Make AC_OUTPUT create the headers listed in the **files list **(space-separated, 外侧不需要加方括号). Replaces @DEFS@ in generated files with -DHAVE_CONFIG_H. The usual name for the header is **config.h** (created from **config.h.in**. The __autoheader__ generates config.h.in files automatically for you (it is documented in the next sections).
 
-    AC_CONFIG_SUBDIRS(dirs) 	run configure scripts in the subdirectories listed in dirs (space-separated). This is meant for when you __nest child packages__ to your program (like including libraries as subdirs). 该宏适用于nest类型的源代码目录结构，dirs中的各目录**含有configure.in文件**。
+    **AC_CONFIG_SUBDIRS(dirs)** 	**run configure scripts** in the subdirectories listed in dirs (space-separated). This is meant for when you __nest child packages__ to your program (like including libraries as subdirs). 该宏适用于nest类型的源代码目录结构，dirs中的各目录**含有configure.in文件**。
 
     AC_CHECK_FUNC(a[,b[,c]])
     a=function
     b=action if found
-    c=action if not found 	checks if the given C function is available in the standard library (i.e., the libraries that are linked by default to any C program).
+    c=action if not found 	checks if the given C function is available in the __standard library__ (i.e., the libraries that are linked by default to any C program).
 
     AC_CHECK_FUNCS(a[,b[,c]])
     a=list of functions (space-separated)
     b=action if found
-    c=action if not found 	similar to AC_CHECK_FUNC, but looks for many functions at once, setting HAVE_function for each function found (in the given set).
+    c=action if not found 	similar to AC_CHECK_FUNC, but looks for many functions at once, setting **HAVE_function** for each function found (in the given set).
 
     AC_CHECK_LIB(a,b[,c[,d[,e]]])
     a=library name
@@ -258,7 +256,8 @@ configure.in是一个文本文件，它__会被M4宏处理器和shell读取执�
     There are many more autoconf macros. If these weren't already enough, you can supply **a macro library** with your own software distribution. To do this, place the macro definitions in a file called __aclocal.m4__ in the same directory as configure.in, all macros defined in aclocal can now be used in configure.in. The common use for this is to have **specific-library checking macros**, e.g. AC_REQUIRE_GTK(1,2,8) to require the GTK library version 1.2.8 or later. You may also place your macros in a file called __acinclude.m4__ if you are using the __aclocal__ program. aclocal will be presented later.
 
 上面列出的以AC_开头的宏都是autoconf工具提供的标准宏，可以直接调用。程序员也可以将自己定义的宏放在aclocal.m4或acinclude.m4文件中，这样configure.in中就可以使用它们。
-注意：没当运行aclocal命令后，aclocal.m4文件中的内容就会被覆盖为代码中使用的宏定义，这样安装这个代码的系统如果没有安装这些宏也可以正常使用autoconf工具重新生成configure脚本，configure脚本运行时就不在需要autoconf，automake，autoheader和aclocal等工具。程序员将自己定义的宏放在acinclude.m4文件中就可以避免被覆盖，该文件会被acloacl自动读取。
+
+注意：每当运行aclocal命令后，aclocal.m4文件中的内容就会被覆盖为代码中使用的宏定义，这样安装这个代码的系统如果没有安装这些宏也可以正常使用autoconf工具重新生成configure脚本，configure脚本运行时就不在需要autoconf，automake，autoheader和aclocal等工具。程序员将自己定义的宏放在acinclude.m4文件中就可以避免被覆盖，该文件会被acloacl自动读取。
 
     And don't be tempted to have configure.in for each directory in your source tree. Multiple configure.in's are only desirable when you integrate different software packages in a common source tree (such as my program and the 3000 libraries it requires).
 
@@ -281,6 +280,15 @@ configure.in是一个文本文件，它__会被M4宏处理器和shell读取执�
 
     __The solution is to put all the definitions in a header file.__ You can do that in autoconf with the __AC_CONFIG_HEADER__ macro. The conventional name for this header is __config.h__. However, you must supply a __.in header__ (config.h.in) with all the possible definitions spelled out, so that autoconf will just change #undef  to #define or add a value to the #define. Here comes autoheader. Just run **autoheader** on a directory with a configure.in that contains a AC_CONFIG_HEADER macro call, and it will write the __.in file__.
 
+当程序员在编写程序时，可能需要一些特性或变量，而且这些特性和变量是程序的最终用户__在运行configure脚本时才配置或指定的__。
+为了利用这些变量或开关特性，程序员通常的做法是在代码中定义一些宏变量以及条件编译语句，然后用户在编译时的__gcc命令行__上用-DMarco-name=value的形式为这些宏赋值。把宏定义及其值在gcc的命令行上指定的最大缺点是：
+1. gcc命令行过长，可读性降低。
+2. 相同的宏需要在使用的每个gcc命令行上指定，非常繁琐。
+
+解决的方法是将相关的宏定义放在一个众所周知的头文件中(如config.h)，然后使用这些宏的代码文件只需include该头文件即可。
+config.h来源于一个模板文件config.h.in，默认其中的各宏都是#undef的，用户在执行的configure脚本在收集到相关系统和配置信息
+后会替换config.h.in中的相关宏定义，然后将结果写入到config.h中。
+
     Let's use the same pi.c program we did before to show the work of autoheader. You can get the files in a tarball too: autotut-ex2.tar.gz. I won't list all files again, just configure.in.
 
 **Example 2: configure.in**
@@ -295,7 +303,7 @@ configure.in是一个文本文件，它__会被M4宏处理器和shell读取执�
     AC_PROG_MAKE_SET
 
     AC_HEADER_STDC
-    AC_CHECK_FUNCS(atol atoi strtod)
+    AC_CHECK_FUNCS(atol atoi strtod)  //从标准C库中检查是否穿在这些函数
 
     VERSION="0.0.1-rc2"
     AC_SUBST(VERSION)
@@ -323,7 +331,7 @@ configure.in是一个文本文件，它__会被M4宏处理器和shell读取执�
     /* Define if you have the strtod function.  */
     #undef HAVE_STRTOD
 
-    And now you run configure as usual. It will write a config.h based on this template. Let's see what it generates:
+    And now you run //configure// as usual. It will write a config.h based on this template. Let's see what it generates:
 
 **Example 2: config.h**
 
@@ -347,7 +355,8 @@ configure.in是一个文本文件，它__会被M4宏处理器和shell读取执�
     Also, autoheader only copies definitions from the /usr/share/autoconf/acconfig.h file. If some macro you used needs a different entry in config.h.in, write it in a file called **acconfig.h** in the same directory as configure.in, and it will be included in config.h.in by autoheader. 
 
 autoheader工具分析了configure.ac里面所有要检查的东西，然后生成了相应的编译预处理宏定义到config.h.in文件中，然后configure脚本根据检测到的结果修改该文件并输出到config.h文件中。
-程序代码可以包含该config.h文件，根据其中的宏定义条件包含一些代码。
+
+程序代码应该包含该config.h文件，可以引用其中的宏定义只进行条件编译。
 
 ===== 6. Automake =====
 
@@ -381,7 +390,7 @@ autoheader工具分析了configure.ac里面所有要检查的东西，然后生�
 
     In the next sections we present __GNU automake, which generates a Makefile.in file based on a Makefile.am file__. 
 
-    Makefile.am只是定义一些automake可以识别的并且会包含到生成的makefile文件中的__变量，automake工具会根据这些变量自动创建相关编译规则，然后写入到makefile.in文件中，__而且auomake还会向最终生成的Makefile.in文件中添加一些标准目标规则。configure脚本会更改Makefile.in中的变量引用。
+    Makefile.am只是定义一些automake可以识别的并且会包含到生成的makefile文件中的__变量，automake工具会根据这些变量自动创建相关编译规则，然后写入到makefile.in文件中，__而且auomake还会向最终生成的Makefile.in文件中添加一些标准目标规则。configure脚本会更改Makefile.in中的变量引用。 makefile.in与makefile的唯一区别就是其中的@xxx@变量被configure脚本替换为实际值(可以通过config.log文件查看这些变量值)。
 
     Automake will also look for missing files that may cause your users to be confused if they are not present. Automake will either place a standard one in the package directory or complain about the missing file. (The rule is that universal files are copied from automake's distribution, and package-dependent files like AUTHORS, ChangeLog, etc. aren't).
 
@@ -402,9 +411,7 @@ Makefile.am中定义的只是一些符合makefile语法的__变量__。
 
 ===== Create an empty directory for the project =====
 
-
     mkdir gdu
-
 
 ===== Place source files =====
 
@@ -419,7 +426,9 @@ Makefile.am中定义的只是一些符合makefile语法的__变量__。
 
 ===== 3. Write configure.in(该文件同时被autoconf和autoheader检查) =====
 
-    Write a configure.in file for autoconf. Notice that some automake macros (AM_) come in, and **some autoconf macros are replaced by automake macros**.  You must call AM_INIT_AUTOMAKE(package,version) right after AC_INIT, use AM_CONFIG_HEADER instead of AC_CONFIG_HEADER.
+    Write a configure.in file for autoconf. Notice that some automake macros (AM_) come in, and **some autoconf macros are replaced by automake macros**. 这意味着在运行automake前必须要准备好configure.in文件。
+
+ You must call AM_INIT_AUTOMAKE(package,version) right after AC_INIT, use AM_CONFIG_HEADER instead of AC_CONFIG_HEADER.
 
     This is our configure.in:
 
@@ -429,7 +438,7 @@ Makefile.am中定义的只是一些符合makefile语法的__变量__。
     __AM_INIT_AUTOMAKE(__gdu,0.0.1)   //由于使用了AM_宏，因此该宏必须放在AC_INIT宏的后面。
     __AM_CONFIG_HEADER__(config.h)
 
-    CXXFLAGS=
+    CXXFLAGS=  //这里定义了CXXFLAGS变量，会覆盖autoconf自动产生的值。
 
     AC_PROG_CC # for AM_PROG_GTK only
     AC_PROG_CXX
@@ -440,7 +449,7 @@ Makefile.am中定义的只是一些符合makefile语法的__变量__。
 
     # it will define GTK_CFLAGS and GTK_LIBS for us,
     # comes from gtk.m4 (aclocal will find it for us)
-    AM_PATH_GTK(1.2.6)
+    AM_PATH_GTK(1.2.6)  //系统预定义宏
 
     AC_LANG_CPLUSPLUS # else AM_PATH_GTK blows up
 
@@ -452,21 +461,20 @@ Makefile.am中定义的只是一些符合makefile语法的__变量__。
 
     AC_OUTPUT(Makefile)
 
-    If you use macros from system aclocal files (usually in /usr/share/aclocal), as we did here (the AM_PROG_GTK macro is in /usr/share/aclocal/gtk.m4, and some automake macros must be imported too), you must run the **aclocal** program to create an __aclocal.m4__ file with all needed macros. This file is overwritten every time aclocal is run, so if you want to have your own macros written locally, place them in __acinclude.m4__, aclocal will include these in the generated aclocal.m4.
+    If you use macros from system aclocal files (usually in /usr/share/aclocal), as we did here (the AM_PROG_GTK macro is in /usr/share/aclocal/gtk.m4, and some automake macros must be imported too), you must run the **aclocal** program to create an __aclocal.m4__ file with all needed macros. This file is __overwritten__ every time aclocal is run, so if you want to have your own macros written locally, place them in __acinclude.m4__, aclocal will include these in the generated aclocal.m4.
 
 
 ===== Run aclocal, autoconf, autoheader =====
 
-
-    Now you can already generate some of the files. You must run aclocal, autoheader and autoconf; **aclocal must run first**. In a Bourne shell you can run all three in a row with
+    Now you can already generate some of the files. You must run aclocal, autoheader and autoconf; **aclocal **__must run first__. In a Bourne shell you can run all three in a row with
 
     //aclocal && autoheader && autoconf//
 
 * aclocal will generate an aclocal.m4 file (getting information from **configure.in** [needed] and **acinclude.m4** [optional]).
 * autoheader will read **configure.in** and produce a __config.h.in__ file (or whatever you named it in the AM_CONFIG_HEADER macro).
 * autoconf will read **configure.in** and **aclocal.m4** and produce a __configure__ script.
-* autoconf需要利用aclocal.m4中的宏定义来展开configure.in中的宏函数调用，这个过程中需要调用系统的M4工具。但是一旦生成了configure脚本，aclocal.m4和M4工具不在是必需的了(除非
-       用户在配置前修改了configure.in中的宏调用，这样需要重新调用autoconf工具生成cofigure脚本)。
+
+autoconf需要利用aclocal.m4中的宏定义来展开configure.in中的宏函数调用，这个过程中需要调用系统的M4工具。但是一旦生成了configure脚本，aclocal.m4和M4工具不在是必需的了(除非用户在配置前修改了configure.in中的宏调用，这样需要重新调用autoconf工具生成cofigure脚本)。
 
 
 ===== Write a Makefile.am =====
@@ -475,7 +483,7 @@ Makefile.am中定义的只是一些符合makefile语法的__变量__。
 
     **GDU (Example 3): Makefile.am**
 
-    AUTOMAKE_OPTIONS = __gnu__
+    AUTOMAKE_OPTIONS = gnu
     LDADD =    @GTK_LIBS@
     CPPFLAGS = @GTK_CFLAGS@    //这两个变量是由configure.in中的AM_PATH_GTK(1.2.6)宏引入。
     bin_PROGRAMS = gdu		  //生成一个可执行文件gdu
@@ -486,7 +494,7 @@ Makefile.am中定义的只是一些符合makefile语法的__变量__。
     # man page
     man_MANS = gdu.1x
 
-    # we want these **in the dist tarball**
+    # we want these in the dist tarball
     EXTRA_DIST = back.xpm reload.xpm root.xpm \
                  home.xpm stop.xpm about.xpm gdu.1x
 
@@ -494,7 +502,7 @@ Makefile.am中定义的只是一些符合makefile语法的__变量__。
 
     AUTOMAKE_OPTIONS = gnu could be achieved by running //automake// with the __--gnu__ command-line option. See 'automake --help' for all command-line options.
 
-    __LDADD__ and __CPPFLAGS__ (CFLAGS for C programs) specify flags used for **linking and compiling**);
+    __LDADD__ and __CPPFLAGS__ (CFLAGS for C programs) specify flags used for **linking and compiling**;
 
     bin_PROGRAMS is a (**space-separated**) __list of all binaries__ that will be built and installed by your package. We'll build just gdu here.
 
@@ -502,12 +510,11 @@ Makefile.am中定义的只是一些符合makefile语法的__变量__。
 
 * 如果需要编译和安装多个可执行文件，则将它们的名称作为bin_PROGRAMS宏的参数。
 * 每个可执行文件都要用name_SOURCES宏定义它所依赖的源文件，automake会自动生成规则来编译和链接这些文件，最终生成一个可执行程序。
-* automake在读取makefile.am文件后，根据其中的变量设置，会生成一个makefile.in文件，该文件采用了makefile语法规则，与最终的makefile的__唯一区别__是含有将被configure脚本
-   替换的变量。除了可执行程序或库目标(程序员在configure.in中相关变量指定的)，automake还会安装GNU惯例，在makefile.in中添加一些标准规则。
+* automake在读取makefile.am文件后，根据其中的变量设置，会生成一个makefile.in文件，该文件采用了makefile语法规则，与最终的makefile的__唯一区别__是含有将被configure脚本   替换的变量。除了可执行程序或库目标(程序员在configure.in中相关变量指定的)，automake还会安装GNU惯例，在makefile.in中添加一些标准规则。
 
     man_MANS lists the man pages installed.
 
-    __noinst___HEADERS is the list of headers that **must go into a distribution** (a distribution is the .tar.gz file you distribute you program) **but are NOT installed** to @prefix@/include in the install step.
+    __noinst___HEADERS is the list of headers that **must go into a distribution** (a distribution is the .tar.gz file you distribute you program) **but are NOT in**stalled to @prefix@/include in the install step.
 
     EXTRA_DIST lists //additional files// that must be included in the distribution. The xpm files could be listed under noinst_HEADERS, it really makes no difference here.
 
@@ -516,7 +523,7 @@ Makefile.am中定义的只是一些符合makefile语法的__变量__。
 
     Now we are ready to run automake (maybe). There some files missing, but automake will tell us about them, so relax. Run this (the **--add-missing** will add default files from the automake distribution when possible, complain about missing files when not)
 
-    automake --add-missing   #--add-missing会从automake的安装文件中符号链接一些标准通用的文件到当前代码树中，但是有些项目特定的文件还需要自己创建。
+    automake --add-missing   #--add-missing会从automake的安装文件中符号链接一些标准通用的文件到当前代码树中，但是有些项目特定的文件还需要自己创建(NEWS， README， AUTHORS COPYING， ChangeLog)。
 
 we obtain
 
@@ -533,9 +540,11 @@ we obtain
     automake: Makefile.am: required file `./AUTHORS' not found
     automake: Makefile.am: required file `./ChangeLog' not found   #上面5个与具体项目相关，需要自己创建。
 
-    __install-sh__ is the shell replacement for the BSD **install** program, triggered by AC_PROG_INSTALL. __mkinstalldirs__ and __missing__ are similar shell scripts triggered by the AM_ macros in configure.in.
+    __install-sh__ is the shell replacement for the BSD **install** program, triggered by **AC_PROG_INSTALL**. __mkinstalldirs__ and __missing__ are similar shell scripts triggered by the AM_ macros in configure.in.
 
-    INSTALL is the **automake standard installation instructions text**. COPYING is the GNU General Public License. COPYING was "needed" because we specified AUTOMAKE_OPTIONS = __gnu__. To work with bare requirements use AUTOMAKE_OPTIONS = __foreign__. In our example we stick with gnu, this is GPL'd program anyway.
+    INSTALL is the **automake standard installation instructions text**. COPYING is the GNU General Public License. COPYING was "needed" because we specified AUTOMAKE_OPTIONS = __gnu__. 
+
+     To work with bare requirements use AUTOMAKE_OPTIONS = __foreign__. In our example we stick with gnu, this is GPL'd program anyway.
 
     However, the other required files couldn't be resolved. Because they are **package-specific**. To keep the gnu option, we have to write each of those files.
 
@@ -545,7 +554,7 @@ we obtain
 
     Having written the missing files, we run automake again (no --add-missing required, all it could add has already been added), and it runs swiftly without errors.
 
-    You'll notice that the added files are symlinks to files in /usr/share/automake. This is fine for some people, since the make dist step that creates the distribution tarball packs as files, but if you will import you source tree into CVS (Concurrent Versioning System -- not needed but widely used, don't worry if you don't use it) you probably want to run automake with automake --add-missing __--copy__ to force file copying (if you want to do it now, you'll have to remove the symlinks first).
+    You'll notice that the added files are **symlinks** to files in /usr/share/automake. This is fine for some people, since the make dist step that creates the distribution tarball packs as files, but if you will import you source tree into CVS (Concurrent Versioning System -- not needed but widely used, don't worry if you don't use it) you probably want to run automake with __automake --add-missing --copy__ to force file copying (if you want to do it now, you'll have to remove the symlinks first).
 
 
 ===== Phew! Test it. =====
@@ -558,20 +567,24 @@ we obtain
     make clean
     make distclean
 
-    The first one will compile the package. The dist target will create a __dist__ribution tarball -- the one you'll distribute to your users -- in our case it will create a tarball named **gdu-0.0.1.tar.gz**, __name and version are taken from the AM_INIT_AUTOMAKE macro__ in configure.in. This tarball complies with what users expect: it unpacks into a fresh directory of the same name (without the .tar.gz suffix).
+    The first one will compile the package. The dist target will create a distribution tarball -- the one you'll distribute to your users -- in our case it will create a tarball named **gdu-0.0.1.tar.gz**, __name and version are taken from the AM_INIT_AUTOMAKE macro__ in configure.in. This tarball complies with what users expect: it unpacks into a fresh directory of the same name (without the .tar.gz suffix).
 
     IMPORTANT! You should __always test__ the distribution tarball (by unpacking, compiling and installing), for it is usual to have files left out because you forgot to add graphic files, program headers or other needed files in the EXTRA_DIST or noinst_HEADERS variables in Makefile.am. Some files (README, INSTALL, etc.) are automatically included in the distribution if found, and running automake with 'automake --help' will show a list of all included-if-found filenames.
 
     The clean target removes binaries and object files (.o).
 
-    The distclean target removes not only the binaries, but __all the configuration results__ created by the configure script. If you think your changes to configure.in or Makefile.am are not taking effect after running autoconf and automake, do a make distclean to clean any **cached** results. Also, you should do make distclean before importing your source tree into a CVS repository.
+    The **distclean** target removes not only the binaries, but __all the configuration results__ created by the configure script. If you think your changes to configure.in or Makefile.am are not taking effect after running autoconf and automake, do a make distclean to clean any **cached** results. Also, you should do make distclean before importing your source tree into a CVS repository.
 
     Other targets are install, uninstall and test. 
 
 ===== 8. Makefile.am =====
 
     __SUBDIRS__
-    Automake'd projects can vary in directory topology. __Flat topologies__ include all source files in the project's top directory, like gdu. __Shallow topologies__ includes the sources in some subdirectories. The most common situation is having the source go inside a //src// directory instead of the top directory. __Deep topologies__ is what happens when you include your source in the top directory and libraries in subdirectories.
+    
+Automake'd projects can vary in directory topology. 
+* __Flat topologies__ include all source files in the project's top directory, like gdu. 
+* __Shallow topologies__ includes the sources in some subdirectories. The most common situation is having the source go inside a //src// directory instead of the top directory. 
+* __Deep topologies__ is what happens when you include your source in the top directory and libraries in subdirectories.
 
     To have a //multi-directory source tree//, specify all child directories in __the SUBDIRS variable__. Example:
 
@@ -580,12 +593,11 @@ we obtain
     Each subdirectory must have __its own Makefile.am__.  
 
 * Flat topologies: 所有的源文件(可执行文件和库文件的头文件，C/C++文件等)都放在项目的顶层目录中，configure.in, makefile.am, makefile.in等也放在该目录中。
-* Shallow topologies: 顶层目录只放配置文件(如整个项目的configure.in和makefile.am文件)和数据文件。所有的可执行文件和库文件源代码都按放在不同的目录中，目录中有自己的makefile.am文件，这些目录由上层
-   的makefile.am中的SUBDIRS变量指定。
+* Shallow topologies: 顶层目录只放配置文件(如整个项目的configure.in和makefile.am文件)和数据文件。所有的可执行文件和库文件源代码都按放在不同的目录中，目录中有自己的makefile.am文件，这些目录由上层的makefile.am中的SUBDIRS变量指定。
 * Deep topologies: 可执行程序的源代码在当前目录，库文件源代码在单独的子目录中。
 
     PROGRAMS
-    __the *_PROGRAMS variables__ specify programs to be built. __bin___PROGRAMS list programs to be built and installed to @prefix@/bin, __sbin___PROGRAMS are built and installed to @prefix@/sbin; EXTRA_PROGRAMS are built but not installed.
+    the *_PROGRAMS variables specify programs to be built. bin_PROGRAMS list programs to be built and installed to @prefix@/bin, sbin_PROGRAMS are built and installed to @prefix@/sbin; EXTRA_PROGRAMS are built but not installed.
 
     Where Files Go ?
     For each program listed, __program_SOURCES__ lists the source files. __include_HEADERS__ lists headers that are installed to @prefix@/include. __EXTRA_DIST__ and __noinst_HEADERS__ files are included in the distribution but not installed.
@@ -601,15 +613,18 @@ we obtain
 ===== 9. Building Libraries: libtool =====
     In this section we show a very short example of **a shared library package**. __Automake will write a Makefile.in file that uses libtool to build it in a portable way__. Libtool is the way to build libraries. It will prevent you from dealing with arcane system idiosyncrasies by selecting **compiler and linker flags** and running system utilities as needed to integrate libraries seamlessly into the system.
 
-libtool是一种在不同系统间可移植性地编译、安装和使用__库文件__的脚本工具。libtool本质上是GCC的封装程序，它的mode参数如compile/link/install分别和GCC的编译/链接/安装阶段相对应，automake会在需要时自动调用libtool脚本并向其传入合适的mode参数。libtool在编译库文件时会自动添加适合安装平台的参数如-c/-fPIC/-fpic等。libtool是个脚本文件，一般由automake自动地将其调用方法写入到生成的makefile中，__该脚本通常会放到源代码树中__，所以编译和安装该代码的系统不需要安装它。
-不同于M4和auto-系列工具，libtool对于使用了该方法的软件包而言，在编译和安装软件包的过程中是必需的。
+* libtool是一种在不同系统间可移植性地编译、安装和使用__库文件__的脚本工具。
+* libtool本质上是GCC的封装程序，它的mode参数如compile/link/install分别和GCC的编译/链接/安装阶段相对应，automake会在需要时自动调用libtool脚本并向其传入合适的mode参数。
+* libtool在编译库文件时会自动添加适合安装平台的参数如-c/-fPIC/-fpic等。
+* libtool是个脚本文件，一般由automake自动地将其调用方法写入到生成的makefile中，__该脚本通常会放到源代码树中__，所以编译和安装该代码的系统不需要安装它。
+* 不同于M4和auto-系列工具，libtool对于使用了该方法的软件包而言，在编译和安装软件包的过程中是必需的。
 
     The example for this section is a set of 4 programs, one of which is a shared library. We'll use this same set of programs as an example for the next section.
 
     The four programs are: dinnerd, libdinner, hungryhacker and vdinner.
 
 * **dinnerd** is a daemon that acts as a server for the Dining Hackers protocol (this is an unofficial protocol, mostly useless, that I created for this example -- for a deeper explanation of protocol check the documentation in the dinnerd package). It manages a round table with at most 256 places, and waits for hackers (clients) to sit around. There are always N Chinese food boxes and N chop-sticks on the table, where N is the current number of hackers. Hackers need 2 chop-sticks to eat, so they all cannot eat at the same time. Competition for chop-sticks occurs, and hackers get angry and may beat each other if they can't get a chop-stick, and even die of starvation if they can't eat for too long. dinnerd provides two sub-protocols: one for hackers to connect and interact (request chop-sticks, etc.) and another for observers to watch the whole scene. Download source: dinnerd-1.0.0.tar.gz
-* **vdinner** screen-shot libdinner is a library that provides a set of functions to access a dinnerd server without the need to code directly with the Unix network API -- you don't need to know what bytes come and go in the connection, the library wraps the ugly things for you. Download source: libdinner-0.0.1.tar.gz
+* **libdinner** screen-shot libdinner is a library that provides a set of functions to access a dinnerd server without the need to code directly with the Unix network API -- you don't need to know what bytes come and go in the connection, the library wraps the ugly things for you. Download source: libdinner-0.0.1.tar.gz
 * **hungryhacke**r implements a client for the first sub-protocol. It implements a hacker that sleeps (in the sense of the Unix sleep() call, not human sleep) for a random amount of time, try to acquire chop-sticks, eat for a random amount of time, repeat. Download source: hungryhacker-0.0.1.tar.gz
 * **vdinner** implements a client for the second sub-protocol, it grabbing information about the status of the table from dinnerd using the library functions of libdinner and renders everything animated in 3D with the aid of the Mesa graphics library, as the screen-shot at the right shows. Download source: vdinner-0.0.1.tar.gz
 
@@ -617,7 +632,7 @@ libtool是一种在不同系统间可移植性地编译、安装和使用__库�
 
     The library source code is contained on two files: libdinner.c and dinner.h. The later will be installed under @prefix@/include and applications that link with the library will need to include it.
 
-    The first step to build a library is including the AM_PROG_LIBTOOL macro in configure.in. This is libdinner's configure.in file:
+    The first step to build a library is including the **AM_PROG_LIBTOOL** macro in configure.in. This is libdinner's configure.in file:
 
 **libdinner (Example 4): configure.in**
 
@@ -646,7 +661,10 @@ And this is libdinner's Makefile.am file:
 **libdinner (Example 4): Makefile.am**
 
     AUTOMAKE_OPTIONS = __gnu__
-    lib___LT__LIBRARIES = libdinner.__la    #类似的还有安装到@prefix@/libexec的libexec_LTLIBRARIES__。libname.la是libtool的生成的库文件，在生成它的同时还会生成libname.so和libname.a等库文件，而libname.la是记录它们**实际安装位置的文本文件**。
+    lib___LT__LIBRARIES = libdinner.la    
+#类似的还有安装到@prefix@/libexec的libexec_LTLIBRARIES__。
+#libname.la是libtool使用的**文本文件**，在生成它的同时__还会生成__libname.so和libname.a等库文件。
+#libname.la文本文件记录了与name相关的所有库文件的名称及版本，依赖关系等。
 
     __libdinner_la___SOURCES = libdinner.c   #目标文件名中的点号必须用下划线代替，该宏一般只列出C/C++源文件，__不需要列出头文件__。头文件可以由CFLAGS标志给出。
 
@@ -654,8 +672,7 @@ And this is libdinner's Makefile.am file:
 
     libdinner_la___LDFLAGS__ = **-version-info 0:0:0**
 
-    As usual, automake variable names have two parts. The lib in lib_LTLIBRARIES means the target will be installed to @prefix@/lib. 
-   And the __LT__ in LTLIBRARIES is from LibTool. **When target names have dashes (-) or dots (.), they're substituted for underscores, so we have libdinner_la_SOURCES instead of libdinner.la_SOURCES.**
+    As usual, automake variable names have two parts. The lib in **lib_LTLIBRARIES** means the target will be installed to @prefix@/lib.   And the __LT__ in LTLIBRARIES is from LibTool. **When target names have dashes (-) or dots (.), they're substituted for underscores, so we have libdinner_la_SOURCES instead of libdinner.la_SOURCES.**
 
     We're using for the first time the include_HEADERS variable. It will place dinner.h in @prefix@/include.
 
@@ -668,10 +685,11 @@ And this is libdinner's Makefile.am file:
 * Current is the version of the **interface** the library implements. Whenever a new function is added, or its name changed, or the number or type of its parameters (the prototype -- in libraries we call this the function signature), this number goes up. And it goes up exactly by one.
 * Revision is the revision of the **implementation** of this interface, i.e., when you change the library by only modifying code inside the functions (fixing bugs, optimizing internal behavior, or adding/removing/changing signatures of functions that are private to the library -- used only internally) you raise the revision number only.
 * Age is the difference between the newest and oldest interface the library currently implements. Let's say you had 8 versions of your library's interface, 0 through 7. You are now on the 4th revision of the 8th interface, that is, 7:3:X (remember we start counting on zero). And when you had to make choices for what old interfaces you would keep support -- for backward compatibility purposes, you chose to keep support for interfaces 5, 6 and (obviously) the current, 7. The libtool version of your library would be 7:3:2 , because the Age is 7-5 = 2.
+AGE表示该库保证interface一致性的距离CURRENT的距离，如CURRENT=8, AGE=3则表示CURRENT为5,6，7,8的三个版本在interface级别是兼容的。
 
     From the libtool documentation, verbatim:
 
-       **Never** try to set the interface numbers so that they correspond
+       **Never** try to set **the interface numbers** so that they correspond
     to the release number of your package.  This is an abuse that only
     fosters misunderstanding of the purpose of library versions.  Instead,
     use the `-release' flag (*note Release numbers::.), but be warned that
@@ -689,10 +707,9 @@ And this is libdinner's Makefile.am file:
 
     The major difference between __shallow and deep is that in shallow packages you have only one configure.in, located in the top directory, and it will check everything that everything in the subdirectories need. Deep packages have a configure.in in each subdirectory, and it looks very much like an aggregate of programs which just happen to be distributed together.__
 
-flat style 是将所有的源代码放到同一个目录下，整个工程只有一个configure.in和makefile.am文件。
-shallow style 有多个源代码目录，每个目录中都有makefile.am文件，整个工程只有一个位于顶层目录的configure.in文件，它负责检查__所有目录中__的源代码
-需要的系统特性。
-deep style 更像是将多个独立的工程目录添加到某个工程的顶层目录中，整个工程由多个configure.in文件，它们由顶层的configure.in控制。
+* flat style 是将所有的源代码放到同一个目录下，整个工程只有一个configure.in和makefile.am文件。
+* shallow style 有多个源代码目录，每个目录中都有makefile.am文件，整个工程只有一个位于顶层目录的configure.in文件，它负责检查系统环境并替换相应目录中的Makefile.in文件。
+* deep style 更像是将多个独立的工程目录添加到某个工程的顶层目录中，整个工程由多个configure.in文件，它们由顶层的configure.in控制。
 
 **Shallow Example**
     Our shallow example is vdinner (Source code: vdinner-0.0.1.tar.gz). It has three important requirements: X, Mesa and libdinner. All the code is contained in the __src__ subdirectory. For shallow topologies, we write **a top-level configure.in** just like in a flat topology, except that __we must remember to AC_OUTPUT Makefiles for all subdirectories__ and __references to files may need directory prefixes__, such as src/vdinner.c. This is vdinner's configure.in:
@@ -786,10 +803,10 @@ And this is the Makefile.am file in src:
 
     It also has nothing different from what we discussed in the previous sections.
 
-    Automake must be **run from the top-level directory only**. __It will automatically descend into all SUBDIRS and create the associated Makefile.in files__. If you try running automake from an inner directory it will complain about the //lack of a configure.in there//, but you don't need one.
+    Automake __must be__ run from the top-level directory only. __It will automatically descend into all SUBDIRS and create the associated Makefile.in files__. If you try running automake from an inner directory it will complain about the //lack of a configure.in there//, but you don't need one.
 
-shallow style的package 必须在顶层目录运行automake工具，因为它需要读取configure.in文件中的信息，而该文件只单一地存在与顶层目录。
-shallow style的package的顶层makefile.am一般是比较简单的，因为该目录一般没有源代码文件。通过makefile.am中的SUBDIRS变量参数，automake会自动切换到该目录，将其中的makefile.am转换为makefile.in文件。__automake最终会搜集所有子目录中的makefile.in目标信息，将其写入顶层目录的makefile.in中(当然，具体如何编译各个目标，还要依赖相应目录中的makefile文件。)。configure脚本将检测到的值替换AC_OUT中列出的所有makefile.in文件，然后生成makefile文件。__
+* shallow style的package 必须在顶层目录运行automake工具，因为它需要读取configure.in文件中的信息，而该文件只单一地存在与顶层目录。
+* shallow style的package的顶层makefile.am一般是比较简单的，因为该目录一般没有源代码文件。通过makefile.am中的SUBDIRS变量参数，automake会自动切换到该目录，将其中的makefile.am转换为makefile.in文件。__automake最终会搜集所有子目录中的makefile.in目标信息，将其写入顶层目录的makefile.in中(当然，具体如何编译各个目标，还要依赖相应目录中的makefile文件。)。configure脚本将检测到的值替换AC_OUT中列出的所有makefile.in文件，然后生成makefile文件。__
 
 **Deep Example**
     As an example of a deep topology, we'll put all four programs (dinnerd, libdinner, hungryhacker and vdinner) in one package. We'll call this all-in-one package the dinnersuite. First we create a dinnersuite directory and unpack the distribution tarballs into it. I'll also rename the unpacked directories to remove the version string from the name, but it's not needed. Now we have this directory tree:
@@ -861,7 +878,8 @@ dinnersuite (Example 6): hungryhacker/configure.in
 
     AC_CHECK_HEADERS(assert.h errno.h unistd.h time.h,,AC_MSG_ERROR([
     required header missing]))   
-    #删除了对libdinner库的检查。
+   
+   #删除了对libdinner库的检查。
 
     AC_OUTPUT(Makefile)
 
@@ -880,7 +898,7 @@ dinnersuite (Example 6): hungryhacker/configure.in
     (a) Install your software in standard places. If you're using automake you're probably doing so already. Placing your binary under /var/coolstuff/lib/etc/boing/bin is much like not placing it anywhere at all. Doing a find / -name "foo" isn't practical and can take hours or even days to complete on systems that mount directories from a network (NFS is sooo transparent...)
     (b) **Provide version information**. The standard is to print a version string and exit without further action when the __-v or --version__ options are given in the command line. If you want to provide the version information in a different way, it's ok, but you must document it somewhere. A man page is probably the best place.
     (c) For libraries, __the most common way to check for presence is trying to link a small program(链接的目的只是检查该文件是否可以找到，而不是生成的程序是否可以正常工作)__. Document in the library changelogs the API changes. This way, if you introduced a float foo_bar(int,int) call in version X.Y.Z, users can detect versions >= X.Y.Z by trying to link a program that calls that function.
-    (d) Many software packages (usually large ones) provide a __programname-config__ script that is installed together with the program, that will provide information on version, include file paths, library paths, features, etc. Examples are GTK+ (gtk-config), Gimp (gimp-config), XMMS (xmms-config) and Gnome (gnome-config). Below we show an example of output for the gtk-config script.
+    (d) Many software packages (usually large ones) provide a __programname-config script __that is installed together with the program, that will provide information on version, include file paths, library paths, features, etc. Examples are GTK+ (gtk-config), Gimp (gimp-config), XMMS (xmms-config) and Gnome (gnome-config). Below we show an example of output for the gtk-config script.
 
         //galadriel:~$ gtk-config//   
         Usage: gtk-config [OPTIONS] [LIBRARIES]
@@ -904,7 +922,7 @@ dinnersuite (Example 6): hungryhacker/configure.in
 
 实际上是使用[[../pkgconfig.txt|pkg-config机制]]。
 
-    (e) Provide m4 macros to perform checks and tests on/for your software. The best behavior is to install these to the @prefix@/share/aclocal directory with the name yourpackage.m4. This way other developers may use the macros in their configure.in input files and aclocal will automatically look for the missing macros and place them in the aclocal.m4 of the distribution of the package that depends on yours.
+    (e) Provide __m4 macros__ to perform checks and tests on/for your software. The best behavior is to install these to the @prefix@/share/aclocal directory with the name yourpackage.m4. This way other developers may use the macros in their configure.in input files and aclocal will automatically look for the missing macros and place them in the aclocal.m4 of the distribution of the package that depends on yours.
 
     Compatibility. Make your software usable by the widest range of people possible. For example: when writing a library, it is quite easy to turn down C++ programmers by not enclosing the function prototypes in the public header files in extern "C" blocks. A way to do this in a portable manner is shown in the dinner.h header of libdinner, the example library of the libtool section.
 
