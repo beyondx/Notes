@@ -6,7 +6,7 @@ home=Home
 icon=None
 document_root=None
 shared=False
-profile=
+profile=None
 disable_trash=False
 interwiki=
 
